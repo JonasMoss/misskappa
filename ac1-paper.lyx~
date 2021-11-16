@@ -188,41 +188,6 @@ The measure of agreement called
 Introduction
 \end_layout
 
-\begin_layout Standard
-The 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- coefficient is developed in the setting of an implicit guessing model,
- but is not a knowing coefficient.
- In the section on the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- we discuss how to generalize it to different settings and how to estimate
- it and do inference under these settings.
- Moreover, we provide the first consistent estimator of 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
-, as the current estimator 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "Gwet2008-qk,Gwet2014-iu"
-literal "false"
-
-\end_inset
-
- is an approximation.
- In an attempt to interpret the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- coefficient, we find it is not properly justified, and we discourage its
- use.
- 
-\end_layout
-
 \begin_layout Section
 The 
 \begin_inset Formula $\textsc{AC}_{1}$
