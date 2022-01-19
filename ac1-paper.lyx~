@@ -15,6 +15,7 @@
 \authorrunning{Jonas Moss}
 
 \usepackage{booktabs}
+\newcommand{\ac}{\textsc{AC}_{1}}
 \renewcommand{\sqrt}[1]{{(#1)^{1/2}}}
 \DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\Tr}{Tr}
@@ -109,15 +110,12 @@ natbibapa
 \begin_body
 
 \begin_layout Title
-Some remarks on the agreement coefficients 
+Against the agreement coefficient 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- and 
-\begin_inset Formula $\textsc{AC}_{2}$
-\end_inset
-
- 
+.
+ If you still want to use it, use these estimators and confidence intervals.
 \end_layout
 
 \begin_layout Author
@@ -138,7 +136,11 @@ orcid{0000-0002-6876-6964}
 \begin_inset Newline newline
 \end_inset
 
-Department of MathematicsBI Norwegian Business School
+Department of Data Science and Analytics
+\begin_inset Newline newline
+\end_inset
+
+BI Norwegian Business School
 \emph on
 
 \begin_inset Newline newline
@@ -148,12 +150,28 @@ jonas.moss@bi.no
 \end_layout
 
 \begin_layout Abstract
-The measure of agreement called
+The measure of agreement called 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
-.
- (i) We provide a new estimator the 
+, originally developed to handle agreement data with high agreement, is
+ growing in popularity.
+ Our main goal with this paper is to question the motivation and utility
+ of the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ and propose to use knowledge coefficients in its favour, but we will also
+ demonstrate that the weighted variant of 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+, called 
+\begin_inset Formula $\textsc{AC}_{2}$
+\end_inset
+
+, is incorrectly defined, and provide an alternative.
+ More constructively, we provide a new estimator of the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
@@ -162,30 +180,365 @@ The measure of agreement called
 \end_inset
 
  is merely an approximation.
- Moreover, this estimtor and has smaller variance than Gwet's estimator.
- (ii) Generalize the 
+ Finally, we will generalize the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
  to different classes of guessing models.
- (iii) Argue that the weighted variant of 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- called 
-\begin_inset Formula $\textsc{AC}_{2}$
-\end_inset
-
- is incorrectly defined, and provide an alternative.
- (iv) Question the motivation and utility of the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- and propose to use knowledge coefficients in its favour.
+ 
 \end_layout
 
 \begin_layout Section
 Introduction
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ coefficient is developed in the setting of an implicit guessing model,
+ but is not a knowing coefficient.
+ In the section on the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ we discuss how to generalize it to different settings and how to estimate
+ it and do inference under these settings.
+ Moreover, we provide the first consistent estimator of 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+, as the current estimator 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Gwet2008-qk,Gwet2014-iu"
+literal "false"
+
+\end_inset
+
+ is an approximation.
+ In an attempt to interpret the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ coefficient, we find it is improperly justified, and strongly discourage
+ its use.
+ 
+\end_layout
+
+\begin_layout Standard
+The 
+\emph on
+guessing model
+\emph default
+ is
+\begin_inset Formula 
+\begin{equation}
+p(x\mid i,j,s,x^{\star})=s_{ij}1[x=x_{i}^{\star}]+(1-s_{ij})q_{j}(x),\label{eq:full guessing model}
+\end{equation}
+
+\end_inset
+
+where
+\end_layout
+
+\begin_layout Standard
+The idea behind the 
+\begin_inset Formula $\ac$
+\end_inset
+
+ is to use a definition of chance agreement that differs from the classics,
+ the Fleiss-type and the Cohen-type.
+ When we assume a guessing model, we can rigorously define the notion of
+ 
+\emph on
+agreement due to guessing.
+ 
+\emph default
+Two raters 
+\begin_inset Formula $j_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $j_{2}$
+\end_inset
+
+ may agree because they both happened to guess correctly, one of them happened
+ to guess correctly and the other knew the correct classification, or because
+ both know the correct classification.
+ Since the probability that both know the correct classification is 
+\begin_inset Formula $\nu=\binom{J}{2}^{-1}\sum_{j_{1}>j_{2}}E[s_{ij_{1}}s_{ij_{2}}]$
+\end_inset
+
+, the weighted agreement to guessing can be defined as
+\begin_inset Formula 
+\begin{equation}
+p_{wg}=p_{wa}-\nu.\label{eq:weighted agreement due to guessing}
+\end{equation}
+
+\end_inset
+
+Then we can define 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\gamma=\frac{p_{wa}-p_{wg}}{1-p_{wg}}=\frac{\nu}{1-p_{wa}+\nu}\label{eq:gamma}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Duality with chance disagreement
+\end_layout
+
+\begin_layout Standard
+The motivation for the chance-corrected measure of agreement 
+\begin_inset Formula $(p_{wa}-p_{wc})/(1-p_{wc})$
+\end_inset
+
+ is most easily stated in terms of 
+\emph on
+disagreement
+\emph default
+.
+ When 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+1-\frac{p_{wd}}{p_{wgd}}=\frac{p_{cd}-p_{d}}{p_{cd}}
+\]
+
+\end_inset
+
+The denominator 
+\begin_inset Formula $1-p_{wg}$
+\end_inset
+
+ equals 
+\begin_inset Formula $p_{wgd}$
+\end_inset
+
+, the probability of chance disagreement.
+ 
+\end_layout
+
+\begin_layout Standard
+This is similar to the 
+\begin_inset Formula $R^{2}$
+\end_inset
+
+ from linear regression, which can be written as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+R^{2}=1-\frac{\min_{\beta}E[(Y-\beta^{T}X)^{2}]}{\min_{\mu}E[(Y-\mu)^{2}]}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Quotes eld
+\end_inset
+
+How much will the expected agreement increase if we know the raters rate
+ the same item?
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Subsection
+The results of Pierrault–Leigh, van Oest, and Moss
+\end_layout
+
+\begin_layout Section
+The knowledge coefficient
+\end_layout
+
+\begin_layout Standard
+He is working in the context of chance-corrected measures of agreement,
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\frac{p_{a}-p_{ca}}{1-p_{ca}},\label{eq:chance-corrected measure of agreement}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $p_{a}$
+\end_inset
+
+ is the percent agreement among the raters and 
+\begin_inset Formula $p_{ca}$
+\end_inset
+
+ is some notion of chance agreement.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset citation
+LatexCommand citet
+after "p. 35"
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ develops the 
+\begin_inset Formula $\text{\ac}$
+\end_inset
+
+, in the context of two raters and two items.
+\end_layout
+
+\begin_layout Quote
+(a) Chance agreement occurs when at least one rater rates an individual
+ randomly.
+ 
+\end_layout
+
+\begin_layout Quote
+(b) Only an unknown portion of the observed ratings is subject to randomness.
+\end_layout
+
+\begin_layout Standard
+Condition (a) implies a model for the ratings that allows us to classify
+ a rating as either random of certain, an assumption that immediately brings
+ us the guessing models discussed in the previous section.
+\begin_inset Formula 
+\[
+p(x\mid i,j,s,x^{\star})=s_{ij}1[x=x_{i}^{\star}]+(1-s_{ij})q_{j}(x),
+\]
+
+\end_inset
+
+Moreover, he makes the assumption that 
+\begin_inset Quotes eld
+\end_inset
+
+[...] random rating would normally lead to the classification of an individual
+ into either category with the same probability 1/2.
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\begin_inset CommandInset citation
+LatexCommand citep
+after "p. 37"
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+Under this model, we may readily calculate the probability of chance agreement
+ according to (a) above:
+\begin_inset Formula 
+\begin{eqnarray*}
+p_{ca} & = & \frac{1}{2}\left(E[(1-s_{i1})s_{i2}]+E[(1-s_{i2})s_{i1}]+E[(1-s_{i1})(1-s_{i2})]\right),\\
+ & = & \frac{1}{2}(1-Es_{i1}s_{i2}).
+\end{eqnarray*}
+
+\end_inset
+
+Moreover, the agreement occurs when 
+\end_layout
+
+\begin_layout Standard
+(a) Both judges know the correct classification, which happens with probability
+ 
+\begin_inset Formula $Es_{i1}s_{i2}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+(b) One of the judges knows, and the other guesses.
+ This happens with probability 
+\begin_inset Formula $\frac{1}{2}E[s_{i1}(1-s_{i2})]+\frac{1}{2}E[s_{i2}(1-s_{i1})]$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+(c) Both guess; this happens with probability 
+\begin_inset Formula $\frac{1}{2}E[(1-s_{i1})(1-s_{i2})]$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+p_{a} & = & Es_{i1}s_{i2}+\frac{1}{2}E[s_{i1}(1-s_{i2})]+\frac{1}{2}E[s_{i2}(1-s_{i1})]+\frac{1}{2}E[(1-s_{i1})(1-s_{i2})]\\
+ & = & \frac{1}{2}(1+Es_{i1}s_{i2})
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+\frac{p_{a}-p_{ca}}{1-p_{ca}} & = & \frac{\frac{1}{2}(1+Es_{i1}s_{i2})-\frac{1}{2}(1-Es_{i1}s_{i2})}{1-\frac{1}{2}(1-Es_{i1}s_{i2})},\\
+ & = & \frac{Es_{i1}s_{i2}}{\frac{1}{2}(1+Es_{i1}s_{i2})},\\
+ & = & \frac{Es_{i1}s_{i2}}{p_{a}}.
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+His equation (16) corresponds to 
+\begin_inset Formula 
+\[
+\frac{Es_{i1}s_{i2}}{\frac{1}{2}(1-Es_{i1}s_{i2})}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+However, equation (17) corresponds to
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{Es_{i1}s_{i2}}{p_{a}}
+\]
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
@@ -221,17 +574,7 @@ Here
 \begin_inset Formula $p_{a}$
 \end_inset
 
- is the probability of chance agreement, defined in 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:p_a"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-.
+ is the probability of chance agreement, defined in ....
  The quantity 
 \begin_inset Formula $p_{e}$
 \end_inset
@@ -331,7 +674,7 @@ literal "false"
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- appear to match the skill coefficient much better, with the details narrowing
+ match the knowledge coefficient far better, with the details narrowing
  it down to the Perrault–Leigh model, and the most appropriate coefficient
  for those persuaded by Gwet's arguments is the Brennan–Prediger coefficient.
  
@@ -4179,8 +4522,8 @@ Recall that the quantity
 
  can be understood as the percent agreement minus the probability that the
  agreement is due to the judges knowing the correct classification.
- When making a weighted variant of this, the only the percent agreement
- is affected, yielding
+ When making a weighted variant of this, only the percent agreement is affected,
+ yielding
 \end_layout
 
 \begin_layout Standard

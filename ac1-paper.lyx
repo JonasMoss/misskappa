@@ -15,6 +15,7 @@
 \authorrunning{Jonas Moss}
 
 \usepackage{booktabs}
+\newcommand{\ac}{\textsc{AC}_{1}}
 \renewcommand{\sqrt}[1]{{(#1)^{1/2}}}
 \DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\Tr}{Tr}
@@ -109,15 +110,11 @@ natbibapa
 \begin_body
 
 \begin_layout Title
-Some remarks on the agreement coefficients 
+Some remarks about the agreement coefficient 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- and 
-\begin_inset Formula $\textsc{AC}_{2}$
-\end_inset
 
- 
 \end_layout
 
 \begin_layout Author
@@ -138,7 +135,11 @@ orcid{0000-0002-6876-6964}
 \begin_inset Newline newline
 \end_inset
 
-Department of MathematicsBI Norwegian Business School
+Department of Data Science and Analytics
+\begin_inset Newline newline
+\end_inset
+
+BI Norwegian Business School
 \emph on
 
 \begin_inset Newline newline
@@ -148,12 +149,28 @@ jonas.moss@bi.no
 \end_layout
 
 \begin_layout Abstract
-The measure of agreement called
+The measure of agreement called 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
-.
- (i) We provide a new estimator the 
+, originally developed to handle agreement data with high agreement, is
+ growing in popularity.
+ Our main goal with this paper is to question the motivation and utility
+ of the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ and propose to use knowledge coefficients in its favour, but we will also
+ demonstrate that the weighted variant of 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+, called 
+\begin_inset Formula $\textsc{AC}_{2}$
+\end_inset
+
+, is incorrectly defined, and provide an alternative.
+ More constructively, we provide a new estimator of the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
@@ -162,26 +179,12 @@ The measure of agreement called
 \end_inset
 
  is merely an approximation.
- Moreover, this estimtor and has smaller variance than Gwet's estimator.
- (ii) Generalize the 
+ Finally, we will generalize the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
  to different classes of guessing models.
- (iii) Argue that the weighted variant of 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- called 
-\begin_inset Formula $\textsc{AC}_{2}$
-\end_inset
-
- is incorrectly defined, and provide an alternative.
- (iv) Question the motivation and utility of the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- and propose to use knowledge coefficients in its favour.
+ 
 \end_layout
 
 \begin_layout Section
@@ -218,8 +221,1260 @@ literal "false"
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- coefficient, we find it is not properly justified, and we discourage its
- use.
+ coefficient, we find it is improperly justified, and strongly discourage
+ its use.
+ 
+\end_layout
+
+\begin_layout Section
+Guessing model and knowledge coefficient
+\end_layout
+
+\begin_layout Standard
+The 
+\emph on
+guessing model
+\emph default
+ is
+\begin_inset Formula 
+\begin{equation}
+p(x\mid i,j,s,x^{\star})=s_{ij}1[x=x_{i}^{\star}]+(1-s_{ij})q_{j}(x),\label{eq:full guessing model}
+\end{equation}
+
+\end_inset
+
+where
+\end_layout
+
+\begin_layout Standard
+The idea behind the 
+\begin_inset Formula $\ac$
+\end_inset
+
+ is to use a definition of chance agreement that differs from the classics,
+ the Fleiss-type and the Cohen-type.
+ When we assume a guessing model, we can rigorously define the notion of
+ 
+\emph on
+agreement due to guessing.
+ 
+\emph default
+Two raters 
+\begin_inset Formula $j_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $j_{2}$
+\end_inset
+
+ may agree because they both happened to guess correctly, one of them happened
+ to guess correctly and the other knew the correct classification, or because
+ both know the correct classification.
+ Since the probability that both know the correct classification is 
+\begin_inset Formula $\nu=\binom{J}{2}^{-1}\sum_{j_{1}>j_{2}}E[s_{ij_{1}}s_{ij_{2}}]$
+\end_inset
+
+, the weighted agreement to guessing can be defined as
+\begin_inset Formula 
+\begin{equation}
+p_{wg}=p_{wa}-\nu.\label{eq:weighted agreement due to guessing}
+\end{equation}
+
+\end_inset
+
+Then we can define the generalized 
+\begin_inset Formula $\ac$
+\end_inset
+
+ as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\gamma_{w}=\frac{p_{wa}-p_{wg}}{1-p_{wg}}=\frac{\nu}{1-p_{wa}+\nu},\label{eq:gamma}
+\end{equation}
+
+\end_inset
+
+which agrees with definition the definition of 
+\begin_inset Formula $\ac$
+\end_inset
+
+ in 
+\begin_inset CommandInset citation
+LatexCommand citet
+after "Equation (17)"
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ when 
+\begin_inset Formula $J=2$
+\end_inset
+
+, 
+\begin_inset Formula $C=2$
+\end_inset
+
+, and 
+\begin_inset Formula $w$
+\end_inset
+
+ are the unit weights.
+\end_layout
+
+\begin_layout Standard
+Be aware that 
+\begin_inset CommandInset citation
+LatexCommand citet
+after "Chapter 4"
+key "Gwet2014-iu"
+literal "false"
+
+\end_inset
+
+ redefines the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ coefficient as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\gamma^{\star}=\frac{p_{a}-p_{e}^{\star}}{1-p_{e}^{\star}},\quad\textrm{where }p_{e}^{\star}=\frac{1}{C-1}\sum_{c=1}^{C}p(c)(1-p(c))=\frac{1-p_{wf}}{C-1},\label{eq:AC1 approximation}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $p_{wf}$
+\end_inset
+
+ is the Fleiss-type chance agreement with unit weights.
+ Originally, 
+\begin_inset CommandInset citation
+LatexCommand citet
+after "eq. 22"
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ presented 
+\begin_inset Formula $\gamma^{\star}$
+\end_inset
+
+ as an approximation to the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ coefficient of 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Gwet correct"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, (when 
+\begin_inset Formula $J=2$
+\end_inset
+
+, 
+\begin_inset Formula $C=2$
+\end_inset
+
+, and 
+\begin_inset Formula $w$
+\end_inset
+
+ are the unit weights), not the 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ coefficient itself.
+ In this paper we will understand 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ of 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Gwet correct"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ as the population 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ coefficient, not the approximation 
+\begin_inset Formula $\gamma^{\star}$
+\end_inset
+
+.
+ We do not see any good reasons for using this approximation, as it is just
+ as easy to use the original definition.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Gwet2014-iu"
+literal "false"
+
+\end_inset
+
+ proposed a weighted variant of his redefined 
+\begin_inset Formula $\ac$
+\end_inset
+
+, christened the 
+\begin_inset Formula $\textsc{AC}_{2}$
+\end_inset
+
+: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{p_{a}(w)-p_{e}^{\star}(w)}{1-p_{e}^{\star}(w)},\quad\textrm{where }p_{e}^{\star}(w)=\frac{1-p_{1f}}{C-1}\frac{\sum_{x,y}w(x,y)}{C}.
+\]
+
+\end_inset
+
+The motivation behind 
+\begin_inset Formula $p_{e}^{\star}(w)$
+\end_inset
+
+ is hard to follow, possibly because it is based directly on the approximation
+ 
+\begin_inset Formula $p_{e}^{\star}$
+\end_inset
+
+ instead of the correct 
+\begin_inset Formula $p_{e}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Duality with chance disagreement
+\end_layout
+
+\begin_layout Standard
+The motivation for the chance-corrected measure of agreement 
+\begin_inset Formula $(p_{wa}-p_{wc})/(1-p_{wc})$
+\end_inset
+
+ is most easily stated in terms of 
+\emph on
+disagreement
+\emph default
+.
+ When 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+1-\frac{p_{wd}}{p_{wgd}}=\frac{p_{cd}-p_{d}}{p_{cd}}
+\]
+
+\end_inset
+
+The denominator 
+\begin_inset Formula $1-p_{wg}$
+\end_inset
+
+ equals 
+\begin_inset Formula $p_{wgd}$
+\end_inset
+
+, the probability of chance disagreement.
+ 
+\end_layout
+
+\begin_layout Standard
+This is similar to the 
+\begin_inset Formula $R^{2}$
+\end_inset
+
+ from linear regression, which can be written as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+R^{2}=1-\frac{\min_{\beta}E[(Y-\beta^{T}X)^{2}]}{\min_{\mu}E[(Y-\mu)^{2}]}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Quotes eld
+\end_inset
+
+How much will the expected agreement increase if we know the raters rate
+ the same item?
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Subsection
+The results of Pierrault–Leigh, van Oest, and Moss
+\end_layout
+
+\begin_layout Section
+Inference and estimation of the generalized 
+\begin_inset Formula $\ac$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Moss (2022) described how you can estimate the knowledge coefficient 
+\begin_inset Formula $\nu$
+\end_inset
+
+ under various assumptions.
+ Moreover, building on Moss (2022), he showed how to do inference on these
+ coefficients using the theory of 
+\begin_inset Formula $U$
+\end_inset
+
+-statistics.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:coefficients"
+
+\end_inset
+
+Coefficients covered in this paper
+\end_layout
+
+\end_inset
+
+
+\begin_inset Tabular
+<lyxtabular version="3" rows="20" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+toprule
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+Knowledge coefficient
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\end_inset
+
+
+\series bold
+Assumptions
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+Name
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+Definition
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+Provided that all guessing distributions are equal
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+cmidrule[0.5pt]{2-3}
+\end_layout
+
+\end_inset
+
+Guessing 
+\begin_inset Formula $=$
+\end_inset
+
+ Uniform
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Brennan–Prediger coefficient
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\nu_{BP}=\frac{p_{a}-1/C}{1-1/C}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Guessing 
+\begin_inset Formula $=$
+\end_inset
+
+ Marginal
+\begin_inset Formula $^{*}$
+\end_inset
+
+ or
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Weighted Fleiss' kappa
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\nu_{F}=\frac{p_{wa}-p_{wf}}{1-p_{wf}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Guessing 
+\begin_inset Formula $=$
+\end_inset
+
+ True or
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Marginal 
+\begin_inset Formula $=$
+\end_inset
+
+ True
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Weighted Cohen's kappa
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\nu_{C}=\frac{p_{wa}-p_{wc}}{1-p_{wc}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\emph on
+Cohen–Fleiss coefficient
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\nu_{CF}=\frac{p_{wa}-p_{wc}}{1-p_{wf}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+Provided that 
+\begin_inset Formula $s_{ij}$
+\end_inset
+
+ and 
+\begin_inset Formula $s_{ij'}$
+\end_inset
+
+ independent
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+cmidrule[0.5pt]{2-3}
+\end_layout
+
+\end_inset
+
+True 
+\begin_inset Formula $=$
+\end_inset
+
+ Marginal
+\end_layout
+
+\end_inset
+</cell>
+<cell multirow="3" alignment="center" valignment="middle" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\emph on
+Cohen–Fleiss coefficient
+\end_layout
+
+\end_inset
+</cell>
+<cell multirow="3" alignment="center" valignment="middle" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\nu_{CF}=\frac{p_{wa}-p_{wc}}{1-p_{wf}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+True 
+\begin_inset Formula $=$
+\end_inset
+
+ Uniform
+\end_layout
+
+\end_inset
+</cell>
+<cell multirow="3" alignment="center" valignment="middle" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\emph on
+Cohen–Brennan–Prediger coefficient
+\end_layout
+
+\end_inset
+</cell>
+<cell multirow="3" alignment="center" valignment="middle" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\nu_{CBP}=\frac{p_{wa}-p_{wa}^{C}}{1-\boldsymbol{1}^{T}W\boldsymbol{1}/C^{2}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bottomrule
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+vspace{1mm}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To find 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{\frac{p_{wa}-p_{wc_{1}}}{1-p_{wc_{2}}}}{1-p_{wa}+\frac{p_{wa}-p_{wc_{1}}}{1-p_{wc_{2}}}}=\frac{p_{wa}-p_{wc_{1}}}{(1-p_{wa})(1-p_{wc_{2}})+(p_{wa}-p_{wc_{1}})}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{d}{dp_{wa}}\frac{\nu}{(1-p_{wa})+\nu}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\nabla\gamma_{w}=\frac{\left((1-p_{wc_{1}})(1-p_{wc_{2}}),-,(p_{wa}-p_{wc_{1}})(1-p_{wa})\right)}{(1-p_{wa}+\nu)^{2}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{d}{dx}\frac{g(x)}{h(x)}=\frac{g'(x)h(x)-g(x)h'(x)}{h(x)^{2}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{d}{dp_{wa}}\frac{\nu}{(1-p_{wa})+\nu}=\frac{\nu}{[(1-p_{wa})+\nu]}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The knowledge coefficient
+\end_layout
+
+\begin_layout Standard
+He is working in the context of chance-corrected measures of agreement,
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\frac{p_{a}-p_{ca}}{1-p_{ca}},\label{eq:chance-corrected measure of agreement}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $p_{a}$
+\end_inset
+
+ is the percent agreement among the raters and 
+\begin_inset Formula $p_{ca}$
+\end_inset
+
+ is some notion of chance agreement.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset citation
+LatexCommand citet
+after "p. 35"
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ develops the 
+\begin_inset Formula $\text{\ac}$
+\end_inset
+
+, in the context of two raters and two items.
+\end_layout
+
+\begin_layout Quote
+(a) Chance agreement occurs when at least one rater rates an individual
+ randomly.
+ 
+\end_layout
+
+\begin_layout Quote
+(b) Only an unknown portion of the observed ratings is subject to randomness.
+\end_layout
+
+\begin_layout Standard
+Condition (a) implies a model for the ratings that allows us to classify
+ a rating as either random of certain, an assumption that immediately brings
+ us the guessing models discussed in the previous section.
+\begin_inset Formula 
+\[
+p(x\mid i,j,s,x^{\star})=s_{ij}1[x=x_{i}^{\star}]+(1-s_{ij})q_{j}(x),
+\]
+
+\end_inset
+
+Moreover, he makes the assumption that 
+\begin_inset Quotes eld
+\end_inset
+
+[...] random rating would normally lead to the classification of an individual
+ into either category with the same probability 1/2.
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\begin_inset CommandInset citation
+LatexCommand citep
+after "p. 37"
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
  
 \end_layout
 
@@ -256,17 +1511,7 @@ Here
 \begin_inset Formula $p_{a}$
 \end_inset
 
- is the probability of chance agreement, defined in 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:p_a"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-.
+ is the probability of chance agreement, defined in ....
  The quantity 
 \begin_inset Formula $p_{e}$
 \end_inset
@@ -366,136 +1611,10 @@ literal "false"
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- appear to match the skill coefficient much better, with the details narrowing
+ match the knowledge coefficient far better, with the details narrowing
  it down to the Perrault–Leigh model, and the most appropriate coefficient
  for those persuaded by Gwet's arguments is the Brennan–Prediger coefficient.
  
-\end_layout
-
-\begin_layout Standard
-Be aware that 
-\begin_inset CommandInset citation
-LatexCommand citet
-after "Chapter 4"
-key "Gwet2014-iu"
-literal "false"
-
-\end_inset
-
- redefines the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- coefficient as
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\begin{equation}
-\gamma^{\star}=\frac{p_{a}-p_{e}^{\star}}{1-p_{e}^{\star}},\quad\textrm{where }p_{e}^{\star}=\frac{1}{C-1}\sum_{c=1}^{C}p(c)(1-p(c))=\frac{1-p_{ca}}{C-1}\label{eq:AC1 approximation}
-\end{equation}
-
-\end_inset
-
-Originally, 
-\begin_inset CommandInset citation
-LatexCommand citet
-after "eq. 22"
-key "Gwet2008-qk"
-literal "false"
-
-\end_inset
-
- presented 
-\begin_inset Formula $\gamma^{\star}$
-\end_inset
-
- as an approximation to the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- coefficient 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:Gwet correct"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-, not the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- coefficient itself.
- In this paper we will understand 
-\begin_inset Formula $\gamma$
-\end_inset
-
- of 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:Gwet correct"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- as the population 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- coefficient, not the approximation 
-\begin_inset Formula $\gamma^{\star}$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-From 
-\begin_inset Formula $p_{a}-p_{e}=\binom{J}{2}^{-1}\sum_{j>j'}s_{j}s_{j'}$
-\end_inset
-
- and the expression 
-\begin_inset Formula $p_{a}=\binom{J}{2}^{-1}s_{j}s_{j'}(1-p_{ga})+p_{ga}$
-\end_inset
-
-, we find that
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\begin{eqnarray}
-p_{e} & = & p_{a}-\binom{J}{2}^{-1}\sum_{j>j'}s_{j}s_{j'}=\frac{1-p_{a}}{p_{ga}^{-1}-1},\label{eq:pe (Gwet model)}
-\end{eqnarray}
-
-\end_inset
-
-It follows that the generalized 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- can be written in terms of 
-\begin_inset Formula $p_{a}$
-\end_inset
-
- and 
-\begin_inset Formula $p_{ga}$
-\end_inset
-
- only, 
-\begin_inset Formula 
-\[
-\gamma=\frac{p_{a}-p_{e}}{1-p_{e}}=\frac{p_{a}-p_{ga}}{1-2p_{ga}+p_{a}g_{ga}}=\frac{p_{a}-p_{ga}}{1-p_{ga}(2-p_{a})}.
-\]
-
-\end_inset
-
-
 \end_layout
 
 \begin_layout Subsection
@@ -4163,45 +5282,6 @@ On the weighted
 \end_layout
 
 \begin_layout Standard
-We have already argued that 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
- is not properly motived, but at least it is better motivated than its weighted
- variant, the 
-\begin_inset Formula $\textsc{AC}_{2}$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-\frac{p_{a}(w)-p_{e}^{\star}(w)}{1-p_{e}^{\star}(w)},\quad\textrm{where }p_{e}^{\star}(w)=\frac{1-p_{ca}}{C-1}\frac{\sum_{x,y}w(x,y)}{C}.
-\]
-
-\end_inset
-
-The motivation behind 
-\begin_inset Formula $p_{e}^{\star}(w)$
-\end_inset
-
- is hard to follow, possibly because it is based directly on the approximation
- 
-\begin_inset Formula $p_{e}^{\star}$
-\end_inset
-
- instead of the correct 
-\begin_inset Formula $p_{e}$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
 Recall that the quantity 
 \begin_inset Formula $p_{e}$
 \end_inset
@@ -4214,8 +5294,8 @@ Recall that the quantity
 
  can be understood as the percent agreement minus the probability that the
  agreement is due to the judges knowing the correct classification.
- When making a weighted variant of this, the only the percent agreement
- is affected, yielding
+ When making a weighted variant of this, only the percent agreement is affected,
+ yielding
 \end_layout
 
 \begin_layout Standard
