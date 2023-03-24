@@ -6341,41 +6341,6 @@ Reporting
 \end_layout
 
 \begin_layout Standard
-\begin_inset Separator plain
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-We have not considered inference for the new weighted definition of 
-\begin_inset Formula $\ac$
-\end_inset
-
- when the guessing models are equal.
- This would involve an application of the delta method of slightly higher
- complexity than the other problems, as we would require the covariance
- between 
-\begin_inset Formula $\hat{p}_{a}$
-\end_inset
-
- and 
-\begin_inset Formula $\hat{p}_{wa}$
-\end_inset
-
-.
- This covariance can be deduced using the theory of 
-\begin_inset Formula $U$
-\end_inset
-
--statistics.
- Weighted inference when the guessing distributions equal the marginal distribut
-ions is possible, however, as the knowledge coefficient is invariant with
- respect to weight changes.
- 
-\end_layout
-
-\begin_layout Standard
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 btprint "btPrintCited"
