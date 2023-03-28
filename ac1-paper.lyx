@@ -63,7 +63,7 @@ natbibapa
 \paperfontsize default
 \spacing single
 \use_hyperref false
-\papersize default
+\papersize a4paper
 \use_geometry false
 \use_package amsmath 1
 \use_package amssymb 1
@@ -197,6 +197,205 @@ Introduction
 \end_layout
 
 \begin_layout Standard
+The best known measures of agreement are Fleiss' kappa, along with its cousin
+ Krippendorff's alpha, Cohen's kappa (and its multirater variant Conger's
+ kappa), and the Brennan–Prediger coefficient.
+ These are chance-corrected measures of agreement, defined as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\kappa=\frac{p_{a}-p_{ca}}{1-p_{ca}},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $p_{a}$
+\end_inset
+
+ is the probability of agreement (percent agreement) and 
+\begin_inset Formula $1\geq p_{ca}\geq0$
+\end_inset
+
+ is a measure of chance agreement.
+ In case 
+\begin_inset Formula $p_{ca}=1$
+\end_inset
+
+, define 
+\begin_inset Formula $\kappa=0$
+\end_inset
+
+.
+ In the setting of two raters, if the ratings 
+\begin_inset Formula $X_{1},X_{2}$
+\end_inset
+
+ are distributed according to 
+\begin_inset Formula $F$
+\end_inset
+
+, the probability of agreement equals 
+\begin_inset Formula $p_{a}(F)=E_{X\sim F}(1[X_{1}=X_{2}])$
+\end_inset
+
+.
+ The chance agreement can be defined in several competing ways, but all
+ of the classical measures can be formulated as
+\begin_inset Formula 
+\[
+p_{ca}=p_{a}(G)=E_{X\sim G}(1[X_{1}=X_{2})),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $G=G_{1}\times G_{2}$
+\end_inset
+
+ is a distribution over 
+\begin_inset Formula $X_{1},X_{2}$
+\end_inset
+
+ that depends on 
+\begin_inset Formula $F$
+\end_inset
+
+.
+ The Fleiss type chance agreement is defined as 
+\begin_inset Formula $p_{F}=E_{X\sim\overline{F}\times\overline{F}}(1[X_{1}=X_{2}])$
+\end_inset
+
+ where 
+\begin_inset Formula $\overline{F}(x)=1/2(F_{1}(x)+F_{2}(x)),$
+\end_inset
+
+with 
+\begin_inset Formula $F_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $F_{2}$
+\end_inset
+
+ being the marginals of 
+\begin_inset Formula $F$
+\end_inset
+
+.
+ On the other hand, the Cohen type chance agreement is 
+\begin_inset Formula $p_{C}=E_{X\sim F_{1}\times F_{2}}(1[X_{1}=X_{2}])$
+\end_inset
+
+.
+ Finally, the Brennan–Prediger type chance agreement is 
+\begin_inset Formula $p_{BP}=C^{-1}$
+\end_inset
+
+, which is the probability of agreement between two raters sampling independentl
+y from a uniform distribution of 
+\begin_inset Formula $C$
+\end_inset
+
+ elements.
+ (Here and in the sequel, 
+\begin_inset Formula $C$
+\end_inset
+
+ denotes the number of categories an item can be rated into.) 
+\end_layout
+
+\begin_layout Standard
+The definitions of chance agreement lead to the three classical measures
+ of agreement:
+\begin_inset Formula 
+\[
+\kappa_{F}=\frac{p_{a}-p_{F}}{1-p_{F}},\quad\kappa_{C}=\frac{p_{a}-p_{C}}{1-p_{C}},\quad\kappa_{BP}=\frac{p_{a}-C^{-1}}{1-C^{-1}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+These coefficients have natural multirater counterparts, see e.g.
+ Moss (2023) for details.
+ The results in this paper are valid for the multirater versions as well
+ as the two-rater variants.
+ The intuitive definition of Cohen's kappa leads to it having many proponents,
+ but also many detractors, prefering Fleiss' kappa instead.
+ According to some authors, however, they both suffer from the purpoted
+ paradox of kappa 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Feinstein1990-zb"
+literal "false"
+
+\end_inset
+
+.
+ To explain this paradox, consider the rating data in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:gwet-example"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ The percent agreement is 
+\begin_inset Formula $p_{a}=117/125=0.9440$
+\end_inset
+
+.
+ Moreover, the Fleiss-type chance agreement is 
+\begin_inset Formula $p_{f}=0.9456$
+\end_inset
+
+.
+ The resulting Fleiss' kappa is 
+\begin_inset Formula $(0.9440-0.9456)/(1-0.9456)=-0.0288$
+\end_inset
+
+; it is negative despite a high percent agreement.
+ The intuitive explanation is that the raters agree less than would be expected
+ due to chance alone, hence the resulting Fleiss kappa should be negative.
+ Still, many authors regard this feature of Fleiss' kappa (and Cohen's kappa)
+ as undesireable, even paradoxical.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+after "p. 33"
+key "Gwet2008-nf"
+literal "false"
+
+\end_inset
+
+ writes that 
+\begin_inset Quotes eld
+\end_inset
+
+In this example, raters 
+\begin_inset Formula $A$
+\end_inset
+
+ and 
+\begin_inset Formula $B$
+\end_inset
+
+ are expected to have a high inter-rater reliability.
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
 \begin_inset Float table
 wide false
 sideways false
@@ -206,6 +405,12 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:gwet-example"
+
+\end_inset
+
 Contingency table of 125 ratings, sourced from 
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -226,7 +431,7 @@ literal "false"
 \noindent
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="5" columns="6">
+<lyxtabular version="3" rows="6" columns="6">
 <features tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
@@ -239,6 +444,18 @@ literal "false"
 \begin_inset Text
 
 \begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+toprule
+\end_layout
+
+\end_inset
+
 
 \end_layout
 
@@ -257,6 +474,8 @@ literal "false"
 \begin_inset Text
 
 \begin_layout Plain Layout
+
+\series bold
 Rater B
 \end_layout
 
@@ -280,7 +499,7 @@ Rater B
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" rightline="true" usebox="none">
+<cell alignment="center" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -295,6 +514,20 @@ Rater B
 \begin_inset Text
 
 \begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+cmidrule[0.5pt]{3-5}
+\end_layout
+
+\end_inset
+
+
+\series bold
 Rater A
 \end_layout
 
@@ -336,10 +569,12 @@ Rater A
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" rightline="true" usebox="none">
+<cell alignment="center" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
+
+\series bold
 Total
 \end_layout
 
@@ -351,7 +586,19 @@ Total
 \begin_inset Text
 
 \begin_layout Plain Layout
-+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+cmidrule[0.5pt]{1-6}
+\end_layout
+
+\end_inset
+
++ 
 \end_layout
 
 \end_inset
@@ -392,7 +639,7 @@ Total
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" rightline="true" usebox="none">
+<cell alignment="center" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -448,7 +695,7 @@ Total
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" rightline="true" usebox="none">
+<cell alignment="center" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -463,6 +710,8 @@ Total
 \begin_inset Text
 
 \begin_layout Plain Layout
+
+\series bold
 Total
 \end_layout
 
@@ -504,11 +753,79 @@ Total
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" rightline="true" usebox="none">
+<cell alignment="center" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
 125
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bottomrule
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
 \end_layout
 
 \end_inset
@@ -527,75 +844,97 @@ Total
 \end_layout
 
 \begin_layout Standard
-The percent agreement is 
-\begin_inset Formula $p_{a}=117/125=0.9440$
-\end_inset
-
-.
- Moreover, the Fleiss-type chance agreement is 
-\begin_inset Formula $p_{f}=0.9456$
-\end_inset
-
-.
- Here the raters agree less than would be expected due to chance alone,
- hence the resulting Fleiss kappa is negative.
- The resulting Fleiss' kappa is 
-\begin_inset Formula $(0.9440-0.9456)/(1-0.9456)=-0.0288$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-Some researchers believe this to paradoxical.
- 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Feinstein1990-zb"
-literal "false"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
 The simplest solution to the paradox of kappa, when dealing with nomial
- data, is the Brennan–Prediger coefficient, also known under many different
- names, defined as
+ data, is the Brennan–Prediger coefficient.
+ Indeed, 
+\begin_inset Formula $\kappa_{BP}=(p_{a}-0.5)/0.5=0.872$
+\end_inset
+
+, which is high.
 \end_layout
 
 \begin_layout Standard
-\begin_inset Formula 
-\begin{equation}
-\kappa_{BP}=\frac{p_{a}-C^{-1}}{1-C^{-1}}.\label{eq:Brennan-Prediger coefficient}
-\end{equation}
-
-\end_inset
-
 The main problem with the Brennan–Prediger lies in its motivation: Why are
  we justified in defining chance agreement as 
 \begin_inset Formula $C^{-1}$
 \end_inset
 
-? 
+? We will see below that there is a principled reason to use the Brennan–Predige
+r coefficient.
+ But first, let's attempt to define what a 
+\begin_inset Quotes eld
+\end_inset
+
+paradox-free
+\begin_inset Quotes erd
+\end_inset
+
+ chance-corrected measure of agreement is.
 \end_layout
 
 \begin_layout Standard
-We can write chance-corrected measures of agreement on the form
-\begin_inset Formula 
-\[
-\frac{x-y}{1-y}=x-(1-x)\frac{y}{1-y}=x-(1-x)\sum_{n=1}^{\infty}y^{n}.
-\]
-
+Let 
+\begin_inset Formula $G'$
 \end_inset
 
+ be a distribution over the categories 
+\begin_inset Formula $\{1,2,\ldots,C\}$
+\end_inset
+
+ and consider the chance agreement based on 
+\begin_inset Formula $G'\times G'$
+\end_inset
+
+, i.e., 
+\begin_inset Formula $p_{ca}=P_{G'\times G'}(X_{1}=X_{2})$
+\end_inset
+
+.
+ What is the smallest value this chance agreement can take? Using a well-known
+ result from information theory, the smallest value is 
+\begin_inset Formula $C^{-1}$
+\end_inset
+
+, attained when 
+\begin_inset Formula $G'$
+\end_inset
+
+ is uniformly distributed on 
+\begin_inset Formula $\{1,\ldots,C\}$
+\end_inset
+
+.
+ Since the largest chance agreement is 
+\begin_inset Formula $1$
+\end_inset
+
+, this implies that any chance-corrected measure of agreement 
+\begin_inset Formula $\kappa$
+\end_inset
+
+ with symmetric distribution 
+\begin_inset Formula $G$
+\end_inset
+
+ satisfies 
+\begin_inset Formula $0\leq\kappa\leq\kappa_{BP},$
+\end_inset
+
+i.e., the Brennan–Brediger coefficient is an upper bound for all chance-corrected
+ measures of agreement.
+ 
+\end_layout
+
+\begin_layout Standard
 Let's say that a chance-corrected measure of agreement 
 \begin_inset Formula $\kappa$
 \end_inset
 
- is paradox-free if 
+ is
+\emph on
+ paradox-free
+\emph default
+ if 
 \begin_inset Formula $\kappa>0$
 \end_inset
 
@@ -604,79 +943,65 @@ Let's say that a chance-corrected measure of agreement
 \end_inset
 
 .
-\end_layout
-
-\begin_layout Standard
-The probability of chance agreement can be defined as
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-E_{X\sim F_{1}\times F_{2}}1[X_{1}=X_{2}]=\sum_{i=1}^{C}p_{1}(i)p_{2}(i)=p_{1}^{T}p_{2}.
-\]
-
+ This is, in a sense, the smallest possible agreement when the raters do
+ not actively disagree to any extent.
+ To see why, decompose 
+\begin_inset Formula $F=\lambda C^{-2}+(1-\lambda)H,$
 \end_inset
 
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-x>(1-x)\frac{y}{1-y},\quad x>C^{-1}.
-\]
-
+where 
+\begin_inset Formula $H$
 \end_inset
 
-This ensures that 
-\begin_inset Formula $\kappa>0$
+ is a distribution.
+ Then the percent agreement for 
+\begin_inset Formula $F$
 \end_inset
 
- whenever 
-\begin_inset Formula $p_{a}>C^{-1}$
+ can be written as 
+\begin_inset Formula $p_{A}(F)=\lambda C^{-1}+(1-\lambda)p_{A}(H)$
 \end_inset
 
 .
- We want 
-\begin_inset Formula $p_{a}>C^{-1}$
+ If the percent disagreement in 
+\begin_inset Formula $H$
 \end_inset
 
- since 
-\end_layout
-
-\begin_layout Standard
-W
-\end_layout
-
-\begin_layout Standard
-This is equivalent to 
-\begin_inset Formula $y\leq C^{-1}$
+ is zero or negative, then 
+\begin_inset Formula $p_{A}(F)\leq\lambda C^{-1}$
 \end_inset
 
 .
- However, if 
-\begin_inset Formula $y$
+ Letting 
+\begin_inset Formula $\lambda=1$
 \end_inset
 
- is a probability of the form 
-\begin_inset Formula $p^{T}p$
+, we find hat 
+\begin_inset Formula $p_{A}(F)\leq C^{-1}$
 \end_inset
 
-, then this is minimized in 
-\begin_inset Formula $C^{-1}$
+ when there is a decomposition 
+\begin_inset Formula $F=\lambda C^{-2}+(1-\lambda)H$
+\end_inset
+
+ where 
+\begin_inset Formula $p_{A}(H)\leq0$
 \end_inset
 
 .
- This provides an argument for 
-\begin_inset Formula 
-\[
-(1-y)x>(1-x)y
-\]
-
+ Using this definition it is easy to show that the Brennan–Prediger coefficient
+ is the only paradox-free chance-corrected measure of agreement.
+ Now you might ask why I chose to decompose with respect to 
+\begin_inset Formula $C^{-2}$
 \end_inset
 
+ and not some fixed 
+\begin_inset Formula $G$
+\end_inset
 
+? That would certainly also be possible, but then we would not gain any
+ interesting results.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -692,7 +1017,9 @@ literal "false"
 \end_inset
 
 as a solution to the paradox of kappa.
- 
+ To motivate his definition, he assumes a model for how judgements are made.
+ Such models are sometimes called judgement processes.
+ In particular, he assumes that 
 \end_layout
 
 \begin_layout Section
@@ -894,6 +1221,125 @@ For more examples of guessing models we refer the reader to Moss (2023).
 The Maxwell model
 \end_layout
 
+\begin_layout Standard
+\begin_inset CommandInset citation
+LatexCommand citet
+after "Section 3"
+key "Maxwell1977-lf"
+literal "false"
+
+\end_inset
+
+ works in the setting of two judges and binary ratings.
+ From his Table II one can derive the the joint model for two ratings 
+\begin_inset Formula $x_{1},x_{2}$
+\end_inset
+
+ by two judges as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+p(x_{1},x_{2})=\alpha p(x_{1})1[x_{1}=x_{2}]+(1-\alpha)p(x_{1})p(x_{2}),\label{eq:maxwell joint}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $p$
+\end_inset
+
+ is the marginal distribution of the data.
+ Maxwell then shows that 
+\begin_inset Formula $\alpha=\Cor(X_{1},X_{2})$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Maxwell's joint distribution is the unconditional variant of a guessing
+ model 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:full guessing model"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ with two judges, i.e., a model on the form 
+\begin_inset Formula 
+\begin{align*}
+p(x_{1},x_{2}\mid s,x^{\star}) & =\{s_{1}1[x_{1}=x^{\star}]+(1-s_{1})q_{r}(x_{1})\}\{s_{2}1[x_{2}=x^{\star}]+(1-s_{2})q_{r}(x_{2})\}
+\end{align*}
+
+\end_inset
+
+with associated knowledge coefficient 
+\begin_inset Formula $\nu=\alpha$
+\end_inset
+
+.
+ The guessing model satisfies 
+\end_layout
+
+\begin_layout Enumerate
+The judges' guessing distributions are equal to the marginal distribution,
+ i.e., 
+\begin_inset Formula $q_{1}(x)=q_{2}(x)=p(x)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+The true distribution is assumed to be equal to the marginal distribution,
+ i.e., 
+\begin_inset Formula $t(x)=p(x)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Both judges share the same skill-difficulty parameter 
+\begin_inset Formula $s$
+\end_inset
+
+.
+ It is Bernoulli distributed with success probability 
+\begin_inset Formula $\alpha$
+\end_inset
+
+, so that 
+\begin_inset Formula $\alpha=P(s=1)=Es^{2}$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula $s$
+\end_inset
+
+ will 
+\begin_inset Formula $1$
+\end_inset
+
+ if the the case is easy to judge (i.e., a textbook case) and 
+\begin_inset Formula $0$
+\end_inset
+
+ otherwise, and the probability of an item being a textbook case is 
+\begin_inset Formula $\alpha$
+\end_inset
+
+.
+ 
+\end_layout
+
 \begin_layout Subsubsection
 The Perreault–Leigh model
 \end_layout
@@ -912,7 +1358,7 @@ literal "false"
 \end_inset
 
  raters, a equal and deterministic skill-difficulty parameters 
-\begin_inset Formula $\sigma$
+\begin_inset Formula $s$
 \end_inset
 
  for both raters, uniform guessing distributions, and an arbitrary true
@@ -924,13 +1370,13 @@ literal "false"
  The resulting univariate model is
 \begin_inset Formula 
 \begin{equation}
-p(x)=\sigma t(x)+(1-\sigma)C^{-1}.\label{eq:Perreault--Leigh model}
+p(x)=st(x)+(1-s)C^{-1}.\label{eq:Perreault--Leigh model}
 \end{equation}
 
 \end_inset
 
 From this model they derived that 
-\begin_inset Formula $\sqrt{\sigma}=\sqrt{(p_{a}-1/C)/(1-1/C)}$
+\begin_inset Formula $s=\sqrt{(p_{a}-1/C)/(1-1/C)}$
 \end_inset
 
 , the square root of the Brennan–Prediger coefficient.
@@ -955,6 +1401,18 @@ literal "false"
 \end_layout
 
 \begin_layout Standard
+The bivariate distribution of the Perreualt–Leigh model is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray}
+p(x_{1},x_{2}\mid s) & = & \nu t(x_{1})1[x_{1}=x_{2}]+(1-s)^{2}C^{-2}\nonumber \\
+ &  & +(s-\nu)C^{-1}t(x_{2})+(s-\nu)C^{-1}t(x_{1}).\label{eq:Perreault-Leigh}
+\end{eqnarray}
+
+\end_inset
+
 The Perreault–Leigh model is strongly related to model used by 
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -970,7 +1428,6 @@ literal "false"
 .
  The only modification is that he allows for different skill-difficulty
  parameters for both raters.
- 
 \end_layout
 
 \begin_layout Subsection
@@ -1758,7 +2215,7 @@ These three conditions are equivalent, see (i) of Theorem 2 of Moss (2023).
 \end_layout
 
 \begin_layout Standard
-The most important consequence of Theorem 2 is that 
+For us, the most important consequence of Theorem 2 is that 
 \begin_inset Formula $\nu=\kappa_{BP}$
 \end_inset
 
@@ -1771,10 +2228,136 @@ The only
 \emph default
  crucial assumption is the uniformity of the guessing distribution.
  There are several arguments for this assumption.
- For instance Gwet (2014) states.
+ For instance Gwet (2014) states .
  A reasonable counter-argument would be that raters are reasonably aware
  of the true distribution, and are likely to guess according to it.
- However, then the 
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Van_Oest2019-pm"
+literal "false"
+
+\end_inset
+
+ writes 
+\begin_inset Quotes eld
+\end_inset
+
+Raters are motivated to do the coding well and they use the notion that
+ an item’s correct category is more likely a large category, with large
+ [marginal probability], than a small one.
+ Raters may already have some initial ideas about the category proportions
+ or they may remember previous outcomes during the coding process and use
+ availability heuristics (Tversky & Kahneman, 1974).
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Interpreting the knowledge coefficient
+\end_layout
+
+\begin_layout Standard
+The knowledge coefficient 
+\begin_inset Formula $\nu=\binom{R}{2}^{-1}\sum_{r_{1}>r_{2}}E[S_{r_{1}}S_{r_{2}}]$
+\end_inset
+
+ is easy to interpret.
+ Recall that 
+\begin_inset Formula $S_{r_{i}}$
+\end_inset
+
+ is the probability that judge 
+\begin_inset Formula $r_{i}$
+\end_inset
+
+ known the correct classification of an item.
+ Then 
+\begin_inset Formula $E[S_{r_{1}}S_{r_{2}}]$
+\end_inset
+
+ is the expected probability that both rater 
+\begin_inset Formula $r_{1}$
+\end_inset
+
+ and rater 
+\begin_inset Formula $r_{2}$
+\end_inset
+
+ knows the correct classification of an item; it is the probability that
+ two items are being rated the same because both raters know the correct
+ classification.
+ Finally, 
+\begin_inset Formula $\nu$
+\end_inset
+
+ is the probability that two randomly selected raters will knowledgably
+ agree on a classification.
+\end_layout
+
+\begin_layout Standard
+In a guessing model, we can naturally decompose the probability of chance
+ agreement into two parts.
+ Knowledgable agreement, or 
+\begin_inset Formula $\nu$
+\end_inset
+
+, and agreement where at least one rater guesses, or 
+\begin_inset Formula $p_{g}$
+\end_inset
+
+.
+\begin_inset Formula 
+\begin{equation}
+p_{a}=\nu+p_{g}\label{eq:agreement decomposition}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For example, in the Perreault–Leigh model 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:Perreault-Leigh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, simple calculations demonstrate that the probability of agreement can
+ be written as 
+\begin_inset Formula $p_{a}=\nu+C^{-1}(1-\nu)$
+\end_inset
+
+, thus the probability of agreement due to guessing is 
+\begin_inset Formula $C^{-1}(1-\nu)$
+\end_inset
+
+.
+ Of course, 
+\begin_inset Formula $p_{g}=\nu-p_{a}$
+\end_inset
+
+, which is useful if we want to calculate 
+\begin_inset Formula $p_{g}$
+\end_inset
+
+ from the better known quantities 
+\begin_inset Formula $\nu$
+\end_inset
+
+ and 
+\begin_inset Formula $p_{a}$
+\end_inset
+
+.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -2024,25 +2607,22 @@ I will consider that a rater
 \begin_layout Standard
 Point (2) and the paragraph below it places us squarely in the domain of
  guessing models.
- Point (1) provides a definition of chance agreement, which we denote by
- 
+ Point (1) provides a definition of chance agreement, which coincides with
+ the probability of agreement due to guessing (
 \begin_inset Formula $p_{g}$
 \end_inset
 
- (for Gwet type chance agreement).
- Since 
-\begin_inset Formula $\nu$
-\end_inset
-
- is knowledgable agreement, we have that 
-\begin_inset Formula 
-\begin{equation}
-p_{a}=\nu+p_{g}.\label{eq:gwet chance agreement}
-\end{equation}
+) defined in equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:agreement decomposition"
+plural "false"
+caps "false"
+noprefix "false"
 
 \end_inset
 
-
+.
 \end_layout
 
 \begin_layout Standard
@@ -2269,7 +2849,7 @@ literal "false"
  coefficient of 
 \begin_inset CommandInset ref
 LatexCommand ref
-reference "eq:Gwet correct"
+reference "eq:ac1-2"
 plural "false"
 caps "false"
 noprefix "false"
@@ -2288,7 +2868,7 @@ noprefix "false"
  of 
 \begin_inset CommandInset ref
 LatexCommand ref
-reference "eq:Gwet correct"
+reference "eq:ac1-2"
 plural "false"
 caps "false"
 noprefix "false"
@@ -2314,51 +2894,6 @@ not
 \end_inset
 
 .
-\end_layout
-
-\begin_layout Standard
-The 
-\begin_inset Formula $\ac$
-\end_inset
-
- as defined in equation 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:ac1-2"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- can is defined in any guessing model.
- Moreover, the knowledge coefficient 
-\begin_inset Formula $\nu$
-\end_inset
-
- can be estimated by classical agreement coefficients under the various
- assumptions of Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-.
- If none of these assumptions can be assumed to hold, it is also possible
- to attempt maximum likelihood estimation, as done by, e.g., 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Aickin1990-nj"
-literal "false"
-
-\end_inset
-
-.
- 
 \end_layout
 
 \begin_layout Standard
@@ -2449,60 +2984,217 @@ The case against the
 
 \end_layout
 
-\begin_layout Standard
-Our case against the 
-\begin_inset Formula $\ac$
-\end_inset
-
- can be split into three.
-\end_layout
-
-\begin_layout Enumerate
-If you wish to use chance-corrected measures of agreement, it is inappropriate
- to use 
+\begin_layout Paragraph*
 \begin_inset Formula $p_{g}$
 \end_inset
 
-.
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-Agreement lie in their generality.
- They are defined for any distribution 
-\begin_inset Formula $F$
-\end_inset
-
-, and do not depend on the validity of a hypothetical guessing model for
- their interpretation.
-\end_layout
-
-\begin_layout Enumerate
-\begin_inset Formula $p_{g}$
-\end_inset
-
- does not correspond to the agreement of a natural probability distribution.
- In this sense it is unprincipled.
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-Guessing models are quite unrealistic.
-\end_layout
-
-\begin_layout Enumerate
-The 
-\begin_inset Formula $\text{AC}_{2}$
-\end_inset
-
- is even weirder.
+ should not be regarded as a probability of chance agreement.
  
 \end_layout
 
 \begin_layout Standard
-First, let us discuss why we care about chance-corrected measures of agreement
- in the first place.
- For illustration, consider the quadratically weighted Cohen's kappa.
+Recall that a probability of chance agreement is defined as 
+\begin_inset Formula $P_{G}(X_{1}=X_{2})$
+\end_inset
+
+ for some distribution 
+\begin_inset Formula $G$
+\end_inset
+
+ depending on 
+\begin_inset Formula $F$
+\end_inset
+
+.
+ Can we formulate 
+\begin_inset Formula $G$
+\end_inset
+
+ as a function of 
+\begin_inset Formula $F$
+\end_inset
+
+ so that 
+\begin_inset Formula $P_{G}(X_{1}=X_{2})$
+\end_inset
+
+? First, recall that the chance agreement is bounded below by 
+\begin_inset Formula $C^{-1}$
+\end_inset
+
+ when 
+\begin_inset Formula $G=G'\times G'$
+\end_inset
+
+, i.e., when agreement is measure on two observations sampled independently
+ from the same distribution.
+ But in the Perreault–Leigh model, we have that 
+\begin_inset Formula $p_{g}=C^{-1}(1-\nu),$
+\end_inset
+
+ which is less than 
+\begin_inset Formula $C^{-1}$
+\end_inset
+
+ unless 
+\begin_inset Formula $\nu=1$
+\end_inset
+
+.
+ Hence 
+\begin_inset Formula $p_{g}$
+\end_inset
+
+ is 
+\emph on
+not 
+\emph default
+a chance agreement for any 
+\begin_inset Formula $G=G'\times G'$
+\end_inset
+
+.
+ To make it into a chance agreement, we would have to consider different
+ 
+\begin_inset Formula $G$
+\end_inset
+
+s.
+ But that's evidently not reasonable, as the Perreault–Leigh model is symmetric
+ in 
+\begin_inset Formula $X_{1},X_{2}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Paragraph*
+\begin_inset Formula $\nu$
+\end_inset
+
+ is already 
+\begin_inset Quotes eld
+\end_inset
+
+corrected for
+\begin_inset Quotes erd
+\end_inset
+
+ chance agreement
+\end_layout
+
+\begin_layout Standard
+The knowledge coefficient is already defined as the probability of knowledgeable
+ agreement, and there appears to be no need to correct it further.
+ The most direct evidence for this can be found in the coefficient table
+ (Table 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "tab:coefficients"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), which makes it clear that 
+\begin_inset Formula $\nu$
+\end_inset
+
+ equals well-known chance-corrected measures of agreement under various
+ conditions.
+ 
+\end_layout
+
+\begin_layout Standard
+Chance-corrected measures of agreement can be used to decompose 
+\begin_inset Formula $p_{a}$
+\end_inset
+
+ into two parts.
+ Agreement due to chance and agreement due to non-chance, using 
+\begin_inset Formula $p_{a}=\kappa_{c}(1-p_{c})+p_{c}.$
+\end_inset
+
+ The idea is that agreement occurs either due to chance or due to non-chance
+ (
+\begin_inset Formula $1-p_{c}$
+\end_inset
+
+), where if 
+\begin_inset Quotes eld
+\end_inset
+
+non-chance
+\begin_inset Quotes erd
+\end_inset
+
+ occurs, the probability of agreement equals 
+\begin_inset Formula $\kappa_{c}$
+\end_inset
+
+.
+ But, n the context of guessing models, the natural decomposition is 
+\begin_inset Formula $p_{a}=\nu+p_{g},$
+\end_inset
+
+yielding 
+\begin_inset Formula $\nu=p_{a}-p_{g}$
+\end_inset
+
+ as the appropriate correction to chance agreement.
+ 
+\end_layout
+
+\begin_layout Paragraph
+Guessing models may not be realistic
+\end_layout
+
+\begin_layout Standard
+Both 
+\begin_inset Formula $\nu$
+\end_inset
+
+ and 
+\begin_inset Formula $\ac$
+\end_inset
+
+ are motivated by guessing models, and arguably only makes sense in the
+ context of guessing models.
+ But what happens when guessing model is false? Then we will be talking
+ about parameters that do not correspond to something existing in the real
+ world.
+ This would be OK if the guessing model is approximately true, but not otherwise.
+ Moreover, consider the case where you know the guessing distribution is
+ true, but the assumption of uniform guessing distributions is false.
+ This scenario can plausibly be generated by requesting the raters to select
+ randomly from the base rate, or perhaps always choose the item with the
+ largest probability of being correct according to the base rates.
+ Then the 
+\begin_inset Formula $\ac$
+\end_inset
+
+ will not be correct, and we would have to use the generalized variant such
+ as 
+\begin_inset Formula $\nu_{CF}/(1-p_{a}+\nu_{CF})$
+\end_inset
+
+, or perhaps estimate 
+\begin_inset Formula $\nu$
+\end_inset
+
+ using maximum likelihood.
+\end_layout
+
+\begin_layout Paragraph
+Chance-corrected measures of agreement always make sense
+\end_layout
+
+\begin_layout Standard
+Cohen's kappa and Fleiss' kappa do not suffer from this problem, as they
+ are well-motivated outside the context of guessing models.
+ Consider the quadratically weighted Cohen's kappa.
  It can be defined in terms of the probability of disagreement and the 
 \begin_inset Quotes eld
 \end_inset
@@ -2559,11 +3251,11 @@ How close is the rating of judge 1 to the rating of judge 2 when they rate
 
  The numerator serves as a reasonable baseline for evaluating the predictive
  power of judge 2s rating.
- 
-\end_layout
+ This interpretation is interpretable, is closely connected to the 
+\begin_inset Formula $R^{2}$
+\end_inset
 
-\begin_layout Standard
-The main attraction of chance-corrected measures of a
+, and does not depend on any assumptions about an underlying guessing model.
 \end_layout
 
 \begin_layout Section
@@ -2631,7 +3323,17 @@ noprefix "false"
 
 \end_inset
 
+If none of the assumptions in the coefficient table hold, it is also possible
+ to attempt maximum likelihood estimation, as done by, e.g., 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Aickin1990-nj"
+literal "false"
 
+\end_inset
+
+.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -2713,45 +3415,7 @@ Ignoring these are justified, as the Cohen–Brennan–Prediger was found to
 
 \end_inset
 
-, we can write
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-\gamma_{c}=\frac{\nu_{c}}{1-p_{a}+\nu_{c}}=\frac{p_{a}-p_{c}}{(p_{a}-2)p_{c}+1},
-\]
-
-\end_inset
-
-where 
-\begin_inset Formula $p_{c}$
-\end_inset
-
- is either 
-\begin_inset Formula $p_{CF}$
-\end_inset
-
- or 
-\begin_inset Formula $ $
-\end_inset
-
-.
- The gradient of 
-\begin_inset Formula $\gamma_{c}$
-\end_inset
-
- equals
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-\]
-
-\end_inset
-
-
+, 
 \end_layout
 
 \begin_layout Standard
@@ -2848,7 +3512,7 @@ noprefix "false"
  The asymptotic variances are 
 \begin_inset Formula 
 \[
-(\nabla\gamma)^{T}\Sigma_{\nu}(\nabla\gamma)=
+(\nabla\gamma)^{T}\Sigma_{\nu}(\nabla\gamma)=[...]
 \]
 
 \end_inset
@@ -2856,7 +3520,7 @@ noprefix "false"
 
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Subsection*
 Comparison to Gwet's method
 \end_layout
 
@@ -6148,12 +6812,7 @@ There are many alternatives to the
 \end_layout
 
 \begin_layout Enumerate
-
-\series bold
-Knowledge coefficients
-\series default
-.
- If you buy the rationale behind the 
+If you buy the rationale behind the 
 \begin_inset Formula $\ac$
 \end_inset
 
@@ -6337,6 +6996,163 @@ The gradient of this vector is
 \[
 \frac{\nu}{1-p_{a}+\nu}=\frac{p_{a}-p_{c}}{(p_{a}-2)p_{c}+1}
 \]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Another definition of chance-corrected probability
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $G$
+\end_inset
+
+ be a provided distribution.
+ For each 
+\begin_inset Formula $\lambda$
+\end_inset
+
+, define 
+\begin_inset Formula $H_{\lambda}$
+\end_inset
+
+ by
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+F=\lambda H^{\lambda}+(1-\lambda)G.
+\]
+
+\end_inset
+
+Hypothesis: 
+\begin_inset Formula $\kappa_{G}=\lambda_{\min}p_{A}(H^{\lambda_{\max}})$
+\end_inset
+
+, where 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ is chosen so that 
+\begin_inset Formula 
+\[
+H^{\lambda}=\frac{F-(1-\lambda)G}{\lambda}
+\]
+
+\end_inset
+
+ is a probability distribution.
+\end_layout
+
+\begin_layout Standard
+The percent agreement of 
+\begin_inset Formula $H^{\lambda}$
+\end_inset
+
+ is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{p_{A}(F)-(1-\lambda)p_{A}(G)}{\lambda}
+\]
+
+\end_inset
+
+Which equal chance agreement iff 
+\begin_inset Formula $\lambda=\frac{p_{A}(F)-p_{A}(G)}{1-p_{A}(G)}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Proof: For 
+\begin_inset Formula $H_{\lambda}$
+\end_inset
+
+ to be a distribution we only require every element 
+\begin_inset Formula $H_{ij}^{\lambda}\geq0$
+\end_inset
+
+, i.e., 
+\begin_inset Formula $F-(1-\lambda)G$
+\end_inset
+
+ is a non-negative matrix.
+ (That the elements of 
+\begin_inset Formula $H^{\lambda}$
+\end_inset
+
+ sums to 1 happens automatically.) This is possible if and only 
+\begin_inset Formula $(1-\lambda)G_{ij}\leq F_{ij}$
+\end_inset
+
+ for each 
+\begin_inset Formula $i,j$
+\end_inset
+
+.
+ and the minimal 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ is is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda_{\min}=1-\min(f_{ij}/g_{ij})
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Hence a natural measure of disagreement is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda_{\min}p_{A}(H^{\lambda_{\min}})=p_{A}(F)-(1-\lambda_{\min})p_{A}(G).
+\]
+
+\end_inset
+
+Now consider the case when 
+\begin_inset Formula $H^{\lambda_{\min}}$
+\end_inset
+
+ is diagonal.
+ In other words there is perfect agreement between the raters.
+ In this case,
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p_{A}(H^{\lambda_{\min}})=1.
+\]
+
+\end_inset
+
+Hence
+\begin_inset Formula 
+\begin{eqnarray*}
+\lambda_{\min} & = & p_{A}(F)-(1-\lambda_{\min})p_{A}(G),\\
+ & = & \frac{p_{A}(F)-p_{A}(G)}{1-p_{A}(G)}.
+\end{eqnarray*}
 
 \end_inset
 
