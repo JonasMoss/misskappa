@@ -1033,19 +1033,20 @@ literal "false"
 \end_layout
 
 \begin_layout Subsubsection
-The Maxwell model
+The first Maxwell model
 \end_layout
 
 \begin_layout Standard
 \begin_inset CommandInset citation
 LatexCommand citet
-after "Section 3"
 key "Maxwell1977-lf"
 literal "false"
 
 \end_inset
 
- works in the setting of two judges and binary ratings.
+ described two judgement processes.
+ His first judgement processes is defined in the setting of two judges and
+ binary ratings.
  From his Table II one can derive the the joint model for two ratings 
 \begin_inset Formula $x_{1},x_{2}$
 \end_inset
@@ -1063,97 +1064,29 @@ where
 \end_inset
 
  is the marginal distribution of the data.
- Maxwell then shows that 
+ To interpret this model, let 
+\begin_inset Formula $S$
+\end_inset
+
+ be a binary variable with success probability 
+\begin_inset Formula $\alpha$
+\end_inset
+
+.
+ Both raters either know the correct classification of an item or make a
+ guess.
+ If they make a guess, the they select randomly from the marginal distribution
+ of the data.
+ Maxwell shows that 
 \begin_inset Formula $\alpha=\Cor(X_{1},X_{2})$
 \end_inset
 
-.
- 
-\end_layout
-
-\begin_layout Standard
-Maxwell's joint distribution is the unconditional variant of a guessing
- model 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:full guessing model"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- with two judges, i.e., a model on the form
-\begin_inset Formula 
-\begin{align*}
-p(x_{1},x_{2}\mid s,x^{\star}) & =\{s_{1}1[x_{1}=x^{\star}]+(1-s_{1})q_{r}(x_{1})\}\{s_{2}1[x_{2}=x^{\star}]+(1-s_{2})q_{r}(x_{2})\}
-\end{align*}
-
-\end_inset
-
-with associated knowledge coefficient 
-\begin_inset Formula $\nu=\alpha$
-\end_inset
-
-.
- The guessing model satisfies 
-\end_layout
-
-\begin_layout Enumerate
-The judges' guessing distributions are equal to the marginal distribution,
- i.e., 
-\begin_inset Formula $q_{1}(x)=q_{2}(x)=p(x)$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Enumerate
-The true distribution is assumed to be equal to the marginal distribution,
- i.e., 
-\begin_inset Formula $t(x)=p(x)$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Enumerate
-Both judges share the same skill-difficulty parameter 
-\begin_inset Formula $s$
-\end_inset
-
-.
- It is Bernoulli distributed with success probability 
-\begin_inset Formula $\alpha$
-\end_inset
-
-, so that 
-\begin_inset Formula $\alpha=P(s=1)=Es^{2}$
-\end_inset
-
-.
- Then 
-\begin_inset Formula $s$
-\end_inset
-
- will 
-\begin_inset Formula $1$
-\end_inset
-
- if the the case is easy to judge (i.e., a textbook case) and 
-\begin_inset Formula $0$
-\end_inset
-
- otherwise, and the probability of an item being a textbook case is 
-\begin_inset Formula $\alpha$
-\end_inset
-
-.
- 
+, which turns out to coincide with Fleiss' and Cohen's kappa (on the population
+ level) in this case.
 \end_layout
 
 \begin_layout Subsubsection
-Uniform guessing distribution models
+Uniform guessing distribution models and the Perreault–Leigh model
 \end_layout
 
 \begin_layout Standard
@@ -1169,7 +1102,11 @@ literal "false"
 \begin_inset Formula $R=2$
 \end_inset
 
- raters, a equal and deterministic skill-difficulty parameters 
+ raters, a equal and deterministic 
+\emph on
+skill-difficulty parameters
+\emph default
+ 
 \begin_inset Formula $s$
 \end_inset
 
@@ -1219,6 +1156,33 @@ literal "false"
 .
  The only modification is that he allows for different skill-difficulty
  parameters for both raters.
+\end_layout
+
+\begin_layout Standard
+The Perreault–Leigh model can easily be generalized to multiple raters,
+ but also to skill-difficulty parameters 
+\begin_inset Formula $s$
+\end_inset
+
+ that are random and distinct for each rater.
+ Provided the guessing distributions are equal, define the uniform guessing
+ model as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p(x_{1},x_{2})=E(S_{1}S_{1})+(1-E(S_{1}S_{2}))^{2}C^{-2}+E[S_{1}(1-S_{2})]C^{-1}[t(x_{1})+t(x_{2})].
+\]
+
+\end_inset
+
+As we shall see, this is the natural setting of the 
+\begin_inset Formula $\ac$
+\end_inset
+
+.
+ 
 \end_layout
 
 \begin_layout Subsubsection

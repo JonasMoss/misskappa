@@ -972,7 +972,12 @@ Examples of judgment processes
 
 \begin_layout Standard
 Several authors have proposed explicit processes that could generate agreement
- data and proposed associated agreement coefficient; process jugdement process.
+ data and proposed associated agreement coefficient; processes of this type
+ are frequently called 
+\emph on
+judgement process
+\emph default
+.
  Relevant references include 
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -1028,19 +1033,20 @@ literal "false"
 \end_layout
 
 \begin_layout Subsubsection
-The Maxwell model
+The first Maxwell model
 \end_layout
 
 \begin_layout Standard
 \begin_inset CommandInset citation
 LatexCommand citet
-after "Section 3"
 key "Maxwell1977-lf"
 literal "false"
 
 \end_inset
 
- works in the setting of two judges and binary ratings.
+ described two judgement processes.
+ His first judgement processes is defined in the setting of two judges and
+ binary ratings.
  From his Table II one can derive the the joint model for two ratings 
 \begin_inset Formula $x_{1},x_{2}$
 \end_inset
@@ -1058,12 +1064,24 @@ where
 \end_inset
 
  is the marginal distribution of the data.
- Maxwell then shows that 
-\begin_inset Formula $\alpha=\Cor(X_{1},X_{2})$
+ To interpret this model, let 
+\begin_inset Formula $S$
+\end_inset
+
+ be a binary variable with success probability 
+\begin_inset Formula $\alpha$
 \end_inset
 
 .
- 
+ Both raters either know the correct classification of an item or make a
+ guess.
+ If they make a guess, the they select randomly from the marginal distribution
+ of the data.
+ Maxwell shows that 
+\begin_inset Formula $\alpha=\Cor(X_{1},X_{2})$
+\end_inset
+
+, which turns out to coin
 \end_layout
 
 \begin_layout Standard
