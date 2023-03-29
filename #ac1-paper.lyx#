@@ -2475,7 +2475,7 @@ which is approximately
 \end_inset
 
 -distributed with 
-\begin_inset Formula $C^{2}-C-2$
+\begin_inset Formula $C^{2}-C-1$
 \end_inset
 
  degrees of freedom.
@@ -2510,10 +2510,10 @@ noprefix "false"
 \end_inset
 
 -distribution with 
-\begin_inset Formula $C^{2}-C-2$
+\begin_inset Formula $C^{2}-C-1$
 \end_inset
 
-.
+ degrees of freedom.
  The fit is not amazing, but is decent enough for our purposes.
 \end_layout
 
@@ -7566,11 +7566,7 @@ noprefix "false"
 \end_inset
 
 .
- We fed it the original, estimated 
-\begin_inset Formula $\hat{f}$
-\end_inset
-
-.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -7618,11 +7614,6 @@ literal "false"
 \end_inset
 
  parameters in the marginal distribution.
- Still, 
-\begin_inset Formula $C^{2}-C-2$
-\end_inset
-
- worked best.
  We verified the appropriate degrees of freedom using simulations.
 \end_layout
 

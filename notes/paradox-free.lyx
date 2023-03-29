@@ -1,0 +1,223 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+But first, let's attempt to define what a 
+\begin_inset Quotes eld
+\end_inset
+
+paradox-free
+\begin_inset Quotes erd
+\end_inset
+
+ chance-corrected measure of agreement is.
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $G'$
+\end_inset
+
+ be a distribution over the categories 
+\begin_inset Formula $\{1,2,\ldots,C\}$
+\end_inset
+
+ and consider the chance agreement based on 
+\begin_inset Formula $G'\times G'$
+\end_inset
+
+, i.e., 
+\begin_inset Formula $p_{ca}=P_{G'\times G'}(X_{1}=X_{2})$
+\end_inset
+
+.
+ What is the smallest value this chance agreement can take? Using a well-known
+ result from information theory, the smallest value is 
+\begin_inset Formula $C^{-1}$
+\end_inset
+
+, attained when 
+\begin_inset Formula $G'$
+\end_inset
+
+ is uniformly distributed on 
+\begin_inset Formula $\{1,\ldots,C\}$
+\end_inset
+
+.
+ Since the largest chance agreement is 
+\begin_inset Formula $1$
+\end_inset
+
+, this implies that any chance-corrected measure of agreement 
+\begin_inset Formula $\kappa$
+\end_inset
+
+ with symmetric distribution 
+\begin_inset Formula $G$
+\end_inset
+
+ satisfies 
+\begin_inset Formula $0\leq\kappa\leq\kappa_{BP},$
+\end_inset
+
+i.e., the Brennan–Brediger coefficient is an upper bound for all chance-corrected
+ measures of agreement.
+ 
+\end_layout
+
+\begin_layout Standard
+Let's say that a chance-corrected measure of agreement 
+\begin_inset Formula $\kappa$
+\end_inset
+
+ is
+\emph on
+ paradox-free
+\emph default
+ if 
+\begin_inset Formula $\kappa>0$
+\end_inset
+
+ whenever 
+\begin_inset Formula $p_{a}>C^{-1}$
+\end_inset
+
+.
+ This is, in a sense, the smallest possible agreement when the raters do
+ not actively disagree to any extent.
+ To see why, decompose 
+\begin_inset Formula $F=\lambda C^{-2}+(1-\lambda)H,$
+\end_inset
+
+where 
+\begin_inset Formula $H$
+\end_inset
+
+ is a distribution.
+ Then the percent agreement for 
+\begin_inset Formula $F$
+\end_inset
+
+ can be written as 
+\begin_inset Formula $p_{A}(F)=\lambda C^{-1}+(1-\lambda)p_{A}(H)$
+\end_inset
+
+.
+ If the percent disagreement in 
+\begin_inset Formula $H$
+\end_inset
+
+ is zero or negative, then 
+\begin_inset Formula $p_{A}(F)\leq\lambda C^{-1}$
+\end_inset
+
+.
+ Letting 
+\begin_inset Formula $\lambda=1$
+\end_inset
+
+, we find hat 
+\begin_inset Formula $p_{A}(F)\leq C^{-1}$
+\end_inset
+
+ when there is a decomposition 
+\begin_inset Formula $F=\lambda C^{-2}+(1-\lambda)H$
+\end_inset
+
+ where 
+\begin_inset Formula $p_{A}(H)\leq0$
+\end_inset
+
+.
+ Using this definition it is easy to show that the Brennan–Prediger coefficient
+ is the only paradox-free chance-corrected measure of agreement.
+ Now you might ask why I chose to decompose with respect to 
+\begin_inset Formula $C^{-2}$
+\end_inset
+
+ and not some fixed 
+\begin_inset Formula $G$
+\end_inset
+
+? That would certainly also be possible, but then we would not gain any
+ interesting results.
+ 
+\end_layout
+
+\end_body
+\end_document

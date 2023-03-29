@@ -1,0 +1,326 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+The Perreault–Leigh and van Oest models are easy to construct tests for.
+ Let 
+\begin_inset Formula $\hat{F}$
+\end_inset
+
+ be the standard empirical estimator of the probability matrix (i.e., the
+ agreement matrix divided by 
+\begin_inset Formula $n$
+\end_inset
+
+, the number of items).
+ Then let 
+\begin_inset Formula $\hat{G}$
+\end_inset
+
+ be an estimator of the model-implied probability matrix.
+ We can estimate this in an ad-hoc manner, see the appendix for details.
+ Our test statistic is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+T=n\sum_{i=1}^{C}\sum_{j=1}^{C}\frac{\left(\hat{F}_{ij}-\hat{G}_{ij}\right)^{2}}{\hat{G}_{ij}},\label{eq:chisq}
+\end{equation}
+
+\end_inset
+
+which is approximately 
+\begin_inset Formula $\chi^{2}$
+\end_inset
+
+-distributed with 
+\begin_inset Formula $C^{2}-2C-1=(C-1)^{2}$
+\end_inset
+
+ degrees of freedom.
+\end_layout
+
+\begin_layout Standard
+The distribution of the resulting test statistic when the true distribution
+ is 
+\begin_inset Formula $[0.2,0.1,0.1,0.3,0.1]$
+\end_inset
+
+, 
+\begin_inset Formula $s=0.7$
+\end_inset
+
+, and 
+\begin_inset Formula $n=100$
+\end_inset
+
+ is shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:perreault-leigh-figure"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ along with the density of the 
+\begin_inset Formula $\chi^{2}$
+\end_inset
+
+-distribution with 
+\begin_inset Formula $(C-1)^{2}$
+\end_inset
+
+ degrees of freedom.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset Graphics
+	filename C:/Users/jonas/OneDrive/Github/ac1-paper/figures/perreault-leigh-chisq.pdf
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:perreault-leigh-figure"
+
+\end_inset
+
+Empirical distribution of the 
+\begin_inset Formula $\chi^{2}$
+\end_inset
+
+-statistic for the Perreault–Leigh model using 
+\begin_inset Formula $N=10,000$
+\end_inset
+
+ simulations, 
+\begin_inset Formula $n=100$
+\end_inset
+
+, 
+\begin_inset Formula $s=0.7$
+\end_inset
+
+ and true distribution 
+\begin_inset Formula $[0.2,0.1,0.1,0.3,0.1]$
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Consider the following data, taken from the two first raters of Zapf et.
+ al (2016),
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{ccccc}
+13 & 0 & 1 & 0 & 0\\
+0 & 0 & 1 & 0 & 0\\
+0 & 0 & 5 & 0 & 0\\
+0 & 1 & 0 & 3 & 7\\
+0 & 0 & 0 & 3 & 16
+\end{array}\right].\label{eq:zapf-matrix}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Its test statistic is 
+\begin_inset Formula $5.78$
+\end_inset
+
+ with a 
+\begin_inset Formula $p$
+\end_inset
+
+-value of 
+\begin_inset Formula $8.6\cdot10^{-6}$
+\end_inset
+
+, which is strongly incompatible with the Perreault–Leigh model.
+ We would need more general tests to confidently disconfirm every guessing
+ model with uniform guessing distributions, but the result at least suggests
+ that the uniform guessing distribution assumption does not hold in some
+ data.
+ We believe it would be worthwhile to develop tests for guessing models
+ before reporting statistics that only make sense when they are close to
+ being true.
+ If we had such tests, the Brennan–Prediger coefficient would be better
+ justified – as would the 
+\begin_inset Formula $\text{AC}_{1}$
+\end_inset
+
+, if the researcher believes in its raison d'être.
+\end_layout
+
+\begin_layout Standard
+There are limits to how useful these tests could be.
+ Consider the data in Table from Gwet (2008).
+ This data is compatible with the Perreault–Leigh model, with a 
+\begin_inset Formula $p$
+\end_inset
+
+-value of 
+\begin_inset Formula $0.56$
+\end_inset
+
+.
+ But it's not hard to see that 
+\emph on
+every
+\emph default
+ symmetric matrix can be generated by the Perreault–Leigh model
+\emph on
+ 
+\emph default
+and the model with marginal guessing distributions and equal skill-difficulty
+ parameter.
+ Hence we can't expect 
+\emph on
+p
+\emph default
+-values to help us decide between these models, as the 
+\emph on
+p
+\emph default
+-values only have a chance of being signifant if the data matrix is sufficiently
+ asymmetric.
+ Indeed, we can write agreement probability matrix 
+\begin_inset Formula $F$
+\end_inset
+
+ for a guessing model with uniform guessing distributions and deterministic
+ skill parameters as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+F=\nu D+(1-\nu)C^{-2}11^{T}+s_{1}(1-s_{2})fC^{-1}1^{T}+s_{2}(1-s_{1})1C^{-1}f^{T},\label{eq:decomposition}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $D$
+\end_inset
+
+ is the diagonal matrix with the true distribution on its diagonal.
+ There are three parameters
+\end_layout
+
+\end_body
+\end_document
