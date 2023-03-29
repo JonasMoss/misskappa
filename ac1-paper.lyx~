@@ -2475,10 +2475,6 @@ which is approximately
 \end_inset
 
 -distributed with 
-\begin_inset Formula $C^{2}-C-1$
-\end_inset
-
- or 
 \begin_inset Formula $C^{2}-C-2$
 \end_inset
 
@@ -2514,14 +2510,10 @@ noprefix "false"
 \end_inset
 
 -distribution with 
-\begin_inset Formula $C^{2}-C-1$
-\end_inset
-
- degrees of freedom for the marginal guessing distribution and 
 \begin_inset Formula $C^{2}-C-2$
 \end_inset
 
- for the Perreault–Leigh model.
+.
  The fit is not amazing, but is decent enough for our purposes.
 \end_layout
 
@@ -7630,7 +7622,7 @@ literal "false"
 \begin_inset Formula $C^{2}-C-2$
 \end_inset
 
- worked best for the Perreault–Leigh model.
+ worked best.
  We verified the appropriate degrees of freedom using simulations.
 \end_layout
 
