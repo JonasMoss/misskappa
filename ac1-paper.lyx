@@ -970,6 +970,68 @@ Judgment processes
 Examples of judgment processes
 \end_layout
 
+\begin_layout Standard
+Several authors have proposed explicit processes that could generate agreement
+ data and proposed associated agreement coefficient; processes of this type
+ are frequently called 
+\emph on
+judgement process
+\emph default
+.
+ Relevant references include 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Aickin1990-nj"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Klauer1996-jd"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Maxwell1977-lf"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Van_Oest2019-pm"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Perreault1989-mg"
+literal "false"
+
+\end_inset
+
+, and 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ see Moss (2023) for an overview.
+ We go through three models below, starting what is, to my knowledge, the
+ first explicit proposal for a judgment process.
+ 
+\end_layout
+
 \begin_layout Subsubsection
 The Maxwell model
 \end_layout

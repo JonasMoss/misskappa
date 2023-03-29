@@ -355,9 +355,6 @@ with
 The definitions of chance agreement lead to the three classical measures
  of agreement, Fleiss' kappa, Cohen's kappa, and the Brennan–Prediger coefficien
 t.
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 \kappa_{F}=\frac{p_{a}-p_{F}}{1-p_{F}},\quad\kappa_{C}=\frac{p_{a}-p_{C}}{1-p_{C}},\quad\kappa_{BP}=\frac{p_{a}-C^{-1}}{1-C^{-1}}.
@@ -973,6 +970,63 @@ Judgment processes
 Examples of judgment processes
 \end_layout
 
+\begin_layout Standard
+Several authors have proposed explicit processes that could generate agreement
+ data and proposed associated agreement coefficient; process jugdement process.
+ Relevant references include 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Aickin1990-nj"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Klauer1996-jd"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Maxwell1977-lf"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Van_Oest2019-pm"
+literal "false"
+
+\end_inset
+
+, 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Perreault1989-mg"
+literal "false"
+
+\end_inset
+
+, and 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Gwet2008-qk"
+literal "false"
+
+\end_inset
+
+ see Moss (2023) for an overview.
+ We go through three models below, starting what is, to my knowledge, the
+ first explicit proposal for a judgment process.
+ 
+\end_layout
+
 \begin_layout Subsubsection
 The Maxwell model
 \end_layout
@@ -1024,7 +1078,7 @@ noprefix "false"
 
 \end_inset
 
- with two judges, i.e., a model on the form 
+ with two judges, i.e., a model on the form
 \begin_inset Formula 
 \begin{align*}
 p(x_{1},x_{2}\mid s,x^{\star}) & =\{s_{1}1[x_{1}=x^{\star}]+(1-s_{1})q_{r}(x_{1})\}\{s_{2}1[x_{2}=x^{\star}]+(1-s_{2})q_{r}(x_{2})\}
@@ -1205,9 +1259,6 @@ If
 
  is the marginal distribution of the ratings, the marginal guessing distribution
  model can be written as
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \begin{equation}
 p(x_{1},x_{2})=\nu t(x_{1})1[x_{1}=x_{2}]+(1-\nu)ff^{T},\label{eq:marginal guessing distribution}
@@ -2264,7 +2315,7 @@ In a guessing model, we can naturally decompose the probability of chance
 \begin_inset Formula $p_{g}$
 \end_inset
 
-.
+,
 \begin_inset Formula 
 \begin{equation}
 p_{a}=\nu+p_{g}\label{eq:agreement decomposition}
@@ -2475,7 +2526,7 @@ which is approximately
 \end_inset
 
 -distributed with 
-\begin_inset Formula $C^{2}-C-1$
+\begin_inset Formula $C^{2}-C-2$
 \end_inset
 
  degrees of freedom.
@@ -2510,10 +2561,10 @@ noprefix "false"
 \end_inset
 
 -distribution with 
-\begin_inset Formula $C^{2}-C-1$
+\begin_inset Formula $C^{2}-C-2$
 \end_inset
 
- degrees of freedom.
+.
  The fit is not amazing, but is decent enough for our purposes.
 \end_layout
 
@@ -2582,9 +2633,6 @@ Simulated distribution of the
 \begin_layout Standard
 Consider the following data, taken from the two first raters of Zapf et.
  al (2016),
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \begin{equation}
 \left[\begin{array}{ccccc}
@@ -2792,9 +2840,6 @@ The agreement of this matrix is
 
 \begin_layout Standard
 In the Perreault–Leigh model we find that
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \begin{eqnarray*}
 p(x_{1},x_{2}\mid s) & = & s^{2}t(x_{1})1[x_{1}=x_{2}]+(1-s)^{2}C^{-2}\\
@@ -2804,9 +2849,6 @@ p(x_{1},x_{2}\mid s) & = & s^{2}t(x_{1})1[x_{1}=x_{2}]+(1-s)^{2}C^{-2}\\
 \end_inset
 
 We can write the distribution as
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 s^{2}\left[\begin{array}{cc}
@@ -2980,7 +3022,7 @@ According to the equation
 \begin_inset Formula $p_{g}=p_{a}-\nu$
 \end_inset
 
-, we can write 
+, we can write
 \begin_inset Formula 
 \begin{equation}
 \gamma=\frac{\nu}{1-p_{a}+\nu}.\label{eq:ac1-formulation}
@@ -3230,9 +3272,6 @@ where
 
 \begin_layout Standard
 Simple manipulations show that
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 \gamma^{\star}=\frac{(C-1)p_{a}+p_{f}-1}{C+p_{f}-2},
@@ -3365,9 +3404,6 @@ literal "false"
 \end_inset
 
 : 
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 \frac{p_{wa}-p_{wg}^{\star}}{1-p_{wg}^{\star}},\quad\textrm{where }p_{wg}^{\star}=\frac{1-p_{f}}{C-1}\frac{\sum_{x,y}w(x,y)}{C}.
@@ -3666,7 +3702,7 @@ probability of chance disagreement
 \begin_inset Quotes erd
 \end_inset
 
- in the following way.
+ in the following way
 \begin_inset Formula 
 \begin{equation}
 \kappa=1-\frac{p_{d}}{p_{cd}}=1-\frac{E_{X\sim F}(1[X_{1}\neq X_{2}])}{E_{X\sim\overline{F}\times\overline{F}}(1[X_{1}\neq X_{2}])},\label{eq:quadratic kappa}
@@ -3712,9 +3748,6 @@ Compared to the population value of
 \end_inset
 
 , defined as
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 R^{2}=1-\frac{\min_{\alpha,\beta}E([Y-\alpha-\beta X]^{2})}{\min_{\mu}E([Y-\mu]^{2})},
@@ -3982,7 +4015,7 @@ noprefix "false"
 \end_inset
 
 .
- The asymptotic variances are 
+ The asymptotic variances are
 \begin_inset Formula 
 \[
 (\nabla\gamma)^{T}\Sigma_{\nu}(\nabla\gamma)=[...]
@@ -7490,9 +7523,6 @@ noprefix "false"
 \end_inset
 
  to
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 F=s^{2}\diag(t)+(1-s)11^{T}C^{-2}+s(1-s)(t1^{T}+1^{T}t),
@@ -7566,7 +7596,11 @@ noprefix "false"
 \end_inset
 
 .
- 
+ We fed it the original, estimated 
+\begin_inset Formula $\hat{f}$
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Standard
@@ -7614,6 +7648,11 @@ literal "false"
 \end_inset
 
  parameters in the marginal distribution.
+ Still, 
+\begin_inset Formula $C^{2}-C-2$
+\end_inset
+
+ worked best.
  We verified the appropriate degrees of freedom using simulations.
 \end_layout
 
@@ -7677,10 +7716,6 @@ noprefix "false"
 \end_inset
 
 .
- 
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 \phi_{y}(x,y,z)=\left[\begin{array}{c}
@@ -7691,10 +7726,7 @@ x\\
 
 \end_inset
 
-The gradient of this vector is 
-\end_layout
-
-\begin_layout Standard
+The gradient of this vector is
 \begin_inset Formula 
 \[
 \Cov\left(\hat{p}_{a},\frac{\hat{p}_{a}-\hat{p}_{wc}}{1-\hat{p}_{wc}}\right)=
@@ -7708,9 +7740,6 @@ The gradient of this vector is
 \begin_layout Standard
 1.) Brennan–Prediger.
  The
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \[
 \frac{\nu}{1-p_{a}+\nu}=\frac{p_{a}-p_{c}}{(p_{a}-2)p_{c}+1}
