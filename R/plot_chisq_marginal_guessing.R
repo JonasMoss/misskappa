@@ -36,7 +36,7 @@ hist(results_plm[1, ],
   freq = FALSE, breaks = 100, main = "Perreault-Leigh",
   xlab = "Statistic", ylab = "Density"
 )
-lines(xx, dchisq(xx, n_cat^2 - n_cat - 1))
+lines(xx, dchisq(xx, n_cat^2 - n_cat - 2))
 
 hist(results_mgdm[1, ],
   freq = FALSE, breaks = 100, main = "Marginal guessing distribution",
