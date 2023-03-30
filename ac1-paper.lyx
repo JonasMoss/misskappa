@@ -2548,7 +2548,7 @@ status open
 \align center
 \begin_inset Graphics
 	filename figures/chisq.pdf
-	scale 70
+	scale 50
 
 \end_inset
 
