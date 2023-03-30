@@ -1,10 +1,11 @@
 ### ===========================================================================
 ###
-### Testing the chisq test for the van Oest model.
+###   Simulating the chi squared test for the Perreault-Leigh and
+###   marginal guessing distribution models.
 ###
 ### ===========================================================================
-source("R/functions.R")
 
+source("R/functions.R")
 set.seed(313)
 results_mgdm <- replicate(10000, {
   n <- 100
@@ -13,7 +14,7 @@ results_mgdm <- replicate(10000, {
   x <- agreeable::simulate_jsm(n, c(s, s), model = "fleiss", true_dist = true_dist)
   tab <- Rfast::Table(x = x[, 1], y = x[, 2], names = FALSE)
 
-  mgdm_test_2(tab)
+  mgdm_test(tab)
 })
 
 set.seed(313)
@@ -27,10 +28,10 @@ results_plm <- replicate(10000, {
   perreault_leigh_test(tab)
 })
 
-
 xx <- seq(0, 100)
 n_cat <- 5
 
+pdf("figures/chisq.pdf")
 par(mfrow = c(1, 2))
 hist(results_plm[1, ],
   freq = FALSE, breaks = 100, main = "Perreault-Leigh",
@@ -42,4 +43,5 @@ hist(results_mgdm[1, ],
   freq = FALSE, breaks = 100, main = "Marginal guessing distribution",
   xlab = "Statistic", ylab = "Density"
 )
-lines(xx, dchisq(xx, n_cat^2 - n_cat - 2))
+lines(xx, dchisq(xx, n_cat^2 - n_cat - 1))
+dev.off()
