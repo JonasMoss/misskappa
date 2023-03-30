@@ -2337,6 +2337,142 @@ noprefix "false"
 \end_layout
 
 \begin_layout Subsection
+Guessing models and the paradox of kappa
+\end_layout
+
+\begin_layout Standard
+As we have seen, the knowledge coefficient for the marginal guessing distributio
+n model equals both Cohen's kappa and Fleiss' kappa, which implies that
+ the paradox of kappa also holds for some guessing models.
+ On the other hand, the Brennan–Prediger coefficient is also a knowledge
+ coefficient, and this one does not suffer from the paradox of kappa 
+\begin_inset CommandInset citation
+LatexCommand citep
+after "p. 82"
+key "Gwet2014-iu"
+literal "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Let's investigate why the marginal guessing distribution model produces
+ a 
+\begin_inset Quotes eld
+\end_inset
+
+paradoxical
+\begin_inset Quotes erd
+\end_inset
+
+ coefficient and the Brennan–Prediger model does not, starting with the
+ marginal guessing distribution model.
+ Letting 
+\begin_inset Formula $t=[0.97,3]$
+\end_inset
+
+ be the true distribution, we can write out the ratings distribution in
+ matrix form as a function of 
+\begin_inset Formula $\nu$
+\end_inset
+
+,
+\begin_inset Formula 
+\[
+F=\nu\left[\begin{array}{cc}
+0.97 & 0\\
+0 & 0.03
+\end{array}\right]+(1-\nu)\left[\begin{array}{cc}
+0.9409 & 0.0291\\
+0.0291 & 0.0009
+\end{array}\right].
+\]
+
+\end_inset
+
+The agreement of this matrix is 
+\begin_inset Formula $0.9418+0.0582\nu$
+\end_inset
+
+, implying that the smallest theoretically possible agreement, with the
+ marginals fixed, is the pretty large 
+\begin_inset Formula $0.9418$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+In the Perreault–Leigh model, using equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Perreault-Leigh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, we can write the rating distribution as a function of the skill-difficulty
+ parameter 
+\begin_inset Formula $s$
+\end_inset
+
+,
+\begin_inset Formula 
+\[
+F=s^{2}\left[\begin{array}{cc}
+0.97 & 0\\
+0 & 0.03
+\end{array}\right]+(1-s)^{2}\frac{1}{4}\left[\begin{array}{cc}
+1 & 1\\
+1 & 1
+\end{array}\right]+s(1-s)\left[\begin{array}{cc}
+0.97 & 0.5\\
+0.5 & 0.03
+\end{array}\right].
+\]
+
+\end_inset
+
+The agreement is minimized when 
+\begin_inset Formula $s=0$
+\end_inset
+
+, where it equals 
+\begin_inset Formula $1/2$
+\end_inset
+
+.
+ This is a far cry from the weight of 
+\begin_inset Formula $0.0291$
+\end_inset
+
+ in the Fleiss model.
+\end_layout
+
+\begin_layout Standard
+Which guessing model, and implied knowledge coefficient, is right to choose?
+ This is not always possible to deduce from the data itself, as any symmetric
+ matrix is compatible with both models when dealing with 
+\begin_inset Formula $2\times2$
+\end_inset
+
+ data, as discussed below.
+ But when dealing with larger tables, it is possible to construct tests
+ for guessing model assumptions.
+ Construction such tests could prove important, as knowledge coefficients
+ (and the 
+\begin_inset Formula $\ac$
+\end_inset
+
+) should not be used unless we are confident in their validity.
+\end_layout
+
+\begin_layout Subsection
 \begin_inset CommandInset label
 LatexCommand label
 name "subsec:On-model-assumptions"
@@ -2736,117 +2872,6 @@ While the uniform guessing distribution might be disconfirmed by the data,
  This feature of the Brennan–Prediger makes it, at the very least, a reasonble
  choice for an agreement coefficient even if tests show disconfirm the uniform
  guessing distribution itself.
-\end_layout
-
-\begin_layout Subsection
-Guessing models and the paradox of kappa
-\end_layout
-
-\begin_layout Standard
-As we have seen, the knowledge coefficient for the marginal guessing distributio
-n model equals both Cohen's kappa and Fleiss' kappa, which implies that
- the paradox of kappa also holds for some guessing models.
- On the other hand, the Brennan–Prediger coefficient is also a knowledge
- coefficient, and this one does not suffer from the paradox of kappa 
-\begin_inset CommandInset citation
-LatexCommand citep
-after "p. 82"
-key "Gwet2014-iu"
-literal "false"
-
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-Let's investigate in detail why the marginal guessing distribution model
- produces a 
-\begin_inset Quotes eld
-\end_inset
-
-paradoxical
-\begin_inset Quotes erd
-\end_inset
-
- coefficient and the Brennan–Prediger model does not, starting with the
- marginal guessing distribution model.
- Letting 
-\begin_inset Formula $t=[0.97,3]$
-\end_inset
-
- be the true distribution, we can write out the ratings distribution in
- matrix form as a function of 
-\begin_inset Formula $\nu$
-\end_inset
-
-,
-\begin_inset Formula 
-\[
-\nu\left[\begin{array}{cc}
-0.97 & 0\\
-0 & 0.03
-\end{array}\right]+(1-\nu)\left[\begin{array}{cc}
-0.9409 & 0.0291\\
-0.0291 & 0.0009
-\end{array}\right].
-\]
-
-\end_inset
-
-The agreement of this matrix is 
-\begin_inset Formula $0.9418+0.0582\nu$
-\end_inset
-
-, implying that the smallest theoretically possible agreement, with the
- marginals fixed, is the pretty large 
-\begin_inset Formula $0.9418$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Standard
-In the Perreault–Leigh model we find that
-\begin_inset Formula 
-\begin{eqnarray*}
-p(x_{1},x_{2}\mid s) & = & s^{2}t(x_{1})1[x_{1}=x_{2}]+(1-s)^{2}C^{-2}\\
- &  & +s(1-s)C^{-1}[t(x_{1})+t(x_{2})].
-\end{eqnarray*}
-
-\end_inset
-
-We can write the distribution as
-\begin_inset Formula 
-\[
-s^{2}\left[\begin{array}{cc}
-0.97 & 0\\
-0 & 0.03
-\end{array}\right]+(1-s)^{2}\frac{1}{4}\left[\begin{array}{cc}
-1 & 1\\
-1 & 1
-\end{array}\right]+s(1-s)\left[\begin{array}{cc}
-0.97 & 0.5\\
-0.5 & 0.03
-\end{array}\right].
-\]
-
-\end_inset
-
-When 
-\begin_inset Formula $s=0$
-\end_inset
-
-, the distribution places weight 
-\begin_inset Formula $1/4$
-\end_inset
-
- on each observation pair, a far cry from the weight of 
-\begin_inset Formula $0.0291$
-\end_inset
-
- in the Fleiss model.
 \end_layout
 
 \begin_layout Section
