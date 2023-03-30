@@ -370,8 +370,8 @@ These coefficients have natural multirater counterparts, see e.g.
  Moss (2023) for details, and the results in this paper are valid for the
  multirater versions as well as the two-rater variants.
  The intuitive definition of Cohen's kappa leads to it having many proponents,
- but also many detractors, prefering Fleiss' kappa instead.
- According to some authors, however, they both suffer from the purpoted
+ but also many detractors, preferring Fleiss' kappa instead.
+ According to some authors, however, they both suffer from the purported
  paradox of kappa 
 \begin_inset CommandInset citation
 LatexCommand citep
@@ -409,7 +409,7 @@ noprefix "false"
  Intuitively, the raters agree less than would be expected due to chance
  alone, hence the resulting Fleiss kappa should be negative.
  Still, many authors regard this feature of Fleiss' kappa (and Cohen's kappa)
- as undesireable, even paradoxical.
+ as undesirable, even paradoxical.
  
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -957,7 +957,7 @@ literal "false"
 \begin_inset Formula $\ac$
 \end_inset
 
-, as a solution to the paradox of kappa, in the context of such a judgement
+, as a solution to the paradox of kappa, in the context of such a judgment
  process, which we detail below.
  
 \end_layout
@@ -975,7 +975,7 @@ Several authors have proposed explicit processes that could generate agreement
  data with associated agreement coefficient; processes of this type are
  frequently called 
 \emph on
-judgement process
+judgment process
 \emph default
 .
  Relevant references include 
@@ -1044,8 +1044,8 @@ literal "false"
 
 \end_inset
 
- described two judgement processes.
- His first judgement processes is defined in the setting of two raters and
+ described two judgment processes.
+ His first judgment processes is defined in the setting of two raters and
  binary ratings.
  From his Table II one can derive the the joint model for two ratings 
 \begin_inset Formula $x_{1},x_{2}$
@@ -1261,7 +1261,7 @@ where
 \end_inset
 
 .
- This is particularily handy when designing tests for the model.
+ This is particularly handy when designing tests for the model.
 \end_layout
 
 \begin_layout Subsection
@@ -1269,7 +1269,7 @@ Guessing models
 \end_layout
 
 \begin_layout Standard
-All the preceeding examples, and many more, are special cases of a class
+All the preceding examples, and many more, are special cases of a class
  of models we call 
 \emph on
 guessing models
@@ -2180,7 +2180,7 @@ These three conditions are equivalent, see (i) of Theorem 2 of Moss (2023).
 \begin_layout Standard
 In a guessing model, we can naturally decompose the probability of chance
  agreement into two parts.
- Knowledgable agreement, or 
+ Knowledgeable agreement, or 
 \begin_inset Formula $\nu$
 \end_inset
 
@@ -2497,7 +2497,7 @@ literal "false"
 
 \end_inset
 
- to test the nullhypothesis that 
+ to test the null-hypothesis that 
 \begin_inset Formula $\hat{F}$
 \end_inset
 
@@ -2640,8 +2640,15 @@ Simulated distribution of the
 \end_layout
 
 \begin_layout Standard
-Consider the following data, taken from the two first raters of Zapf et.
- al (2016),
+Consider the following data, taken from the two first raters of 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Zapf2016-eu"
+literal "false"
+
+\end_inset
+
+,
 \begin_inset Formula 
 \begin{equation}
 \left[\begin{array}{ccccc}
@@ -2736,8 +2743,8 @@ p
 \emph on
 p
 \emph default
--values only have a chance of being signifant if the data matrix is sufficiently
- asymmetric.
+-values only have a chance of being significant if the data matrix is sufficient
+ly asymmetric.
  Indeed, we can write agreement probability matrix 
 \begin_inset Formula $F$
 \end_inset
@@ -2773,7 +2780,7 @@ While the uniform guessing distribution might be disconfirmed by the data,
  simulations by Moss (2023) suggest that the Brennan–Prediger coefficient
  might approximate the knowledge coefficient reasonably well even when the
  true guessing distribution is far from the uniform guessing distribution.
- This feature of the Brennan–Prediger makes it, at the very least, a reasonble
+ This feature of the Brennan–Prediger makes it, at the very least, a reasonable
  choice for an agreement coefficient even if tests show disconfirm the uniform
  guessing distribution itself.
 \end_layout
@@ -2816,7 +2823,7 @@ literal "false"
 \begin_inset Formula $\ac$
 \end_inset
 
- in the context of judgement process with two raters 
+ in the context of judgment process with two raters 
 \begin_inset Formula $A$
 \end_inset
 
@@ -3348,7 +3355,7 @@ We provided a rough motivation for the
  if you want to, and the methodology in the next section will help you in
  this regard.
  However, we suggest you don't.
- We propose the following: If you have strong reasons to believe a guesssing
+ We propose the following: If you have strong reasons to believe a guessing
  model is actually true, use the knowledge coefficient if you're confident
  your audience will understand it.
  If not, use one of the classical agreement coefficients.
@@ -3557,7 +3564,7 @@ Both
 
  are motivated by guessing models, and arguably only makes sense in the
  context of guessing models.
- Not every judgement processes can be represented as a guessing model; this
+ Not every judgment processes can be represented as a guessing model; this
  follows from the fact that every guessing model (with two raters) can be
  represented in matrix form as
 \begin_inset Formula 
@@ -3630,7 +3637,7 @@ The three distribution vectors
 
  and above can be represented as a guessing model.
  But even if it could be represented by a guessing model we can't know it
- accurately represents the judgement process.
+ accurately represents the judgment process.
  That would require us to make assumptions than can be neither confirmed
  nor disconfirmed from the data alone.
 \end_layout
@@ -3833,7 +3840,7 @@ When the guessing distributions are uniform, the expression for
 \begin_inset Formula $\gamma$
 \end_inset
 
- is particularily simple 
+ is particularly simple 
 \begin_inset CommandInset ref
 LatexCommand eqref
 reference "eq:ac1-multirater-perrault-leigh"
@@ -4063,7 +4070,7 @@ noprefix "false"
 \end_inset
 
  in these simulations.
- Biases of this magntiude evidently matter only when the sample size is
+ Biases of this magnitude evidently matter only when the sample size is
  large.
  
 \end_layout
@@ -7277,7 +7284,8 @@ There are many alternatives to the
 \begin_inset Formula $\ac$
 \end_inset
 
-, we have argued that knowledge coefficients should be prefered in its stead.
+, we have argued that knowledge coefficients should be preferred in its
+ stead.
  The Brennan–Prediger coefficient is especially attractive.
  It closely matches Gwet's rationale behind the 
 \begin_inset Formula $\ac$
@@ -7405,7 +7413,7 @@ noprefix "false"
 
  in these cases, we might have to go beyond guessing models.
  One possibility is to go in the parametric direction, making explicit models
- for the judgement process that does not separate judgements into a knowledgable
+ for the judgment process that does not separate judgments into a knowledgeable
  part and a guessing part.
  Another option is to adopt the notion of credences 
 \begin_inset CommandInset citation
@@ -7417,7 +7425,7 @@ literal "false"
 
  from philosophy, but there are reasons to believe this would be untenable
  unless the raters are asked for (and trained to) provide classification
- probabilitie, i.e., probabilistic prediction 
+ probabilities, i.e., probabilistic prediction 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Gneiting2014-bc"
