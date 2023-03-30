@@ -972,8 +972,8 @@ Examples of judgment processes
 
 \begin_layout Standard
 Several authors have proposed explicit processes that could generate agreement
- data and proposed associated agreement coefficient; processes of this type
- are frequently called 
+ data with associated agreement coefficient; processes of this type are
+ frequently called 
 \emph on
 judgement process
 \emph default
@@ -1045,13 +1045,13 @@ literal "false"
 \end_inset
 
  described two judgement processes.
- His first judgement processes is defined in the setting of two judges and
+ His first judgement processes is defined in the setting of two raters and
  binary ratings.
  From his Table II one can derive the the joint model for two ratings 
 \begin_inset Formula $x_{1},x_{2}$
 \end_inset
 
- by two judges as
+ by two raters as
 \begin_inset Formula 
 \begin{equation}
 p(x_{1},x_{2})=\alpha p(x_{1})1[x_{1}=x_{2}]+(1-\alpha)p(x_{1})p(x_{2}),\label{eq:maxwell joint}
@@ -1269,14 +1269,16 @@ Guessing models
 \end_layout
 
 \begin_layout Standard
-The joint distribution of the 
+All the preceeding examples, and many more, are special cases of a class
+ of models we call 
 \emph on
-guessing model
+guessing models
 \emph default
- is
+.
+ The joint distribution of a guessing model for two raters is
 \begin_inset Formula 
 \begin{equation}
-p(x\mid s,x^{\star})=\prod_{r=1}^{R}\left[s_{r}1[x_{r}=x^{\star}]+(1-s_{r})q_{r}(x_{r})\right].\label{eq:full guessing model}
+p(x\mid s,x^{\star})=\left[S_{1}1[x_{1}=x^{\star}]+(1-S_{1})f(x_{1})\right]\left[S_{2}1[x_{1}=x^{\star}]+(1-S_{2})g(x_{2})\right].\label{eq:full guessing model}
 \end{equation}
 
 \end_inset
@@ -1285,18 +1287,14 @@ where
 \end_layout
 
 \begin_layout Itemize
-\begin_inset Formula $x_{r}$
+\begin_inset Formula $x_{1},x_{2}$
 \end_inset
 
- is the rating given by the 
-\begin_inset Formula $r$
-\end_inset
-
-th judge on an item.
+ are the ratings given by the corresponding rater on an item.
 \end_layout
 
 \begin_layout Itemize
-\begin_inset Formula $s=\{s_{1},s_{2},\ldots,s_{r}\}$
+\begin_inset Formula $S=\{S_{1},S_{2},\ldots,S_{r}\}$
 \end_inset
 
  are the 
@@ -1307,19 +1305,19 @@ skill-difficulty parameters
 \begin_inset Formula $r$
 \end_inset
 
-th judge knows the correct classification of an item.
- The skill-difficulty parameters can be deterministic or random.
- For instance, they can be sampled from a Beta distribution.
+th rater knows the correct classification of an item.
+ These skill-difficulty parameters can be either deterministic or random.
+ 
 \end_layout
 
 \begin_layout Itemize
 \begin_inset Formula $x^{\star}$
 \end_inset
 
- is the true classification the item, an unknown latent variable.
- These are assumed to be independent of the skill-difficulty parameters
+ is the true classification the item.
+ The true classifications are independent of the skill-difficulty parameters
  
-\begin_inset Formula $s$
+\begin_inset Formula $S$
 \end_inset
 
 .
@@ -1339,7 +1337,7 @@ true rating distribution
 \end_layout
 
 \begin_layout Itemize
-\begin_inset Formula $q_{r}(x)$
+\begin_inset Formula $f(x),g(x)$
 \end_inset
 
  are the 
@@ -1350,109 +1348,56 @@ guessing distributions
 \begin_inset Formula $r$
 \end_inset
 
-th judge does not know the true classification of the item.
+th rater does not know the true classification of the item.
 \end_layout
 
 \begin_layout Standard
-We have introduced the guessing model in order to define the notion of 
-\begin_inset Quotes eld
-\end_inset
-
-agreement due to knowledge
-\begin_inset Quotes erd
-\end_inset
-
- in a precise way.
- To gain an intuition about what we're getting at, first consider the case
- of two judges with potentially different, but deterministic, skill-difficulty
- parameters 
-\begin_inset Formula $s_{1}$
+Integrating with respect to 
+\begin_inset Formula $S$
 \end_inset
 
  and 
-\begin_inset Formula $s_{2}$
+\begin_inset Formula $x^{\star}$
 \end_inset
 
-.
- The probability that two judges agree on the classification of an item
- because they both know its classification is the product of their skill
- parameters, or 
-\begin_inset Formula $\nu=s_{1}s_{2}$
+ yields a decomposition of 
+\begin_inset Formula $p(x_{1},x_{2})$
 \end_inset
 
-.
- As 
-\begin_inset Quotes eld
-\end_inset
-
-agree on classification of an item because they both know its classification
-\begin_inset Quotes erd
-\end_inset
-
- is cumbersome to read, we will call it 
-\begin_inset Quotes eld
-\end_inset
-
-knowledgeable agreement
-\begin_inset Quotes erd
-\end_inset
-
- or 
-\begin_inset Quotes eld
-\end_inset
-
-agree knowledgeably
-\begin_inset Quotes erd
-\end_inset
-
- from now.
- Extending this notion to 
-\begin_inset Formula $R$
-\end_inset
-
- judges, 
-\begin_inset Formula $\nu=\binom{R}{2}^{-1}\sum_{r_{1}>r_{2}}s_{r_{1}}s_{r_{2}}$
-\end_inset
-
- is the probability that a randomly selected pair of judges will agree knowledge
-ably on a pair of ratings.
- 
+ into four parts
 \end_layout
 
 \begin_layout Standard
-Another simple case happens when there are 
-\begin_inset Formula $R$
-\end_inset
-
- judges with random skill-difficulty parameters that do not wary across
- judges when the item is fixed, i.e., 
-\begin_inset Formula $S_{1}=S_{2}=\cdots=S_{R}$
-\end_inset
-
-, where we use capital letters to emphasize that the 
-\begin_inset Formula $S_{r}$
-\end_inset
-
- are random.
- Now 
-\begin_inset Formula $E(S_{r}^{2})$
-\end_inset
-
- is the probability of knowledgeable agreement.
- Finally, in the general guessing model, we find that the probability of
- knowledgeable agreement among two judges is
 \begin_inset Formula 
-\begin{equation}
-\nu=\binom{R}{2}^{-1}\sum_{r_{1}>r_{2}}E[S_{r_{1}}S_{r_{2}}].\label{eq:knowledgable agreement}
-\end{equation}
+\begin{eqnarray}
+p(x_{1},x_{2}) & = & E(S_{1}S_{2})t(x_{1})1[x_{1}=x_{2}]+E[(1-S_{1})(1-S_{2})]f(x_{1})g(x_{2}),\nonumber \\
+ &  & +E[(1-S_{1})S_{2}]t(x_{1})g(x_{2})+E[(1-S_{1})S_{2}]f(x_{1})t(x_{2}).\label{eq:guessing model marginal}
+\end{eqnarray}
 
 \end_inset
 
+Observe that 
+\begin_inset Formula $E(S_{1}S_{2})$
+\end_inset
 
-\end_layout
+ has can be interpreted as the probability that both raters know the correct
+ classification of item.
+ We use the notation and 
+\begin_inset Formula $\nu=E(S_{1}S_{2})$
+\end_inset
 
-\begin_layout Subsection
-Knowledge coefficient theorem
+ and refer to 
+\begin_inset Formula $\nu$
+\end_inset
+
+ as the 
+\emph on
+knowledge coefficient
+\emph default
+ of the guessing model.
+ It is straight-forward to verify that all the models listed in the examples
+ above are guessing models.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -1466,9 +1411,9 @@ The main result concerning knowledge coefficients is Theorem 2 of Moss (2023).
 \begin_inset Formula $\nu$
 \end_inset
 
- equals the Brennan–Prediger coefficient if all guessing distributions are
- uniform, and the weighted Fleiss' kappa or Cohen's kappa if all guessing
- distributions are marginal.
+ equals the Brennan–Prediger coefficient under the uniform guessing distribution
+ model, and the weighted Fleiss' kappa or Cohen's kappa under the marginal
+ guessing distribution model.
  Theorem 2 is summarized in Table 
 \begin_inset CommandInset ref
 LatexCommand eqref
@@ -2233,44 +2178,6 @@ These three conditions are equivalent, see (i) of Theorem 2 of Moss (2023).
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
-The knowledge coefficient 
-\begin_inset Formula $\nu=\binom{R}{2}^{-1}\sum_{r_{1}>r_{2}}E[S_{r_{1}}S_{r_{2}}]$
-\end_inset
-
- is easy to interpret.
- Recall that 
-\begin_inset Formula $S_{r_{i}}$
-\end_inset
-
- is the probability that judge 
-\begin_inset Formula $r_{i}$
-\end_inset
-
- known the correct classification of an item.
- Then 
-\begin_inset Formula $E[S_{r_{1}}S_{r_{2}}]$
-\end_inset
-
- is the expected probability that both rater 
-\begin_inset Formula $r_{1}$
-\end_inset
-
- and rater 
-\begin_inset Formula $r_{2}$
-\end_inset
-
- knows the correct classification of an item; it is the probability that
- two items are being rated the same because both raters know the correct
- classification.
- Finally, 
-\begin_inset Formula $\nu$
-\end_inset
-
- is the probability that two randomly selected raters will knowledgably
- agree on a classification.
 \end_layout
 
 \begin_layout Standard
