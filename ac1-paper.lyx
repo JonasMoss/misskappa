@@ -8,7 +8,7 @@
 \begin_preamble
 \usepackage{ac1-paper}
 
-\titletag{An arXiv preprint, v2}
+\titletag{An arXiv preprint, v1}
 \makeatletter
 \titlerunning{\@title}
 \makeatother
@@ -1365,9 +1365,6 @@ Integrating with respect to
 \end_inset
 
  into four parts
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \begin{eqnarray}
 p(x_{1},x_{2}) & = & E(S_{1}S_{2})t(x_{1})1[x_{1}=x_{2}]+E[(1-S_{1})(1-S_{2})]f(x_{1})g(x_{2}),\nonumber \\
