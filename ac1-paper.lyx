@@ -3473,6 +3473,26 @@ The case against the
 
 \end_layout
 
+\begin_layout Standard
+We provided a rough motivation for the 
+\begin_inset Formula $\ac$
+\end_inset
+
+, and in the next section we sketch how to estimate and do inference on
+ it.
+ You are obviously free to use the 
+\begin_inset Formula $\ac$
+\end_inset
+
+ if you want to, and the methodology in the next section will help you in
+ this regard.
+ However, we suggest you don't.
+ We propose the following: If you have strong reasons to believe a guesssing
+ model is actually true, use the knowledge coefficient if you're confident
+ your audience will understand it.
+ If not, use one of the classical agreement coefficients.
+\end_layout
+
 \begin_layout Paragraph*
 \begin_inset Formula $p_{g}$
 \end_inset
@@ -3663,7 +3683,7 @@ Consider the case where you know the guessing distribution is true, but
 \end_layout
 
 \begin_layout Paragraph
-Guessing models may not be realistic
+Guessing models may be unrealistic
 \end_layout
 
 \begin_layout Standard
