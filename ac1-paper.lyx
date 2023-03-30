@@ -3524,10 +3524,10 @@ Recall that a probability of chance agreement is defined as
 \end_inset
 
  so that 
-\begin_inset Formula $P_{G}(X_{1}=X_{2})$
+\begin_inset Formula $p_{g}=P_{G}(X_{1}=X_{2})$
 \end_inset
 
-? First, recall that the chance agreement is bounded below by 
+? Observe that chance agreement is bounded below by 
 \begin_inset Formula $C^{-1}$
 \end_inset
 
@@ -3569,13 +3569,32 @@ a chance agreement for any
 \end_inset
 
 s.
- But that's evidently not reasonable, as the Perreault–Leigh model is symmetric
- in 
-\begin_inset Formula $X_{1},X_{2}$
+ That step is unreasonable if we are dealing with models symmetric in 
+\begin_inset Formula $X_{1}$
 \end_inset
 
-.
+ and 
+\begin_inset Formula $X_{2}$
+\end_inset
+
+, such as the Perreault–Leigh model and the marginal guessing distribution
+ model.
+ Most guessing distributions are not symmetric though.
+ The uniform guessing model, for instance, is consistent with asymmetric
+ agreement data if the skill-difficulty parameters vary between raters.
+ We believe this hardly matters though, as 
+\begin_inset Formula $p_{g}$
+\end_inset
+
+ must make sense for
+\emph on
  
+\emph default
+the Perreault–Leigh model for it to make sense for 
+\emph on
+all
+\emph default
+ models.
 \end_layout
 
 \begin_layout Paragraph*
@@ -3613,46 +3632,26 @@ noprefix "false"
 
  equals well-known chance-corrected measures of agreement under various
  conditions.
- 
-\end_layout
-
-\begin_layout Standard
-Chance-corrected measures of agreement can be used to decompose 
-\begin_inset Formula $p_{a}$
+ However, the definition of 
+\begin_inset Formula $\nu$
 \end_inset
 
- into two parts.
- Agreement due to chance and agreement due to non-chance, using 
-\begin_inset Formula $p_{a}=\kappa_{c}(1-p_{c})+p_{c}.$
+ as 
+\begin_inset Formula $E(S_{1}S_{2})$
 \end_inset
 
- The idea is that agreement occurs either due to chance or due to non-chance
- (
-\begin_inset Formula $1-p_{c}$
+ should be compelling enough in itself.
+ The multitude of researching deriving agreement coefficients using this
+ definition or similar definitions 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "e.g."
+key "Aickin1990-nj,Maxwell1977-lf,Van_Oest2019-pm,Korn1991-lw"
+literal "false"
+
 \end_inset
 
-), where if 
-\begin_inset Quotes eld
-\end_inset
-
-non-chance
-\begin_inset Quotes erd
-\end_inset
-
- occurs, the probability of agreement equals 
-\begin_inset Formula $\kappa_{c}$
-\end_inset
-
-.
- But, n the context of guessing models, the natural decomposition is 
-\begin_inset Formula $p_{a}=\nu+p_{g},$
-\end_inset
-
-yielding 
-\begin_inset Formula $\nu=p_{a}-p_{g}$
-\end_inset
-
- as the appropriate correction to chance agreement.
+ is a case in point.
  
 \end_layout
 
@@ -3670,7 +3669,7 @@ Consider the case where you know the guessing distribution is true, but
 \begin_inset Formula $\ac$
 \end_inset
 
- will not be correct, and we would have to use the generalized variant such
+ will not be correct, and we would have to use a generalized variant such
  as 
 \begin_inset Formula $\nu_{CF}/(1-p_{a}+\nu_{CF})$
 \end_inset
@@ -3679,7 +3678,7 @@ Consider the case where you know the guessing distribution is true, but
 \begin_inset Formula $\nu$
 \end_inset
 
- using maximum likelihood.
+ using a general estimation method such as maximum likelihood.
 \end_layout
 
 \begin_layout Paragraph
@@ -3697,11 +3696,89 @@ Both
 
  are motivated by guessing models, and arguably only makes sense in the
  context of guessing models.
- But what happens when guessing model is false? Then we will be talking
- about parameters that do not correspond to something existing in the real
- world.
- This would, perhaps, be OK if the guessing model is approximately true,
- but not otherwise.
+ Not every judgement processes can be represented as a guessing model; this
+ follows from the fact that every guessing model (with two raters) can be
+ represented in matrix form as
+\begin_inset Formula 
+\[
+F=E[S_{1}S_{2}]D+E[(1-S_{1})(1-S_{2})]fg^{T}+E(S_{1}(1-S_{2}))tg^{T}+E(S_{2}(1-S_{1}))ft^{T},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $f,g$
+\end_inset
+
+ are the raters' guessing distributions.
+ This is a convex sum of three rank-1 matrices and one diagonal matrices.
+ If 
+\begin_inset Formula $F$
+\end_inset
+
+ is a 
+\begin_inset Formula $C\times C$
+\end_inset
+
+ matrix it has 
+\begin_inset Formula $C^{2}-1$
+\end_inset
+
+ free parameters, but the right-hand side only has 
+\begin_inset Formula $4C-1$
+\end_inset
+
+
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+The three distribution vectors 
+\begin_inset Formula $f,g,t$
+\end_inset
+
+ have 
+\begin_inset Formula $3$
+\end_inset
+
+ free parameters and there are 
+\begin_inset Formula $3$
+\end_inset
+
+ free parameters that involve 
+\begin_inset Formula $E[S_{1}],E[S_{2}]$
+\end_inset
+
+, and 
+\begin_inset Formula $E[S_{1}S_{2}]$
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+.
+ It follows that not every 
+\begin_inset Formula $F$
+\end_inset
+
+ of dimension 
+\begin_inset Formula $5\times5$
+\end_inset
+
+ and above can be represented as a guessing model.
+ But even if it could be represented by a guessing model we can't know it
+ accurately represents the judgement process.
+ That would require us to make assumptions than can be neither confirmed
+ nor disconfirmed from the data alone.
+\end_layout
+
+\begin_layout Standard
+If the guessing model itself is false, we will be talking about parameters
+ that do not correspond to something existing in the real world.
+ This would, perhaps, be alright if the guessing model is approximately
+ true, but not otherwise.
  
 \end_layout
 
