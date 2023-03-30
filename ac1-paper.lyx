@@ -2879,7 +2879,7 @@ I will consider that a rater
 
 \begin_layout Standard
 Point (2) and the paragraph below it places us squarely in the domain of
- guessing models.
+ guessing models with fixed skill-difficulty parameters for each rater.
  Point (1) provides a definition of chance agreement, which coincides with
  the probability of agreement due to guessing 
 \begin_inset Formula $p_{g}=p_{a}-\nu$
@@ -2938,11 +2938,28 @@ noprefix "false"
 
 \end_inset
 
- to estimate 
+ to estimate and infer 
 \begin_inset Formula $\gamma$
 \end_inset
 
  under various assumptions.
+ If 
+\begin_inset Formula $\nu=\frac{p_{a}-p_{c}}{1-p_{c}}$
+\end_inset
+
+ for some chance agreement 
+\begin_inset Formula $p_{c}$
+\end_inset
+
+, then 
+\begin_inset Formula 
+\begin{equation}
+\gamma=\frac{\nu}{1-p_{a}+\nu}=\frac{p_{a}-p_{c}}{1+(p_{c}-2)p_{a}}.\label{eq:ac1-pa-pc}
+\end{equation}
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -2977,47 +2994,23 @@ In the context of two raters, he writes that
 \end_inset
 
  Since 
-\begin_inset Formula $\nu=\kappa_{BP}$
+\begin_inset Formula $\nu=\kappa_{BP}=(p_{a}-C^{-1})/(1-C^{-1})$
 \end_inset
 
- when all guessing distributions are uniform, it immediately follows that
- 
-\begin_inset Formula $\gamma=\kappa_{BP}/(1-p_{a}+\kappa_{BP})$
+, we can use 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:ac1-pa-pc"
+plural "false"
+caps "false"
+noprefix "false"
+
 \end_inset
 
-.
- Moreover, using the definition of 
-\begin_inset Formula $\kappa_{BP}$
-\end_inset
-
-, it is easy to remove the dependence on either 
-\begin_inset Formula $p_{a}$
-\end_inset
-
- or 
-\begin_inset Formula $\kappa_{BP}$
-\end_inset
-
- from 
-\begin_inset Formula $\gamma$
-\end_inset
-
-.
+ to rewrite
 \end_layout
 
-\begin_layout Proposition
-\begin_inset CommandInset label
-LatexCommand label
-name "prop:ac1"
-
-\end_inset
-
-Suppose the guessing distributions are uniform for all raters.
- Then the 
-\begin_inset Formula $\ac$
-\end_inset
-
- equals
+\begin_layout Standard
 \begin_inset Formula 
 \begin{equation}
 \gamma=\frac{C\kappa_{BP}}{(C-1)+\kappa_{BP}}=\frac{Cp_{a}-1}{C+p_{a}-2}.\label{eq:ac1-multirater-perrault-leigh}
@@ -3025,43 +3018,7 @@ Suppose the guessing distributions are uniform for all raters.
 
 \end_inset
 
-
-\end_layout
-
-\begin_layout Proof
-Using that 
-\begin_inset Formula $p_{a}=\nu_{BP}+C^{-1}(1-\nu_{BP})$
-\end_inset
-
- together with 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:ac1-2"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- and the fact that 
-\begin_inset Formula $\nu=\nu_{BP}$
-\end_inset
-
- when all guessing distributions are uniform, we find that
-\begin_inset Formula 
-\begin{eqnarray*}
-\gamma=\frac{\nu_{BP}}{1-p_{a}+\nu_{BP}} & = & \frac{\nu_{BP}}{1-\nu_{BP}-C^{-1}(1-\nu_{BP})+\nu_{BP}}\\
- & = & \frac{C\nu_{BP}}{(C-1)+\nu_{BP}}.
-\end{eqnarray*}
-
-\end_inset
-
-The second equality follows similarily.
-\end_layout
-
-\begin_layout Standard
-Proposition generalizes eq.
- 24 of 
+This is a highly amenable definition that generalizes 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Gwet2008-nf"
@@ -3070,7 +3027,7 @@ literal "false"
 \end_inset
 
  to the case of more than two categories, multiple raters, and random skill-diff
-iculty parameters.
+iculty parameters in the uniform guessing model.
  Estimating 
 \begin_inset Formula $\gamma$
 \end_inset
@@ -3950,105 +3907,70 @@ Ignoring these are justified, as the Cohen–Brennan–Prediger was found to
 
 \end_inset
 
-, the gradient of 
-\begin_inset Formula $\gamma$
+, we can use expression 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:ac1-pa-pc"
+plural "false"
+caps "false"
+noprefix "false"
+
 \end_inset
 
- with respect to 
-\begin_inset Formula $p_{a}$
-\end_inset
-
- and 
-\begin_inset Formula $\nu$
-\end_inset
-
- equals
+ and find its gradient.
 \begin_inset Formula 
 \[
-\nabla\gamma=\frac{1}{(1-p_{a}+\nu)^{2}}\left[\begin{array}{c}
-1-p_{a}\\
-\nu
+\nabla\gamma=\frac{1}{(1+p_{a}(p_{c}-2))^{2}}\left[\begin{array}{c}
+(p_{c}-1)^{2}\\
+-(p_{a}-1)^{2}
 \end{array}\right].
 \]
 
 \end_inset
 
-The asymptotic variances of all 
-\begin_inset Formula $\hat{\nu}$
+Let 
+\begin_inset Formula $\Sigma$
 \end_inset
 
-s in Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- are known (Moss, 2023), as is the variance of 
-\begin_inset Formula $\hat{p}_{a}$
-\end_inset
-
- (Moss, 2023).
- However, we will also require the covariances between 
-\begin_inset Formula $\hat{p}_{a}$
-\end_inset
-
- and 
-\begin_inset Formula $\hat{\nu}$
-\end_inset
-
-, which is derived in the appendix, p.
- 
-\begin_inset CommandInset ref
-LatexCommand pageref
-reference "subsec:covariance"
-plural "false"
-caps "false"
-noprefix "false"
-
+ be the covariance matrix of 
+\begin_inset Formula $(\hat{p}_{a},\hat{p}_{c})$
 \end_inset
 
 .
+ The delta method tells us that
+\begin_inset Formula 
+\begin{equation}
+\sqrt{n}(\hat{\gamma}-\gamma)\stackrel{d}{\to}N(0,\nabla\gamma{}^{T}\Sigma\nabla\gamma).\label{eq:asymptotic expression}
+\end{equation}
+
+\end_inset
+
+The asymptotic covariances of 
+\begin_inset Formula $(\hat{p}_{A},\hat{p}_{F},\hat{p}_{C})$
+\end_inset
+
+ are known (see e.g., Moss, 2023, Lemma 2), hence estimation of 
+\begin_inset Formula $\nabla\gamma{}^{T}\Sigma\nabla\gamma$
+\end_inset
+
+ is easy.
 \end_layout
 
-\begin_layout Proposition
-\begin_inset CommandInset label
-LatexCommand label
-name "prop:asymptotic variances"
+\begin_layout Subsubsection*
+Uniform guessing distribution vs marginal guessing distribution
+\end_layout
 
+\begin_layout Standard
+Using the machinery just developed we can compare estimates and confidence
+ intervals for the classical 
+\begin_inset Formula $\ac$
 \end_inset
 
- Let 
-\begin_inset Formula $\nu$
+ (using the uniform guessing distribution model) and 
+\begin_inset Formula $\gamma$
 \end_inset
 
- be choosen from Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- and define 
-\begin_inset Formula $\gamma_{\nu}=\frac{\nu}{1-p_{a}+\nu}$
-\end_inset
-
-.
- The asymptotic variances are
-\begin_inset Formula 
-\[
-(\nabla\gamma)^{T}\Sigma_{\nu}(\nabla\gamma)=[...]
-\]
-
-\end_inset
-
-
+ using the marginal guessing distribution model.
 \end_layout
 
 \begin_layout Subsubsection*
@@ -7679,100 +7601,6 @@ literal "false"
 
  worked best.
  We verified the appropriate degrees of freedom using simulations.
-\end_layout
-
-\begin_layout Subsection*
-Covariance between 
-\begin_inset Formula $\hat{p}_{a}$
-\end_inset
-
- and 
-\begin_inset Formula $\hat{\nu}$
-\end_inset
-
- 
-\begin_inset CommandInset label
-LatexCommand label
-name "subsec:covariance"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Observe that all 
-\begin_inset Formula $\hat{\nu}$
-\end_inset
-
-s in Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- are functions of 
-\begin_inset Formula $p_{wa}$
-\end_inset
-
-, 
-\begin_inset Formula $p_{wf}$
-\end_inset
-
- and 
-\begin_inset Formula $p_{wc}$
-\end_inset
-
-.
- Denote the covariance matrix of 
-\begin_inset Formula $\hat{p}_{wa},\hat{p}_{wf}$
-\end_inset
-
- and 
-\begin_inset Formula $\hat{p}_{wc}$
-\end_inset
-
- by 
-\begin_inset Formula $\Sigma$
-\end_inset
-
-.
-\begin_inset Formula 
-\[
-\phi_{y}(x,y,z)=\left[\begin{array}{c}
-x\\
-\frac{x-y}{1-y}
-\end{array}\right].
-\]
-
-\end_inset
-
-The gradient of this vector is
-\begin_inset Formula 
-\[
-\Cov\left(\hat{p}_{a},\frac{\hat{p}_{a}-\hat{p}_{wc}}{1-\hat{p}_{wc}}\right)=
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-1.) Brennan–Prediger.
- The
-\begin_inset Formula 
-\[
-\frac{\nu}{1-p_{a}+\nu}=\frac{p_{a}-p_{c}}{(p_{a}-2)p_{c}+1}
-\]
-
-\end_inset
-
-
 \end_layout
 
 \end_body
