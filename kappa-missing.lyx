@@ -1,0 +1,704 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass amsart
+\begin_preamble
+\usepackage{xcolor}
+\definecolor{refred}{RGB}{120,30,30}
+\definecolor{citeblue}{RGB}{0,0,120}
+\definecolor{urlblue}{RGB}{40,40,150}
+
+\usepackage[
+colorlinks=true,
+linkcolor=refred,
+citecolor=citeblue,
+urlcolor=urlblue
+]{hyperref}
+\end_preamble
+\use_default_options true
+\begin_removed_modules
+theorems-ams
+\end_removed_modules
+\begin_modules
+eqs-within-sections
+figs-within-sections
+theorems-ams-bytype
+theorems-ams-extended-bytype
+\end_modules
+\maintain_unincluded_children no
+\language american
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement class
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize a4
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine natbib
+\cite_engine_type authoryear
+\biblio_style apacite
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 3cm
+\topmargin 3cm
+\rightmargin 3cm
+\bottommargin 3cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Agreement coefficients with missing raters
+\end_layout
+
+\begin_layout Author
+Jonas Moss
+\end_layout
+
+\begin_layout Date
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+today
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Address
+Department of Data Science and Analytics,
+ BI Norwegian Business School,
+ Oslo,
+ Norway
+\end_layout
+
+\begin_layout Abstract
+Missing data is a pervasive challenge in studies of inter-rater agreement,
+ yet common agreement coefficients,
+ such as Conger’s kappa,
+ Fleiss’ kappa,
+ and the Brennan–Prediger coefficient,
+ are often applied without clear justification when ratings are incomplete.
+ We develop a general framework for handling missing data in agreement analysis that supports both categorical and continuous responses,
+ allows arbitrary disagreement functions,
+ and hold provided the data is pairwise missing completely at random.
+ We characterize when pairwise-available estimators remain consistent,
+ derive their correct standard errors,
+ and identify settings where conventional formulas fail.
+ We then propose reweighted kappa estimators that remain valid under substantially weaker assumptions.
+ Asymptotic covariance matrices enable joint inference across coefficients,
+ and simulations verify the theoretical claims.
+ The methods are implemented in an R package 
+\begin_inset Formula $\mathtt{misskappa}$
+\end_inset
+
+ designed for applied use.
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+A chance-corrected agreement coefficient is any coefficient on the form 
+\begin_inset Formula $\kappa_{x}=1-\frac{d}{d_{x}}$
+\end_inset
+
+ where 
+\begin_inset Formula $d$
+\end_inset
+
+ is a measure of disagreement and 
+\begin_inset Formula $d_{x}$
+\end_inset
+
+ a measure of chance disagreement.
+ 
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ be a random vector with 
+\begin_inset Formula $R$
+\end_inset
+
+ components.
+ The vector contains all rating data,
+ including potentially unobserved ratings.
+ Define disagreement as
+\begin_inset Formula 
+\begin{equation}
+d=\binom{R}{2}^{-1}\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})],\label{eq:population disagreement}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $l(x,y)\geq0$
+\end_inset
+
+ is a symmetric loss function satisfying 
+\begin_inset Formula $l(x,x)=0$
+\end_inset
+
+.
+ The by far most common are the nominal (
+\begin_inset Formula $l(x,y)=1[x\neq y]$
+\end_inset
+
+),
+ absolute value (
+\begin_inset Formula $l(x,y)=|x-y|$
+\end_inset
+
+),
+ and quadratic (
+\begin_inset Formula $l(x,y)=(x-y)^{2}$
+\end_inset
+
+) losses.
+\end_layout
+
+\begin_layout Standard
+We cover three variants of chance disagreement,
+ the Fleiss-type [[]],
+ Cohen-type [[]],
+ and Brennan–Prediger-type [[]].
+ 
+\begin_inset Formula 
+\begin{eqnarray}
+d_{F} & = & R^{-2}\sum_{j,k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:fleiss disagreement}\\
+d_{C} & = & \binom{R}{2}^{-1}\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:cohendisagreement}\\
+d_{BP} & = & [[]],\label{eq:bp disagreement}
+\end{eqnarray}
+
+\end_inset
+
+where 
+\begin_inset Formula $X_{i\cdot}^{\star}$
+\end_inset
+
+ and 
+\begin_inset Formula $X_{i'\cdot}^{\star}$
+\end_inset
+
+ are independent samples from the same distribution.
+ Interpretations of these can chance disagreements can be found elsewhere,
+ see e.g.,
+ [[]],
+ [[]],
+ [[]].
+\end_layout
+
+\begin_layout Standard
+For complete data,
+ the kappa coefficients are estimated using the natural sample counterparts.
+ Their standard errors may be found using either multinomial theory [[]] or 
+\begin_inset Formula $U$
+\end_inset
+
+-statistics [Moss].
+ 
+\end_layout
+
+\begin_layout Standard
+When dealing with incomplete data we do not observe all ratings in
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+.
+ We formalize this by defining
+\begin_inset Formula 
+\[
+X_{j}=\begin{cases}
+X_{j}^{\star} & M_{j}=1,\\
+\text{NA} & \text{otherwise}.
+\end{cases}
+\]
+
+\end_inset
+
+ where 
+\begin_inset Formula $M$
+\end_inset
+
+ is the missingness indicator and 
+\begin_inset Formula $\text{NA}$
+\end_inset
+
+ denotes a missing value.
+ We naturally assume that 
+\begin_inset Formula $X_{j}^{\star}$
+\end_inset
+
+ cannot take on the value 
+\begin_inset Formula $\text{NA}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Section
+Estimators
+\end_layout
+
+\begin_layout Subsection
+The available-case estimator
+\end_layout
+
+\begin_layout Standard
+The available case estimator is the default estimator in the popular 
+\begin_inset Formula $\mathtt{R}$
+\end_inset
+
+ package 
+\begin_inset Formula $\mathtt{irrCAC}$
+\end_inset
+
+ when the data contains missing values.
+ We may define the available case Conger's kappa estimator as 
+\begin_inset Formula $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$
+\end_inset
+
+,
+ where 
+\begin_inset Formula 
+\begin{eqnarray*}
+\hat{d}^{AC} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}},\quad\hat{d}_{C}^{AC}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}}.
+\end{eqnarray*}
+
+\end_inset
+
+Observe that 
+\begin_inset Formula $l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}=l(X_{ij},X_{ik})$
+\end_inset
+
+ if we extend the loss 
+\begin_inset Formula $l$
+\end_inset
+
+ to satisfy 
+\begin_inset Formula $l(x,y)=0$
+\end_inset
+
+ when 
+\begin_inset Formula $x$
+\end_inset
+
+ or 
+\begin_inset Formula $y$
+\end_inset
+
+ is 
+\begin_inset Formula $\text{NA}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Proposition
+\begin_inset CommandInset label
+LatexCommand label
+name "prop:The-available-case"
+
+\end_inset
+
+The available case estimator is strongly consistent if either
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+The raters are exchangeable and data is missing pairwise completely at random.
+\end_layout
+
+\begin_layout Enumerate
+The raters are not exchangeable and data is missing uniformly at random.
+\end_layout
+
+\end_deeper
+\begin_layout Proposition
+The estimator is in general not consistent when data is missing at random,
+ even when raters are exchangeable.
+ 
+\end_layout
+
+\begin_layout Remark
+A weaker condition but arguably useless condition suffices for consistency with exchangeable raters.
+ See the proof for details.
+ 
+\end_layout
+
+\begin_layout Definition
+\begin_inset CommandInset label
+LatexCommand label
+name "def:missingness"
+
+\end_inset
+
+ Let 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ be a random vector of size 
+\begin_inset Formula $R$
+\end_inset
+
+ and 
+\begin_inset Formula $X$
+\end_inset
+
+ be the observed incomplete data.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+The components of 
+\begin_inset Formula $X$
+\end_inset
+
+ are missing 
+\emph on
+uniformly at random
+\emph default
+ if the component-wise missingness probabilities are constant (i.e.,
+ 
+\begin_inset Formula $P(M_{i})=\pi$
+\end_inset
+
+ for all 
+\begin_inset Formula $i$
+\end_inset
+
+) and 
+\begin_inset Formula $M_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{j}$
+\end_inset
+
+ are independent.
+\end_layout
+
+\begin_layout Enumerate
+Define 
+\begin_inset Formula $\pi_{I}(x^{\star})=P\left(\bigcap_{i\in I}\{M_{i}=1\}\mid x^{\star}\right)$
+\end_inset
+
+.
+ The components of 
+\begin_inset Formula $X$
+\end_inset
+
+ are missing 
+\emph on
+pairwise completely at random
+\emph default
+ (PMCAR) if 
+\begin_inset Formula $\pi_{I}(x^{\star})$
+\end_inset
+
+ is constant in 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+ for all 
+\begin_inset Formula $|I|\leq2$
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\begin_layout Definition
+Observe that 
+\begin_inset Formula $X$
+\end_inset
+
+ is MCAR implies PMCAR.
+ For 
+\begin_inset Formula $X$
+\end_inset
+
+ is MCAR iff 
+\begin_inset Formula $\pi_{I}(x^{\star})$
+\end_inset
+
+ is constant in 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+ for any pattern 
+\begin_inset Formula $I\subseteq\{1,\ldots,R\}$
+\end_inset
+
+.
+ On the other hand,
+ PMCAR does not imply MCAR,
+ it does not even imply MAR!
+ That said,
+ MAR mechanisms that are not MCAR will typically not be MCAR [[investigate]].
+\end_layout
+
+\begin_layout Subsection
+Inverse probability-weighted estimator
+\end_layout
+
+\begin_layout Standard
+The inverse probability-weighted estimator is
+\begin_inset Formula 
+\begin{eqnarray*}
+\hat{d} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}},\quad\hat{d}_{C}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
+\end{eqnarray*}
+
+\end_inset
+
+where 
+\begin_inset Formula $\pi_{j}=\hat{P}(M_{j}=1)$
+\end_inset
+
+ and 
+\begin_inset Formula $\pi_{jk}=\hat{P}(M_{j}M_{k}=1)$
+\end_inset
+
+,
+ with 
+\begin_inset Formula $\hat{P}$
+\end_inset
+
+ being the empirical probabilities.
+ 
+\end_layout
+
+\begin_layout Proposition
+The estimators 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+ are consistent for 
+\begin_inset Formula $X\in\{C,F,BP\}$
+\end_inset
+
+ when the data is missing missing pairwise completely at random,
+ exchangeable raters or not.
+\end_layout
+
+\begin_layout Standard
+Let's consider what 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+ is actually consistent for.
+ Taking expectations we find 
+\begin_inset Formula 
+\begin{eqnarray*}
+E[\hat{d}] & = & \frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}]}{\sum_{j<k}E[M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}]}=\frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}]}{\binom{J}{2}},\\
+E[\hat{d}_{C}] & = & \frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}]}{\sum_{j<k}E[M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}]}=\frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}]}{\binom{J}{2}}.
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Inference
+\end_layout
+
+\begin_layout Subsection
+Inferential theory
+\end_layout
+
+\begin_layout Standard
+Both 
+\begin_inset Formula $\hat{\kappa}_{X}^{AC}$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+ are asymptotically normal under mild conditions that crucially depends on the interaction between the loss function and the distribution of 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ and 
+\begin_inset Formula $M$
+\end_inset
+
+.
+ Technically speaking,
+ we require the random values 
+\begin_inset Formula $l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}$
+\end_inset
+
+ to have finite fourth moments.
+ We omit this and similar conditions in our discussion below,
+ as we find it very unlikely the regularity conditions do not hold.
+\end_layout
+
+\begin_layout Standard
+An application of the delta method on 
+\begin_inset Formula $\hat{\kappa}_{X}=1-\hat{d}/\hat{d}_{X}$
+\end_inset
+
+ yields the gradient 
+\begin_inset Formula $d_{X}^{-2}(-1,d)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+For the available-case estimator we use 
+\begin_inset Formula $U$
+\end_inset
+
+-statistics combined with the delta method to find the covariance of 
+\begin_inset Formula $\hat{d}$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{d}_{X}$
+\end_inset
+
+.
+ The proof is not enlightening and essentially a copy-paste of classical theory;
+ see the online appendix for details.
+\end_layout
+
+\begin_layout Standard
+The 
+\end_layout
+
+\begin_layout Subsection
+Computation 
+\end_layout
+
+\begin_layout Section
+Illustrations
+\end_layout
+
+\begin_layout Section
+Concluding remarks
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+btprint "btPrintCited"
+bibfiles "misskappa"
+options "bibtotoc,apalike"
+encoding "default"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+appendix
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Appendix 1
+\end_layout
+
+\begin_layout Section*
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

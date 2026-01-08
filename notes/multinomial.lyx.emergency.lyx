@@ -1,0 +1,6136 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass amsart
+\use_default_options true
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+\end_modules
+\maintain_unincluded_children no
+\language american
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement class
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Kappas with incomplete data:
+ Inference and estimation
+\end_layout
+
+\begin_layout Author
+Jonas Moss,
+ Rutger van Oest
+\end_layout
+
+\begin_layout Abstract
+Weighted agreement coefficients are widely used but neither inference or estimation of these coefficient for the widely encountered case of incomplete data have been properly handled.
+ In this paper we illustrate and prove that common methods of handling missing data yield inconsistent estimators and incorrect standard errors.
+ Then we introduce efficient estimation and inference for the weighted kappa coefficients of Fleiss,
+ Conger (i.e.,
+ multirater Cohen) and Brennan–Prediger for discrete data when data is missing at random.
+ The estimation is based on maximum likelihood and directly generalizes the estimates and inferential methods found in the literature.
+ We also present estimators for Fleiss' kappa and Brennan–Prediger for count data,
+ where the estimators are consistent and efficient provided that either (a) the raters are exchangeable and data is missing at random,
+ or (b) the missingness mechanism itself is exchangeable.
+ Both conditions are much stronger than those required for raw data.
+ We also present and 
+\begin_inset Formula $\mathtt{R}$
+\end_inset
+
+ package for using these techniques and an associated 
+\begin_inset Formula $\text{\ensuremath{\mathtt{C++}}}$
+\end_inset
+
+ header file.
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+A chance-corrected agreement coefficient is any coefficient on the form 
+\begin_inset Formula $\kappa_{x}=1-\frac{d}{d_{x}}$
+\end_inset
+
+ where 
+\begin_inset Formula $d$
+\end_inset
+
+ is a measure of disagreement and 
+\begin_inset Formula $d_{x}$
+\end_inset
+
+ a measure of chance disagreement.
+ Let 
+\begin_inset Formula $l(x,y)\geq0$
+\end_inset
+
+ be a symmetric loss function satisfying 
+\begin_inset Formula $l(x,x)=0$
+\end_inset
+
+.
+ The most common are nominal 
+\begin_inset Formula $l(x,y)=1[x\neq y]$
+\end_inset
+
+,
+ absolute value (or linear) 
+\begin_inset Formula $l(x,y)=|x-y|$
+\end_inset
+
+,
+ and quadratic 
+\begin_inset Formula $l(x,y)=(x-y)^{2}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $X$
+\end_inset
+
+ be a random vector with 
+\begin_inset Formula $R$
+\end_inset
+
+ components.
+ Define disagreement as
+\begin_inset Formula 
+\begin{equation}
+d=\binom{R}{2}^{-1}\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})].\label{eq:population disagreement}
+\end{equation}
+
+\end_inset
+
+We cover three variants of chance disagreement,
+ the Fleiss-type,
+ Cohen-type,
+ and Brennan–Prediger-type.
+ 
+\begin_inset Formula 
+\begin{eqnarray}
+d_{F} & = & R^{-2}\sum_{j,k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:fleiss disagreement}\\
+d_{C} & = & \binom{R}{2}^{-1}\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:cohendisagreement}\\
+d_{BP} & =\label{eq:bp disagreement}
+\end{eqnarray}
+
+\end_inset
+
+Interpretations of these can be found elsewhere,
+ e.g.,
+ [[]],
+ [[]],
+ [[]].
+\end_layout
+
+\begin_layout Standard
+For complete data the kappa coefficients are estimated using the natural sample counterparts.
+ Their standard errors may be found using either multinomial theory [cite] or 
+\begin_inset Formula $U$
+\end_inset
+
+-statistics [Moss].
+ There are
+\end_layout
+
+\begin_layout Itemize
+Hypothesis:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Counts are efficient and AC is 
+\emph on
+consistent
+\emph default
+ if either:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+(a) Ratings are exchangeable and missingness is MAR or,
+\end_layout
+
+\begin_layout Itemize
+(b) Ratings are 
+\emph on
+not
+\emph default
+ exchangeable but we have exchangeable MCAR.
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Subsection
+Analysis of missing data
+\end_layout
+
+\begin_layout Enumerate
+Ignorability,
+ MCAR,
+ MAR,
+ and MNAR.
+\end_layout
+
+\begin_layout Enumerate
+Data coarsening and
+\end_layout
+
+\begin_layout Enumerate
+Inefficiency of available case and 
+\end_layout
+
+\begin_layout Enumerate
+Multiple imputation
+\end_layout
+
+\begin_layout Enumerate
+The benefit of discrete data
+\end_layout
+
+\begin_layout Subsection
+Exchangeable raters 
+\end_layout
+
+\begin_layout Standard
+Define exchangeable raters.
+\end_layout
+
+\begin_layout Standard
+Fleiss' kappa = Conger's kappa with exchangeable raters.
+\end_layout
+
+\begin_layout Standard
+But Fleiss' kappa != Conger's kappa without exchangeable raters and still make sense.
+\end_layout
+
+\begin_layout Standard
+Count data is sufficient for the parameters under exchangeability.
+\end_layout
+
+\begin_layout Standard
+Both Brennan–Prediger and Fleiss' kappa can be efficiently estimated from count data.
+\end_layout
+
+\begin_layout Section
+Pairwise available case estimator
+\end_layout
+
+\begin_layout Standard
+The available case estimator is a popular estimator of kappa coefficients with missing data.
+ It is the default estimator in the R package irrCAC when the data contains missing values.
+ If we let 
+\begin_inset Formula $X_{i}^{\star}$
+\end_inset
+
+ be the complete observations and 
+\begin_inset Formula $M_{ij}$
+\end_inset
+
+ the missingness indicators for the 
+\begin_inset Formula $j$
+\end_inset
+
+th rater,
+ we may define the available case Conger's kappa estimator as 
+\begin_inset Formula $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$
+\end_inset
+
+ where 
+\begin_inset Formula 
+\begin{eqnarray*}
+\hat{d}^{AC} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}},\quad\hat{d}_{C}^{AC}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}}.
+\end{eqnarray*}
+
+\end_inset
+
+The available case estimators of Fleiss' kappa and the Brennan–Prediger coefficient are defined in the same way.
+ 
+\end_layout
+
+\begin_layout Standard
+The estimator has been studied,
+ using simulation studies,
+ by e.g.
+ Warrens et al.
+ 2025 for two raters and quadratic weights.
+ Our first goal is to find 
+\emph on
+reasonable 
+\emph default
+miminal conditions for when the estimator is consistent.
+ To that we introduce a condition.
+\end_layout
+
+\begin_layout Definition
+\begin_inset CommandInset label
+LatexCommand label
+name "def:missingness"
+
+\end_inset
+
+ Let 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ be a random vector of size 
+\begin_inset Formula $R$
+\end_inset
+
+ and 
+\begin_inset Formula $X$
+\end_inset
+
+ be the observed incomplete data.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+The components of 
+\begin_inset Formula $X$
+\end_inset
+
+ are missing 
+\emph on
+uniformly at random
+\emph default
+ if the component-wise missingness probabilities are constant (i.e.,
+ 
+\begin_inset Formula $P(M_{i})=\pi$
+\end_inset
+
+ for all 
+\begin_inset Formula $i$
+\end_inset
+
+) and 
+\begin_inset Formula $M_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{j}$
+\end_inset
+
+ are independent.
+\end_layout
+
+\begin_layout Enumerate
+Define 
+\begin_inset Formula $C_{I}(x^{\star})=P\left(\bigcap_{i\in I}\{M_{i}=1\}\mid x^{\star}\right)$
+\end_inset
+
+.
+ The components of 
+\begin_inset Formula $X$
+\end_inset
+
+ are missing 
+\emph on
+pairwise completely at random
+\emph default
+ (PMCAR) if 
+\begin_inset Formula $C_{I}(x^{\star})$
+\end_inset
+
+ is constant in 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+ for all 
+\begin_inset Formula $|I|\leq2$
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\begin_layout Definition
+Observe that 
+\begin_inset Formula $X$
+\end_inset
+
+ is MCAR implies PMCAR.
+ For 
+\begin_inset Formula $X$
+\end_inset
+
+ is MCAR iff 
+\begin_inset Formula $C_{I}(x^{\star})$
+\end_inset
+
+ is constant in 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+ for any pattern 
+\begin_inset Formula $I\subseteq\{1,\ldots,R\}$
+\end_inset
+
+.
+ On the other hand,
+ PMCAR does not imply MCAR,
+ it does not even imply MAR.
+ 
+\end_layout
+
+\begin_layout Example
+\begin_inset CommandInset label
+LatexCommand label
+name "exa:PMCAR but not MAR"
+
+\end_inset
+
+ Let 
+\begin_inset Formula $R=3$
+\end_inset
+
+ and the number of categories be 
+\begin_inset Formula $2$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $A$
+\end_inset
+
+ be any non-empty subset of 
+\begin_inset Formula $\mathcal{X}$
+\end_inset
+
+,
+ e.g.,
+ 
+\begin_inset Formula $A=\{x^{\star}\mid\sum_{j=1}^{R}x_{j}^{\star}=2\}$
+\end_inset
+
+.
+ Define the missingness mechanism as follows:
+\end_layout
+
+\begin_layout Example
+\begin_inset Float table
+placement document
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Missingness mechanism that is PMCAR but not MCAR
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="4">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\sum_{j=1}^{R}m_{j}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\#$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $p(m\mid x^{\star}\in A)$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $p(m\mid x^{\star}\in A^{C})$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.05$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $3$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.15$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $3$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.15$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $3$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.05$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+Now we may verify that 
+\begin_inset Formula $C_{1}(A)=0.2+2\cdot0.1+0.1$
+\end_inset
+
+.
+ Likewise,
+ 
+\begin_inset Formula $C_{1}(A^{C})=0.15+2\cdot0.15+0.05.$
+\end_inset
+
+ By symmetry and counting we find
+\begin_inset Formula 
+\begin{eqnarray*}
+C_{1} & = & C_{2}=C_{3}=0.5,\\
+C_{12} & = & C_{13}=C_{23}=0.2,
+\end{eqnarray*}
+
+\end_inset
+
+so the mechanism is uniform PMCAR.
+ However,
+ 
+\begin_inset Formula $C_{123}(A)=0.1$
+\end_inset
+
+ and 
+\begin_inset Formula $C_{123}(A^{C})=0.05$
+\end_inset
+
+,
+ so the mechanism is not MCAR.
+ In fact,
+ it is not even MAR,
+ as the missingness mechanism depends probabilistically on 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In practice this slightly weaker concept probably has limited utility since they are hard to verify.
+ But they are the most suitable concepts for the Proposition below.
+\end_layout
+
+\begin_layout Proposition
+The available case estimator is strongly consistent if either
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+The raters are exchangeable and data is missing pairwise completely at random.
+\end_layout
+
+\begin_layout Enumerate
+The raters are not exchangeable and data is missing uniformly at random.
+\end_layout
+
+\end_deeper
+\begin_layout Proposition
+The estimator is in general not consistent when data is missing at random,
+ even when raters are exchangeable.
+ Moreover,
+ the standard errors calculated using the usual machinery are correct.
+ 
+\end_layout
+
+\begin_layout Proof
+We may write 
+\begin_inset Formula 
+\begin{eqnarray*}
+E[l(X_{j},X_{k})M_{j}M_{k}] & = & \sum_{x^{\star}}p(x^{\star})E[l(X_{j},X_{k})M_{j}M_{k}\mid x^{\star}].
+\end{eqnarray*}
+
+\end_inset
+
+Since we are dealing with missing data we may write 
+\begin_inset Formula $p(x\mid x^{\star})=1[x\preceq x^{\star}]p(x\mid x^{\star})$
+\end_inset
+
+.
+ The expectation on the right-hand side equals
+\begin_inset Formula 
+\[
+E[l(X_{j},X_{k})M_{j}M_{k}\mid x^{\star}]=\sum_{x\preceq x^{\star}}l(x_{j},x_{k})1[x_{j}\neq\text{NA}]1[x_{k}\neq\text{NA}]p(x\mid x^{\star}).
+\]
+
+\end_inset
+
+Now define 
+\begin_inset Formula $C_{jk}(x^{\star})=\sum_{x\preceq x^{\star}}1[x_{j}\neq\text{NA}]1[x_{k}\neq\text{NA}]p(x\mid x^{\star}).$
+\end_inset
+
+ Then 
+\begin_inset Formula $E[l(X_{j},X_{k})M_{j}M_{k}\mid x^{\star}]=l(x_{j}^{\star},x_{k}^{\star})C_{jk}(x^{\star}).$
+\end_inset
+
+ It follows that
+\begin_inset Formula 
+\[
+\sum_{j<k}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}]=\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})].
+\]
+
+\end_inset
+
+The same analysis yields 
+\begin_inset Formula $E[\sum_{j<k}M_{ij}M_{ik}]=E[C_{jk}(X^{\star})]$
+\end_inset
+
+.
+ By the law of large numbers and the continuous mapping theorem we have have 
+\begin_inset Formula $\hat{d}^{AC}\stackrel{a.s.}{\to}\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})]/\sum_{j<k}E[C_{jk}(X^{\star})]$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Proof
+We investigate 
+\begin_inset Formula $\hat{d}_{C}^{AC}$
+\end_inset
+
+ next.
+ Then
+\begin_inset Formula 
+\[
+E[l(X_{ij},X_{i'k})M_{j}M_{k}]=\sum_{x^{\star}}\sum_{y^{\star}}p(x^{\star})E[l(X_{j}^{\star},Y_{k}^{\star})M_{j}N_{k}\mid x^{\star},y^{\star}]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+E[l(X_{j},Y_{k})M_{j}N_{k}\mid x^{\star},y^{\star}]=\sum_{x\preceq x^{\star}}\sum_{y\preceq y^{\star}}l(x_{j}^{\star},y_{k}^{\star})1[x_{j}\neq\text{NA}]1[y_{k}\neq\text{NA}]p(x\mid x^{\star})p(y\mid y^{\star})
+\]
+
+\end_inset
+
+so defining 
+\begin_inset Formula $C_{j}(x^{\star})=\sum_{x\preceq x^{\star}}1[x_{j}\neq\text{NA}]p(x\mid x^{\star})$
+\end_inset
+
+ we get 
+\begin_inset Formula $E[l(X_{j},Y_{k})M_{j}N_{k}\mid x^{\star},y^{\star}]=C_{j}(x^{\star})C_{k}(y^{\star})l(x_{j},y_{k})$
+\end_inset
+
+ when and 
+\begin_inset Formula 
+\[
+\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})M_{ij}M_{i'k}]=\sum_{j<k}E[C_{j}(X^{\star})C_{k}(Y^{\star})l(X_{j},Y_{k})].
+\]
+
+\end_inset
+
+It follows that
+\begin_inset Formula 
+\[
+E[\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}]=n(n-1)\sum_{j<k}E[l(X_{j},Y_{k})C_{j}(X^{\star})C_{k}(Y^{\star})]+n\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})].
+\]
+
+\end_inset
+
+On the other hand,
+ 
+\begin_inset Formula 
+\[
+\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}=n(n-1)\sum_{j<k}E[C_{j}(X^{\star})C_{k}(Y^{\star})]+n\sum_{j<k}E[C_{jk}(X^{\star})].
+\]
+
+\end_inset
+
+ We ignore the negligible 
+\begin_inset Formula $n$
+\end_inset
+
+ terms forming the fraction,
+ and we get 
+\begin_inset Formula $\hat{d}_{C}^{AC}\stackrel{a.s.}{\to}\sum_{j<k}E[l(X_{j},Y_{k})C_{j}(X^{\star})C_{k}(Y^{\star})]/\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})].$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Proof
+In conclusion,
+ 
+\begin_inset Formula 
+\[
+1-\frac{\hat{d}^{AC}}{\hat{d}_{C}^{AC}}\stackrel{a.s.}{\to}1-\left(\frac{\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})]}{\sum_{j<k}E[C_{jk}(X^{\star})]}\right)/\left(\frac{\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})C_{j}(X^{\star})C_{k}(Y^{\star})]}{\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})]}\right),
+\]
+
+\end_inset
+
+and this must be equal to 
+\begin_inset Formula $1-\frac{\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})]}{\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})}$
+\end_inset
+
+ for the estimator to be consistent.
+ The only obvious condition for this to happen is factorization in both 
+\begin_inset Formula $\hat{d}^{AC}$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{d}_{C}^{AC}$
+\end_inset
+
+,
+ i.e.,
+ 
+\begin_inset Formula $E[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})]=E[l(X_{j}^{\star},X_{k}^{\star})]E[C_{jk}(X^{\star})]$
+\end_inset
+
+ and 
+\begin_inset Formula $\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})C_{j}(X^{\star})C_{k}(Y^{\star})]=\sum_{j<k}E[C_{j}(X^{\star})C_{k}(Y^{\star})]$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Proof
+Now suppose the raters are exchangeable and the missingness is,
+ in fact,
+ missing pairwise completely at random.
+ Then 
+\begin_inset Formula $C_{jk}(x^{\star})$
+\end_inset
+
+ and 
+\begin_inset Formula $C_{j}(x^{\star})$
+\end_inset
+
+ are constant in 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+ for each 
+\begin_inset Formula $j,k$
+\end_inset
+
+ and 
+\begin_inset Formula $E[l(X_{j}^{\star},X_{k}^{\star})]=E[l(X_{l}^{\star},X_{m}^{\star})]$
+\end_inset
+
+ for all rater indices.
+ So we obtain
+\begin_inset Formula 
+\begin{eqnarray*}
+1-\frac{\hat{d}^{AC}}{\hat{d}_{C}^{AC}} & \stackrel{a.s.}{\to} & 1-\left(\frac{\sum_{j<k}E[C_{jk}(X^{\star})]E[l(X_{j}^{\star},X_{k}^{\star})]}{\sum_{j<k}E[C_{jk}(X^{\star})]}\right)/\left(\frac{\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})]E[l(X_{j}^{\star},Y_{k}^{\star})]}{\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})]}\right),\\
+ &  & 1-\left(\frac{\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})]}{\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})]}\right).
+\end{eqnarray*}
+
+\end_inset
+
+Now suppose the raters aren't exchangeable.
+ For the expressions for factorize we need both 
+\begin_inset Formula $E[C_{jk}(X^{\star})]E[l(X_{j}^{\star},X_{k}^{\star})]=E[C_{jk}(X^{\star})E[l(X_{j}^{\star},X_{k}^{\star})]$
+\end_inset
+
+ and all 
+\begin_inset Formula $E[C_{jk}(X^{\star})]E[l(X_{j}^{\star},X_{k}^{\star})]$
+\end_inset
+
+ to be equal across 
+\begin_inset Formula $jk$
+\end_inset
+
+.
+ Thus all 
+\begin_inset Formula $C_{jk}(X^{\star})$
+\end_inset
+
+ must be equal.
+ Since this must hold for chance agreement too,
+ we require all 
+\begin_inset Formula $C_{j}(x^{\star})$
+\end_inset
+
+ to be equal as well.
+ This happens when the missingness is uniform PMCAR.
+\end_layout
+
+\begin_layout Proof
+Suppose 
+\begin_inset Formula $C_{j}(x^{\star})=c_{1}$
+\end_inset
+
+ is constant acroess 
+\begin_inset Formula $j,x^{\star}$
+\end_inset
+
+ and 
+\begin_inset Formula $C_{jk}(x^{\star})=C_{12}$
+\end_inset
+
+ is constant across 
+\begin_inset Formula $j,k,x^{\star}$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula 
+\begin{eqnarray*}
+1-\frac{\hat{d}^{AC}}{\hat{d}_{C}^{AC}} & \stackrel{a.s.}{\to} & 1-\left(\frac{\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})]}{\sum_{j<k}E[C_{jk}(X^{\star})]}\right)/\left(\frac{\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})C_{j}(X^{\star})C_{k}(Y^{\star})]}{\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})]}\right),\\
+ & = & 1-\left(\frac{\sum_{j<k}c_{12}E[l(X_{j}^{\star},X_{k}^{\star})]}{\sum_{j<k}c_{12}}\right)/\left(\frac{\sum_{j<k}c_{1}^{2}E[l(X_{j}^{\star},Y_{k}^{\star})]}{\sum_{j<k}c_{1}^{2}}\right),\\
+ & = & 1-\frac{\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})]}{\sum_{j<k}E[l(X_{j}^{\star},Y_{k}^{\star})]}\\
+ & = & \kappa_{C}
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Remark
+A weaker condition but arguably useless condition suffices for consistency with exchangeable raters.
+ See the proof for details.
+\end_layout
+
+\begin_layout Example
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+Consistency.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Example
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+Inconsistency.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The EM algorithm machinery
+\end_layout
+
+\begin_layout Section
+Maximum likelihood
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray}
+\sqrt{n}(\hat{\kappa}-\kappa) & \stackrel{d}{\to} & N(0,(\nabla_{\theta}\kappa)^{T}\Sigma_{\theta}\nabla_{\theta}\kappa),\label{eq:kappa-theta-limit}\\
+\sqrt{n}(\hat{\kappa}-\kappa) & \stackrel{d}{\to} & N(0,(\nabla_{\phi}\kappa)^{T}\Sigma_{\phi}\nabla_{\phi}\kappa).\label{eq:kappa-phi-limit}
+\end{eqnarray}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Missingness
+\end_layout
+
+\begin_layout Standard
+We will make the standard assumption that data is missing at random (MAR),
+ the most general missingness mechanism that does not require us to model the missingness directly .
+ There are many explainers for what his means in the literature,
+ but mathematically speaking it reduces to 
+\begin_inset Formula $p_{\theta}(x\mid z)=1[x\preceq z]c(x)$
+\end_inset
+
+ for all 
+\begin_inset Formula $\theta$
+\end_inset
+
+ and 
+\begin_inset Formula $x$
+\end_inset
+
+ observed in the sample (cite [Rubin 1976,
+ one more]),
+ where 
+\begin_inset Formula $x\preceq z$
+\end_inset
+
+ if 
+\begin_inset Formula $z$
+\end_inset
+
+ is a valid completion of 
+\begin_inset Formula $x$
+\end_inset
+
+.
+ It's well known from the EM literature [Schafer] that the maximum likelihood estimate 
+\begin_inset Formula $\hat{\theta}$
+\end_inset
+
+ can be computed by the following sequence of iterates,
+\begin_inset Formula 
+\begin{equation}
+\theta_{z}^{t+1}=\frac{\theta_{z}^{t}}{\sum_{x_{i}\preceq z}\theta_{z}^{t}}.\label{eq:em-step-1}
+\end{equation}
+
+\end_inset
+
+Details for we compute this in practice may be found in the appendix.
+ By standard theory 
+\begin_inset Formula $\hat{\theta}$
+\end_inset
+
+ is consistent for 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+ It's asymptotically normal and efficient when the true parameter vector satisfies 
+\begin_inset Formula $\theta_{z}>0$
+\end_inset
+
+ for all 
+\begin_inset Formula $z$
+\end_inset
+
+.
+ Then the asymptotic covariance matrix is the inverse Fisher information 
+\begin_inset Formula $I_{\theta}^{-1}$
+\end_inset
+
+.
+ Using Louis' method [cite] we may calculate the observed information
+\begin_inset Formula 
+\begin{equation}
+J_{\theta}=-E_{\theta}[\nabla^{2}\log p_{\theta}(Z)\mid x]+\Var_{\theta}[\nabla\log p_{\theta}(Z)\mid x].\label{eq:Louis method}
+\end{equation}
+
+\end_inset
+
+Then 
+\begin_inset Formula $J(\theta)_{ij}=\frac{\theta}{}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Expressions for 
+\begin_inset Formula $\kappa$
+\end_inset
+
+s
+\end_layout
+
+\begin_layout Standard
+Let's write down the three kappas in terms of 
+\begin_inset Formula $\theta$
+\end_inset
+
+ and 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ Define 
+\begin_inset Formula $d_{y^{\star}}=\frac{1}{2}\binom{R}{2}^{-1}y^{\star T}Ly^{\star}$
+\end_inset
+
+.
+ Then the expected disagreement equals 
+\begin_inset Formula $d(\phi)=\phi^{T}d.$
+\end_inset
+
+ The expected chance disagreement for the Brennan–Prediger coefficient is 
+\begin_inset Formula $d_{BP}(\phi)=c^{-2}1^{T}L1.$
+\end_inset
+
+ The Fleiss chance disagreement is 
+\begin_inset Formula $d_{F}(\phi)=p_{\phi}^{T}Lp_{\phi}.$
+\end_inset
+
+ We may write 
+\begin_inset Formula $p_{\phi}=M\phi$
+\end_inset
+
+ where 
+\begin_inset Formula $M_{k,y^{\star}}=r^{-1}y_{k}^{\star}$
+\end_inset
+
+,
+ so that 
+\begin_inset Formula $d_{F}(\phi)=\phi^{T}Q_{F}\phi$
+\end_inset
+
+ with 
+\begin_inset Formula $Q_{F}=M^{T}LM$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+We may write these in terms of 
+\begin_inset Formula $\theta$
+\end_inset
+
+ using 
+\begin_inset Formula $\phi=\Phi\theta$
+\end_inset
+
+.
+ For instance,
+ we have 
+\begin_inset Formula $d(\theta)=(\Phi\theta)^{T}d=\theta^{T}(\Phi^{T}d)$
+\end_inset
+
+.
+ Finally,
+ Cohen chance disagreement is 
+\begin_inset Formula $d_{C}(\theta)=\theta^{T}Q_{C}\theta$
+\end_inset
+
+,
+ where
+\begin_inset Formula 
+\begin{equation}
+Q_{C}=\binom{R}{2}^{-1}\sum_{j<k}W_{j}^{T}LW_{k},\quad(W_{j})_{k,x^{\star}}=1[x_{j}^{\star}=k].
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The kappa coefficients are now written so that we may easily apply the following to apply,
+ with appropriate 
+\begin_inset Formula $\eta,a,$
+\end_inset
+
+ and 
+\begin_inset Formula $B$
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+\nabla\left(1-\frac{\eta^{T}a}{\eta^{T}B\eta}\right)=-\frac{(\eta^{T}B\eta)a-(\eta^{T}a)(2B\eta)}{(\eta^{T}B\eta)^{2}},\label{eq:kappa-gradient}
+\end{equation}
+
+\end_inset
+
+to find the gradient of Fleiss' kappa and Conger's kappa.
+ The Brennan–Prediger coefficient is even easier,
+ since 
+\begin_inset Formula $\nabla(1-\eta^{T}a)=-a$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Count data
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $R$
+\end_inset
+
+ be the number of raters and 
+\begin_inset Formula $Y$
+\end_inset
+
+ be a vector of ratings with 
+\begin_inset Formula $Y_{j}\in\{1,\ldots,C\}$
+\end_inset
+
+ for component 
+\begin_inset Formula $j$
+\end_inset
+
+.
+ We will assume that 
+\begin_inset Formula $X$
+\end_inset
+
+ is finite exchangeable,
+ i.e.,
+\begin_inset Formula 
+\[
+p(y_{1},y_{2},\ldots,y_{R})=p(y_{\sigma(1)},y_{\sigma(2)},\ldots,y_{\sigma(R)}),\quad\text{for all permutations }\sigma.
+\]
+
+\end_inset
+
+Now define the count vector 
+\begin_inset Formula $\#[y]$
+\end_inset
+
+ using 
+\begin_inset Formula $\#[y]_{j}=\sum_{i=1}^{R}1[y_{i}=j]$
+\end_inset
+
+ with 
+\begin_inset Formula $j\in\{1,\ldots,C\}$
+\end_inset
+
+.
+ Defining 
+\begin_inset Formula $Z=\#[Y]$
+\end_inset
+
+ we have
+\begin_inset Formula 
+\[
+p(Y=y)=p(Z=\#[y]).
+\]
+
+\end_inset
+
+Since a count vector can be split into a vector on the form 
+\begin_inset Formula $(y_{1},y_{2},\ldots,y_{R})$
+\end_inset
+
+,
+ these representations are interchangeable.
+ We will stick to the count vector representation 
+\begin_inset Formula $Z$
+\end_inset
+
+ as its most illuminating.
+ The count vector 
+\begin_inset Formula $Z$
+\end_inset
+
+ is multinomially distributed over the set 
+\begin_inset Formula $\mathcal{Z}=\{Z\in R^{C}\mid\sum_{i=1}^{n}Z_{i}=R\}$
+\end_inset
+
+ which has cardinality 
+\begin_inset Formula $\binom{R+C-1}{R}$
+\end_inset
+
+.
+ Its parameter vector 
+\begin_inset Formula $\theta$
+\end_inset
+
+ has 
+\begin_inset Formula $\binom{R+C-1}{R}$
+\end_inset
+
+ entries 
+\begin_inset Formula $\theta_{z}$
+\end_inset
+
+,
+ one for each 
+\begin_inset Formula $z\in Z$
+\end_inset
+
+,
+ that sum to one.
+ Our job is to estimate 
+\begin_inset Formula $\theta_{z}$
+\end_inset
+
+ from potentially incomplete data,
+ and we will do this while placing no additional restrictions on 
+\begin_inset Formula $\theta$
+\end_inset
+
+;
+ this is sometimes called the 
+\emph on
+saturated
+\emph default
+ multinomial model (Schafer,
+ 1997).
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $x$
+\end_inset
+
+ be the observed count vector data and 
+\begin_inset Formula $z=\#[y]$
+\end_inset
+
+ be the complete data.
+ We will assume ignorable missingness,
+ i.e.,
+ the selection probability 
+\begin_inset Formula $p_{\theta}(x\mid z)=1[x\leq z]c(x)$
+\end_inset
+
+ for all 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+ It's well known that from the expectation-maximization literature that
+\begin_inset Formula 
+\begin{equation}
+\theta_{z}^{t+1}=\frac{\theta_{z}^{t}}{\sum_{x_{i}\leq z}\theta_{z}^{t}}\label{eq:em-step}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The 
+\begin_inset Formula $\mathtt{misskappa}$
+\end_inset
+
+ package
+\end_layout
+
+\begin_layout Section
+Literature discussion
+\end_layout
+
+\begin_layout Section
+Concluding remarks
+\end_layout
+
+\begin_layout Section*
+Appendix
+\end_layout
+
+\begin_layout Part*
+Keep 1
+\end_layout
+
+\begin_layout Section*
+Ideas
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $C>1$
+\end_inset
+
+ be a finite number of categories and let 
+\begin_inset Formula $\mathcal{C}=\{0,1,2,\ldots,C-1\}$
+\end_inset
+
+.
+ Since we are dealing with missing values we also require 
+\begin_inset Formula $\mathcal{C}_{\text{NA}}=\mathcal{C}\cup\{\text{NA}\}$
+\end_inset
+
+ where a categories is reported as 
+\begin_inset Formula $\textrm{NA}$
+\end_inset
+
+ if it is unobserved.
+ Let 
+\begin_inset Formula $R>1$
+\end_inset
+
+ be the finite number of raters and consider a random variable 
+\begin_inset Formula $X^{\star}\in C^{R}$
+\end_inset
+
+.
+ The distribution of 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ is parameterized by the vector 
+\begin_inset Formula $\theta$
+\end_inset
+
+ with 
+\begin_inset Formula $p_{\theta}(x^{\star})=\theta_{x^{\star}}$
+\end_inset
+
+.
+ We do not necessarily observe 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+ directly,
+ however.
+ Instead we observe 
+\begin_inset Formula $x\in\mathcal{C}_{\text{NA}}^{R}$
+\end_inset
+
+,
+ whose distribution is 
+\begin_inset Formula $p_{\theta}(x)=\sum_{x\preceq x^{\star}}p_{\theta}(x\mid x^{\star})p_{\theta}(x^{\star})$
+\end_inset
+
+.
+ Here 
+\begin_inset Formula $x\preceq x^{\star}$
+\end_inset
+
+ if 
+\begin_inset Formula $x_{i}=x_{i}^{\star}$
+\end_inset
+
+ for all elements where 
+\begin_inset Formula $x_{i}\neq\text{NA}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+We will assume data is missing at random,
+ i.e.,
+ 
+\begin_inset Formula $p_{\theta}(x\mid x^{\star})=1[x\preceq x^{\star}]c(x)$
+\end_inset
+
+ for some function 
+\begin_inset Formula $c(x)$
+\end_inset
+
+ independent of both 
+\begin_inset Formula $\theta$
+\end_inset
+
+ and the complete observation 
+\begin_inset Formula $x^{\star}$
+\end_inset
+
+.
+ Thus we have
+\begin_inset Formula 
+\[
+p_{\theta}(x)=\sum_{x\preceq x^{\star}}c(x)p_{\theta}(x^{\star}).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $x^{\star}\in C^{R}$
+\end_inset
+
+ and 
+\begin_inset Formula $x\in C_{\text{NA}}^{R}$
+\end_inset
+
+:
+ Complete and incomplete raw data.
+ Distribution parameterized by 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $y^{\star}$
+\end_inset
+
+ and 
+\begin_inset Formula $y$
+\end_inset
+
+:
+ Complete and incomplete count data.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Distribution parameterized by 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Then 
+\begin_inset Formula $y=Tx$
+\end_inset
+
+ for the operator 
+\begin_inset Formula $(Tx)_{i}=\sum_{j=1}^{R}1[x_{j}=i]$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Then 
+\begin_inset Formula $\phi=\Phi\theta$
+\end_inset
+
+ for the operator 
+\begin_inset Formula $(\Phi\theta)_{y^{\star}}=\sum_{Tx^{\star}=y^{\star}}\theta_{x^{\star}}$
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Let 
+\begin_inset Formula $\xi$
+\end_inset
+
+ be a parameter that is completely determined by 
+\begin_inset Formula $\phi$
+\end_inset
+
+,
+ i.e.,
+ it satisfies 
+\begin_inset Formula $\xi(\theta)=\xi(\theta')$
+\end_inset
+
+ whenever 
+\begin_inset Formula $\Phi(\theta)=\Phi(\theta')$
+\end_inset
+
+.
+ BP and Fleiss are examples of such parameters.
+ 
+\end_layout
+
+\begin_layout Standard
+Now let's introduce missingness with selection probability not depending on 
+\begin_inset Formula $\theta$
+\end_inset
+
+,
+ i.e.,
+\begin_inset Formula 
+\[
+p_{\theta}(x)=\sum_{x\preceq x^{\star}}c(x)\theta_{x^{\star}},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $x\preceq x^{\star}$
+\end_inset
+
+ if 
+\begin_inset Formula $x_{i}=x_{i}^{\star}$
+\end_inset
+
+ whenever 
+\begin_inset Formula $x_{i}\neq\text{NA}$
+\end_inset
+
+.
+ Here 
+\begin_inset Formula $\theta_{x^{\star}}=p_{\theta}(x^{\star})$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Now we obtain
+\begin_inset Formula 
+\begin{eqnarray*}
+p_{\phi}(y) & = & \sum_{Tx=y}p_{\theta}(x)=\sum_{Tx=y}\sum_{x\preceq x^{\star}}c(x)\theta_{x^{\star}},\\
+ & = & \sum_{y\leq y^{\star}}p_{\phi}(y\mid y^{\star})\phi_{y^{\star}}.
+\end{eqnarray*}
+
+\end_inset
+
+Here 
+\begin_inset Formula $y\leq y^{\star}$
+\end_inset
+
+ is understood as pointwise comparisons.
+ Our goal is to investigate 
+\begin_inset Formula $p_{\phi}(y\mid y^{\star})$
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+(a) Does it equal the multinomial coefficient thing when 
+\begin_inset Formula $x$
+\end_inset
+
+ is exchangeable?
+ (Which is how I interpret your claims).
+\end_layout
+
+\begin_layout Standard
+(b) Does it equal the multinomial coefficient if 
+\begin_inset Formula $x$
+\end_inset
+
+ 
+\emph on
+isn't 
+\emph default
+exchangle but 
+\begin_inset Formula $c(x)$
+\end_inset
+
+ is,
+ in a certain sense?
+\end_layout
+
+\begin_layout Standard
+(c) Can we find a 
+\begin_inset Formula $c$
+\end_inset
+
+ or 
+\begin_inset Formula $\theta$
+\end_inset
+
+ where it doesn't simplify?
+\end_layout
+
+\begin_layout Standard
+(d) Can we find a 
+\begin_inset Formula $c$
+\end_inset
+
+ or 
+\begin_inset Formula $\theta$
+\end_inset
+
+ where it depends on 
+\begin_inset Formula $\phi$
+\end_inset
+
+?
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+..
+\end_layout
+
+\begin_layout Standard
+..
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+Suppose 
+\begin_inset Formula $c(x)=c(x')$
+\end_inset
+
+ whenever 
+\begin_inset Formula $Rx=Rx'$
+\end_inset
+
+.
+ P(Y=y,
+ Y*=y*) = sum_{x* | Tx*=y*} P(Y=y,
+ X*=x*)
+\end_layout
+
+\begin_layout Standard
+= sum_{x* | Tx*=y*} P(Y=y | X*=x*) * P(X*=x*)
+\end_layout
+
+\begin_layout Standard
+= sum_{x* | Tx*=y*} P(Y=y | X*=x*) * θ_{x*}
+\end_layout
+
+\begin_layout Subsubsection
+LLM explanation
+\end_layout
+
+\begin_layout Standard
+This is a superb set of questions.
+ They cut to the absolute heart of the matter and force a rigorous analysis of the assumptions.
+ Let's dissect this step by step,
+ using the formal definitions you've laid out.
+\end_layout
+
+\begin_layout Standard
+### The Setup:
+ A Quick Recap
+\end_layout
+
+\begin_layout Standard
+* **Models:** We have a general (non-exchangeable) raw-data model parameterized by `θ`,
+ and a specific (exchangeable) count-data model parameterized by `φ`.
+ The mapping `φ = Φ(θ)` connects them.
+\end_layout
+
+\begin_layout Standard
+* **Parameter of Interest:** We are interested in `ξ`,
+ which is a function of `φ` only (e.g.,
+ Fleiss/BP kappa).
+\end_layout
+
+\begin_layout Standard
+* **Missingness:** We have a selection probability `c(x)` that gives `p_θ(x) = sum_{x ⪯ x*} c(x) θ_{x*}`.
+ This `c(x)` is assumed to be independent of `θ`.
+\end_layout
+
+\begin_layout Standard
+* **The Goal:** We are investigating the nature of the induced selection probability on the count data,
+ `p_φ(y|y*)`,
+ which is implicitly defined by the law of total probability:
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+begin{equation}
+\end_layout
+
+\begin_layout Standard
+p_{
+\backslash
+phi}(y) = 
+\backslash
+sum_{y 
+\backslash
+le y^{
+\backslash
+star}} p_{
+\backslash
+phi}(y 
+\backslash
+mid y^{
+\backslash
+star}) 
+\backslash
+phi_{y^{
+\backslash
+star}}
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+end{equation}
+\end_layout
+
+\begin_layout Standard
+where `p_φ(y)` is derived from the raw data model:
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+begin{equation}
+\end_layout
+
+\begin_layout Standard
+p_{
+\backslash
+phi}(y) = 
+\backslash
+sum_{Tx=y} 
+\backslash
+sum_{x 
+\backslash
+preceq x^{
+\backslash
+star}} c(x) 
+\backslash
+theta_{x^{
+\backslash
+star}}
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+end{equation}
+\end_layout
+
+\begin_layout Standard
+---
+\end_layout
+
+\begin_layout Standard
+### Analysis of the Questions
+\end_layout
+
+\begin_layout Standard
+#### (a) Does it equal the multinomial coefficient thing when `θ` is exchangeable?
+\end_layout
+
+\begin_layout Standard
+**Yes,
+ it does.** This is the core case where our estimator is clearly valid.
+ Let's prove it.
+\end_layout
+
+\begin_layout Standard
+1.
+ **Define Exchangeable `θ`:** If the distribution `θ` is exchangeable,
+ it means `θ_{x*}` is constant for all `x*` that have the same count vector.
+ Let `y* = T(x*)`.
+ The number of such `x*` is the multinomial coefficient `C(r;
+ y*) = r!
+ / 
+\backslash
+prod_k (y*_k)!`.
+ From the definition `φ = Φ(θ)`,
+ we have `φ_{y*} = C(r;
+ y*) * θ_{x*}`.
+ This gives us a direct link:
+ `θ_{x*} = φ_{y*} / C(r;
+ y*)`.
+\end_layout
+
+\begin_layout Standard
+2.
+ **Define Exchangeable `c(x)`:** The simplest MAR mechanism on the raw data is that any set of `s = r - r_obs` positions is equally likely to be missing.
+ This means `c(x)` depends only on the number of observed ratings,
+ `r_obs`.
+ Let's call this `c(r_obs)`.
+ This is an exchangeable missingness mechanism.
+\end_layout
+
+\begin_layout Standard
+3.
+ **The Combinatorial Argument:** When both the data-generating process (`θ`) and the missingness mechanism (`c`) are exchangeable,
+ we can use a simpler,
+ direct argument.
+ Fix a true count vector `y*`.
+ Since the process is exchangeable,
+ we can think of the `r` ratings as an unordered multiset of items.
+ The missingness mechanism is equivalent to drawing a random sample of size `r_obs` *without replacement* from this multiset.
+ The probability of obtaining an observed count vector `y` from this draw is precisely the probability mass function of the multivariate hypergeometric distribution.
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+begin{equation}
+\end_layout
+
+\begin_layout Standard
+p_{
+\backslash
+phi}(y 
+\backslash
+mid y^{
+\backslash
+star}) = 
+\backslash
+frac{
+\backslash
+prod_{k=1}^c C(y^{
+\backslash
+star}_k,
+ y_k)}{C(r,
+ r_{
+\backslash
+text{obs}})}
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+end{equation}
+\end_layout
+
+\begin_layout Standard
+This is the "multinomial coefficient thing" we implemented.
+\end_layout
+
+\begin_layout Standard
+#### (b) Does it equal the multinomial coefficient thing if `θ` isn't exchangeable but `c(x)` is,
+ in a certain sense?
+\end_layout
+
+\begin_layout Standard
+**Yes,
+ surprisingly.** This is a powerful and non-obvious result,
+ and it significantly broadens the applicability of our estimator.
+\end_layout
+
+\begin_layout Standard
+1.
+ **The Condition:** We assume `θ` is arbitrary (non-exchangeable),
+ but `c(x)` is exchangeable (i.e.,
+ depends only on `r_obs`).
+ Let `c(x) = c(r_obs)`.
+\end_layout
+
+\begin_layout Standard
+2.
+ **The Derivation:** We start with the definition of the joint probability of the observed and complete counts.
+\end_layout
+
+\begin_layout Standard
+`P(Y=y,
+ Y*=y*) = sum_{x* | Tx*=y*} P(Y=y,
+ X*=x*)`
+\end_layout
+
+\begin_layout Standard
+`= sum_{x* | Tx*=y*} P(Y=y | X*=x*) * P(X*=x*)`
+\end_layout
+
+\begin_layout Standard
+`= sum_{x* | Tx*=y*} P(Y=y | X*=x*) * θ_{x*}`
+\end_layout
+
+\begin_layout Standard
+3.
+ **Analyze the inner term `P(Y=y | X*=x*)`:** This is the probability of getting observed counts `y` given a specific complete raw vector `x*`.
+\end_layout
+
+\begin_layout Standard
+`P(Y=y | X*=x*) = sum_{x | Tx=y} P(X=x | X*=x*) = sum_{x | Tx=y,
+ x⪯x*} c(x)`
+\end_layout
+
+\begin_layout Standard
+Since `c(x) = c(r_obs)` is constant for all `x` with counts `y`,
+ this sum is `c(r_obs)` times the number of incomplete raw patterns `x` with counts `y` that can be formed from `x*`.
+ This number is the number of ways to choose `y_k` items of category `k` from the `(y*_k)` available in `x*`,
+ for all `k`.
+ This is `
+\backslash
+prod_k C(y*_k,
+ y_k)`.
+\end_layout
+
+\begin_layout Standard
+So,
+ `P(Y=y | X*=x*) = c(r_{obs}) 
+\backslash
+prod_k C(y^*_k,
+ y_k)`.
+ Crucially,
+ this value is **constant** for all `x*` that map to the same `y*`.
+\end_layout
+
+\begin_layout Standard
+4.
+ **Substitute back:**
+\end_layout
+
+\begin_layout Standard
+`P(Y=y,
+ Y*=y*) = sum_{x* | Tx*=y*} 
+\backslash
+left( c(r_{obs}) 
+\backslash
+prod_k C(y^*_k,
+ y_k) 
+\backslash
+right) * θ_{x*}`
+\end_layout
+
+\begin_layout Standard
+We can pull the constant term out of the sum:
+\end_layout
+
+\begin_layout Standard
+`= 
+\backslash
+left( c(r_{obs}) 
+\backslash
+prod_k C(y^*_k,
+ y_k) 
+\backslash
+right) 
+\backslash
+sum_{x* | Tx*=y*} θ_{x*}`
+\end_layout
+
+\begin_layout Standard
+By definition,
+ `sum_{x* | Tx*=y*} θ_{x*} = φ_{y*}`.
+\end_layout
+
+\begin_layout Standard
+`P(Y=y,
+ Y*=y*) = 
+\backslash
+left( c(r_{obs}) 
+\backslash
+prod_k C(y^*_k,
+ y_k) 
+\backslash
+right) φ_{y*}`
+\end_layout
+
+\begin_layout Standard
+5.
+ **Final Step:** Since `p_φ(y,
+ y*) = p_φ(y|y*) φ_{y*}` by definition,
+ we can see that:
+\end_layout
+
+\begin_layout Standard
+`p_φ(y|y*) = c(r_{obs}) 
+\backslash
+prod_k C(y^*_k,
+ y_k)`.
+ This is proportional to the multivariate hypergeometric term.
+ The constant `c(r_obs)` becomes part of the normalization in the EM algorithm's E-step and does not affect the final estimate of `φ`.
+\end_layout
+
+\begin_layout Standard
+**Conclusion for (b):** The simplification holds.
+ Our `fleiss_cpp` estimator correctly finds the MLE for the marginal count distribution `φ` even if the underlying raters are not exchangeable,
+ *provided the missingness mechanism is exchangeable*.
+ The resulting `hat(ξ)` will be a consistent estimate of the true `ξ(φ)`.
+\end_layout
+
+\begin_layout Standard
+#### (c) Can we find a `c` or `θ` where it doesn't simplify?
+\end_layout
+
+\begin_layout Standard
+**Yes.** Based on the conclusion from (b),
+ the simplification breaks down if the missingness mechanism `c(x)` is **not exchangeable**.
+\end_layout
+
+\begin_layout Standard
+1.
+ **Example:** A non-exchangeable `c(x)` occurs if the probability of missingness depends on the rater.
+ Let rater 1 be lazy,
+ so `P(x_1 = NA)` is high.
+ Let rater 2 be diligent,
+ so `P(x_2 = NA)` is low.
+\end_layout
+
+\begin_layout Standard
+2.
+ Now,
+ the term `P(Y=y | X*=x*)` from the proof in (b) is no longer constant for all `x*` that map to the same `y*`.
+\end_layout
+
+\begin_layout Standard
+3.
+ Consider `y* = (1,1,0,...)` (one rater assigned A,
+ one assigned B).
+ The raw vectors are `x*_1 = (A,B,C,...)` and `x*_2 = (B,A,C,...)`.
+ Let `y` correspond to observing only one "A".
+\end_layout
+
+\begin_layout Standard
+* `P(Y=y | X*=x*_1)` depends on the probability of rater 2's 'B' being missing.
+\end_layout
+
+\begin_layout Standard
+* `P(Y=y | X*=x*_2)` depends on the probability of rater 1's 'B' being missing.
+\end_layout
+
+\begin_layout Standard
+* If the missingness is not exchangeable,
+ these probabilities will be different.
+\end_layout
+
+\begin_layout Standard
+4.
+ Therefore,
+ `p_φ(y,
+ y*)` becomes a complex weighted average:
+\end_layout
+
+\begin_layout Standard
+`p_φ(y,
+ y*) = 
+\backslash
+left( 
+\backslash
+sum_{x* | Tx*=y*} P(Y=y | X*=x*) θ_{x*} 
+\backslash
+right)`.
+\end_layout
+
+\begin_layout Standard
+This cannot be factored into `(something) * φ_{y*}`.
+ The `p_φ(y|y*)` term is no longer a simple function of `y` and `y*`.
+\end_layout
+
+\begin_layout Standard
+#### (d) Can we find a `c` or `θ` where it depends on `φ`?
+\end_layout
+
+\begin_layout Standard
+**Yes.** The same counterexample from (c) demonstrates this.
+\end_layout
+
+\begin_layout Standard
+1.
+ Recall the definition:
+ `p_φ(y | y*) = P(Y=y,
+ Y*=y*) / φ_{y*}`.
+\end_layout
+
+\begin_layout Standard
+2.
+ From (c),
+ with non-exchangeable `c(x)`,
+ we have:
+\end_layout
+
+\begin_layout Standard
+`p_{
+\backslash
+phi}(y 
+\backslash
+mid y^{
+\backslash
+star}) = 
+\backslash
+frac{1}{
+\backslash
+phi_{y^{
+\backslash
+star}}} 
+\backslash
+sum_{x^{
+\backslash
+star} | Tx^{
+\backslash
+star}=y^{
+\backslash
+star}} P(Y=y 
+\backslash
+mid X^{
+\backslash
+star}=x^{
+\backslash
+star}) 
+\backslash
+theta_{x^{
+\backslash
+star}}`
+\end_layout
+
+\begin_layout Standard
+3.
+ The terms `P(Y=y | X*=x*)` are different for different `x*`.
+ The expression is a weighted average of these terms,
+ where the weights are `θ_{x*} / φ_{y*}`.
+\end_layout
+
+\begin_layout Standard
+4.
+ These weights represent `P(X*=x* | T(X*)=y*)`,
+ the conditional probability of a specific raw pattern given its count summary.
+ This conditional probability depends on the full `θ` distribution.
+\end_layout
+
+\begin_layout Standard
+5.
+ Therefore,
+ `p_φ(y|y*)` depends on the fine-grained structure of `θ`.
+ Since `φ` does not uniquely determine `θ` in the non-exchangeable case,
+ `p_φ(y|y*)` implicitly depends on parameters beyond what is captured in `φ`.
+ A change in the non-exchangeable part of `θ` (while keeping `φ` constant) would change `p_φ(y|y*)`.
+ This makes `p_φ(y|y*)` dependent on the full `θ` vector,
+ and thus indirectly on `φ` and the other parameters that `φ` discards.
+\end_layout
+
+\begin_layout Standard
+This dependence breaks the clean separation required for our simple EM algorithm.
+ The E-step would require knowledge of the full `θ` vector,
+ which is exactly what we are trying to avoid by working with the count-based model `φ`.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+p(y,y^{\star}) & = & \sum_{Tx^{\star}=y^{*}}p(y\mid x^{\star})\theta_{x^{\star}}
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+p(y\mid x^{\star}) & = & \sum_{Tx=y}p(x\mid x^{\star})=\sum_{x\preceq x^{\star},Tx=y}c(x)\\
+ & = & c(\|y\|)\sum_{x\preceq x^{\star},Tx=y}
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p(y\mid x^{\star})
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+..
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+We have that 
+\begin_inset Formula $T(x)=y$
+\end_inset
+
+ and 
+\begin_inset Formula $x\preceq x^{\star}$
+\end_inset
+
+ iff 
+\begin_inset Formula $y\leq y^{\star}$
+\end_inset
+
+ and 
+\begin_inset Formula $T(x^{\star})=y^{\star}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+We have that 
+\begin_inset Formula $T(x)=y$
+\end_inset
+
+ if 
+\begin_inset Formula $Tx^{\star}=y$
+\end_inset
+
+ and 
+\begin_inset Formula $y^{\star}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Thus,
+ if 
+\begin_inset Formula $c(x)$
+\end_inset
+
+ is constant,
+ we get
+\begin_inset Formula 
+\[
+\sum_{Tx=y}\sum_{x\preceq x^{\star}}c(x)\theta_{x^{\star}}=\sum_{y\leq y^{\star}}\phi_{y^{\star}}
+\]
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+We need to derive the form of 
+\begin_inset Formula 
+\[
+p_{\phi}(y)=\sum_{y\leq y^{\star}}p(y\mid y^{\star})\phi_{y^{\star}}.
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $y\leq y^{\star}$
+\end_inset
+
+ is understood as pointwise comparisons.
+ Here 
+\begin_inset Formula $\phi_{y^{\star}}=p_{\phi}(y^{\star})$
+\end_inset
+
+,
+ which equals 
+\begin_inset Formula $\phi_{y^{\star}}=\sum_{Tx^{\star}=y^{\star}}\theta_{x^{\star}}$
+\end_inset
+
+.
+ Now we get
+\begin_inset Formula 
+\[
+p_{\phi}(y)=\sum_{y\leq y^{\star}}\sum_{Tx^{\star}=y^{\star}}p(y\mid y^{\star})\theta_{x^{\star}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now use that 
+\begin_inset Formula $y=Tx$
+\end_inset
+
+ to get
+\begin_inset Formula 
+\[
+p_{\phi}(y)=\sum_{y\leq y^{\star}}p(Tx\mid Tx^{\star})p_{\phi}(y^{\star}).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+Suppose 
+\begin_inset Formula $x_{i}\in C^{R}$
+\end_inset
+
+ are raw rating vectors parameterized by 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $y_{i}=c(x_{i})$
+\end_inset
+
+ be the count vectors obtained from the counting operator 
+\begin_inset Formula $T_{C}:C^{R}\to R^{C}$
+\end_inset
+
+ defined by 
+\begin_inset Formula $(T_{C}x)_{i}=\sum_{j=1}^{R}1[x_{j}=i]$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+and let their distribution be paramerized by 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $\hat{\theta}$
+\end_inset
+
+ be the maximum likelihood estimator of 
+\begin_inset Formula $\theta$
+\end_inset
+
+ (based on 
+\begin_inset Formula $x$
+\end_inset
+
+) and 
+\begin_inset Formula $\hat{\phi}$
+\end_inset
+
+ the ML of 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ By the invariance principle we may obtain 
+\begin_inset Formula $\hat{\phi}=\Phi\hat{\theta}$
+\end_inset
+
+ for the operator 
+\begin_inset Formula $\Phi$
+\end_inset
+
+ that maps 
+\begin_inset Formula $\theta\to\phi$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula $(\Phi\theta)_{y^{\star}}=?$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now let 
+\begin_inset Formula $\xi$
+\end_inset
+
+ be a parameter that satisfies 
+\begin_inset Formula $\xi(\theta)=\xi(\theta')$
+\end_inset
+
+ whenever 
+\begin_inset Formula $\Phi(\theta)=\Phi(\theta')$
+\end_inset
+
+ so that 
+\begin_inset Formula $\xi$
+\end_inset
+
+ is uniquely determined by 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ BP and Fleiss are examples of such parameters.
+ 
+\end_layout
+
+\begin_layout Standard
+Now let's introduce missingness with selection probability not depending on 
+\begin_inset Formula $\theta$
+\end_inset
+
+,
+ i.e.,
+\begin_inset Formula 
+\[
+p_{\theta}(x)=\sum_{x\preceq x^{\star}}p(x\mid x^{\star})p_{\theta}(x^{\star}).
+\]
+
+\end_inset
+
+Using 
+\begin_inset Formula $y=c(x)$
+\end_inset
+
+ and 
+\begin_inset Formula $y^{\star}=c(x)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Coefficient alpha and standardized alpha
+\end_layout
+
+\begin_layout Standard
+Consider coefficient alpha next.
+ Define 
+\begin_inset Formula $\text{Cov}(X_{j},X_{k})=\sigma_{jk}$
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\alpha=\frac{r}{r-1}\left(\frac{\sum_{j\neq k}\text{Cov}(X_{j},X_{k})}{\text{Var}(\sum_{j=1}^{r}X_{j})}\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\mathbb{E}{\theta}[f(X^{\star})]=\sum{x^{\star}}\theta_{x^{\star}}f(x^{\star})=v_{f}^{T}\theta
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+μ_{j}(\theta)=\mathbb{E}[X_{j}]=\sum_{x^{*}}\theta_{x^{*}}s_{v}((x^{*})_{j})=v_{\mu j}^{T}\theta
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+E_{jk}(\theta)=\mathbb{E}[X_{j}X_{k}]=\sum_{x^{*}}\theta_{x^{*}}s_{v}((x^{*})_{j})s_{v}((x^{*})_{k})=v_{Ejk}^{T}\theta
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\sigma_{jk}(\theta)=v_{Ejk}^{T}\theta-\theta^{T}(v_{\mu j}v_{\mu k}^{T})\theta
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+\sigma_{T}^{2}(\theta) & = & \left(\sum_{j}v_{Ejj}^{T}+\sum_{j\neq k}v_{Ejk}^{T}\right)\theta
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\alpha(\theta)=\frac{r}{r-1}\left(\frac{N(\theta)}{D(\theta)}\right)=\frac{r}{r-1}\left(\frac{v_{N}^{T}\theta-\theta^{T}Q_{N}\theta}{v_{D}^{T}\theta-\theta^{T}Q_{D}\theta}\right)
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Math requirements
+\end_layout
+
+\begin_layout Enumerate
+Do not use boldface.
+\end_layout
+
+\begin_layout Enumerate
+Observed vectors are named 
+\begin_inset Formula $x$
+\end_inset
+
+,
+ complete observations 
+\begin_inset Formula $z$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+We use 
+\emph on
+only 
+\emph default
+disagreement formulations of the coefficients,
+ 
+\begin_inset Formula $\kappa=1-d/d_{c}$
+\end_inset
+
+ with loss function 
+\begin_inset Formula $l$
+\end_inset
+
+ and loss matrix 
+\begin_inset Formula $L$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+We never use boldface.
+\end_layout
+
+\begin_layout Enumerate
+Superscript and subscripts are used only when absolutely necessary.
+\end_layout
+
+\begin_layout Section
+Information (LLM)
+\end_layout
+
+\begin_layout Standard
+Of course.
+ Getting the LaTeX right is essential for a paper.
+ Here are the expressions,
+ presented cleanly for direct use.
+\end_layout
+
+\begin_layout Standard
+---
+\end_layout
+
+\begin_layout Standard
+### The Information Matrix for the Unconstrained Parameters
+\end_layout
+
+\begin_layout Standard
+Let $
+\backslash
+boldsymbol{
+\backslash
+theta} = (
+\backslash
+theta_1,
+ 
+\backslash
+theta_2,
+ 
+\backslash
+ldots,
+ 
+\backslash
+theta_m)$ be the vector of probabilities for the $m$ possible complete-data patterns,
+ where $
+\backslash
+sum_{j=1}^m 
+\backslash
+theta_j = 1$.
+ The observed data for $N$ subjects is denoted by $
+\backslash
+mathbf{Y} = (Y_1,
+ 
+\backslash
+ldots,
+ Y_N)$.
+\end_layout
+
+\begin_layout Standard
+According to Louis's method for a multinomial model,
+ the observed information matrix for a single subject $i$ with observed rating pattern $Y_i$ is given by:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+mathbf{I}_i(
+\backslash
+boldsymbol{
+\backslash
+theta}) = 
+\backslash
+mathbb{E}[
+\backslash
+mathbf{s}_c(
+\backslash
+boldsymbol{
+\backslash
+theta} | X_i) | Y_i] 
+\backslash
+cdot 
+\backslash
+mathbb{E}[
+\backslash
+mathbf{s}_c(
+\backslash
+boldsymbol{
+\backslash
+theta} | X_i) | Y_i]^T
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+where $
+\backslash
+mathbf{s}_c(
+\backslash
+boldsymbol{
+\backslash
+theta} | X_i)$ is the score vector for the complete data $X_i$.
+\end_layout
+
+\begin_layout Standard
+Let $p(j|Y_i,
+ 
+\backslash
+boldsymbol{
+\backslash
+theta})$ be the posterior probability that subject $i$ belongs to the complete-data pattern $j$,
+ given the observed pattern $Y_i$.
+ This is calculated from the E-step of the EM algorithm:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+p(j|Y_i,
+ 
+\backslash
+boldsymbol{
+\backslash
+theta}) = 
+\backslash
+frac{
+\backslash
+theta_j 
+\backslash
+cdot 
+\backslash
+mathbb{I}(j 
+\backslash
+in 
+\backslash
+mathcal{C}(Y_i))}{
+\backslash
+sum_{k 
+\backslash
+in 
+\backslash
+mathcal{C}(Y_i)} 
+\backslash
+theta_k}
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+where $
+\backslash
+mathcal{C}(Y_i)$ is the set of all complete-data patterns compatible with the observed pattern $Y_i$,
+ and $
+\backslash
+mathbb{I}(
+\backslash
+cdot)$ is the indicator function.
+\end_layout
+
+\begin_layout Standard
+The conditional expected score for subject $i$ is a vector $
+\backslash
+mathbf{s}_i^*(
+\backslash
+boldsymbol{
+\backslash
+theta})$ of length $m$,
+ where the $j$-th element is:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+s^*_{ij}(
+\backslash
+boldsymbol{
+\backslash
+theta}) = 
+\backslash
+mathbb{E}
+\backslash
+left[
+\backslash
+frac{
+\backslash
+partial 
+\backslash
+log 
+\backslash
+theta_j}{
+\backslash
+partial 
+\backslash
+theta_j} 
+\backslash
+middle| Y_i
+\backslash
+right] = 
+\backslash
+frac{p(j|Y_i,
+ 
+\backslash
+boldsymbol{
+\backslash
+theta})}{
+\backslash
+theta_j} = 
+\backslash
+frac{
+\backslash
+mathbb{I}(j 
+\backslash
+in 
+\backslash
+mathcal{C}(Y_i))}{
+\backslash
+sum_{k 
+\backslash
+in 
+\backslash
+mathcal{C}(Y_i)} 
+\backslash
+theta_k}
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+The total observed information matrix $
+\backslash
+mathbf{I}(
+\backslash
+boldsymbol{
+\backslash
+theta})$ is the sum of the individual information matrices over all $N$ subjects:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+mathbf{I}(
+\backslash
+boldsymbol{
+\backslash
+theta}) = 
+\backslash
+sum_{i=1}^N 
+\backslash
+mathbf{I}_i(
+\backslash
+boldsymbol{
+\backslash
+theta}) = 
+\backslash
+sum_{i=1}^N 
+\backslash
+left( 
+\backslash
+mathbf{s}_i^*(
+\backslash
+boldsymbol{
+\backslash
+theta}) 
+\backslash
+cdot (
+\backslash
+mathbf{s}_i^*(
+\backslash
+boldsymbol{
+\backslash
+theta}))^T 
+\backslash
+right)
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+This matrix is evaluated at the final MLE,
+ $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}$.
+ It is an $m 
+\backslash
+times m$ matrix,
+ but it is **singular** because of the constraint $
+\backslash
+sum 
+\backslash
+theta_j = 1$.
+\end_layout
+
+\begin_layout Standard
+---
+\end_layout
+
+\begin_layout Standard
+### The Information Matrix for the Reduced (Unconstrained) Parameters
+\end_layout
+
+\begin_layout Standard
+To obtain a non-singular information matrix,
+ we re-parameterize the model in terms of $m-1$ free parameters.
+ A standard approach is to express one parameter,
+ say $
+\backslash
+theta_m$,
+ as a function of the others:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+theta_m = 1 - 
+\backslash
+sum_{j=1}^{m-1} 
+\backslash
+theta_j
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+Let $
+\backslash
+boldsymbol{
+\backslash
+theta}^* = (
+\backslash
+theta_1,
+ 
+\backslash
+ldots,
+ 
+\backslash
+theta_{m-1})$ be the vector of the $m-1$ unconstrained parameters.
+ The information matrix for $
+\backslash
+boldsymbol{
+\backslash
+theta}^*$,
+ denoted $
+\backslash
+mathbf{I}(
+\backslash
+boldsymbol{
+\backslash
+theta}^*)$,
+ can be derived from $
+\backslash
+mathbf{I}(
+\backslash
+boldsymbol{
+\backslash
+theta})$ using the Jacobian of the transformation.
+\end_layout
+
+\begin_layout Standard
+A more direct way,
+ as implemented in your code,
+ is to work with a reduced score vector.
+ For each subject $i$,
+ we define a reduced score vector $
+\backslash
+mathbf{s}_{i,
+ 
+\backslash
+text{red}}^*(
+\backslash
+boldsymbol{
+\backslash
+theta}^*)$ of length $m-1$:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+s^*_{i,
+ 
+\backslash
+text{red},
+ j}(
+\backslash
+boldsymbol{
+\backslash
+theta}^*) = s^*_{ij}(
+\backslash
+boldsymbol{
+\backslash
+theta}) - s^*_{im}(
+\backslash
+boldsymbol{
+\backslash
+theta}) 
+\backslash
+quad 
+\backslash
+text{for } j = 1,
+ 
+\backslash
+ldots,
+ m-1
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+This corresponds to the derivative of the log-likelihood with respect to $
+\backslash
+theta_j$ in the reduced parameter space.
+\end_layout
+
+\begin_layout Standard
+The information matrix for the unconstrained parameters $
+\backslash
+boldsymbol{
+\backslash
+theta}^*$ is then the sum of the outer products of these reduced score vectors:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+mathbf{I}(
+\backslash
+boldsymbol{
+\backslash
+theta}^*) = 
+\backslash
+sum_{i=1}^N 
+\backslash
+left( 
+\backslash
+mathbf{s}_{i,
+ 
+\backslash
+text{red}}^*(
+\backslash
+boldsymbol{
+\backslash
+theta}^*) 
+\backslash
+cdot (
+\backslash
+mathbf{s}_{i,
+ 
+\backslash
+text{red}}^*(
+\backslash
+boldsymbol{
+\backslash
+theta}^*))^T 
+\backslash
+right)
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+This resulting $(m-1) 
+\backslash
+times (m-1)$ matrix is evaluated at the MLE $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}^*$ and is non-singular (invertible),
+ provided the model is identifiable.
+\end_layout
+
+\begin_layout Standard
+The variance-covariance matrix for the $m-1$ free parameters is then obtained by inverting this information matrix:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+text{Var}(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}^*) = [
+\backslash
+mathbf{I}(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}^*)]^{-1}
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+To recover the full $m 
+\backslash
+times m$ (singular) variance-covariance matrix for the original parameters $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}$,
+ we use the delta method with the transformation Jacobian,
+ $
+\backslash
+mathbf{J}$:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+text{Var}(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}) = 
+\backslash
+mathbf{J} 
+\backslash
+cdot 
+\backslash
+text{Var}(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}^*) 
+\backslash
+cdot 
+\backslash
+mathbf{J}^T
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+where the $m 
+\backslash
+times (m-1)$ Jacobian matrix $
+\backslash
+mathbf{J}$ is given by:
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+mathbf{J} = 
+\backslash
+begin{pmatrix}
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+mathbf{I}_{m-1} 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Standard
+-
+\backslash
+mathbf{1}_{m-1}^T
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+end{pmatrix} = 
+\backslash
+begin{pmatrix}
+\end_layout
+
+\begin_layout Standard
+1 & 0 & 
+\backslash
+cdots & 0 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Standard
+0 & 1 & 
+\backslash
+cdots & 0 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+vdots & 
+\backslash
+vdots & 
+\backslash
+ddots & 
+\backslash
+vdots 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Standard
+0 & 0 & 
+\backslash
+cdots & 1 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Standard
+-1 & -1 & 
+\backslash
+cdots & -1
+\end_layout
+
+\begin_layout Standard
+
+\backslash
+end{pmatrix}
+\end_layout
+
+\begin_layout Standard
+$$
+\end_layout
+
+\begin_layout Standard
+This final step correctly reintroduces the singularity and provides the variances and covariances for all $m$ parameters consistent with the constraint $
+\backslash
+sum 
+\backslash
+theta_j = 1$.
+\end_layout
+
+\begin_layout Section
+MAR
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $Z\in\mathcal{Z}$
+\end_inset
+
+ be an unobserved random variable whose distribution 
+\begin_inset Formula $p_{\theta}(z)$
+\end_inset
+
+ is parameterized by 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $X\in\mathcal{X}$
+\end_inset
+
+ be the observed variable and their joint distribution be 
+\begin_inset Formula $p_{\theta}(x\mid z)p_{\theta}(z)$
+\end_inset
+
+.
+ Now define a relation 
+\begin_inset Formula $x\preceq z$
+\end_inset
+
+ on 
+\begin_inset Formula $\mathcal{X}\times\mathcal{Z}$
+\end_inset
+
+,
+ read as 
+\begin_inset Formula $z$
+\end_inset
+
+ extends 
+\begin_inset Formula $x$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula $p_{\theta}$
+\end_inset
+
+ is 
+\begin_inset Formula $\preceq$
+\end_inset
+
+-random if 
+\begin_inset Formula 
+\begin{eqnarray*}
+p_{\theta}(x\mid z) & = & 1[x\preceq z]c_{\theta}(x),
+\end{eqnarray*}
+
+\end_inset
+
+for a non-zero function 
+\begin_inset Formula $c_{\theta}$
+\end_inset
+
+ satisfying 
+\begin_inset Formula $\sum_{x}1[x\preceq z]c_{\theta}(x)=1$
+\end_inset
+
+ for all 
+\begin_inset Formula $z$
+\end_inset
+
+.
+ Let's see if we can deduce anything about 
+\begin_inset Formula $c_{\theta}(x)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Then we get the property 
+\begin_inset Formula 
+\[
+p_{\theta}(z\mid x)=\frac{p_{\theta}(z)}{\sum_{x\preceq z'}p_{\theta}(z')}.
+\]
+
+\end_inset
+
+Since 
+\begin_inset Formula $\sum_{x}p_{\theta}(x\mid z)=\sum_{x}1[x\preceq z]c_{\theta}(x)=1$
+\end_inset
+
+ we have 
+\begin_inset Formula $c_{\theta}(x)=\#\{x\mid x\preceq z\}^{-1}.$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Subsubsection
+MAR
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $M$
+\end_inset
+
+ be the missingness matrix so that 
+\begin_inset Formula $x=Mz$
+\end_inset
+
+.
+ Then MAR states:
+ Whenever 
+\begin_inset Formula $x=Mz=Mz'$
+\end_inset
+
+ then 
+\begin_inset Formula $p(M\mid z)=p(M\mid z')$
+\end_inset
+
+.
+ Due to the fact that 
+\begin_inset Formula $M$
+\end_inset
+
+ is obtained from the identity matrix by removing rows,
+ we have that
+\begin_inset Formula 
+\begin{eqnarray*}
+p(x\mid z) & = & p(Mz\mid z)=p(M\mid z)=p(M\mid z')=p(Mz'\mid z')=p(x\mid z'),
+\end{eqnarray*}
+
+\end_inset
+
+Equivalently,
+ 
+\begin_inset Formula $p(x\mid z)=p(x\mid z')$
+\end_inset
+
+ whenever both 
+\begin_inset Formula $x\leq z$
+\end_inset
+
+ and 
+\begin_inset Formula $x\leq z'$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Using the definition 
+\begin_inset Formula $x=Mz$
+\end_inset
+
+,
+ this implies there is a function 
+\begin_inset Formula $c(x)$
+\end_inset
+
+ so that
+\begin_inset Formula 
+\begin{eqnarray*}
+p(x & \mid & z)=\begin{cases}
+c(x), & x\leq z,\\
+0 & \text{otherwise}.
+\end{cases}
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Thus we have
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p(z\mid x)=\frac{p(x\mid z)}{\sum_{x\leq z}p(x\mid z)p(z)}p(z)\frac{c(x)}{c(x)\sum_{x\leq z}p(z)}p(z)=\frac{p(z)}{\sum_{x\leq z}p(z)}
+\]
+
+\end_inset
+
+get the matrix 
+\begin_inset Formula 
+\[
+T_{iz}=\frac{p_{\theta}(z)}{\sum_{x\leq z}p_{\theta}(z)}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+(Alright,
+ it seems 
+\begin_inset Formula $p(x\mid z)=c(x)$
+\end_inset
+
+ is ignorability (defined somewhere?) and is required for the EM algo.
+ All well and good.) Now let's interpret it.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Finite exchangeability 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p_{\theta}(z\mid x)=\frac{p_{\theta}(z)}{\sum_{x\leq z}p_{\theta}(z)}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the EM algorithm
+\begin_inset Formula 
+\begin{eqnarray*}
+Q(\theta\mid\theta_{t}) & = & E_{Z\sim p_{\theta_{t}}(\cdot\mid x)}[\log p_{\theta}(x,Z)]=\frac{\sum_{x\leq z}\theta_{z}^{t}\log\theta_{z}}{\sum_{x\leq z}\theta_{z}^{t}}
+\end{eqnarray*}
+
+\end_inset
+
+This 
+\begin_inset Formula 
+\[
+\theta_{z}^{t+1}=\frac{\theta_{z}^{t}}{\sum_{x_{i}\leq z}\theta_{z}^{t}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+The EM algorithm
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+T_{iz}=\frac{p(x_{i}\mid z)p_{\theta}(z)}{\sum_{x\leq z}p(x_{i}\mid z)p_{\theta}(z)}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+..
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+..
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p_{\theta}(z\mid x)=\frac{p(x\mid z)p_{\theta}(z)}{\sum_{x\leq z}p(x\mid z)p_{\theta}(z)}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+p_{\theta}(x) & = & \sum_{z\in\text{Ext}(x)}p_{\theta}(x\mid z)p_{\theta}(z)\\
+ & = & \sum_{z\in\text{Ext}(x)}p_{\theta}(x\mid z)\theta_{z}
+\end{eqnarray*}
+
+\end_inset
+
+The missingess if there is a function 
+\begin_inset Formula $p(x\mid z)$
+\end_inset
+
+,
+ independent of 
+\begin_inset Formula $\theta$
+\end_inset
+
+,
+ satisfying:
+\begin_inset Formula 
+\[
+p_{\theta}(x)=\sum_{z\in\text{Ext}(x)}f(x\mid z)p_{\theta}(z)?
+\]
+
+\end_inset
+
+In other words,
+ we require the selection probability 
+\begin_inset Formula $p_{\theta}(x\mid z)=p(x\mid z)$
+\end_inset
+
+ for all 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+p_{\theta}(x)=\sum_{z\in\text{Ext}(x)}p(x\mid z)p_{\theta}(z)?
+\]
+
+\end_inset
+
+We need 
+\begin_inset Formula $p_{\theta}(x)$
+\end_inset
+
+ to be a valid pmf,
+ hence
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\sum p_{\theta}(x)=\sum_{x}\sum_{z\in\text{Ext}(x)}p(x\mid z)p_{\theta}(z)?
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+p(x,z)=p(x\mid z)p_{\theta}(z)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+fi
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+a
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+Q(\theta\mid\theta_{t}) & = & E_{Z\sim p_{\theta}(z\mid x)}[\log p(x,Z;\theta)]
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+l(\theta;x)+H(\theta,\theta_{t})
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+H(p_{\theta},p_{\theta_{t}})=\sum_{z}\log p_{\theta}(z\mid x)p_{\theta_{t}}(z\mid x)dz
+\]
+
+\end_inset
+
+In our case 
+\begin_inset Formula $z$
+\end_inset
+
+ are the extended observations.
+ 
+\begin_inset Formula 
+\begin{eqnarray*}
+\log p_{\theta}(z\mid x) & = & \sum_{i=1}^{n}\sum_{z_{ij}\in\text{Ext}(x_{i})}\log p_{\theta}(z_{ij}\mid x_{i})\\
+ & = & \sum_{i=1}^{n}\sum_{z\in\text{Ext}(x_{i})}\left(\log\theta_{z}-\log\sum\theta_{z}\right)\\
+ & = & \sum_{i=1}^{n}\left[\sum_{z\in\text{Ext}(x_{i})}\log\theta_{z}-\log\left(\sum_{z\in\text{Ext}(x_{i})}\theta_{z}\right)\right]
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Introduction
+\end_layout
+
+\begin_layout Standard
+Data on raw form is typically stored as a Subject
+\begin_inset Formula $\times$
+\end_inset
+
+Rater matrix,
+ 
+\begin_inset Formula 
+\[
+\begin{array}{ccccc}
+ & \text{Rater }1 & \text{Rater }2 & \cdots & \text{Rater }R\\
+\text{Subject }1\\
+\text{Subject }1\\
+\vdots\\
+\text{Subject }n
+\end{array}
+\]
+
+\end_inset
+
+this form can be used both for Fleiss' and Cohen's kappa.
+ 
+\end_layout
+
+\begin_layout Standard
+Data on count form is typically stored as a Subject
+\begin_inset Formula $\times$
+\end_inset
+
+Category matrix,
+\begin_inset Formula 
+\[
+\begin{array}{ccccc}
+ & \text{Category }1 & \text{Category }2 & \cdots & \text{Category }C\\
+\text{Subject }1\\
+\text{Subject }1\\
+\vdots\\
+\text{Subject }n
+\end{array}
+\]
+
+\end_inset
+
+We will exclusively use data on count form as it suffices for Fleiss' kappa when the number of categories is finite.
+ [[Does it?
+ I am not sure and need to prove it.]]
+\end_layout
+
+\begin_layout Itemize
+Let 
+\begin_inset Formula $Y$
+\end_inset
+
+ be a vector of raw data.
+ Its probability mass function 
+\begin_inset Formula $p(y)$
+\end_inset
+
+ can be parameterized by a vector 
+\begin_inset Formula $\pi$
+\end_inset
+
+ of 
+\begin_inset Formula $C^{R}$
+\end_inset
+
+ parameters,
+ where 
+\begin_inset Formula $C^{R}-1$
+\end_inset
+
+ are free due to the constraint 
+\begin_inset Formula $\sum\pi=1$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Let 
+\begin_inset Formula $X$
+\end_inset
+
+ be a vector of category counts.
+ Then 
+\begin_inset Formula $p(x)$
+\end_inset
+
+ can be parameterized by 
+\begin_inset Formula $\theta$
+\end_inset
+
+ with 
+\begin_inset Formula $\binom{R+C-1}{R}$
+\end_inset
+
+ parameters,
+ i.e.,
+ the number of ways you may choose 
+\begin_inset Formula $R$
+\end_inset
+
+ items from 
+\begin_inset Formula $C$
+\end_inset
+
+ categories with repetition where order doesn't matter.
+ [[ref]].
+\end_layout
+
+\begin_layout Itemize
+Suppose that 
+\begin_inset Formula $Y$
+\end_inset
+
+ is an exchangeable vector,
+ i.e.,
+ 
+\begin_inset Formula $P(y_{1},\ldots,y_{R})=P(y_{\sigma(1)},\ldots,y_{\sigma(R)})$
+\end_inset
+
+ for any permutation of its indices.
+ Colloquially,
+ the identity of the raters do not matter.
+ Then 
+\begin_inset Formula $P(y)=P(x[y]),$
+\end_inset
+
+where 
+\begin_inset Formula $x[y]$
+\end_inset
+
+ is the count vector generated by 
+\begin_inset Formula $y$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $X$
+\end_inset
+
+ be an exchangeable sequence of ratings in the finite set 
+\begin_inset Formula $C$
+\end_inset
+
+.
+ By de Finetti's theorem there is a random variable 
+\begin_inset Formula $\pi\sim M$
+\end_inset
+
+ so that the components of 
+\begin_inset Formula $X$
+\end_inset
+
+ are conditionally independent given 
+\begin_inset Formula $\pi$
+\end_inset
+
+.
+ Moreover,
+ we may pick 
+\begin_inset Formula $\pi$
+\end_inset
+
+ as a random probability measure and obtain
+\begin_inset Formula 
+\[
+Y_{n}/n\mid\pi\stackrel{a.s.}{\to}\pi,
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $Y_{n}$
+\end_inset
+
+ is the tabulation of 
+\begin_inset Formula $X_{1},\ldots,X_{n}$
+\end_inset
+
+.
+ Chance disagreement is 
+\begin_inset Formula $E_{M\times M}[\pi_{1}^{T}\pi_{2}]$
+\end_inset
+
+ and disagreement is 
+\begin_inset Formula $E_{M}[\pi^{T}\pi]$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+LLM for Fleiss
+\end_layout
+
+\begin_layout Standard
+This is a fantastic and crucial point to make in your notes.
+ You are essentially building the theoretical justification for why the Fleiss' Kappa model (based on counts `X`) is the correct and necessary simplification of a more general model (based on raw vectors `Y`) when rater identities are unknown or irrelevant.
+\end_layout
+
+\begin_layout Standard
+Your intuition is perfectly correct.
+ You need to show that the parameter vector $
+\backslash
+theta$ of the collapsed model is **sufficient** for calculating Fleiss' Kappa,
+ which makes the assumption of exchangeability a natural starting point,
+ not a restrictive one.
+\end_layout
+
+\begin_layout Standard
+Here is a structured way to present this argument,
+ using the proposition format you like.
+\end_layout
+
+\begin_layout Standard
+---
+\end_layout
+
+\begin_layout Standard
+### **A Formal Justification for the Exchangeable Rater Model**
+\end_layout
+
+\begin_layout Standard
+**1.
+ The Two Models:
+ Full vs.
+ Collapsed**
+\end_layout
+
+\begin_layout Standard
+Let us formally define two potential statistical models for the rating data.
+\end_layout
+
+\begin_layout Standard
+* **Model 1:
+ The Full Rater-Specific Model.** Let $Y$ be a random vector of ratings $(Y_1,
+ 
+\backslash
+ldots,
+ Y_R)$,
+ where $Y_j 
+\backslash
+in 
+\backslash
+{1,
+ 
+\backslash
+ldots,
+ C
+\backslash
+}$ is the rating from the $j$-th rater.
+ The sample space is $
+\backslash
+mathcal{C}^R$,
+ containing $C^R$ possible outcomes.
+ The probability mass function is $p(Y=y) = 
+\backslash
+pi_y$,
+ where the parameter vector $
+\backslash
+pi$ has $C^R-1$ free parameters under the constraint $
+\backslash
+sum_y 
+\backslash
+pi_y = 1$.
+ This model can capture rater-specific biases (e.g.,
+ Rater 1 tending to choose Category 3 more often).
+\end_layout
+
+\begin_layout Standard
+* **Model 2:
+ The Collapsed Count Model.** Let $X$ be a random vector of category counts $(X_1,
+ 
+\backslash
+ldots,
+ X_C)$,
+ where $X_j$ is the number of raters who assigned a subject to category $j$.
+ The sample space consists of all non-negative integer vectors that sum to $R$.
+ The number of possible outcomes is $m = 
+\backslash
+binom{R+C-1}{R}$,
+ the number of combinations with repetition.
+ The probability mass function is $p(X=x) = 
+\backslash
+theta_x$,
+ where the parameter vector $
+\backslash
+theta$ has $m-1$ free parameters.
+\end_layout
+
+\begin_layout Standard
+**2.
+ The Bridge:
+ The Assumption of Exchangeability**
+\end_layout
+
+\begin_layout Standard
+We connect these two models with the following key assumption.
+\end_layout
+
+\begin_layout Standard
+**Definition:
+ Exchangeability.** The distribution of the full rating vector $Y$ is *exchangeable* if its probability is invariant under any permutation $
+\backslash
+sigma$ of its indices.
+ That is,
+ for any $y = (y_1,
+ 
+\backslash
+ldots,
+ y_R)$:
+\end_layout
+
+\begin_layout Standard
+$P(Y = (y_1,
+ 
+\backslash
+ldots,
+ y_R)) = P(Y = (y_{
+\backslash
+sigma(1)},
+ 
+\backslash
+ldots,
+ y_{
+\backslash
+sigma(R)}))$
+\end_layout
+
+\begin_layout Standard
+Colloquially,
+ this means the identities of the raters do not matter;
+ only the collection of ratings matters.
+ For example,
+ $P(Y=(
+\backslash
+text{A,
+ B,
+ C})) = P(Y=(
+\backslash
+text{B,
+ A,
+ C}))$.
+\end_layout
+
+\begin_layout Standard
+**Proposition 1:
+ The Count Vector is a Sufficient Statistic under Exchangeability.**
+\end_layout
+
+\begin_layout Standard
+Let $x(y)$ be the function that maps a full rating vector $y$ to its corresponding count vector $x$.
+ If the distribution of $Y$ is exchangeable,
+ then the count vector $X=x(Y)$ is a **sufficient statistic** for the family of exchangeable distributions on $Y$.
+\end_layout
+
+\begin_layout Standard
+* **Argument:** By definition,
+ a statistic $T(Y)$ is sufficient if the conditional distribution $P(Y=y | T(Y)=t)$ does not depend on the underlying parameters.
+ Under exchangeability,
+ all permutations of a rating vector that produce the same count vector $x$ are equally likely.
+ The conditional probability of observing a specific raw vector $y$,
+ given that its count vector is $x(y)$,
+ is:
+\end_layout
+
+\begin_layout Standard
+$P(Y=y | X=x(y)) = 
+\backslash
+frac{P(Y=y 
+\backslash
+text{ and } X=x(y))}{P(X=x(y))} = 
+\backslash
+frac{
+\backslash
+pi_y}{
+\backslash
+theta_{x(y)}}$
+\end_layout
+
+\begin_layout Standard
+Under exchangeability,
+ $
+\backslash
+theta_{x(y)} = C(x(y)) 
+\backslash
+cdot 
+\backslash
+pi_y$,
+ where $C(x) = 
+\backslash
+frac{R!}{x_1!
+ 
+\backslash
+cdots x_C!}$ is the multinomial coefficient counting the number of permutations.
+\end_layout
+
+\begin_layout Standard
+Thus,
+ $P(Y=y | X=x(y)) = 
+\backslash
+frac{
+\backslash
+pi_y}{C(x(y)) 
+\backslash
+cdot 
+\backslash
+pi_y} = 
+\backslash
+frac{1}{C(x(y))}$.
+\end_layout
+
+\begin_layout Standard
+This conditional probability depends *only* on the count vector `x`,
+ not on the specific parameters $
+\backslash
+pi$.
+ Therefore,
+ the count vector `X` is a sufficient statistic.
+ The Fisher-Neyman factorization theorem provides a more formal proof.
+\end_layout
+
+\begin_layout Standard
+**Proposition 2:
+ Fleiss' Kappa is a Function of the Collapsed Model Parameters $
+\backslash
+theta$ Only.**
+\end_layout
+
+\begin_layout Standard
+The formula for Fleiss' Kappa depends only on the distribution of the count vectors `X`,
+ not on the finer details of the full distribution of `Y`.
+\end_layout
+
+\begin_layout Standard
+* **Argument:** Fleiss' Kappa is defined as $
+\backslash
+kappa = 1 - 
+\backslash
+frac{P_o}{P_c}$,
+ where $P_o$ is the observed proportion of disagreement and $P_c$ is the chance-expected proportion of disagreement.
+\end_layout
+
+\begin_layout Standard
+1.
+ **Chance Disagreement ($P_c$):** This term is based on the marginal probability $p_j$ that any given rating falls into category $j$.
+ This marginal probability can be expressed as the expectation of the proportion of counts in category $j$:
+\end_layout
+
+\begin_layout Standard
+$p_j = E
+\backslash
+left[
+\backslash
+frac{X_j}{R}
+\backslash
+right] = 
+\backslash
+sum_{x} P(X=x) 
+\backslash
+frac{x_j}{R} = 
+\backslash
+frac{1}{R} 
+\backslash
+sum_{x} 
+\backslash
+theta_x x_j$.
+\end_layout
+
+\begin_layout Standard
+Since $p_j$ is a function of $
+\backslash
+theta$ only,
+ the chance disagreement $P_c = 
+\backslash
+sum_{j 
+\backslash
+neq k} p_j p_k$ is also a function of $
+\backslash
+theta$ only.
+\end_layout
+
+\begin_layout Standard
+2.
+ **Observed Disagreement ($P_o$):** For a subject with a given count vector $x$,
+ there are $
+\backslash
+binom{R}{2}$ pairs of raters.
+ The number of disagreeing pairs is $
+\backslash
+binom{R}{2} - 
+\backslash
+sum_{j=1}^C 
+\backslash
+binom{x_j}{2}$.
+ The proportion of disagreement for this subject is $d(x) = 
+\backslash
+frac{
+\backslash
+binom{R}{2} - 
+\backslash
+sum 
+\backslash
+binom{x_j}{2}}{
+\backslash
+binom{R}{2}}$.
+ The overall observed disagreement $P_o$ is the expectation of this quantity over the distribution of $X$:
+\end_layout
+
+\begin_layout Standard
+$P_o = E[d(X)] = 
+\backslash
+sum_{x} P(X=x) d(x) = 
+\backslash
+sum_{x} 
+\backslash
+theta_x d(x)$.
+\end_layout
+
+\begin_layout Standard
+This is also a function of $
+\backslash
+theta$ only.
+\end_layout
+
+\begin_layout Standard
+Since both components of kappa are determined entirely by the parameter vector $
+\backslash
+theta$,
+ the statistic itself,
+ $
+\backslash
+kappa = g(
+\backslash
+theta)$,
+ is a functional of the collapsed model.
+\end_layout
+
+\begin_layout Standard
+**Conclusion:
+ Justification for the Collapsed Model**
+\end_layout
+
+\begin_layout Standard
+The combination of these propositions leads to a powerful conclusion.
+\end_layout
+
+\begin_layout Standard
+If we are willing to assume that the raters are exchangeable (which is implicit in any analysis where rater IDs are ignored),
+ then the vector of counts `X` is a sufficient statistic for the underlying probability model.
+ Since the quantity we wish to estimate,
+ Fleiss' Kappa,
+ is a function of the distribution of `X` only,
+ **we can proceed without loss of generality (WLOG) by modeling the distribution of the counts `X` directly.**
+\end_layout
+
+\begin_layout Standard
+This provides the rigorous justification for using the parameterization $
+\backslash
+theta$ and its associated likelihood.
+ It also clarifies why this framework is appropriate for Fleiss' Kappa but not for Cohen's or Conger's Kappa,
+ as the latter are designed to measure agreement while accounting for rater-specific tendencies,
+ information which is lost when collapsing from $Y$ to $X$.
+\end_layout
+
+\begin_layout Subsection
+Asymptotics
+\end_layout
+
+\begin_layout Standard
+Assuming data missing at random interior 
+\begin_inset Formula $\theta$
+\end_inset
+
+s we obtain
+\begin_inset Formula 
+\[
+\sqrt{n}(\hat{\theta}-\theta)\stackrel{d}{\to}N(0,I_{\theta}^{-1}).
+\]
+
+\end_inset
+
+The observed information matrix 
+\begin_inset Formula $J$
+\end_inset
+
+ will in practice be highly singular.
+ It will in fact be singular for any data.
+ We are interested in statistics 
+\begin_inset Formula $\nabla\kappa^{T}I^{-1}\nabla\kappa$
+\end_inset
+
+ which will have to be estimated.
+ It's natural to use the Moore–Penrose inverse of 
+\begin_inset Formula $J$
+\end_inset
+
+ to estimate the information matrix,
+ so we get
+\begin_inset Formula 
+\[
+\sqrt{n}(\hat{\kappa}-\kappa)\stackrel{d}{\to}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Exchangeable raters
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $X$
+\end_inset
+
+ be a count vector with probability mass function 
+\begin_inset Formula $p(X=x)=\theta_{x}$
+\end_inset
+
+.
+ There are 
+\begin_inset Formula $m=\binom{R+C-1}{R}$
+\end_inset
+
+ unique count vectors and parameters 
+\begin_inset Formula $\theta_{x}$
+\end_inset
+
+,
+ but the constraint 
+\begin_inset Formula $\sum\theta_{x}=1$
+\end_inset
+
+ reduces the effective parameter dimension to 
+\begin_inset Formula $m-1$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+We may write Fleiss' kappa as
+\begin_inset Formula 
+\[
+\kappa(\theta)=1-\frac{R}{R-1}\frac{d^{T}\theta}{\theta^{T}D\theta},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $d$
+\end_inset
+
+ and 
+\begin_inset Formula $D$
+\end_inset
+
+ are on the form 
+\begin_inset Formula 
+\begin{eqnarray*}
+d & = & [\diag(K^{T}L^{T}K)^{T}-(\diag L)K]^{T}\theta,\\
+D & = & K^{T}L^{T}K,
+\end{eqnarray*}
+
+\end_inset
+
+where 
+\begin_inset Formula $K=[x_{1},x_{2},\ldots x_{m}]$
+\end_inset
+
+ is the matrix of all possible count vectors and 
+\begin_inset Formula $L_{ij}=l(i,j)$
+\end_inset
+
+ is the loss matrix.
+ The gradient is
+\begin_inset Formula 
+\[
+\nabla\kappa=-\frac{R}{R-1}\frac{(\theta^{T}D\theta)d-2(d^{T}\theta)D\theta}{(\theta^{T}D\theta)^{2}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The dimensions of the matrix 
+\begin_inset Formula $K$
+\end_inset
+
+ and the parameter vector 
+\begin_inset Formula $\theta$
+\end_inset
+
+ can be quite large.
+ In practice many of the estimated parameters 
+\begin_inset Formula $\theta_{x}$
+\end_inset
+
+ will be 
+\begin_inset Formula $0$
+\end_inset
+
+ though.
+ Let 
+\begin_inset Formula $\iota$
+\end_inset
+
+ be the ordered set of indices where 
+\begin_inset Formula $\theta_{x}>0$
+\end_inset
+
+ and define 
+\begin_inset Formula $K_{+}$
+\end_inset
+
+ as the submatrix containing 
+\begin_inset Formula $K$
+\end_inset
+
+ only for the non-zero 
+\begin_inset Formula $\theta_{x}$
+\end_inset
+
+.
+ Then
+\begin_inset Formula 
+\[
+1-\frac{1}{1-\frac{1}{R}}\frac{d^{T}\theta}{\theta^{T}D\theta}=1-\frac{1}{1-\frac{1}{R}}\frac{d_{+}^{T}\theta_{+}}{\theta_{+}^{T}D_{+}\theta_{+}},
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+(Ok – it seems the 
+\begin_inset Formula $d$
+\end_inset
+
+ vector might interact with the variance in a way so the result isn't just 0.
+ I'm unsure if this is 
+\begin_inset Quotes eld
+\end_inset
+
+important
+\begin_inset Quotes erd
+\end_inset
+
+ or not - i.e.,
+ should we actually keep it?
+ It seems required to match irrCAC (if it is the actual problem that is.)
+\end_layout
+
+\begin_layout Subsection*
+Keep
+\end_layout
+
+\begin_layout Standard
+Louis (1982).
+\end_layout
+
+\begin_layout Standard
+So I need to verify all of this stuff.
+ This is probably standard notation (though ugly).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+I_{\theta}=-\sum_{i=1}^{n}E[\nabla U_{i}\mid O_{i}]-\sum_{i=1}^{n}\Var(U_{i}\mid O_{i}),
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+U_{ix}=\frac{1}{\theta_{x}}1[X_{i}=x]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+\tau_{ix} & = & P(X_{i}=x\mid O_{i},\theta)\\
+\mathcal{X}(O_{i}) & = & \{x\in S_{R}\mid x\geq O_{i}\}
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+I_{xy} & = & \sum_{i=1}^{n}\frac{\tau_{ix}\tau_{iy}}{\theta_{x}\theta_{y}}\\
+N_{x} & = & \sum_{i=1}^{n}\tau_{ix}
+\end{eqnarray*}
+
+\end_inset
+
+Suppose that 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ is non-singular and we're looking at 
+\begin_inset Formula 
+\[
+g^{T}\Psi g.
+\]
+
+\end_inset
+
+We need to estimate 
+\end_layout
+
+\begin_layout Enumerate
+Reduces to a standard multinomial.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Let 
+\begin_inset Formula $k$
+\end_inset
+
+ record the number of counts in each category.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+There are 
+\begin_inset Formula $\binom{R+C-1}{R}$
+\end_inset
+
+ different vectors 
+\begin_inset Formula $K$
+\end_inset
+
+.
+ 
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Enumerate
+Simple maximum likelihood 
+\begin_inset Formula $\hat{\theta}_{x}=\frac{n_{x}}{n}$
+\end_inset
+
+,
+ where 
+\begin_inset Formula $n_{x}=\sum1[x_{i}=x]$
+\end_inset
+
+ is the number of times 
+\begin_inset Formula $x$
+\end_inset
+
+ has been observed.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+1-\frac{E_{(X_{1},X_{2})\sim F_{2}}[l(X_{1},X_{2})]}{E_{(X_{1},X_{2})\sim F_{1}^{2}}[l(X_{1},X_{2})]}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+1-\frac{\tr(L^{T}P_{2})}{p^{T}Lp}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+p^{T}Lp=\tr Lpp^{T}=\tr LP
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+1-\frac{\sum\theta_{k}\tr L^{T}B_{k}}{\theta^{T}(A^{T}LA)\theta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $A_{jk}=\frac{k_{j}C(k)}{R}$
+\end_inset
+
+ and 
+\begin_inset Formula $C(k)=\frac{R!}{k_{1}!\cdots k_{C}!}$
+\end_inset
+
+ is the multinomial coefficient.
+ Thus
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+A_{jk}=A_{jk}=(R-1)!\frac{k_{j}}{k_{1}!\cdots k_{C}!}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+1-\frac{d^{T}\theta}{\theta^{T}Q\theta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+d_{k}=\frac{C(k)}{R(R-1)}\left(k^{T}Lk-k^{T}\diag L\right)
+\]
+
+\end_inset
+
+Here 
+\begin_inset Formula $L_{ij}=l(i,j)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+C\odot[(\diag L)^{T}K+\diag(K^{T}LK)]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+d=\frac{R!}{k_{1}!\cdots k_{C}!}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Lidstone smoothin
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\hat{\theta}_{k}=\frac{n_{k}+\alpha}{n+\alpha d}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Obtaining 
+\begin_inset Formula $A$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+There are 
+\begin_inset Formula $m=\binom{R+C-1}{R}$
+\end_inset
+
+ unique count vectors 
+\begin_inset Formula $k_{1},\ldots,k_{M}$
+\end_inset
+
+,
+ each with probability 
+\begin_inset Formula $\theta_{i}$
+\end_inset
+
+.
+ Define So we have 
+\begin_inset Formula $K=[k_{1},k_{2},\ldots k_{m}]$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The marginal probability is
+\begin_inset Formula 
+\begin{eqnarray*}
+p_{j} & = & \frac{1}{R}\sum_{i=1}^{m}K_{ij}\theta_{i},\\
+p_{jk} & = & \frac{1}{R(R-1)}\sum_{i=1}^{m}K_{ij}(K_{ik}-\delta_{jk})\theta_{i}.
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+P_{2} & = & \frac{1}{R(R-1)}\left(K^{T}\diag\theta K-\diag(K\theta)\right)\\
+p & = & \frac{1}{R}K\theta
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\tr L^{T}P_{2}
+\]
+
+\end_inset
+
+Or we can write 
+\begin_inset Formula $\frac{1}{R(R-1)}T\theta$
+\end_inset
+
+,
+ where 
+\begin_inset Formula $T_{jlk}=K_{ij}(K_{ik}-\delta_{jl})$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+So we have 
+\begin_inset Formula $K=[k_{1},k_{2},\ldots k_{K}]$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Define the matrix 
+\begin_inset Formula $K=[k_{1},k_{2},\ldots k_{K}]$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula $p=R^{-1}K.$
+\end_inset
+
+ Define 
+\begin_inset Formula $A=K^{T}LK$
+\end_inset
+
+ and 
+\begin_inset Formula $d=...$
+\end_inset
+
+.
+ Then 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+1-\frac{\tr L^{T}P_{2}}{p^{T}Lp}=1-\frac{\tr L^{T}P_{2}}{\tr Lpp^{T}}=1-\frac{\tr L^{T}P_{2}}{\tr L^{T}P_{1}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+1-\frac{R^{-1}(R-1)^{-1}d^{T}\theta}{R^{-2}\theta^{T}A\theta}=1-\frac{1}{1-\frac{1}{R}}\frac{d^{T}\theta}{\theta^{T}A\theta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+d & = & [\diag(K^{T}L^{T}K)^{T}-(\diag L)K]^{T}\theta\\
+A & = & K^{T}L^{T}K
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Keep
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $Z=Z_{1},\ldots,Z_{R}\in C^{R}$
+\end_inset
+
+ be a vector of ratings.
+ Denote the joint probabilities by 
+\begin_inset Formula $\pi_{z}$
+\end_inset
+
+ where 
+\begin_inset Formula $z\in C^{R}$
+\end_inset
+
+.
+ The complete log-likelihood is
+\begin_inset Formula 
+\[
+l(\pi)=\sum_{i=1}^{n}\log\pi_{z_{i}}.
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+l(\pi)=\sum_{i=1}^{n}\log\left(\sum_{z\in C(x_{i})}\pi_{z}\right).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $M$
+\end_inset
+
+ be a binary vector indicating missingness and define the observed values
+\begin_inset Formula 
+\[
+X=Z(1-M)+M\text{NA}.
+\]
+
+\end_inset
+
+We assume data missing completely at random,
+ i.e.,
+ 
+\begin_inset Formula $M$
+\end_inset
+
+ is independent of 
+\begin_inset Formula $Z$
+\end_inset
+
+.
+ Then
+\begin_inset Formula 
+\[
+M=M_{1},\ldots,M_{k}\sim\text{Multinomial}(p).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+Then MAR says 
+\begin_inset Formula $P(M\in A\mid Z)=P(M\in A\mid X),$
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray*}
+P(M\in A\mid Z) & = & P(M\in A\mid X),\\
+ & = & P(M\in A\mid Z(1-M)+M\text{NA}),\\
+ & = & 1[M\in A].
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here the first line is the definition of MAR,
+ the second line the definition of 
+\begin_inset Formula $X$
+\end_inset
+
+.
+ The final one uses that 
+\begin_inset Formula $E[X|\mathcal{F}]=X$
+\end_inset
+
+ whenever 
+\begin_inset Formula $X$
+\end_inset
+
+ is 
+\begin_inset Formula $\mathcal{F}$
+\end_inset
+
+-measurable,
+ that 
+\begin_inset Formula $P(M\in A\mid\mathcal{F})=E[1_{M\in A}\mid\mathcal{F}]$
+\end_inset
+
+ and evidently 
+\begin_inset Formula $\sigma(Z(1-M)+M\text{NA})\supset\sigma(M)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Part*
+Keep
+\end_layout
+
+\begin_layout Enumerate
+Clean up the math.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+State problem for Fleiss kappa right now.
+\end_layout
+
+\begin_layout Enumerate
+Set up the multinomial machinery.
+\end_layout
+
+\begin_layout Enumerate
+Find the 
+\begin_inset Formula $K,L,D,d$
+\end_inset
+
+ stuff for complete data.
+\end_layout
+
+\begin_layout Enumerate
+Do the required reductions for the covariance matrix.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Finish implementation with 
+\emph on
+probably 
+\emph default
+unoptimal preprocessing.
+\end_layout
+
+\begin_layout Enumerate
+Prove / explore how exchangeability of 
+\emph on
+sequences 
+\emph default
+affect Fleiss kappa and Conger's kappa.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Ideally show that the 
+\begin_inset Formula $R$
+\end_inset
+
+ parameter is redundant.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Explore how the number of raters affect the final covariance.
+ Ideally on the form 
+\begin_inset Formula $g(R)\sigma_{\infty}^{2}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+See if we can phrase this with variable 
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Illustrate / explain / prove what exchangeability entails.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Ok – so this looks like Krippendorff's alpha.
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Quotes eld
+\end_inset
+
+Project idea
+\begin_inset Quotes erd
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Unify Conger,
+ Fleiss and Krippendorff's alpha mathematically.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Conger makes 
+\emph on
+no assumptions
+\emph default
+ about the raters,
+\end_layout
+
+\begin_layout Enumerate
+Fleiss' assumes ratings are finitely exchangeable and 
+\emph on
+can be aggregated
+\emph default
+.
+\end_layout
+
+\begin_layout Enumerate
+Krippendorff's alpha assumes raters are infinitely exchangeable.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Unified maximum likelihood theory and implementation.
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Section
+Algorithm
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+usepackage{algorithm}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+usepackage{algorithmic}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+usepackage{amsmath}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{algorithm}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+caption{Maximum Likelihood Estimation of Fleiss' Kappa with Missing Data via EM}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+label{alg:em_kappa}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{algorithmic}[1]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textbf{Input:} Data matrix $
+\backslash
+mathbf{X}$ ($n 
+\backslash
+times c$),
+ number of raters $r$,
+ number of categories $c$,
+ loss matrix $
+\backslash
+mathbf{L}$ ($c 
+\backslash
+times c$).
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textbf{Output:} Kappa estimate $
+\backslash
+hat{
+\backslash
+kappa}$,
+ Variance estimate $
+\backslash
+widehat{
+\backslash
+text{Var}}(
+\backslash
+hat{
+\backslash
+kappa})$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+Hrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textbf{Procedure 1:
+ Preprocessing}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Group rows of $
+\backslash
+mathbf{X}$ into $n_{unique}$ unique observed patterns $
+\backslash
+mathbf{x}_u$ with counts $n_u$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE For each $
+\backslash
+mathbf{x}_u$,
+ compute the number of missing ratings $s_u = r - 
+\backslash
+sum_{j=1}^c x_{uj}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Generate the set of all possible completion patterns $
+\backslash
+mathcal{C}_u$ for each $
+\backslash
+mathbf{x}_u$ by finding all compositions of $s_u$ into $c$ parts.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Compute the global lexicographical rank for every possible complete pattern across all $
+\backslash
+mathcal{C}_u$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Construct a dense mapping from the set of these $m_{active}$ unique ranks to local indices $j 
+\backslash
+in 
+\backslash
+{1,
+ 
+\backslash
+dots,
+ m_{active}
+\backslash
+}$.
+ Store this mapping as `idx_to_rank`.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE For each group $u$,
+ create a list of the local indices of its completion patterns,
+ `completion_indices$_u$`.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Store the preprocessed data structure containing all `completion_indices$_u$`,
+ group counts $n_u$,
+ and the `idx_to_rank` map.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+Hrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textbf{Procedure 2:
+ Initialization (Smoothed Smart Start)}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Initialize a preliminary parameter vector $
+\backslash
+boldsymbol{
+\backslash
+theta}_{prelim}$ of length $m_{active}$ with a small constant $
+\backslash
+alpha$ (e.g.,
+ $10^{-4}$).
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE For each unique group $u$ that is already complete ($s_u = 0$),
+ add its count $n_u$ to the corresponding element of $
+\backslash
+boldsymbol{
+\backslash
+theta}_{prelim}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Normalize:
+ $
+\backslash
+boldsymbol{
+\backslash
+theta}_{prelim} 
+\backslash
+leftarrow 
+\backslash
+boldsymbol{
+\backslash
+theta}_{prelim} / 
+\backslash
+sum 
+\backslash
+boldsymbol{
+\backslash
+theta}_{prelim}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Perform a single E-step:
+ for each group $u$,
+ calculate posterior probabilities $
+\backslash
+tau_{uk}$ for each completion $k 
+\backslash
+in 
+\backslash
+mathcal{C}_u$ proportionally to $
+\backslash
+boldsymbol{
+\backslash
+theta}_{prelim}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Perform a single M-step:
+ sum the expected counts across all groups to get a final starting vector $
+\backslash
+boldsymbol{
+\backslash
+theta}^{(0)}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+Hrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textbf{Procedure 3:
+ EM Iteration}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Initialize $
+\backslash
+boldsymbol{
+\backslash
+theta} 
+\backslash
+leftarrow 
+\backslash
+boldsymbol{
+\backslash
+theta}^{(0)}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+FOR{$t = 1$ to $max
+\backslash
+_iter$}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textit{// E-step:}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE For each group $u$,
+ compute the denominator for the posterior:
+ $W_u = 
+\backslash
+sum_{k 
+\backslash
+in 
+\backslash
+mathcal{C}_u} 
+\backslash
+theta_k^{(t-1)}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textit{// M-step:}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Compute expected counts for each active parameter $j$:
+ $E_j = 
+\backslash
+sum_{u} n_u 
+\backslash
+sum_{k 
+\backslash
+in 
+\backslash
+mathcal{C}_u,
+ k=j} 
+\backslash
+frac{
+\backslash
+theta_k^{(t-1)}}{W_u}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Update parameters:
+ $
+\backslash
+theta_j^{(t)} 
+\backslash
+leftarrow E_j / n$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+IF{$
+\backslash
+max_j |
+\backslash
+theta_j^{(t)} - 
+\backslash
+theta_j^{(t-1)}| < 
+\backslash
+text{tolerance}$}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Set `converged=TRUE` and 
+\backslash
+textbf{break}.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+ENDIF
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+ENDFOR
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+Hrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE 
+\backslash
+textbf{Procedure 4:
+ Variance and Kappa Calculation}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Prune the converged $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}$ by removing elements smaller than a tolerance (e.g.,
+ $10^{-9}$),
+ resulting in a final,
+ dense vector $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final}$ of length $m_{final}$.
+ Renormalize $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Select a reference parameter $k_{ref}$ corresponding to the largest element of $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Re-calculate the posterior probabilities $
+\backslash
+tau_{uk}$ for each group $u$ using only the $m_{final}$ parameters in $
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE For each group $u$,
+ compute the reduced conditional score vector $
+\backslash
+mathbf{s}_u^*$ of size $(m_{final}-1)$ where the $j$-th element is $(
+\backslash
+tau_{uj}/
+\backslash
+hat{
+\backslash
+theta}_j) - (
+\backslash
+tau_{uk_{ref}}/
+\backslash
+hat{
+\backslash
+theta}_{k_{ref}})$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Compute the $(m_{final}-1) 
+\backslash
+times (m_{final}-1)$ information matrix $
+\backslash
+mathbf{I}^* = 
+\backslash
+sum_u n_u 
+\backslash
+mathbf{s}_u^* (
+\backslash
+mathbf{s}_u^*)^T$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Enforce symmetry:
+ $
+\backslash
+mathbf{I}^* 
+\backslash
+leftarrow 0.5(
+\backslash
+mathbf{I}^* + (
+\backslash
+mathbf{I}^*)^T)$.
+ Invert to get $
+\backslash
+mathbf{V}^* = (
+\backslash
+mathbf{I}^*)^{-1}$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Construct the $m_{final} 
+\backslash
+times (m_{final}-1)$ Jacobian matrix $
+\backslash
+mathbf{J}$ for the re-parameterization.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Compute the final $m_{final} 
+\backslash
+times m_{final}$ covariance matrix $
+\backslash
+widehat{
+\backslash
+text{Var}}(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final}) = 
+\backslash
+mathbf{J} 
+\backslash
+mathbf{V}^* 
+\backslash
+mathbf{J}^T$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Generate the constant matrices $
+\backslash
+mathbf{K}_{final}$ and $
+\backslash
+mathbf{d}_{final}$ corresponding to the $m_{final}$ active patterns.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Compute $
+\backslash
+hat{
+\backslash
+kappa} = g(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final})$ and its gradient $
+\backslash
+nabla g$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+STATE Compute the final variance $
+\backslash
+widehat{
+\backslash
+text{Var}}(
+\backslash
+hat{
+\backslash
+kappa}) = (
+\backslash
+nabla g)^T 
+\backslash
+widehat{
+\backslash
+text{Var}}(
+\backslash
+hat{
+\backslash
+boldsymbol{
+\backslash
+theta}}_{final}) (
+\backslash
+nabla g)$.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{algorithmic}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{algorithm}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
