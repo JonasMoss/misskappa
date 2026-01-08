@@ -106,7 +106,7 @@ such as Conger’s kappa,
 are often applied without clear justification when ratings are incomplete.
  We develop a general framework for handling missing data in agreement analysis that supports both categorical and continuous responses,
  allows arbitrary disagreement functions,
- and hold provided the data is pairwise missing completely at random.
+ and holds provided the data is pairwise missing completely at random.
  We characterize when pairwise-available estimators remain consistent,
  derive their correct standard errors,
  and identify settings where conventional formulas fail.
@@ -167,6 +167,15 @@ A chance-corrected agreement coefficient is any coefficient on the form
 \end_inset
 
 .
+ For categorical responses, let
+\begin_inset Formula $\mathcal{C}$
+\end_inset
+
+ be the category set with
+\begin_inset Formula $|\mathcal{C}|=C$
+\end_inset
+
+.
  
 \end_layout
 
@@ -197,26 +206,22 @@ We cover three variants of chance disagreement,
 \begin{eqnarray}
 d_{F} & = & R^{-2}\sum_{j,k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:fleiss disagreement}\\
 d_{C} & = & \binom{R}{2}^{-1}\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:cohendisagreement}\\
-d_{BP} & =\label{eq:bp disagreement}
+d_{BP} & = & C^{-2}\sum_{x\in\mathcal{C}}\sum_{y\in\mathcal{C}}l(x,y).\label{eq:bp disagreement}
 \end{eqnarray}
 
 \end_inset
 
-Interpretations of these can be found elsewhere,
- e.g.,
- [[]],
- [[]],
- [[]].
+Interpretations can be found in the agreement-coefficient literature; here we only use the loss-based representation.
 \end_layout
 
 \begin_layout Standard
 For complete data the kappa coefficients are estimated using the natural sample counterparts.
- Their standard errors may be found using either multinomial theory [cite] or 
+ Their standard errors may be found using either multinomial theory or 
 \begin_inset Formula $U$
 \end_inset
 
--statistics [Moss].
- 
+-statistics.
+  
 \end_layout
 
 \begin_layout Section
@@ -890,10 +895,8 @@ The standard error
 \end_layout
 
 \begin_layout Standard
-\begin_inset Separator plain
-\end_inset
-
-
+All estimators in this paper can be written as smooth functions of a finite collection of (possibly weighted) U-statistics and V-statistics.
+Under pairwise MCAR, a joint central limit theorem holds for these statistics, and the delta method yields asymptotic covariance matrices for the corresponding kappa estimators.
 \end_layout
 
 \begin_layout Example
@@ -931,7 +934,7 @@ It should be clear that
 \begin_inset Formula $\hat{\kappa}_{C}$
 \end_inset
 
- is consistent when the data is missin PMCAR,
+ is consistent when the data is missing PMCAR,
  exchangeable raters or not.
 \end_layout
 

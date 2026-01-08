@@ -1,0 +1,11 @@
+*~
+*.lyx~
+*.lyx.emergency.lyx
+llm/
+
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc

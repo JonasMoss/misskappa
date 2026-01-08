@@ -167,6 +167,15 @@ A chance-corrected agreement coefficient is any coefficient on the form
 \end_inset
 
 .
+ For categorical responses, let
+\begin_inset Formula $\mathcal{C}$
+\end_inset
+
+ be the category set with
+\begin_inset Formula $|\mathcal{C}|=C$
+\end_inset
+
+.
  
 \end_layout
 
@@ -197,26 +206,22 @@ We cover three variants of chance disagreement,
 \begin{eqnarray}
 d_{F} & = & R^{-2}\sum_{j,k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:fleiss disagreement}\\
 d_{C} & = & \binom{R}{2}^{-1}\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:cohendisagreement}\\
-d_{BP} & =\label{eq:bp disagreement}
+d_{BP} & = & C^{-2}\sum_{x\in\mathcal{C}}\sum_{y\in\mathcal{C}}l(x,y).\label{eq:bp disagreement}
 \end{eqnarray}
 
 \end_inset
 
-Interpretations of these can be found elsewhere,
- e.g.,
- [[]],
- [[]],
- [[]].
+Interpretations can be found in the agreement-coefficient literature; here we only use the loss-based representation.
 \end_layout
 
 \begin_layout Standard
 For complete data the kappa coefficients are estimated using the natural sample counterparts.
- Their standard errors may be found using either multinomial theory [cite] or 
+ Their standard errors may be found using either multinomial theory or 
 \begin_inset Formula $U$
 \end_inset
 
--statistics [Moss].
- 
+-statistics.
+  
 \end_layout
 
 \begin_layout Subsection
@@ -231,11 +236,11 @@ Ignorability,
 \end_layout
 
 \begin_layout Enumerate
-Data coarsening and
+Data coarsening and the coarsening-at-random framework.
 \end_layout
 
 \begin_layout Enumerate
-Inefficiency of available case and 
+Inefficiency of available-case estimators.
 \end_layout
 
 \begin_layout Enumerate
@@ -251,7 +256,11 @@ Exchangeable raters
 \end_layout
 
 \begin_layout Standard
-Define exchangeable raters.
+Call the raters exchangeable if the joint distribution of
+\begin_inset Formula $X^{\star}=(X_{1}^{\star},\ldots,X_{R}^{\star})$
+\end_inset
+
+ is invariant under permutations of the rater indices.
 \end_layout
 
 \begin_layout Standard
@@ -1051,7 +1060,7 @@ Details for we compute this in practice may be found in the appendix.
 \end_inset
 
 .
- Using Louis' method [cite] we may calculate the observed information
+ Using Louis' method we may calculate the observed information
 \begin_inset Formula 
 \begin{equation}
 J_{\theta}=-E_{\theta}[\nabla^{2}\log p_{\theta}(Z)\mid x]+\Var_{\theta}[\nabla\log p_{\theta}(Z)\mid x].\label{eq:Louis method}
@@ -1059,11 +1068,13 @@ J_{\theta}=-E_{\theta}[\nabla^{2}\log p_{\theta}(Z)\mid x]+\Var_{\theta}[\nabla\
 
 \end_inset
 
-Then 
-\begin_inset Formula $J(\theta)_{ij}=\frac{\theta}{}$
+Then \begin_inset Formula $J_{\hat{\theta}}$
 \end_inset
 
+ is a consistent estimator of \begin_inset Formula $I_{\theta}$
+\end_inset
 
+.
 \end_layout
 
 \begin_layout Subsection

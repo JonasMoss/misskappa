@@ -1,0 +1,186 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children no
+\language american
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement class
+\float_alignment class
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+μ\text{̂}_{Hajek}=\frac{\sum_{i=1}^{n}\frac{R_{i}Y_{i}}{\hat{π}_{i}}}{\sum_{i=1}^{n}\frac{R_{i}}{\hat{π}_{i}}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\hat{\mu}_{DR}=\frac{1}{n}\sum_{i=1}^{n}\hat{m}(X_{i})+\frac{1}{n}\sum_{i=1}^{n}\frac{R_{i}}{\hat{\pi}}(Y_{i}-\hat{m}(X_{i}))
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\hat{d}^{AC}=\frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}},\quad\hat{d}_{C}^{AC}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}}.
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}\pi_{jk}^{-1}=\sum_{j<k}\sum_{i=1}^{n}M_{ij}M_{ik}\pi_{jk}^{-1}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\hat{d}=\frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})R_{ij}R_{ik}\pi_{jk}^{-1}}{\sum_{i=1}^{n}\sum_{j<k}R_{ij}R_{ik}\pi_{jk}^{-1}}
+\]
+
+\end_inset
+
+But then 
+\begin_inset Formula 
+\begin{eqnarray*}
+\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}\pi_{jk}^{-1} & = & \sum_{j<k}\pi_{jk}^{-1}\sum_{i=1}^{n}M_{ij}M_{ik}\\
+ & = & \sum_{j<k}1
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Posterior mean:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{\alpha+N_{jk}}{\alpha+\beta+n}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Quotes eld
+\end_inset
+
+In this study,
+ we employed an inverse probability weighting approach to account for missing data,
+ using empirical frequencies as our estimate for the observation probabilities under a Missing Completely at Random (MCAR) assumption.
+ While this method is objective and straightforward,
+ it can be susceptible to high variance if some pairwise observations are rare,
+ leading to unstable weights.
+ For future research,
+ particularly in contexts with sparse data,
+ more advanced methods for estimating these probabilities could be considered.
+ One promising direction is to use an Empirical Bayes framework,
+ such as a Beta-Binomial model,
+ to produce stabilized "shrinkage" estimates.
+ Such an approach would "borrow strength" across all pairs to improve the probability estimates for rare pairs,
+ potentially leading to a more efficient and stable final estimator without sacrificing the objectivity of being entirely data-driven.
+ This could offer a principled way to balance the trade-off between bias and variance in the estimation of the weights,
+ enhancing the robustness of the overall findings.
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

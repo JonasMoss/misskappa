@@ -322,7 +322,11 @@ literal "false"
 reasonable 
 \emph default
 miminal conditions for when the estimator is consistent.
- To that we introduce a condition.
+ 
+\end_layout
+
+\begin_layout Subsection
+Conditions for consistency
 \end_layout
 
 \begin_layout Definition
@@ -932,6 +936,10 @@ Uniform PMCAR + Heterogeneous
 MCAR (not PMCAR) + Exchangeable (should NOT work)
 \end_layout
 
+\begin_layout Subsection
+The standard error
+\end_layout
+
 \begin_layout Standard
 \begin_inset Separator plain
 \end_inset
@@ -944,7 +952,7 @@ MCAR (not PMCAR) + Exchangeable (should NOT work)
 status open
 
 \begin_layout Plain Layout
-Inconsistency.
+Confidence intervals.
 \end_layout
 
 \end_inset
