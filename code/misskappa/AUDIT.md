@@ -2,6 +2,75 @@
 
 This is a living engineering note for the `misskappa` R package (`code/misskappa/` in this repo). It documents what exists today and what to improve next, without committing to removing major subsystems (EM / “quadratic”) yet.
 
+## Roadmap (cleanup + portability)
+
+Primary goals:
+
+1. **Simple R package**: easy defaults, clear method choices, stable return shapes, good error messages.
+2. **Portable C++ core**: isolate algorithmic code from R/Rcpp so it can be reused for a future Python package (e.g. via pybind11) with minimal changes.
+
+### Milestone 0: hygiene and baseline checks (done)
+
+- Add repo workflows (`Justfile`) and make `R CMD check` / tests runnable in one command.
+- Remove tracked session artifacts (`.RData`, `.Rhistory`, `.Rproj.user`) and add ignore rules.
+- Align docs with R wrappers and fix continuous `"gwet"` dispatch in C++.
+
+### Milestone 1: R package UX (low risk, high impact)
+
+Deliverables:
+
+- Decide and document which `method` values are *official* for each function (especially `"gwet"`).
+- Add lightweight user-facing guidance: “which method should I use?” and “what assumptions does it correspond to?”.
+- Make outputs easier to consume (suggested): a small S3 class (e.g. `"misskappa_estimate"`) with `print()` and `as.data.frame()`.
+
+Tasks:
+
+- Consider a single top-level entrypoint `kappa()` that dispatches on input type (raw vs counts vs continuous), while keeping current `kappa_*()` functions.
+- Standardize argument naming and behavior across functions:
+  - `method`, `weight`, `values` (categorical) vs `weight` (continuous) should be consistent and documented.
+  - Decide whether `gwet` is a method or a weighting adjustment; if it’s the latter, consider exposing it as an option rather than a method.
+- Add at least 2–3 minimal examples in `.Rd` (or a vignette) showing typical usage for each data type.
+
+### Milestone 2: isolate a portable C++ “core” (medium risk, foundational)
+
+Target architecture:
+
+- **Core library** (pure C++): no `Rcpp`, no `R` headers, no `NA_INTEGER`, no `Rcpp::stop`; expose a small API and return errors via a portable `Result<T>` / `StatusOr<T>` type.
+- **Bindings layer** (Rcpp): translate R matrices/options ↔ core types, translate errors ↔ `Rcpp::stop`.
+
+Concrete steps:
+
+- Move shared types out of `emdiscrete`:
+  - Create `result.h` / `types.h` that define `Result<T>`, error handling, and common typedefs (so `misskappa.h` no longer aliases `Result` from `emdiscrete`).
+- Make the public “core” header self-contained:
+  - `misskappa.h` should not include EM headers; instead, EM becomes one implementation behind the core API.
+- Define core entrypoints (names illustrative):
+  - `misskappa::raw::estimate(...)`, `misskappa::counts::estimate(...)`, `misskappa::continuous::estimate(...)`
+  - Return a single `Estimation` struct (estimates + vcov + metadata) with stable ordering/labels.
+- Keep Armadillo **inside** the core if desired, but avoid pulling it through the public API if you want maximum portability; consider:
+  - public API uses `std::vector<double>` + row/col metadata, or
+  - public API uses lightweight matrix/span views.
+
+### Milestone 3: style, tooling, and CI (low/medium risk)
+
+Goals:
+
+- Consistent formatting and a “boring” codebase: fewer bespoke conventions; easier diffs; easier review.
+
+Suggested tooling:
+
+- C++: add `.clang-format` and a `just fmt-cpp` recipe; run formatting in CI.
+- R: add `styler` / `lintr` configuration and `just fmt-r` / `just lint-r` recipes (optional if you prefer minimal dependencies).
+- CI: add a minimal GitHub Actions workflow running `R CMD check` on Linux + macOS (and Windows if you want), plus a C++ compile-only job with different compilers/standards if portability is the priority.
+
+### Milestone 4: simplify/trim estimator families (higher risk, optional later)
+
+Once Milestone 2 exists (portable core + clean dispatch), it becomes much cheaper to:
+
+- Remove or quarantine the bespoke `"quadratic"` path if it’s not needed.
+- Split EM (`ml`) into an optional component (or separate package) if you decide it’s too heavyweight.
+- Replace dense legacy code with clearer implementations backed by the test suite.
+
 ## What the package currently exposes
 
 Public exported API (`code/misskappa/NAMESPACE:3`):
@@ -56,10 +125,10 @@ The C++ code is split by estimator family:
 
 ### Public interface / consistency
 
-- R docs don’t match implementation for method choices:
-  - `kappa_raw()` and `kappa_continuous()` R wrappers include `"gwet"` (`code/misskappa/R/kappa.R:35`, `code/misskappa/R/kappa.R:101`), but `.Rd` usage does not list it (`code/misskappa/man/kappa_raw.Rd:6`, `code/misskappa/man/kappa_continuous.Rd:6`).
-  - Continuous weights: C++ supports `"identity"` loss for continuous, but R’s `weight` choices exclude it (`code/misskappa/R/kappa.R:102` vs `code/misskappa/src/rcpp_interface.cpp:52`).
-  - `kappa_counts()` has a dead code branch checking `if (method == "ipw")` even though `"ipw"` isn’t in the `method` choices (`code/misskappa/R/kappa.R:152` and `code/misskappa/R/kappa.R:181`).
+- Recent fixes made to align docs and implementation:
+  - `"gwet"` is now documented in `.Rd` for `kappa_raw()` and `kappa_continuous()` and is reachable in the C++ continuous backend.
+  - Continuous `"identity"` weight is now exposed in `kappa_continuous()`.
+  - Removed dead code in `kappa_counts()` that checked for `"ipw"`.
 
 - Naming in returned objects is fairly consistent:
   - Raw returns estimates named `Conger`, `Fleiss`, `Brennan-Prediger` (`code/misskappa/R/kappa.R:66`).
@@ -75,7 +144,7 @@ The C++ code is split by estimator family:
   - `kappaqp.cpp` is dense, low-level, and separate from the nonparametric logic (`code/misskappa/src/kappaqp.cpp:26`).
 
 - Packaging hygiene:
-  - The package directory contains interactive/session artifacts (`code/misskappa/.RData`, `code/misskappa/.Rhistory`).
+  - The repo previously tracked interactive/session artifacts (`code/misskappa/.RData`, `code/misskappa/.Rhistory`, `code/misskappa/.Rproj.user`); these should stay untracked and ignored.
   - `workspace/` is excluded from build (`code/misskappa/.Rbuildignore:10`) but contains compiled binaries and legacy experiments that can confuse maintenance.
 
 ### Tests (what exists vs what’s missing)
@@ -110,9 +179,9 @@ What’s missing (recommended “reasonable tests of the code itself”):
 
 ### 1) Public interface cleanup (low risk)
 
-- Decide whether `"gwet"` is officially supported; if yes, expose it consistently and implement the missing continuous path (or remove it from choices).
-- Align docs (`man/*.Rd`) with the actual `method` and `weight` options, regenerate with roxygen.
-- Remove dead branches in R wrappers (e.g. `kappa_counts()` checking `"ipw"`).
+- Decide whether `"gwet"` is officially supported and, if so, whether it should remain a `method` or become an option (e.g. `reweight = "gwet"`).
+- Add minimal usage examples and a short “method selection” guide (README/vignette).
+- Add a small S3 class + printer for stable downstream consumption (optional, but helps “easy-to-use”).
 
 ### 2) Code-quality refactors (medium risk, high payoff)
 
