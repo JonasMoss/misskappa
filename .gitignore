@@ -1,7 +1,12 @@
 *~
 *.lyx~
-*.lyx.emergency.lyx
-llm/
+*.lyx.emergency*
+*.emergency*
+\#*\#
+notes/_autosave/
+notes/archive/
+!notes/archive/README.md
+!notes/archive/2025-07-duplicate-notes/README.md
 
 *.aux
 *.bbl

@@ -1,0 +1,26 @@
+{
+    "id": "2AE7C226",
+    "path": "~/wrk/r/misskappa/src/kappanp.cpp",
+    "project_path": "src/kappanp.cpp",
+    "type": "cpp",
+    "hash": "3767469143",
+    "contents": "",
+    "dirty": false,
+    "created": 1751891511417.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "64,17",
+        "scrollLine": "21"
+    },
+    "folds": "9|26|13|0|\n10|73|12|2|\n15|23|19|0|\n16|67|18|2|\n27|3|58|0|\n48|54|50|4|\n65|3|213|0|\n218|3|319|0|\n326|3|480|0|\n",
+    "lastKnownWriteTime": 1751897900,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1751897900429,
+    "read_only": false,
+    "read_only_alternatives": []
+}

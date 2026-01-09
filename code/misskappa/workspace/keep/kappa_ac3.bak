@@ -1,0 +1,232 @@
+// kappa_raw_cpp.cpp -----------------------------------------------------------
+//   Compute three chance‑corrected agreement coefficients from raw rater data
+//   together with influence‑function standard errors.
+//     • Conger κ   – available‑case (ipw = FALSE) or IPW (ipw = TRUE)
+//     • Fleiss κ   – pooled marginal chance
+//     • BP κ       – Brennan‑Prediger uniform marginal chance
+//
+//   The function returns only point estimates and SEs.
+//   Assumes integer‑coded categories; non‑integer values can be remapped
+//   outside R before calling.
+//
+//   Parameters
+//     x          : n × R integer matrix (NA_INT = missing)
+//     loss_type  : 1 = nominal | 2 = absolute | 3 = quadratic
+//     ipw        : TRUE ⇒ inverse‑probability weighting (uses π_j)
+//     eps        : winsorisation guard (default 0)
+//
+// [[Rcpp::depends(RcppArmadillo)]]
+#include <RcppArmadillo.h>
+#include <unordered_map>
+#include <set>
+
+constexpr int NA_INT = -2147483648;   // R's NA_INTEGER sentinel
+
+// -----------------------------------------------------------------------------
+// Loss helpers
+inline double loss_nominal(int a, int b)  { return a == b ? 0.0 : 1.0; }
+inline double loss_abs(int a, int b)      { return std::abs(a - b);     }
+inline double loss_quad(int a, int b)     { double d = double(a - b); return d*d; }
+
+using LossFun = std::function<double(int,int)>;
+
+// -----------------------------------------------------------------------------
+// [[Rcpp::export]]
+Rcpp::List kappa_raw_cpp(const arma::imat& x, int loss_type = 1,
+                         bool ipw = false, double eps = 0.0) {
+  const int n = x.n_rows;
+  const int R = x.n_cols;
+  if (R < 2) Rcpp::stop("Need ≥ 2 raters");
+
+  // ---------------------------------------------------------------------------
+  // choose loss
+  LossFun loss;
+  switch(loss_type) {
+  case 1: loss = loss_nominal; break;
+  case 2: loss = loss_abs;     break;
+  case 3: loss = loss_quad;    break;
+  default: Rcpp::stop("loss_type must be 1,2,3");
+  }
+
+  // ---------------------------------------------------------------------------
+  // collect categories & build index map
+  std::set<int> cat_set;
+  for(int i=0;i<n;++i)
+    for(int j=0;j<R;++j)
+      if(x(i,j)!=NA_INT) cat_set.insert(x(i,j));
+      const int K = cat_set.size();
+      if(K==0) Rcpp::stop("All ratings are missing");
+      std::vector<int> cats(cat_set.begin(), cat_set.end());
+      std::unordered_map<int,int> cat2idx;
+      for(int k=0;k<K;++k) cat2idx[cats[k]] = k;
+
+      // ---------------------------------------------------------------------------
+      // Missingness probabilities π_j (needed only if ipw)
+      arma::vec pi_j(R, arma::fill::zeros);
+      for(int i=0;i<n;++i)
+        for(int j=0;j<R;++j)
+          if(x(i,j)!=NA_INT) pi_j(j) += 1.0;
+          pi_j /= n;
+          for(int j=0;j<R;++j) if(pi_j(j)==0.0) Rcpp::stop("Rater with no data");
+          if(ipw) for(int j=0;j<R;++j) pi_j(j) = std::max(pi_j(j), eps);
+
+          // ---------------------------------------------------------------------------
+          // Hash unique rows
+          struct VecHash {
+            std::size_t operator()(const arma::ivec& v) const noexcept {
+              std::size_t seed = v.n_elem;
+              for(arma::uword i=0;i<v.n_elem;++i) seed ^= v(i) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+              return seed;
+            }
+          };
+          struct VecEq {
+            bool operator()(const arma::ivec&a,const arma::ivec&b) const noexcept{
+              return a.n_elem==b.n_elem && arma::all(a==b);
+            }
+          };
+
+          std::unordered_map<arma::ivec,int,VecHash,VecEq> row_map;
+          arma::uvec inv_idx(n);
+          std::vector<arma::ivec> uniq_rows;
+          arma::uvec counts;
+          for(int i=0;i<n;++i){
+            arma::ivec key = x.row(i).t();
+            auto it=row_map.find(key);
+            if(it==row_map.end()){
+              int id = uniq_rows.size();
+              row_map[key]=id; uniq_rows.push_back(key);
+              counts.resize(id+1); counts(id)=1; inv_idx(i)=id;
+            } else {
+              inv_idx(i)=it->second; counts(it->second)++;
+            }
+          }
+          const int U = uniq_rows.size();
+          arma::imat xU(U,R);
+          for(int u=0;u<U;++u) xU.row(u)=uniq_rows[u].t();
+          arma::umat MU = (xU!=NA_INT);
+
+          // ---------------------------------------------------------------------------
+          // Observed disagreement (d_o) and its IF.
+          // This is the SAME for all kappas, using the "ratio of sums" definition.
+          arma::vec Au(U, arma::fill::zeros), Bu(U, arma::fill::zeros);
+          for(int u=0;u<U;++u){
+            for(int j=0;j<R-1;++j) if(MU(u,j))
+              for(int k=j+1;k<R;++k) if(MU(u,k)){
+                double wj = ipw ? 1.0/pi_j(j) : 1.0;
+                double wk = ipw ? 1.0/pi_j(k) : 1.0;
+                double w  = wj*wk;
+                Bu(u)+=w;
+                Au(u)+=w*loss(xU(u,j), xU(u,k));
+              }
+          }
+          const double Abar = arma::dot(counts, Au)/n;
+          const double Bbar = arma::dot(counts, Bu)/n;
+          const double d_hat = (Bbar > 0) ? Abar/Bbar : 0.0;
+
+          arma::vec IFd(n);
+          for(int i=0;i<n;++i) {
+            int u=inv_idx(i);
+            IFd(i) = (Bbar > 0) ? (Au(u) - d_hat*Bu(u))/Bbar : 0.0;
+          }
+
+          // ---------------------------------------------------------------------------
+          // Conger's kappa
+          arma::mat Cu(U,U, arma::fill::zeros), Du(U,U, arma::fill::zeros);
+          for(int u=0;u<U;++u)
+            for(int v=0;v<U;++v)
+              for(int j=0;j<R-1;++j) if(MU(u,j))
+                for(int k=j+1;k<R;++k) if(MU(v,k)){
+                  double wj = ipw ? 1.0/pi_j(j) : 1.0;
+                  double wk = ipw ? 1.0/pi_j(k) : 1.0;
+                  double w  = wj*wk;
+                  Du(u,v)+=w;
+                  Cu(u,v)+=w*loss(xU(u,j), xU(v,k));
+                }
+                const double Cbar = arma::as_scalar(counts.t()*Cu*counts)/(double(n)*n);
+                const double Dbar = arma::as_scalar(counts.t()*Du*counts)/(double(n)*n);
+                const double dC_conger = (Dbar > 0) ? Cbar/Dbar : 0.0;
+                const double kappa_conger = (dC_conger > 0) ? 1.0 - d_hat/dC_conger : 0.0;
+
+                arma::mat Cu_sym = 0.5*(Cu+Cu.t());
+                arma::mat Du_sym = 0.5*(Du+Du.t());
+                arma::vec IF_conger(n, arma::fill::zeros);
+                if (dC_conger > 0) {
+                  for(int i=0;i<n;++i){
+                    int u=inv_idx(i);
+                    double gC = arma::dot(Cu_sym.row(u), counts)/n;
+                    double gD = arma::dot(Du_sym.row(u), counts)/n;
+                    double IFdC_conger = (Dbar > 0) ? (2.0*(gC - Cbar) - 2.0*dC_conger*(gD - Dbar))/Dbar : 0.0;
+                    IF_conger(i) = -IFd(i)/dC_conger + d_hat*IFdC_conger/(dC_conger*dC_conger);
+                  }
+                }
+                const double se_conger = std::sqrt(arma::dot(IF_conger,IF_conger)/(double(n)*n));
+
+                // ---------------------------------------------------------------------------
+                // Fleiss's Kappa
+                arma::vec Nc(K, arma::fill::zeros);
+                double total_w = 0.0;
+                for(int i=0;i<n;++i)
+                  for(int j=0;j<R;++j) if(x(i,j)!=NA_INT){
+                    double w = ipw ? 1.0/pi_j(j) : 1.0;
+                    total_w += w;
+                    Nc(cat2idx[x(i,j)]) += w;
+                  }
+                  arma::vec pc(K, arma::fill::zeros);
+                  if(total_w > 0) pc = Nc / total_w;
+
+                  double dC_fleiss = 0.0;
+                  for(int a=0;a<K;++a)
+                    for(int b=0;b<K;++b)
+                      dC_fleiss += loss(cats[a],cats[b])*pc(a)*pc(b);
+                  const double kappa_fleiss = (dC_fleiss > 0) ? 1.0 - d_hat/dC_fleiss : 0.0;
+
+                  arma::vec IF_fleiss(n, arma::fill::zeros);
+                  if (dC_fleiss > 0) {
+                    arma::vec grad_dC(K, arma::fill::zeros);
+                    for(int k=0;k<K;++k)
+                      for(int l=0;l<K;++l)
+                        grad_dC(k) += 2.0 * loss(cats[k],cats[l]) * pc(l);
+
+                    for (int i=0; i < n; ++i) {
+                      arma::vec s_i(K, arma::fill::zeros);
+                      double r_i = 0.0;
+                      for (int j = 0; j < R; ++j) if (x(i, j) != NA_INT) {
+                        double w = ipw ? 1.0 / pi_j(j) : 1.0;
+                        s_i(cat2idx[x(i, j)]) += w;
+                        r_i += w;
+                      }
+
+                      arma::vec IF_p_i(K, arma::fill::zeros);
+                      if(total_w > 0) IF_p_i = (s_i - r_i * pc) / total_w;
+
+                      double IFdC_i = arma::dot(grad_dC, IF_p_i);
+
+                      // Apply the U-statistic vs V-statistic correction for chance disagreement
+                      if(total_w > 1.0) IFdC_i *= total_w / (total_w - 1.0);
+
+                      IF_fleiss(i) = -IFd(i)/dC_fleiss + d_hat*IFdC_i/(dC_fleiss*dC_fleiss);
+                    }
+                  }
+                  const double se_fleiss = std::sqrt(arma::dot(IF_fleiss,IF_fleiss)/(double(n)*n));
+
+                  // ---------------------------------------------------------------------------
+                  // BP Kappa
+                  double dC_bp = 0.0;
+                  if(K > 0) {
+                    for(int a=0;a<K;++a) for(int b=0;b<K;++b) dC_bp += loss(cats[a],cats[b]);
+                    dC_bp /= (double)K*K;
+                  }
+                  const double kappa_bp = (dC_bp > 0) ? 1.0 - d_hat/dC_bp : 0.0;
+                  arma::vec IF_bp = (dC_bp > 0) ? -IFd / dC_bp : arma::vec(n, arma::fill::zeros);
+                  const double se_bp = std::sqrt(arma::dot(IF_bp,IF_bp)/(double(n)*n));
+
+                  // ---------------------------------------------------------------------------
+                  return Rcpp::List::create(
+                    Rcpp::_["kappa_conger"] = kappa_conger,
+                    Rcpp::_["se_conger"]    = se_conger,
+                    Rcpp::_["kappa_fleiss"] = kappa_fleiss,
+                    Rcpp::_["se_fleiss"]   = se_fleiss,
+                    Rcpp::_["kappa_bp"]     = kappa_bp,
+                    Rcpp::_["se_bp"]       = se_bp
+                  );
+}

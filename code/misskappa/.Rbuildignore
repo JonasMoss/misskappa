@@ -1,0 +1,11 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^data_raw$
+^dump\.sh$
+^dump\.txt$
+^dumptest\.txt$
+^dumptest\.sh$
+^paper$
+^img$
+^workspace$

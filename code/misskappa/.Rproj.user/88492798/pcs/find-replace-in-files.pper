@@ -1,0 +1,21 @@
+{
+    "dialog-state": {
+        "query": "'np'",
+        "path": "",
+        "regex": false,
+        "caseSensitive": false,
+        "wholeWord": false,
+        "filePatterns": [],
+        "useGitGrep": false,
+        "excludeGitIgnore": true,
+        "excludeFilePatterns": [
+            "*.cpp",
+            "*.h",
+            "*.bak"
+        ],
+        "resultsCount": 34,
+        "errorCount": 0,
+        "replaceErrors": "",
+        "projectRelative": true
+    }
+}

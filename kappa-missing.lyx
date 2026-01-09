@@ -155,7 +155,7 @@ Missing data is a pervasive challenge in studies of inter-rater agreement,
  We develop a general framework for handling missing data in agreement analysis that supports both categorical and continuous responses,
  allows arbitrary disagreement functions,
  and hold provided the data is pairwise missing completely at random.
- We characterize when pairwise-available estimators remain consistent,
+ Then we characterize when pairwise-available estimators remain consistent,
  derive their correct standard errors,
  and identify settings where conventional formulas fail.
  We then propose reweighted kappa estimators that remain valid under substantially weaker assumptions.
@@ -245,7 +245,7 @@ We cover three variants of chance disagreement,
 \begin{eqnarray}
 d_{F} & = & R^{-2}\sum_{j,k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:fleiss disagreement}\\
 d_{C} & = & \binom{R}{2}^{-1}\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:cohendisagreement}\\
-d_{BP} & = & [[]],\label{eq:bp disagreement}
+d_{BP} & = & C^{-2}\sum_{a,b}l(a,b),\label{eq:bp disagreement}
 \end{eqnarray}
 
 \end_inset
@@ -259,7 +259,16 @@ where
 \end_inset
 
  are independent samples from the same distribution.
- Interpretations of these can chance disagreements can be found elsewhere,
+ In the case of Brennan–Prediger we must assume that 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ takes on 
+\begin_inset Formula $C<\infty$
+\end_inset
+
+ categorical values.
+ Interpretations of these chance disagreements can be found elsewhere,
  see e.g.,
  [[]],
  [[]],
@@ -316,11 +325,285 @@ X_{j}^{\star} & M_{j}=1,\\
 \end_layout
 
 \begin_layout Section
-Estimators
+Hájek-type inverse probability-weighted estimator
 \end_layout
 
 \begin_layout Subsection
-The available-case estimator
+Definition
+\end_layout
+
+\begin_layout Standard
+Define the observation probabilities 
+\begin_inset Formula $\pi_{j}=P(M_{j}=1)$
+\end_inset
+
+ and 
+\begin_inset Formula $\pi_{jk}=P(M_{j}M_{k}=1)$
+\end_inset
+
+.
+ Then define the natural sample estimators 
+\begin_inset Formula $\hat{\pi}_{j}=\hat{P}(M_{j}=1)$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{\pi}_{jk}=\hat{P}(M_{j}M_{k}=1)$
+\end_inset
+
+,
+ with 
+\begin_inset Formula $\hat{P}$
+\end_inset
+
+ being the empirical probabilities.
+ 
+\end_layout
+
+\begin_layout Standard
+The Hájek-type inverse probability-weighted estimator is 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}=1-\hat{d}^{IPW}/\hat{d}_{C}^{IPW}$
+\end_inset
+
+.
+\begin_inset Formula 
+\begin{eqnarray*}
+\hat{d}^{IPW} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij},X_{ik})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}},\quad\hat{d}_{C}^{IPW}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij},X_{i'k})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}
+\end{eqnarray*}
+
+\end_inset
+
+with 
+\begin_inset Formula $\hat{d}_{F}^{IPW}$
+\end_inset
+
+being defined analogously to 
+\begin_inset Formula $\hat{d}_{C}^{IPW}$
+\end_inset
+
+,
+ with summation over all 
+\begin_inset Formula $j,k$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+It follows from the strong law of large numbers,
+ Slutsky's theorem,
+ and the continuous mapping theorem 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "see, e.g.,"
+key "Van_der_Vaart2000-qc"
+literal "false"
+
+\end_inset
+
+ that
+\begin_inset Formula 
+\begin{eqnarray*}
+\hat{d}^{IPW} & \stackrel{a.s.}{\to} & \binom{R}{2}^{-1}\sum_{j<k}\pi_{jk}^{-1}E[l(X_{1j},X_{1k})M_{1j}M_{1k}],\quad\hat{d}_{C}^{IPW}\stackrel{a.s.}{\to}\binom{R}{2}^{-1}\sum_{j<k}\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{1j},X_{2k})M_{1j}M_{2k}],
+\end{eqnarray*}
+
+\end_inset
+
+with a similar limit for 
+\begin_inset Formula $\hat{d}_{F}^{IPW}$
+\end_inset
+
+.
+ An obvious sufficient condition for 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+ to be consistent is that 
+\begin_inset Formula $\pi_{jk}^{-1}E[l(X_{ij},X_{ik})M_{ij}M_{ik}]=E[l(X_{ij}^{\star},X_{ik}^{\star})]$
+\end_inset
+
+ and 
+\begin_inset Formula $\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{ij},X_{i'k})M_{ij}M_{i'k}]=E[l(X_{ij}^{\star},X_{i'k}^{\star})]$
+\end_inset
+
+,
+ and these conditions hold when the data is missing completely at random.
+ We also require that 
+\begin_inset Formula $d_{X}>0$
+\end_inset
+
+ for 
+\begin_inset Formula $\kappa_{X}$
+\end_inset
+
+ to be defined,
+ and that all 
+\begin_inset Formula $\pi_{jk}>0$
+\end_inset
+
+,
+ so all rater combinations are counted.
+\end_layout
+
+\begin_layout Proposition
+\begin_inset CommandInset label
+LatexCommand label
+name "prop:hajek estimator"
+
+\end_inset
+
+The estimators 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+ are strongly consistent for all 
+\begin_inset Formula $X\in\{C,F,BP\}$
+\end_inset
+
+ when the data is missing completely at random,
+ exchangeable raters or not,
+ provided that 
+\begin_inset Formula $d_{X}>0$
+\end_inset
+
+ and all 
+\begin_inset Formula $\pi_{jk}>0$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Proof
+That 
+\begin_inset Formula $\pi_{jk}^{-1}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}]=E[l(X_{ij}^{\star},X_{ik}^{\star})]$
+\end_inset
+
+ is equivalent to 
+\begin_inset Formula $E[l(X_{ij}^{\star},X_{ik}^{\star})]=E[l(X_{ij}^{\star},X_{ik}^{\star})|M_{ij}M_{ik}=1]$
+\end_inset
+
+,
+ which holds true when data is missing completely at random.
+ The same reasoning holds for 
+\begin_inset Formula $\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}]=E[l(X_{ij}^{\star},X_{i'k}^{\star})]$
+\end_inset
+
+ as well.
+ 
+\end_layout
+
+\begin_layout Subsection
+Motivation sketch
+\end_layout
+
+\begin_layout Subsection
+On inference
+\end_layout
+
+\begin_layout Standard
+The estimators 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+ are asymptotically normal under the mild condition that the random values 
+\begin_inset Formula $l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}$
+\end_inset
+
+ have finite second moments.
+ For each 
+\begin_inset Formula $X\in\{C,F,BP\}$
+\end_inset
+
+,
+ we have that
+\begin_inset Formula 
+\[
+\sqrt{n}\big(\hat{\kappa}_{X}^{IPW}-\kappa_{X}^{IPW}\big)\stackrel{d}{\to}N(0,\sigma_{X}^{2}),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\kappa_{X}^{IPW}$
+\end_inset
+
+ is the almost sure limit of 
+\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
+\end_inset
+
+,
+ which equals 
+\begin_inset Formula $\kappa_{X}$
+\end_inset
+
+ under the conditions of Proposition 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "prop:hajek estimator"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+.
+ The complex formula for 
+\begin_inset Formula $\sigma_{X}^{2}$
+\end_inset
+
+,
+ which depends on unknown parameters,
+ can be found using he efficient influence function in the observed-data model.
+ We estimate 
+\begin_inset Formula $\sigma_{X}^{2}$
+\end_inset
+
+ using a plug-in estimator of its influence functions.
+\begin_inset Formula 
+\begin{equation}
+\phi_{\kappa_{X}}=-d_{X}^{-1}\phi_{d}+d_{X}^{-2}\phi_{d_{X}}.\label{eq:influence}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Define 
+\begin_inset Formula $l_{jk}(x)=E[l(x,X_{1k})|M_{1k}=1]$
+\end_inset
+
+ and 
+\begin_inset Formula $\theta_{jk}=\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{1j},X_{2k})M_{1j}M_{2k}]$
+\end_inset
+
+.
+\begin_inset Formula 
+\[
+\phi_{\theta_{jk}}=\pi_{j}^{-1}M_{j}(l_{k}(X_{1j})-\theta_{jk})+\pi_{k}^{-1}M_{j}(l_{k}(X_{1k})-\theta_{jk})
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Computation 
+\end_layout
+
+\begin_layout Section
+Illustrations
+\end_layout
+
+\begin_layout Section
+Available-case estimator
+\end_layout
+
+\begin_layout Subsection
+Definition
 \end_layout
 
 \begin_layout Standard
@@ -374,38 +657,6 @@ Observe that
  
 \end_layout
 
-\begin_layout Proposition
-\begin_inset CommandInset label
-LatexCommand label
-name "prop:The-available-case"
-
-\end_inset
-
-The available case estimator is strongly consistent if either
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-The raters are exchangeable and data is missing pairwise completely at random.
-\end_layout
-
-\begin_layout Enumerate
-The raters are not exchangeable and data is missing uniformly at random.
-\end_layout
-
-\end_deeper
-\begin_layout Proposition
-The estimator is in general not consistent when data is missing at random,
- even when raters are exchangeable.
- 
-\end_layout
-
-\begin_layout Remark
-A weaker condition but arguably useless condition suffices for consistency with exchangeable raters.
- See the proof for details.
- 
-\end_layout
-
 \begin_layout Definition
 \begin_inset CommandInset label
 LatexCommand label
@@ -426,12 +677,7 @@ name "def:missingness"
 \end_inset
 
  be the observed incomplete data.
- 
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-The components of 
+ The components of 
 \begin_inset Formula $X$
 \end_inset
 
@@ -459,212 +705,41 @@ uniformly at random
  are independent.
 \end_layout
 
+\begin_layout Proposition
+\begin_inset CommandInset label
+LatexCommand label
+name "prop:The-available-case"
+
+\end_inset
+
+The available case estimator is strongly consistent if either
+\end_layout
+
+\begin_deeper
 \begin_layout Enumerate
-Define 
-\begin_inset Formula $\pi_{I}(x^{\star})=P\left(\bigcap_{i\in I}\{M_{i}=1\}\mid x^{\star}\right)$
-\end_inset
+The raters are exchangeable and data is missing completely at random.
+\end_layout
 
-.
- The components of 
-\begin_inset Formula $X$
-\end_inset
-
- are missing 
-\emph on
-pairwise completely at random
-\emph default
- (PMCAR) if 
-\begin_inset Formula $\pi_{I}(x^{\star})$
-\end_inset
-
- is constant in 
-\begin_inset Formula $x^{\star}$
-\end_inset
-
- for all 
-\begin_inset Formula $|I|\leq2$
-\end_inset
-
-.
+\begin_layout Enumerate
+The raters are not exchangeable and data is missing uniformly at random.
 \end_layout
 
 \end_deeper
-\begin_layout Definition
-Observe that 
-\begin_inset Formula $X$
-\end_inset
-
- is MCAR implies PMCAR.
- For 
-\begin_inset Formula $X$
-\end_inset
-
- is MCAR iff 
-\begin_inset Formula $\pi_{I}(x^{\star})$
-\end_inset
-
- is constant in 
-\begin_inset Formula $x^{\star}$
-\end_inset
-
- for any pattern 
-\begin_inset Formula $I\subseteq\{1,\ldots,R\}$
-\end_inset
-
-.
- On the other hand,
- PMCAR does not imply MCAR,
- it does not even imply MAR!
- That said,
- MAR mechanisms that are not MCAR will typically not be MCAR [[investigate]].
-\end_layout
-
-\begin_layout Subsection
-Inverse probability-weighted estimator
-\end_layout
-
-\begin_layout Standard
-The inverse probability-weighted estimator is
-\begin_inset Formula 
-\begin{eqnarray*}
-\hat{d} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}},\quad\hat{d}_{C}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
-\end{eqnarray*}
-
-\end_inset
-
-where 
-\begin_inset Formula $\pi_{j}=\hat{P}(M_{j}=1)$
-\end_inset
-
- and 
-\begin_inset Formula $\pi_{jk}=\hat{P}(M_{j}M_{k}=1)$
-\end_inset
-
-,
- with 
-\begin_inset Formula $\hat{P}$
-\end_inset
-
- being the empirical probabilities.
- 
-\end_layout
-
 \begin_layout Proposition
-The estimators 
-\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
-\end_inset
-
- are consistent for 
-\begin_inset Formula $X\in\{C,F,BP\}$
-\end_inset
-
- when the data is missing missing pairwise completely at random,
- exchangeable raters or not.
-\end_layout
-
-\begin_layout Standard
-Let's consider what 
-\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
-\end_inset
-
- is actually consistent for.
- Taking expectations we find 
-\begin_inset Formula 
-\begin{eqnarray*}
-E[\hat{d}] & = & \frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}]}{\sum_{j<k}E[M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}]}=\frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}]}{\binom{J}{2}},\\
-E[\hat{d}_{C}] & = & \frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}]}{\sum_{j<k}E[M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}]}=\frac{\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}]}{\binom{J}{2}}.
-\end{eqnarray*}
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Section
-Inference
-\end_layout
-
-\begin_layout Subsection
-Inferential theory
-\end_layout
-
-\begin_layout Standard
-Both 
-\begin_inset Formula $\hat{\kappa}_{X}^{AC}$
-\end_inset
-
- and 
-\begin_inset Formula $\hat{\kappa}_{X}^{IPW}$
-\end_inset
-
- are asymptotically normal under mild conditions that crucially depends on the interaction between the loss function and the distribution of 
-\begin_inset Formula $X^{\star}$
-\end_inset
-
- and 
-\begin_inset Formula $M$
-\end_inset
-
-.
- Technically speaking,
- we require the random values 
-\begin_inset Formula $l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}$
-\end_inset
-
- to have finite fourth moments.
- We omit this and similar conditions in our discussion below,
- as we find it very unlikely the regularity conditions do not hold.
-\end_layout
-
-\begin_layout Standard
-An application of the delta method on 
-\begin_inset Formula $\hat{\kappa}_{X}=1-\hat{d}/\hat{d}_{X}$
-\end_inset
-
- yields the gradient 
-\begin_inset Formula $d_{X}^{-2}(-1,d)$
-\end_inset
-
-.
+The estimator is in general not consistent when data is missing at random,
+ even when raters are exchangeable.
  
-\end_layout
-
-\begin_layout Standard
-For the available-case estimator we use 
-\begin_inset Formula $U$
-\end_inset
-
--statistics combined with the delta method to find the covariance of 
-\begin_inset Formula $\hat{d}$
-\end_inset
-
- and 
-\begin_inset Formula $\hat{d}_{X}$
-\end_inset
-
-.
- The proof is not enlightening and essentially a copy-paste of classical theory;
- see the online appendix for details.
-\end_layout
-
-\begin_layout Standard
-The 
-\end_layout
-
-\begin_layout Subsection
-Computation 
-\end_layout
-
-\begin_layout Section
-Illustrations
 \end_layout
 
 \begin_layout Section
 Concluding remarks
+\end_layout
+
+\begin_layout Standard
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 btprint "btPrintCited"
-bibfiles "misskappa"
+bibfiles "kappa-missing"
 options "bibtotoc,apalike"
 encoding "default"
 
@@ -691,13 +766,6 @@ appendix
 
 \begin_layout Section
 Appendix 1
-\end_layout
-
-\begin_layout Section*
-\begin_inset Separator plain
-\end_inset
-
-
 \end_layout
 
 \end_body

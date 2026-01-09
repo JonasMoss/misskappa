@@ -1,5 +1,13 @@
 # Notes
 
-- `notes/pairwise.lyx`: draft focused on pairwise-complete / pairwise-MCAR assumptions and (optionally) reweighted estimators.
-- `notes/misskappa.lyx`: older draft/outline for the broader “incomplete data” story (MAR/ML etc.).
-- `notes/keep.lyx`: cleaned scratch note on count-data modeling and the induced hypergeometric “thinning” kernel under exchangeable missingness.
+This folder is organized by topic:
+
+- `notes/mcar-ipw/`: MCAR/PMCAR-style estimators (available-case, pairwise-complete, IPW, reweighting) and implementation notes.
+- `notes/em/`: EM / maximum-likelihood notes for incomplete ratings.
+- `notes/semiparametrics/`: semiparametric efficiency / reference material (incl. Wasserman, vdV).
+- `notes/bib/`: BibTeX files used by the notes.
+
+Supporting folders:
+
+- `notes/_autosave/`: LyX/Emacs autosave + emergency files (not meant for editing/committing).
+- `notes/archive/`: old snapshots/duplicates kept for reference.
