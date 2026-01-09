@@ -6,7 +6,7 @@
 \usage{
 kappa_raw(
   x,
-  method = c("ml", "ipw", "available", "quadratic"),
+  method = c("ml", "ipw", "available", "gwet", "quadratic"),
   weight = c("identity", "unweighted", "linear", "quadratic", "ordinal", "radical",
     "ratio", "circular", "bipolar"),
   values = NULL,
@@ -17,7 +17,8 @@ kappa_raw(
 \item{x}{A numeric matrix of ratings (subjects-by-raters). Must contain integer
 category labels. \code{NA}s are permitted.}
 
-\item{method}{A string specifying the estimation method: "ml", "ipw", "available", or "quadratic".}
+\item{method}{A string specifying the estimation method: \code{"ml"}, \code{"ipw"},
+\code{"available"}, \code{"gwet"}, or \code{"quadratic"}.}
 
 \item{weight}{A string specifying the weighting scheme for disagreements.
 Supported values are \code{"identity"}, \code{"unweighted"}, \code{"linear"}, \code{"quadratic"},

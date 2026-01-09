@@ -2,6 +2,8 @@ Type: Package
 Package: misskappa
 Title: Inference for agreement coefficients with incomplete data
 Version: 1.0.0
+Author: Jonas Moss [aut, cre] (ORCID: 0000-0002-6876-6964)
+Maintainer: Jonas Moss <jonas.moss.statistics@gmail.com>
 Authors@R: 
     person("Jonas", "Moss", , "jonas.moss.statistics@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-6876-6964"))

@@ -6,15 +6,15 @@
 \usage{
 kappa_continuous(
   x,
-  method = c("quadratic", "available", "ipw"),
-  weight = c("quadratic", "linear", "radical", "ratio")
+  method = c("quadratic", "available", "ipw", "gwet"),
+  weight = c("quadratic", "linear", "radical", "ratio", "identity")
 )
 }
 \arguments{
 \item{x}{A numeric matrix of continuous ratings (subjects-by-raters). \code{NA}s are permitted.}
 
 \item{method}{A string specifying the estimation method. Supports
-\code{"quadratic"}, \code{"available"}, and \code{"ipw"}.}
+\code{"quadratic"}, \code{"available"}, \code{"ipw"}, and \code{"gwet"}.}
 
 \item{weight}{A string specifying the weighting scheme. For \code{"available"} and \code{"ipw"},
 supported values are \code{"identity"}, \code{"linear"}, \code{"quadratic"},

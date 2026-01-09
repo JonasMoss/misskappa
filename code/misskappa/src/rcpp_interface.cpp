@@ -37,10 +37,10 @@ arma::mat rcpp_generate_loss_matrix(
    arma::mat x_scores = Rcpp::as<arma::mat>(x_r);
    misskappa::Result<misskappa::Estimation> kappa_res;
 
-   if (method == "quadratic") {
-     arma::vec dummy_values; // Not needed for kappaqp's continuous method
-     kappa_res = misskappa::kappaqp::kappa(x_scores, dummy_values);
-   } else if (method == "available" || method == "ipw") {
+	  if (method == "quadratic") {
+	     arma::vec dummy_values; // Not needed for kappaqp's continuous method
+	     kappa_res = misskappa::kappaqp::kappa(x_scores, dummy_values);
+	  } else if (method == "available" || method == "ipw" || method == "gwet") {
      // This block does NOT perform binning.
      // It calculates the data range solely to parameterize the loss function.
      arma::mat x_finite = x_scores;
@@ -54,7 +54,7 @@ arma::mat rcpp_generate_loss_matrix(
      else if(weight_type == "quadratic") loss_factory_res = misskappa::loss::create_quadratic_loss(min_val, max_val);
      else if(weight_type == "radical") loss_factory_res = misskappa::loss::create_radical_loss(min_val, max_val);
      else if(weight_type == "ratio") loss_factory_res = misskappa::loss::create_ratio_loss(min_val, max_val);
-     else Rcpp::stop("Weight type '" + weight_type + "' is not supported for continuous 'np'/'ipw' method.");
+	     else Rcpp::stop("Weight type '" + weight_type + "' is not supported for continuous 'available'/'ipw'/'gwet' method.");
 
      if(!loss_factory_res.IsOk()) Rcpp::stop(loss_factory_res.error_message);
 
@@ -236,4 +236,3 @@ arma::mat rcpp_generate_loss_matrix(
      Rcpp::_["vcov"] = kappa_res.value.value().vcov
    );
  }
-

@@ -16,7 +16,8 @@
 #'
 #' @param x A numeric matrix of ratings (subjects-by-raters). Must contain integer
 #'   category labels. `NA`s are permitted.
-#' @param method A string specifying the estimation method: "ml", "ipw", "available", or "quadratic".
+#' @param method A string specifying the estimation method: `"ml"`, `"ipw"`, `"available"`,
+#'   `"gwet"`, or `"quadratic"`.
 #' @param weight A string specifying the weighting scheme for disagreements.
 #'   Supported values are `"identity"`, `"unweighted"`, `"linear"`, `"quadratic"`,
 #'   `"ordinal"`, `"radical"`, `"ratio"`, `"circular"`, and `"bipolar"`.
@@ -87,7 +88,7 @@ kappa_raw <- function(x,
 #'
 #' @param x A numeric matrix of continuous ratings (subjects-by-raters). `NA`s are permitted.
 #' @param method A string specifying the estimation method. Supports
-#'   `"quadratic"`, `"available"`, and `"ipw"`.
+#'   `"quadratic"`, `"available"`, `"ipw"`, and `"gwet"`.
 #' @param weight A string specifying the weighting scheme. For `"available"` and `"ipw"`,
 #'   supported values are `"identity"`, `"linear"`, `"quadratic"`,
 #'   `"radical"`, and `"ratio"`. This argument is ignored for `method = "quadratic"`.
@@ -101,7 +102,7 @@ kappa_continuous <- function(x,
                              method = c("quadratic", "available", "ipw", "gwet"),
                              weight = c(
                                "quadratic", "linear",
-                               "radical", "ratio"
+                               "radical", "ratio", "identity"
                              )) {
   method <- match.arg(method)
   weight <- match.arg(weight)
@@ -177,10 +178,6 @@ kappa_counts <- function(x,
   user_options <- list(...)
   default_options <- list(em_options = list(tol = 1e-8, max_iter = 10000))
   final_options <- utils::modifyList(default_options, user_options, keep.null = TRUE)
-
-  if (method == "ipw") {
-    stop("The 'ipw' method is not applicable to counts data, as individual rater information is lost. Use 'np' instead.")
-  }
 
   results_cpp <- unified_kappa_counts_rcpp(
     x_r = x_int, r = as.integer(r), method = method,

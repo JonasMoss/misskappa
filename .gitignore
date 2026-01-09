@@ -3,6 +3,12 @@
 *.lyx.emergency*
 *.emergency*
 \#*\#
+.Rhistory
+.RData
+.Rproj.user/
+*.o
+*.so
+*.dll
 notes/_autosave/
 notes/archive/
 !notes/archive/README.md
@@ -14,3 +20,5 @@ notes/archive/
 *.log
 *.out
 *.toc
+*.Rcheck/
+*.tar.gz
