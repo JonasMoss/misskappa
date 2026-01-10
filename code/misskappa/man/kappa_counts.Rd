@@ -29,11 +29,25 @@ the maximum row sum of \code{x}.}
 \item{...}{Additional options, e.g., \code{em_options = list(...)} for method "ml".}
 }
 \value{
-A list containing the point estimates and the variance-covariance matrix.
+An object of class \code{"misskappa_estimate"} containing the point estimates and
+the variance-covariance matrix.
 }
 \description{
 Computes Fleiss' Kappa and the Brennan-Prediger coefficient from count data.
 For Conger's Kappa, data must be in the raw (subjects x raters) format.
+
+The counts format aggregates away per-rater missingness patterns, so methods like \code{"ipw"}
+and \code{"gwet"} are not currently supported for \code{kappa_counts()}.
+}
+\examples{
+x <- matrix(c(2, 1, 0,
+              1, 1, 1,
+              0, 3, 0),
+            nrow = 3, byrow = TRUE)
+fit <- kappa_counts(x, method = "available", weight = "identity", r = 3)
+fit
+coef(fit)
+vcov(fit)
 }
 \seealso{
 kappa_raw, kappa_continuous

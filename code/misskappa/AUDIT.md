@@ -11,25 +11,25 @@ Primary goals:
 
 ### Milestone 0: hygiene and baseline checks (done)
 
-- Add repo workflows (`Justfile`) and make `R CMD check` / tests runnable in one command.
-- Remove tracked session artifacts (`.RData`, `.Rhistory`, `.Rproj.user`) and add ignore rules.
-- Align docs with R wrappers and fix continuous `"gwet"` dispatch in C++.
+- [x] Add repo workflows (`Justfile`) and make `R CMD check` / tests runnable in one command.
+- [x] Remove tracked session artifacts (`.RData`, `.Rhistory`, `.Rproj.user`) and add ignore rules.
+- [x] Align docs with R wrappers and fix continuous `"gwet"` dispatch in C++.
 
 ### Milestone 1: R package UX (low risk, high impact)
 
-Deliverables:
+Deliverables / tasks:
 
-- Decide and document which `method` values are *official* for each function (especially `"gwet"`).
-- Add lightweight user-facing guidance: “which method should I use?” and “what assumptions does it correspond to?”.
-- Make outputs easier to consume (suggested): a small S3 class (e.g. `"misskappa_estimate"`) with `print()` and `as.data.frame()`.
-
-Tasks:
-
-- Consider a single top-level entrypoint `kappa()` that dispatches on input type (raw vs counts vs continuous), while keeping current `kappa_*()` functions.
-- Standardize argument naming and behavior across functions:
-  - `method`, `weight`, `values` (categorical) vs `weight` (continuous) should be consistent and documented.
-  - Decide whether `gwet` is a method or a weighting adjustment; if it’s the latter, consider exposing it as an option rather than a method.
-- Add at least 2–3 minimal examples in `.Rd` (or a vignette) showing typical usage for each data type.
+- [x] Decide and document which `method` values are *official* for each function (especially `"gwet"`).
+  - Decision: `"gwet"` is official but positioned as compatibility/comparison rather than the primary recommended interface.
+- [x] Add lightweight user-facing guidance: “which method should I use?” and “what assumptions does it correspond to?” (README or vignette).
+- [x] Add a small S3 class (e.g. `"misskappa_estimate"`) with `print()` and `as.data.frame()` so results are easy to use downstream.
+- [x] Correct package-level documentation to match what’s implemented (no phantom “bootstrap CI” claim).
+- [x] Consider a single top-level entrypoint `kappa()` that dispatches on input type (raw vs counts vs continuous), while keeping `kappa_*()` functions.
+  - Implemented `kappa(x, type = c("auto","raw","continuous","counts"), ...)` with conservative heuristics for `"auto"`.
+- [ ] Standardize argument naming/behavior across functions (especially how `gwet` is exposed: method vs option).
+  - Current decision: keep `"gwet"` as a `method` value (official, compatibility/comparison), rather than introducing a separate option at this stage.
+  - Counts: the counts format aggregates away per-rater missingness patterns, so `"ipw"`/`"gwet"` are not currently supported for `kappa_counts()`.
+- [x] Add minimal examples for each `kappa_*()` function.
 
 ### Milestone 2: isolate a portable C++ “core” (medium risk, foundational)
 
@@ -40,16 +40,10 @@ Target architecture:
 
 Concrete steps:
 
-- Move shared types out of `emdiscrete`:
-  - Create `result.h` / `types.h` that define `Result<T>`, error handling, and common typedefs (so `misskappa.h` no longer aliases `Result` from `emdiscrete`).
-- Make the public “core” header self-contained:
-  - `misskappa.h` should not include EM headers; instead, EM becomes one implementation behind the core API.
-- Define core entrypoints (names illustrative):
-  - `misskappa::raw::estimate(...)`, `misskappa::counts::estimate(...)`, `misskappa::continuous::estimate(...)`
-  - Return a single `Estimation` struct (estimates + vcov + metadata) with stable ordering/labels.
-- Keep Armadillo **inside** the core if desired, but avoid pulling it through the public API if you want maximum portability; consider:
-  - public API uses `std::vector<double>` + row/col metadata, or
-  - public API uses lightweight matrix/span views.
+- [ ] Create `result.h` / `types.h` defining a portable `Result<T>` and common types (so `misskappa.h` no longer aliases `Result` from `emdiscrete`).
+- [ ] Make `misskappa.h` self-contained (no EM includes); treat EM as one backend behind a clean API.
+- [ ] Define core entrypoints (names illustrative): `misskappa::{raw,counts,continuous}::estimate(...)` returning a single `Estimation` struct (estimates + vcov + metadata).
+- [ ] Decide on a portable public data model (avoid exposing Armadillo types if Python reuse is a priority).
 
 ### Milestone 3: style, tooling, and CI (low/medium risk)
 
@@ -59,9 +53,9 @@ Goals:
 
 Suggested tooling:
 
-- C++: add `.clang-format` and a `just fmt-cpp` recipe; run formatting in CI.
-- R: add `styler` / `lintr` configuration and `just fmt-r` / `just lint-r` recipes (optional if you prefer minimal dependencies).
-- CI: add a minimal GitHub Actions workflow running `R CMD check` on Linux + macOS (and Windows if you want), plus a C++ compile-only job with different compilers/standards if portability is the priority.
+- [ ] C++: add `.clang-format` and a `just fmt-cpp` recipe; run formatting in CI.
+- [ ] R: add `styler` / `lintr` config and `just fmt-r` / `just lint-r` recipes (optional).
+- [ ] CI: add a minimal GitHub Actions workflow running `R CMD check`, plus a C++ compile-only job with different compilers/standards.
 
 ### Milestone 4: simplify/trim estimator families (higher risk, optional later)
 

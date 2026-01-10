@@ -17,7 +17,7 @@
 #' @param x A numeric matrix of ratings (subjects-by-raters). Must contain integer
 #'   category labels. `NA`s are permitted.
 #' @param method A string specifying the estimation method: `"ml"`, `"ipw"`, `"available"`,
-#'   `"gwet"`, or `"quadratic"`.
+#'   `"gwet"` (compatibility/comparison), or `"quadratic"`.
 #' @param weight A string specifying the weighting scheme for disagreements.
 #'   Supported values are `"identity"`, `"unweighted"`, `"linear"`, `"quadratic"`,
 #'   `"ordinal"`, `"radical"`, `"ratio"`, `"circular"`, and `"bipolar"`.
@@ -67,7 +67,13 @@ kappa_raw <- function(x,
   names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
   dimnames(vcov) <- list(names(estimates), names(estimates))
 
-  return(list(estimates = estimates, vcov = vcov))
+  new_misskappa_estimate(
+    estimates = estimates,
+    vcov = vcov,
+    type = "raw",
+    method = method,
+    weight = weight_arg
+  )
 }
 
 #' Inter-Rater Agreement Coefficients for Continuous Data
@@ -88,7 +94,7 @@ kappa_raw <- function(x,
 #'
 #' @param x A numeric matrix of continuous ratings (subjects-by-raters). `NA`s are permitted.
 #' @param method A string specifying the estimation method. Supports
-#'   `"quadratic"`, `"available"`, `"ipw"`, and `"gwet"`.
+#'   `"quadratic"`, `"available"`, `"ipw"`, and `"gwet"` (compatibility/comparison).
 #' @param weight A string specifying the weighting scheme. For `"available"` and `"ipw"`,
 #'   supported values are `"identity"`, `"linear"`, `"quadratic"`,
 #'   `"radical"`, and `"ratio"`. This argument is ignored for `method = "quadratic"`.
@@ -128,7 +134,13 @@ kappa_continuous <- function(x,
   names(estimates) <- c("Conger", "Fleiss")
   dimnames(vcov) <- list(names(estimates), names(estimates))
 
-  return(list(estimates = estimates, vcov = vcov))
+  new_misskappa_estimate(
+    estimates = estimates,
+    vcov = vcov,
+    type = "continuous",
+    method = method,
+    weight = weight
+  )
 }
 
 
@@ -137,6 +149,9 @@ kappa_continuous <- function(x,
 #' @description
 #' Computes Fleiss' Kappa and the Brennan-Prediger coefficient from count data.
 #' For Conger's Kappa, data must be in the raw (subjects x raters) format.
+#'
+#' The counts format aggregates away per-rater missingness patterns, so methods like `"ipw"`
+#' and `"gwet"` are not currently supported for `kappa_counts()`.
 #'
 #' @param x A numeric matrix of counts (subjects x categories).
 #' @param method A string specifying the estimation method: "ml", "quadratic", or "available".
@@ -190,5 +205,11 @@ kappa_counts <- function(x,
   names(estimates) <- c("Fleiss", "Brennan-Prediger")
   dimnames(vcov) <- list(names(estimates), names(estimates))
 
-  return(list(estimates = estimates, vcov = vcov))
+  new_misskappa_estimate(
+    estimates = estimates,
+    vcov = vcov,
+    type = "counts",
+    method = method,
+    weight = weight
+  )
 }

@@ -18,7 +18,7 @@ kappa_raw(
 category labels. \code{NA}s are permitted.}
 
 \item{method}{A string specifying the estimation method: \code{"ml"}, \code{"ipw"},
-\code{"available"}, \code{"gwet"}, or \code{"quadratic"}.}
+\code{"available"}, \code{"gwet"} (compatibility/comparison), or \code{"quadratic"}.}
 
 \item{weight}{A string specifying the weighting scheme for disagreements.
 Supported values are \code{"identity"}, \code{"unweighted"}, \code{"linear"}, \code{"quadratic"},
@@ -33,7 +33,8 @@ If \code{NULL}, categories are inferred from the data and assigned sequential in
 to control the EM algorithm.}
 }
 \value{
-A list containing the point estimates and the variance-covariance matrix.
+An object of class \code{"misskappa_estimate"} containing the point estimates and
+the variance-covariance matrix.
 }
 \description{
 Computes various weighted agreement coefficients (Conger's Kappa, Fleiss' Kappa,
@@ -48,6 +49,16 @@ The \code{method} argument dispatches to different underlying C++ estimation eng
 
 The \code{"quadratic"} method is a special case that applies quadratic weights based on
 numeric scores assigned to the categories.
+}
+\examples{
+x <- matrix(c(1, 1, NA,
+              2, 2, 2,
+              1, 2, 1),
+            nrow = 3, byrow = TRUE)
+fit <- kappa_raw(x, method = "available", weight = "quadratic")
+fit
+coef(fit)
+vcov(fit)
 }
 \seealso{
 kappa_continuous, kappa_counts

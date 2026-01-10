@@ -14,15 +14,15 @@ kappa_continuous(
 \item{x}{A numeric matrix of continuous ratings (subjects-by-raters). \code{NA}s are permitted.}
 
 \item{method}{A string specifying the estimation method. Supports
-\code{"quadratic"}, \code{"available"}, \code{"ipw"}, and \code{"gwet"}.}
+\code{"quadratic"}, \code{"available"}, \code{"ipw"}, and \code{"gwet"} (compatibility/comparison).}
 
 \item{weight}{A string specifying the weighting scheme. For \code{"available"} and \code{"ipw"},
 supported values are \code{"identity"}, \code{"linear"}, \code{"quadratic"},
 \code{"radical"}, and \code{"ratio"}. This argument is ignored for \code{method = "quadratic"}.}
 }
 \value{
-A list containing the point estimates for Conger's Kappa and Fleiss' Kappa,
-and their 2x2 variance-covariance matrix.
+An object of class \code{"misskappa_estimate"} containing the point estimates for
+Conger's Kappa and Fleiss' Kappa, and their 2x2 variance-covariance matrix.
 }
 \description{
 Computes Conger's Kappa and Fleiss' Kappa for multiple raters on continuous data.
@@ -37,6 +37,16 @@ use a U-statistic-based estimator for the disagreement measures.
 
 This function does not compute the Brennan-Prediger coefficient, as its definition
 of chance agreement is not generally applicable to continuous data.
+}
+\examples{
+x <- matrix(c(0.1, 0.1, NA,
+              0.0, 0.2, 0.1,
+              0.9, 1.0, 0.8),
+            nrow = 3, byrow = TRUE)
+fit <- kappa_continuous(x, method = "available", weight = "identity")
+fit
+coef(fit)
+vcov(fit)
 }
 \seealso{
 kappa_raw, kappa_counts
