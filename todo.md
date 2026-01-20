@@ -14,6 +14,10 @@
   * We do not want to overdo it. This paper doesnt have to be superlong.
 * **`misskappa` package**.
   * Very short description of capabilities, an example. 
+* Other estimators.
+  * Clean up so Gwets estimator comes first and is associated with irrCAC.
+  * See if AC is used anywhere. 
+  * Be clear in motivation for including these. 
 
 ## Cleanup
 
