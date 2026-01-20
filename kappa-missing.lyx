@@ -652,46 +652,133 @@ nolink "false"
 \end_inset
 
 .
- The complex formula for 
+ The asymptotic variance 
 \begin_inset Formula $\sigma_{X}^{2}$
 \end_inset
 
 ,
- which depends on unknown parameters,
- can be found using he efficient influence function in the observed-data model.
- We estimate 
-\begin_inset Formula $\sigma_{X}^{2}$
-\end_inset
-
- using a plug-in estimator of its influence functions.
+ can be expressed using an (efficient) influence function in the observed-data model,
+ and we estimate it by plugging in estimated influence functions.
 \begin_inset Formula 
 \begin{equation}
-\phi_{\kappa_{X}}=-d_{X}^{-1}\phi_{d}+d_{X}^{-2}\phi_{d_{X}}.\label{eq:influence}
+\phi_{\kappa_{X}}=-d_{X}^{-1}\phi_{d}+d\,d_{X}^{-2}\phi_{d_{X}}.\label{eq:influence}
 \end{equation}
 
 \end_inset
 
-
-\end_layout
-
-\begin_layout Standard
-Define 
-\begin_inset Formula $l_{jk}(x)=E[l(x,X_{1k})|M_{1k}=1]$
+To make this operational,
+ write the IPW estimators as ratios.
+ For the observed disagreement,
+\begin_inset Formula $\hat{d}^{IPW}=\hat{\psi}_{dN}/\hat{\psi}_{dD}$
 \end_inset
 
- and 
-\begin_inset Formula $\theta_{jk}=\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{1j},X_{2k})M_{1j}M_{2k}]$
-\end_inset
-
-.
+ where
 \begin_inset Formula 
 \[
-\phi_{\theta_{jk}}=\pi_{j}^{-1}M_{j}(l_{k}(X_{1j})-\theta_{jk})+\pi_{k}^{-1}M_{j}(l_{k}(X_{1k})-\theta_{jk})
+\hat{\psi}_{dN}=\frac{1}{n}\sum_{i=1}^{n}h_{dN,i},\quad h_{dN,i}=\sum_{j<k}l(X_{ij},X_{ik})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1},\qquad\hat{\psi}_{dD}=\frac{1}{n}\sum_{i=1}^{n}h_{dD,i},\quad h_{dD,i}=\sum_{j<k}M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}.
 \]
 
 \end_inset
 
+Then
+\begin_inset Formula 
+\[
+\hat{\phi}_{d,i}=\hat{\psi}_{dD}^{-1}\big(\hat{\phi}_{dN,i}-\hat{d}^{IPW}\hat{\phi}_{dD,i}\big),\qquad\hat{\phi}_{dN,i}=h_{dN,i}-\hat{\psi}_{dN},\quad\hat{\phi}_{dD,i}=h_{dD,i}-\hat{\psi}_{dD}.
+\]
 
+\end_inset
+
+Similarly,
+ for 
+\begin_inset Formula $X\in\{C,F\}$
+\end_inset
+
+ write
+\begin_inset Formula $\hat{d}_{X}^{IPW}=\hat{\psi}_{XN}/\hat{\psi}_{XD}$
+\end_inset
+
+ with 
+\begin_inset Formula $\hat{\psi}_{XN},\hat{\psi}_{XD}$
+\end_inset
+
+ defined by the corresponding double sums in the definition of 
+\begin_inset Formula $\hat{d}_{X}^{IPW}$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $K_{XN}$
+\end_inset
+
+ and 
+\begin_inset Formula $K_{XD}$
+\end_inset
+
+ denote the associated kernels,
+ and define 
+\begin_inset Formula $Z_{i}=(X_{i\cdot},M_{i\cdot})$
+\end_inset
+
+ so that
+\begin_inset Formula 
+\[
+\hat{\psi}_{X\bullet}=\frac{1}{n^{2}}\sum_{i,i'}K_{X\bullet}\big((X_{i\cdot},M_{i\cdot}),(X_{i'\cdot},M_{i'\cdot})\big),\qquad X\bullet\in\{XN,XD\}.
+\]
+
+\end_inset
+
+Estimate their influence functions by the usual V-statistic projections:
+\begin_inset Formula 
+\[
+\hat{\phi}_{X\bullet,i}=\big(\hat{g}_{X\bullet,1,i}-\hat{\psi}_{X\bullet}\big)+\big(\hat{g}_{X\bullet,2,i}-\hat{\psi}_{X\bullet}\big),\quad\hat{g}_{X\bullet,1,i}=\frac{1}{n}\sum_{i'}K_{X\bullet}(Z_{i},Z_{i'}),\quad\hat{g}_{X\bullet,2,i}=\frac{1}{n}\sum_{i'}K_{X\bullet}(Z_{i'},Z_{i}),
+\]
+
+\end_inset
+
+and then set
+\begin_inset Formula 
+\[
+\hat{\phi}_{d_{X},i}=\hat{\psi}_{XD}^{-1}\big(\hat{\phi}_{XN,i}-\hat{d}_{X}^{IPW}\hat{\phi}_{XD,i}\big).
+\]
+
+\end_inset
+
+For 
+\begin_inset Formula $X=BP$
+\end_inset
+
+,
+\begin_inset Formula $d_{X}=d_{BP}$
+\end_inset
+
+ is constant,
+ so 
+\begin_inset Formula $\phi_{d_{X}}=0$
+\end_inset
+
+.
+ A consistent estimator of 
+\begin_inset Formula $\sigma_{X}^{2}$
+\end_inset
+
+ is
+\begin_inset Formula 
+\[
+\hat{\sigma}_{X}^{2}=\frac{1}{n}\sum_{i=1}^{n}\hat{\phi}_{\kappa_{X},i}^{2},
+\]
+
+\end_inset
+
+and the same construction yields a joint asymptotic covariance matrix by replacing the square with an outer product.
+ The same influence-function formalism applies to the available-case and Gwet-estimators by substituting their corresponding weights in the definitions of 
+\begin_inset Formula $\hat{d}$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{d}_{X}$
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Subsection
