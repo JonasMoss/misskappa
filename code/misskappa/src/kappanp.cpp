@@ -33,7 +33,7 @@ Result<std::tuple<arma::vec, arma::mat>> calculate_inverse_weights(
     // Gwet-style weighting (overrides IPW).
     arma::vec pi_j = arma::conv_to<arma::vec>::from(arma::sum(M, 0)) / n;
     if (arma::any(pi_j < 1e-9)) {
-      return {emdiscrete::Status::kError, std::nullopt, "One or more raters has no ratings. Cannot use Gwet weighting."};
+      return {Status::kError, std::nullopt, "One or more raters has no ratings. Cannot use Gwet weighting."};
     }
     pi_j_inv = 1.0 / pi_j;
     pi_jk_inv.ones(); // Pairwise weights are not used for observed disagreement.
@@ -41,7 +41,7 @@ Result<std::tuple<arma::vec, arma::mat>> calculate_inverse_weights(
     // Full IPW weighting.
     arma::vec pi_j = arma::conv_to<arma::vec>::from(arma::sum(M, 0)) / n;
     if (arma::any(pi_j < 1e-9)) {
-      return {emdiscrete::Status::kError, std::nullopt, "One or more raters has no ratings. Cannot use IPW."};
+      return {Status::kError, std::nullopt, "One or more raters has no ratings. Cannot use IPW."};
     }
     pi_j_inv = 1.0 / pi_j;
 
@@ -55,7 +55,7 @@ Result<std::tuple<arma::vec, arma::mat>> calculate_inverse_weights(
     pi_jk_inv.ones();
   }
 
-  return {emdiscrete::Status::kOk, std::make_tuple(std::move(pi_j_inv), std::move(pi_jk_inv)), ""};
+  return {Status::kOk, std::make_tuple(std::move(pi_j_inv), std::move(pi_jk_inv)), ""};
 }
 
 Result<Estimation> kappa(
@@ -66,7 +66,7 @@ Result<Estimation> kappa(
 ) {
   const int n = ratings.n_rows;
   const int R = ratings.n_cols;
-  if (R < 2) return {emdiscrete::Status::kError, std::nullopt, "Input 'ratings' must have at least 2 raters (columns)."};
+  if (R < 2) return {Status::kError, std::nullopt, "Input 'ratings' must have at least 2 raters (columns)."};
 
   std::map<arma::ivec, int, IvecComparator> row_map;
   std::vector<arma::ivec> uniq_rows_vec;
@@ -89,28 +89,28 @@ Result<Estimation> kappa(
     }
   }
   const int U = uniq_rows_vec.size();
-  if (U == 0) return {emdiscrete::Status::kError, std::nullopt, "Input 'ratings' is empty or contains no valid patterns."};
+  if (U == 0) return {Status::kError, std::nullopt, "Input 'ratings' is empty or contains no valid patterns."};
 
   arma::imat xU(U, R);
   for(int u = 0; u < U; ++u) xU.row(u) = uniq_rows_vec[u].t();
 
   std::set<int> cat_set;
   for (arma::uword i = 0; i < ratings.n_elem; ++i) {
-    if (ratings(i) != emdiscrete::kNaInteger) cat_set.insert(ratings(i));
+    if (ratings(i) != kNaInteger) cat_set.insert(ratings(i));
   }
   const int C = cat_set.size();
-  if (C == 0) return {emdiscrete::Status::kError, std::nullopt, "All ratings are missing."};
-  if (static_cast<int>(loss_matrix.n_rows) != C) return {emdiscrete::Status::kError, std::nullopt, "Loss matrix dimensions do not match number of categories."};
+  if (C == 0) return {Status::kError, std::nullopt, "All ratings are missing."};
+  if (static_cast<int>(loss_matrix.n_rows) != C) return {Status::kError, std::nullopt, "Loss matrix dimensions do not match number of categories."};
 
   std::map<int, int> cat_to_idx;
   int current_idx = 0;
   for (int cat : cat_set) cat_to_idx[cat] = current_idx++;
 
-  const arma::umat M = (ratings != emdiscrete::kNaInteger);
-  const arma::umat MU = (xU != emdiscrete::kNaInteger);
+  const arma::umat M = (ratings != kNaInteger);
+  const arma::umat MU = (xU != kNaInteger);
 
   auto weights_result = calculate_inverse_weights(M, n, R, use_ipw, use_gwet);
-  if (weights_result.status != emdiscrete::Status::kOk) {
+  if (weights_result.status != Status::kOk) {
     return {weights_result.status, std::nullopt, weights_result.error_message};
   }
   const auto& [pi_j_inv, pi_jk_inv] = *weights_result.value;
@@ -210,7 +210,7 @@ Result<Estimation> kappa(
   estimates(1) = (d_F_hat > 1e-9) ? 1.0 - d_hat / d_F_hat : arma::datum::nan;
   estimates(2) = (d_BP > 1e-9) ? 1.0 - d_hat / d_BP : arma::datum::nan;
 
-  return {emdiscrete::Status::kOk, Estimation{estimates, kappa_cov_matrix}, ""};
+  return {Status::kOk, Estimation{estimates, kappa_cov_matrix}, ""};
 }
 
 Result<Estimation> kappa_counts(
@@ -219,8 +219,8 @@ Result<Estimation> kappa_counts(
 ) {
   const int n = counts.n_rows;
   const int C = counts.n_cols;
-  if (n == 0) return {emdiscrete::Status::kError, std::nullopt, "Input counts data is empty."};
-  if (static_cast<int>(loss_matrix.n_rows) != C) return {emdiscrete::Status::kError, std::nullopt, "Loss matrix dimensions do not match number of categories."};
+  if (n == 0) return {Status::kError, std::nullopt, "Input counts data is empty."};
+  if (static_cast<int>(loss_matrix.n_rows) != C) return {Status::kError, std::nullopt, "Loss matrix dimensions do not match number of categories."};
 
   // A. Setup & Binning
   std::map<arma::urowvec, int, UrowvecComparator> row_map;
@@ -316,7 +316,7 @@ Result<Estimation> kappa_counts(
   arma::mat kappa_cov_matrix = J_kappa * disagreement_cov_matrix * J_kappa.t();
 
   // F. Return Result
-  return {emdiscrete::Status::kOk, Estimation{estimates, kappa_cov_matrix}, ""};
+  return {Status::kOk, Estimation{estimates, kappa_cov_matrix}, ""};
 }
 
 Result<Estimation> kappa_continuous(
@@ -328,15 +328,15 @@ Result<Estimation> kappa_continuous(
   // 1. Setup
   const int n = ratings.n_rows;
   const int R = ratings.n_cols;
-  if (R < 2) return {emdiscrete::Status::kError, std::nullopt, "Input 'ratings' must have at least 2 raters (columns)."};
+  if (R < 2) return {Status::kError, std::nullopt, "Input 'ratings' must have at least 2 raters (columns)."};
 
   arma::umat M(ratings.n_rows, ratings.n_cols, arma::fill::zeros);
   M.elem(arma::find_finite(ratings)).ones();
 
-  if (M.n_elem == 0 || arma::accu(M) == 0) return {emdiscrete::Status::kError, std::nullopt, "All ratings are missing."};
+  if (M.n_elem == 0 || arma::accu(M) == 0) return {Status::kError, std::nullopt, "All ratings are missing."};
 
   auto weights_result = calculate_inverse_weights(M, n, R, use_ipw, use_gwet);
-  if (weights_result.status != emdiscrete::Status::kOk) {
+  if (weights_result.status != Status::kOk) {
     return {weights_result.status, std::nullopt, weights_result.error_message};
   }
   const auto& [pi_j_inv, pi_jk_inv] = *weights_result.value;
@@ -477,7 +477,7 @@ Result<Estimation> kappa_continuous(
   arma::mat kappa_cov_asymptotic = J_kappa * Sigma_hat * J_kappa.t();
   arma::mat kappa_cov_matrix = kappa_cov_asymptotic / n;
 
-  return {emdiscrete::Status::kOk, Estimation{kappa_estimates, kappa_cov_matrix}, ""};
+  return {Status::kOk, Estimation{kappa_estimates, kappa_cov_matrix}, ""};
 }
 
 } // namespace kappanp

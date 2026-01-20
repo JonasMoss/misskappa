@@ -1,5 +1,6 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
+#include "emdiscrete.h"
 #include "misskappa.h" // The single public header for our kappa library
 #include <set>
 #include <map>

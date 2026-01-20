@@ -2,24 +2,20 @@
 #define EMDISCRETE_HPP
 
 #include <RcppArmadillo.h>
+#include <functional>
 #include <string>
 #include <vector>
-#include <functional>
-#include <optional>
+
+#include "core/result.h"
+#include "core/types.h"
 
 namespace emdiscrete {
 
-using uvec = arma::Col<arma::uword>;
-constexpr int kNaInteger = -2147483648;
-
-enum class Status { kOk, kError };
+using uvec = misskappa_core::uvec;
+constexpr int kNaInteger = misskappa_core::kNaInteger;
+using Status = misskappa_core::Status;
 template <typename T>
-struct Result {
-  Status status;
-  std::optional<T> value;
-  std::string error_message;
-  bool IsOk() const { return status == Status::kOk; }
-};
+using Result = misskappa_core::Result<T>;
 
 struct EM_Input {
   size_t n_total_patterns;

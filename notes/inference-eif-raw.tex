@@ -1,0 +1,265 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+\title{EIF-Based Inference for \texttt{misskappa} (\texttt{kappa\_raw} backend)}
+\date{}
+
+\begin{document}
+\maketitle
+
+This note records the influence-function (EIF) calculations used for asymptotic
+inference in the \texttt{kappa\_raw()} ``nonparametric'' backend (the C++
+\texttt{kappanp} code path), which produces Conger's kappa, Fleiss' kappa, and
+Brennan--Prediger (BP).
+
+\section*{1.\ Data, missingness, and loss}
+
+For each subject $i\in\{1,\dots,n\}$ and rater $j\in\{1,\dots,R\}$, let $X_{ij}$
+denote a categorical rating taking values in $\{c_1,\dots,c_C\}$, and let
+$M_{ij} = 1[X_{ij}\ \text{is observed}]$ indicate non-missingness.
+Write $X_i = (X_{i1},\dots,X_{iR})$ and $M_i = (M_{i1},\dots,M_{iR})$.
+We treat $\{(X_i,M_i)\}_{i=1}^n$ as i.i.d.\ across subjects.
+
+Let $\ell(\cdot,\cdot)$ be a nonnegative \emph{loss} (disagreement) function on
+categories. In the implementation, a weight matrix $W$ is built first and the
+loss matrix is $L = \mathbf{1}\mathbf{1}^\top - W$, so $\ell(a,b)=L(a,b)$ and
+typically $\ell(a,a)=0$.
+
+\section*{2.\ Target functionals}
+
+The estimators are written in terms of \emph{disagreement} components. Define
+two scalar ratios:
+\[
+  d = \frac{\psi_{dN}}{\psi_{dD}},
+  \qquad
+  d_C = \frac{\psi_{CN}}{\psi_{CD}},
+  \qquad
+  d_F = \frac{\psi_{FN}}{\psi_{FD}},
+\]
+where the $\psi$'s are expectations of subject-level or pairwise kernels defined
+below.
+
+The three reported kappas are then smooth functions of $(d,d_C,d_F)$:
+\[
+  \kappa_C = 1 - \frac{d}{d_C},
+  \qquad
+  \kappa_F = 1 - \frac{d}{d_F},
+  \qquad
+  \kappa_{BP} = 1 - \frac{d}{d_{BP}},
+\]
+where $d_{BP}$ is treated as a known constant given the loss matrix:
+\[
+  d_{BP} = \frac{1}{C^2}\sum_{m=1}^C\sum_{m'=1}^C \ell(c_m,c_{m'}).
+\]
+For the unweighted 0/1 loss $\ell(a,b)=1[a\neq b]$, $d_{BP}=1-\tfrac1C$.
+
+\section*{3.\ Sample estimators (raw ratings)}
+
+\subsection*{Observed disagreement: within-subject (U-statistic numerator/denominator)}
+
+Let $w^{(\mathrm{obs})}_{jk}$ be a nonnegative weight assigned to the within-subject
+pair $(j,k)$ (distinct raters, $j<k$). Define the subject-level contributions
+\[
+  h_{dN}(X_i,M_i)
+  = \sum_{1\le j<k\le R} M_{ij}M_{ik}\,\ell(X_{ij},X_{ik})\,w^{(\mathrm{obs})}_{jk},
+\]
+\[
+  h_{dD}(X_i,M_i)
+  = \sum_{1\le j<k\le R} M_{ij}M_{ik}\,w^{(\mathrm{obs})}_{jk}.
+\]
+Then $\psi_{dN}=\mathbb{E}[h_{dN}]$ and $\psi_{dD}=\mathbb{E}[h_{dD}]$ and the
+sample analogs are
+\[
+  \hat\psi_{dN} = \frac1n\sum_{i=1}^n h_{dN}(X_i,M_i),
+  \qquad
+  \hat\psi_{dD} = \frac1n\sum_{i=1}^n h_{dD}(X_i,M_i),
+  \qquad
+  \hat d = \frac{\hat\psi_{dN}}{\hat\psi_{dD}}.
+\]
+
+\subsection*{Chance disagreement: cross-subject (V-statistic numerators/denominators)}
+
+Let $w^{(\mathrm{exp})}_{jk}$ be a nonnegative weight for cross-subject pairings
+between rater $j$ on subject $i$ and rater $k$ on subject $i'$. Define four kernels:
+\[
+  K_{CN}\big((X_i,M_i),(X_{i'},M_{i'})\big)
+  = \sum_{1\le j<k\le R} M_{ij}M_{i'k}\,\ell(X_{ij},X_{i'k})\,w^{(\mathrm{exp})}_{jk},
+\]
+\[
+  K_{CD}\big((X_i,M_i),(X_{i'},M_{i'})\big)
+  = \sum_{1\le j<k\le R} M_{ij}M_{i'k}\,w^{(\mathrm{exp})}_{jk},
+\]
+\[
+  K_{FN}\big((X_i,M_i),(X_{i'},M_{i'})\big)
+  = \sum_{j=1}^R\sum_{k=1}^R M_{ij}M_{i'k}\,\ell(X_{ij},X_{i'k})\,w^{(\mathrm{exp})}_{jk},
+\]
+\[
+  K_{FD}\big((X_i,M_i),(X_{i'},M_{i'})\big)
+  = \sum_{j=1}^R\sum_{k=1}^R M_{ij}M_{i'k}\,w^{(\mathrm{exp})}_{jk}.
+\]
+The \texttt{misskappa} implementation uses the corresponding V-statistic
+estimators (including $i=i'$ terms):
+\[
+  \hat\psi_{CN} = \frac{1}{n^2}\sum_{i=1}^n\sum_{i'=1}^n K_{CN}\big((X_i,M_i),(X_{i'},M_{i'})\big),
+  \qquad
+  \hat\psi_{CD} = \frac{1}{n^2}\sum_{i=1}^n\sum_{i'=1}^n K_{CD}\big((X_i,M_i),(X_{i'},M_{i'})\big),
+\]
+and similarly $(\hat\psi_{FN},\hat\psi_{FD})$. The chance disagreements are
+$\hat d_C=\hat\psi_{CN}/\hat\psi_{CD}$ and $\hat d_F=\hat\psi_{FN}/\hat\psi_{FD}$.
+
+\section*{4.\ EIF / influence functions}
+
+Define the 6-vector of $\psi$ components
+\[
+  \psi =
+  (\psi_{dN},\psi_{dD},\psi_{CN},\psi_{CD},\psi_{FN},\psi_{FD})^\top,
+  \qquad
+  \hat\psi =
+  (\hat\psi_{dN},\hat\psi_{dD},\hat\psi_{CN},\hat\psi_{CD},\hat\psi_{FN},\hat\psi_{FD})^\top.
+\]
+
+\subsection*{U-statistic components}
+
+Because $\hat\psi_{dN}$ and $\hat\psi_{dD}$ are simple averages of subject-level
+terms, their influence functions (for the i.i.d.\ subject model) are
+\[
+  \phi_{dN}(X_i,M_i)=h_{dN}(X_i,M_i)-\psi_{dN},
+  \qquad
+  \phi_{dD}(X_i,M_i)=h_{dD}(X_i,M_i)-\psi_{dD}.
+\]
+In practice we replace $\psi_{dN},\psi_{dD}$ by their sample estimates.
+
+\subsection*{V-statistic components}
+
+For a generic V-statistic of the form
+\[
+  \hat\psi_K=\frac{1}{n^2}\sum_{i=1}^n\sum_{i'=1}^n K(Z_i,Z_{i'}),
+  \qquad Z_i=(X_i,M_i),
+\]
+the first-order (Hoeffding) influence-function term can be written as
+\[
+  \phi_K(Z_i)
+  = \mathbb{E}[K(Z_i,Z')] + \mathbb{E}[K(Z',Z_i)] - 2\psi_K.
+\]
+The implementation uses the empirical versions
+\[
+  \hat g_{K,1}(Z_i)=\frac1n\sum_{i'=1}^n K(Z_i,Z_{i'}),
+  \qquad
+  \hat g_{K,2}(Z_i)=\frac1n\sum_{i'=1}^n K(Z_{i'},Z_i),
+\]
+\[
+  \hat\phi_K(Z_i)=\big(\hat g_{K,1}(Z_i)-\hat\psi_K\big)+\big(\hat g_{K,2}(Z_i)-\hat\psi_K\big).
+\]
+Apply this with $K\in\{K_{CN},K_{CD},K_{FN},K_{FD}\}$ to obtain
+$(\hat\phi_{CN},\hat\phi_{CD},\hat\phi_{FN},\hat\phi_{FD})$.
+
+\subsection*{Stacked influence vector and covariance}
+
+Let
+\[
+  \hat\phi(Z_i) =
+  (\hat\phi_{dN}(Z_i),\hat\phi_{dD}(Z_i),\hat\phi_{CN}(Z_i),\hat\phi_{CD}(Z_i),\hat\phi_{FN}(Z_i),\hat\phi_{FD}(Z_i))^\top.
+\]
+The covariance of $\hat\psi$ is estimated by
+\[
+  \widehat{\Gamma}=\frac1n\sum_{i=1}^n \hat\phi(Z_i)\hat\phi(Z_i)^\top,
+  \qquad
+  \widehat{\mathrm{Var}}(\hat\psi) \approx \frac{1}{n}\widehat{\Gamma}.
+\]
+
+\section*{5.\ Delta method to $(d,d_C,d_F)$ and to kappas}
+
+\subsection*{From $\psi$ to disagreements}
+
+Let $d(\psi)=(\psi_{dN}/\psi_{dD},\,\psi_{CN}/\psi_{CD},\,\psi_{FN}/\psi_{FD})^\top$.
+Its Jacobian is the $3\times 6$ matrix
+\[
+  J_d(\psi)=
+  \begin{pmatrix}
+    \psi_{dD}^{-1} & -\psi_{dN}\psi_{dD}^{-2} & 0 & 0 & 0 & 0 \\
+    0 & 0 & \psi_{CD}^{-1} & -\psi_{CN}\psi_{CD}^{-2} & 0 & 0 \\
+    0 & 0 & 0 & 0 & \psi_{FD}^{-1} & -\psi_{FN}\psi_{FD}^{-2}
+  \end{pmatrix}.
+\]
+Plugging in $\hat\psi$ yields $\widehat{J}_d=J_d(\hat\psi)$ and
+\[
+  \widehat{\mathrm{Var}}\big((\hat d,\hat d_C,\hat d_F)^\top\big)
+  \approx \frac{1}{n}\,\widehat{J}_d\,\widehat{\Gamma}\,\widehat{J}_d^\top.
+\]
+
+\subsection*{From disagreements to kappas}
+
+Let $\kappa(d)=\big(1-d/d_C,\ 1-d/d_F,\ 1-d/d_{BP}\big)^\top$, where $d_{BP}$ is
+constant. The Jacobian of $\kappa$ with respect to $(d,d_C,d_F)$ is
+\[
+  J_\kappa(d)=
+  \begin{pmatrix}
+    -d_C^{-1} & d\,d_C^{-2} & 0 \\
+    -d_F^{-1} & 0 & d\,d_F^{-2} \\
+    -d_{BP}^{-1} & 0 & 0
+  \end{pmatrix}.
+\]
+Plugging in $(\hat d,\hat d_C,\hat d_F)$ gives $\widehat{J}_\kappa$ and
+\[
+  \widehat{\mathrm{Var}}(\hat\kappa)
+  \approx
+  \widehat{J}_\kappa\,
+  \widehat{\mathrm{Var}}\big((\hat d,\hat d_C,\hat d_F)^\top\big)\,
+  \widehat{J}_\kappa^\top.
+\]
+
+\section*{6.\ Weight choices and relation to \texttt{method}}
+
+Let
+\[
+  \hat\pi_j=\frac1n\sum_{i=1}^n M_{ij},
+  \qquad
+  \hat\pi_{jk}=\frac1n\sum_{i=1}^n M_{ij}M_{ik}.
+\]
+The code path underlying \texttt{kappa\_raw(method = ...)} differs only by the
+choices of $w^{(\mathrm{obs})}_{jk}$ and $w^{(\mathrm{exp})}_{jk}$:
+\[
+  w^{(\mathrm{obs})}_{jk} =
+  \begin{cases}
+    1 & \texttt{"available"} \\
+    \hat\pi_{jk}^{-1} & \texttt{"ipw"} \\
+    1 & \texttt{"gwet"}
+  \end{cases}
+  \qquad
+  w^{(\mathrm{exp})}_{jk} =
+  \begin{cases}
+    1 & \texttt{"available"} \\
+    \hat\pi_j^{-1}\hat\pi_k^{-1} & \texttt{"ipw"} \\
+    \hat\pi_j^{-1}\hat\pi_k^{-1} & \texttt{"gwet"}.
+  \end{cases}
+\]
+This matches \texttt{calculate\_inverse\_weights()} in
+\texttt{code/misskappa/src/kappanp.cpp}.
+
+\section*{7.\ Remarks for categorical data and implementation}
+
+\begin{itemize}
+\item \textbf{Raw format and Cohen's kappa.} The ``raw'' data format stores
+  per-rater ratings, which enables pairwise comparisons. When $R=2$, Conger's
+  kappa specializes to a Cohen-style kappa computed from the single rater pair
+  $(1,2)$; Fleiss' chance term averages over all ordered rater pairs and can
+  differ from Cohen unless raters have (approximately) the same marginal rating
+  distribution.
+\item \textbf{Finite support (pattern compression).} For categorical ratings with
+  missingness, $Z_i$ takes values in a finite set of rating/missingness patterns.
+  The implementation exploits this by computing $h_{dN},h_{dD}$ and the $K$
+  kernels once per unique pattern and expanding back to per-subject influence
+  values; this is computational and does not change the formulas above.
+\item \textbf{Plug-in standard errors.} Once $\widehat{\mathrm{Var}}(\hat\kappa)$
+  is available, standard errors are $\widehat{se}(\hat\kappa_r)=\sqrt{\widehat{\mathrm{Var}}(\hat\kappa)_{rr}}$
+  and Wald intervals follow in the usual way.
+\item \textbf{Degeneracy checks.} The denominators $\hat\psi_{dD}$, $\hat\psi_{CD}$,
+  $\hat\psi_{FD}$ (and $d_{BP}$) must be non-negligible; the code guards against
+  near-zero denominators by returning \texttt{NaN} kappas when needed.
+\end{itemize}
+
+\end{document}
+

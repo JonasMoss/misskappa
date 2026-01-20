@@ -71,18 +71,18 @@ struct AcovResults {
       }
     }
     Psi(2,0)=Psi(0,2); Psi(2,1)=Psi(1,2);
-    return {emdiscrete::Status::kOk, AcovResults{Psi, mu_hat, sigma_hat, r}};
+    return {misskappa::Status::kOk, AcovResults{Psi, mu_hat, sigma_hat, r}};
   }
 
   // This is the orchestrator function that calls CalculatePsiInternal and computes the final estimates.
   misskappa::Result<RawKappaEstimates> CalculateRawEstimatesInternal(const arma::mat& x, double c1) {
     arma::mat M(x.n_rows, x.n_cols, arma::fill::zeros); M.elem(arma::find_finite(x)).ones();
     arma::uvec eff_rows = arma::find(arma::sum(M, 1) > 1); // Need at least 2 ratings for variance
-    if (eff_rows.n_elem < 2) return {emdiscrete::Status::kError, std::nullopt, "Not enough subjects with at least two ratings."};
+    if (eff_rows.n_elem < 2) return {misskappa::Status::kError, std::nullopt, "Not enough subjects with at least two ratings."};
     arma::mat x_eff = x.rows(eff_rows), M_eff = M.rows(eff_rows); int n_eff = x_eff.n_rows;
 
     misskappa::Result<AcovResults> out_res = CalculatePsiInternal(x_eff, M_eff, n_eff);
-    if (!out_res.IsOk()) return {emdiscrete::Status::kError, std::nullopt, "Internal Psi calculation failed."};
+    if (!out_res.IsOk()) return {misskappa::Status::kError, std::nullopt, "Internal Psi calculation failed."};
 
     const AcovResults& out = out_res.value.value();
     int r = out.r;
@@ -102,7 +102,7 @@ struct AcovResults {
     arma::mat G(3,3); G.col(0)=gF; G.col(1)=gC; G.col(2)=gBP;
 
     // The scaled_acov is for [Fleiss, Conger, BP]
-    return {emdiscrete::Status::kOk, RawKappaEstimates{fleiss_est, conger_est, bp_est, G.t()*out.psi*G, n_eff}};
+    return {misskappa::Status::kOk, RawKappaEstimates{fleiss_est, conger_est, bp_est, G.t()*out.psi*G, n_eff}};
   }
 
 } // end anonymous namespace
@@ -118,7 +118,7 @@ Result<Estimation> kappa(const arma::mat& x, const arma::vec& values) {
   // Call the new, general-purpose raw estimator
   auto estimates_res = CalculateRawEstimatesInternal(x, c1);
   if (!estimates_res.IsOk()) {
-    return {emdiscrete::Status::kError, std::nullopt, estimates_res.error_message};
+    return {misskappa::Status::kError, std::nullopt, estimates_res.error_message};
   }
 
   const auto& est_val = estimates_res.value.value();
@@ -135,18 +135,18 @@ Result<Estimation> kappa(const arma::mat& x, const arma::vec& values) {
   // Unscale the variance-covariance matrix by the number of effective subjects.
   arma::mat final_vcov = vcov_reordered / est_val.n_eff;
 
-  return {emdiscrete::Status::kOk, Estimation{final_estimates, final_vcov}, ""};
+  return {misskappa::Status::kOk, Estimation{final_estimates, final_vcov}, ""};
 }
 
 Result<Estimation> kappa_counts(const arma::mat& x, const arma::vec& values, int R) {
-  if (x.n_rows < 2) return {emdiscrete::Status::kError, std::nullopt, "Input matrix must have at least 2 rows."};
+  if (x.n_rows < 2) return {misskappa::Status::kError, std::nullopt, "Input matrix must have at least 2 rows."};
 
   // Compute c1 internally
   int C = values.n_elem;
   double c1 = (2.0 / (C * C)) * (C * arma::sum(arma::pow(values, 2)) - std::pow(arma::sum(values), 2));
 
   arma::uvec eff_rows=arma::find(arma::sum(x,1)>0);
-  if(eff_rows.n_elem<2) return {emdiscrete::Status::kError, std::nullopt, "Not enough subjects with ratings."};
+  if(eff_rows.n_elem<2) return {misskappa::Status::kError, std::nullopt, "Not enough subjects with ratings."};
   arma::mat x_eff=x.rows(eff_rows); int n_eff=x_eff.n_rows;
   arma::vec r_i_eff=arma::sum(x_eff,1);
   arma::vec s_i=((double)R/r_i_eff)%(x_eff*values), q_i_sq=((double)R/r_i_eff)%(x_eff*arma::pow(values,2));
@@ -182,7 +182,7 @@ Result<Estimation> kappa_counts(const arma::mat& x, const arma::vec& values, int
   arma::vec estimates = {est_f, est_bp};
   arma::mat vcov = (G.t() * Psi_dist * G) / n_eff;
 
-  return {emdiscrete::Status::kOk, Estimation{estimates, vcov}, ""};
+  return {misskappa::Status::kOk, Estimation{estimates, vcov}, ""};
 }
 
 } // namespace kappaqp

@@ -38,12 +38,83 @@ Target architecture:
 - **Core library** (pure C++): no `Rcpp`, no `R` headers, no `NA_INTEGER`, no `Rcpp::stop`; expose a small API and return errors via a portable `Result<T>` / `StatusOr<T>` type.
 - **Bindings layer** (Rcpp): translate R matrices/options ↔ core types, translate errors ↔ `Rcpp::stop`.
 
-Concrete steps:
+#### Milestone 2 plan (incremental, always-green)
 
-- [ ] Create `result.h` / `types.h` defining a portable `Result<T>` and common types (so `misskappa.h` no longer aliases `Result` from `emdiscrete`).
-- [ ] Make `misskappa.h` self-contained (no EM includes); treat EM as one backend behind a clean API.
-- [ ] Define core entrypoints (names illustrative): `misskappa::{raw,counts,continuous}::estimate(...)` returning a single `Estimation` struct (estimates + vcov + metadata).
-- [ ] Decide on a portable public data model (avoid exposing Armadillo types if Python reuse is a priority).
+Guiding rule: each sub-step should keep `just test` and `just check` passing (or be a small, reviewable series where we run them at the end of the series).
+
+##### Decisions to make up front (before moving files)
+
+- [ ] **Public API surface**: decide whether the “core” API is:
+  - **Armardillo-facing** (fastest path; easiest with current code; Python later still possible but heavier), or
+  - **Plain-data-facing** (more portable): e.g. `std::vector<double>` + row/col metadata, with optional “view” adapters.
+- [ ] **C++ standard target**: current code uses C++17 (e.g. `std::optional`). If portability to older toolchains matters, plan a follow-up to reduce to C++14 or provide minimal polyfills.
+- [ ] **Error model**: define `Status`/`Error` codes (e.g. `invalid_argument`, `numerical_error`, `not_supported`) and a single `Result<T>` template.
+
+##### Phase 2.1 — Extract shared types (de-couple from EM)
+
+Goal: `misskappa` non-EM code must not depend on `emdiscrete.h`.
+
+- [x] Add `code/misskappa/src/core/result.h` (or `include/misskappa/result.h`) implementing a portable `Result<T>`.
+- [x] Add `code/misskappa/src/core/types.h` for shared typedefs/constants (missing sentinels, etc.).
+- [x] Update `code/misskappa/src/misskappa.h` to include these new headers and remove:
+  - `#include "emdiscrete.h"` and
+  - `using Result = emdiscrete::Result<T>;`
+- [x] Update compilation units to include the right headers (EM code can include `emdiscrete.h` directly).
+
+Acceptance checks:
+
+- [x] `just test`
+- [x] `just check`
+
+##### Phase 2.2 — Define a small “core API” and keep Rcpp as a thin wrapper
+
+Goal: `rcpp_interface.cpp` should become translation glue only.
+
+- [ ] Define “core” entrypoints with stable structs:
+  - `misskappa::raw::estimate(...)`
+  - `misskappa::continuous::estimate(...)`
+  - `misskappa::counts::estimate(...)`
+  returning a single `Estimation` struct (estimates + vcov + metadata).
+- [ ] Define option structs (e.g. `EmOptions { tol, max_iter }`) to avoid untyped `Rcpp::List` logic leaking into core.
+- [ ] Refactor `code/misskappa/src/rcpp_interface.cpp` to:
+  - parse/validate inputs,
+  - map `method`/`weight` strings → enums,
+  - call core entrypoints,
+  - translate `Result` errors → `Rcpp::stop`.
+
+Acceptance checks:
+
+- [ ] `just test`
+- [ ] `just check`
+
+##### Phase 2.3 — Re-home implementation files into “core”
+
+Goal: make it obvious what is reusable from Python later.
+
+- [ ] Move/rename files into a clearer structure (illustrative):
+  - `code/misskappa/src/core/loss.*` (from `common.cpp`)
+  - `code/misskappa/src/core/np/*` (from `kappanp.cpp`)
+  - `code/misskappa/src/core/em/*` (from `emdiscrete.*` + `kappaml.cpp`)
+  - `code/misskappa/src/core/qp/*` (from `kappaqp.cpp`)
+- [ ] Ensure no R/Rcpp-only includes appear in `core/` code.
+
+Acceptance checks:
+
+- [ ] `just test`
+- [ ] `just check`
+
+##### Phase 2.4 — Add a non-R build target (optional but recommended)
+
+Goal: prove portability *now*, not “later”.
+
+- [ ] Add a minimal `CMakeLists.txt` under `code/misskappa/src/core/` (or repo root) building a static library (and optionally a tiny CLI smoke binary).
+- [ ] Add a `just core-build` recipe that compiles core code without R/Rcpp.
+
+Acceptance checks:
+
+- [ ] `just core-build` (new)
+- [ ] `just test`
+- [ ] `just check`
 
 ### Milestone 3: style, tooling, and CI (low/medium risk)
 

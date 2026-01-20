@@ -1,14 +1,25 @@
 #ifndef MISSKAPPA_HPP
 #define MISSKAPPA_HPP
 
-#include "emdiscrete.h" // Our kappa library DEPENDS on the EM library
+#include <RcppArmadillo.h>
+#include <functional>
+#include <optional>
+
+#include "core/result.h"
+#include "core/types.h"
+
+namespace emdiscrete {
+struct EM_Result;
+}
 
 namespace misskappa {
 // --- Core Kappa-specific Types ---
-using uvec = emdiscrete::uvec;
+using uvec = misskappa_core::uvec;
+constexpr int kNaInteger = misskappa_core::kNaInteger;
+using Status = misskappa_core::Status;
 
 template <typename T>
-using Result = emdiscrete::Result<T>;
+using Result = misskappa_core::Result<T>;
 
 // Final estimation result struct returned by all kappa methods
 struct Estimation {

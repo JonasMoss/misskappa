@@ -1,3 +1,4 @@
+#include "emdiscrete.h"
 #include "misskappa.h"
 #include <map>
 #include <unordered_map>
