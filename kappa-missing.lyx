@@ -71,7 +71,7 @@ theorems-ams-extended-bytype
 \use_package undertilde 1
 \cite_engine natbib
 \cite_engine_type authoryear
-\biblio_style apacite
+\biblio_style plainnat
 \use_bibtopic false
 \use_indices false
 \paperorientation portrait
@@ -787,7 +787,7 @@ and the same construction yields a joint asymptotic covariance matrix by replaci
 Computation 
 \end_layout
 
-\begin_layout Section
+\begin_layout Subsection
 Illustrations
 \end_layout
 
@@ -802,7 +802,8 @@ Available-case estimator
 \begin_layout Standard
 The available-case (pairwise complete) estimator is a natural baseline when ratings are incomplete.
  It uses only the observed rater pairs and treats all observed pairs equally.
- Contrary to some common claims, the default missing-data behavior in the popular 
+ Contrary to some common claims,
+ the default missing-data behavior in the popular 
 \begin_inset Formula $\mathtt{R}$
 \end_inset
 
@@ -810,7 +811,8 @@ The available-case (pairwise complete) estimator is a natural baseline when rati
 \begin_inset Formula $\mathtt{irrCAC}$
 \end_inset
 
- is based on a Gwet-style reweighting; see the next subsection.
+ is based on a Gwet-style reweighting;
+ see the next subsection.
  We may define the available case Conger's kappa estimator as 
 \begin_inset Formula $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$
 \end_inset
@@ -932,7 +934,8 @@ Gwet's estimator
 
 \begin_layout Standard
 Gwet's estimator is a reweighted variant that keeps the observed disagreement component but changes the chance disagreement component to compensate for unequal rater observation probabilities.
- In our notation we define, for each 
+ In our notation we define,
+ for each 
 \begin_inset Formula $X\in\{C,F,BP\}$
 \end_inset
 
@@ -940,7 +943,8 @@ Gwet's estimator is a reweighted variant that keeps the observed disagreement co
 \begin_inset Formula $\hat{\kappa}_{X}^{G}=1-\hat{d}^{G}/\hat{d}_{X}^{G}$
 \end_inset
 
-, where the observed disagreement is the same as the available-case estimator,
+,
+ where the observed disagreement is the same as the available-case estimator,
 \begin_inset Formula 
 \[
 \hat{d}^{G}=\hat{d}^{AC}=\frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}}.
@@ -955,9 +959,7 @@ For the chance disagreement we use empirical rater observation probabilities
  and define
 \begin_inset Formula 
 \[
-\hat{d}_{C}^{G}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
-\qquad
-\hat{d}_{F}^{G}=\frac{\sum_{i,i'}\sum_{j,k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j,k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}.
+\hat{d}_{C}^{G}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},\qquad\hat{d}_{F}^{G}=\frac{\sum_{i,i'}\sum_{j,k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j,k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}.
 \]
 
 \end_inset
@@ -1021,7 +1023,7 @@ Concluding remarks
 LatexCommand bibtex
 btprint "btPrintCited"
 bibfiles "kappa-missing"
-options "bibtotoc,apalike"
+options "bibtotoc,plainnat"
 encoding "default"
 
 \end_inset
@@ -1046,7 +1048,232 @@ appendix
 \end_layout
 
 \begin_layout Section
-Appendix 1
+Appendix:
+ Proofs
+\end_layout
+
+\begin_layout Subsection
+Proof of Proposition 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "prop:The-available-case"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Proof
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+of Proposition 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "prop:The-available-case"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+We sketch the argument for 
+\begin_inset Formula $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$
+\end_inset
+
+;
+ the same reasoning applies to the corresponding Fleiss and Brennan–Prediger versions.
+ Define
+\begin_inset Formula 
+\[
+C_{jk}(x^{\star})=P(M_{j}M_{k}=1\mid X^{\star}=x^{\star}),\qquad C_{j}(x^{\star})=P(M_{j}=1\mid X^{\star}=x^{\star}).
+\]
+
+\end_inset
+
+Then
+\begin_inset Formula 
+\[
+E\!\big[l(X_{j}^{\star},X_{k}^{\star})M_{j}M_{k}\big]=E\!\big[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})\big],\qquad E[M_{j}M_{k}]=E[C_{jk}(X^{\star})].
+\]
+
+\end_inset
+
+By the law of large numbers and the continuous mapping theorem,
+\begin_inset Formula 
+\[
+\hat{d}^{AC}\stackrel{a.s.}{\to}\frac{\sum_{j<k}E\!\big[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})\big]}{\sum_{j<k}E[C_{jk}(X^{\star})]}.
+\]
+
+\end_inset
+
+Next,
+ let 
+\begin_inset Formula $Y^{\star}$
+\end_inset
+
+ be an independent copy of 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+.
+ A similar calculation yields
+\begin_inset Formula 
+\[
+\hat{d}_{C}^{AC}\stackrel{a.s.}{\to}\frac{\sum_{j<k}E\!\big[l(X_{j}^{\star},Y_{k}^{\star})C_{j}(X^{\star})C_{k}(Y^{\star})\big]}{\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})]},
+\]
+
+\end_inset
+
+where the 
+\begin_inset Formula $i=i'$
+\end_inset
+
+ terms are negligible relative to the 
+\begin_inset Formula $i\neq i'$
+\end_inset
+
+ terms.
+ Therefore 
+\begin_inset Formula $\hat{\kappa}_{C}^{AC}$
+\end_inset
+
+ converges to the corresponding ratio-of-limits.If the raters are exchangeable and the data are missing completely at random,
+ then 
+\begin_inset Formula $C_{jk}(X^{\star})=\pi_{jk}$
+\end_inset
+
+ and 
+\begin_inset Formula $C_{j}(X^{\star})=\pi_{j}$
+\end_inset
+
+ are constants,
+ while exchangeability implies 
+\begin_inset Formula $E[l(X_{j}^{\star},X_{k}^{\star})]$
+\end_inset
+
+ and 
+\begin_inset Formula $E[l(X_{j}^{\star},Y_{k}^{\star})]$
+\end_inset
+
+ do not depend on the indices.
+ Hence the constants 
+\begin_inset Formula $\pi_{jk}$
+\end_inset
+
+ and 
+\begin_inset Formula $\pi_{j}\pi_{k}$
+\end_inset
+
+ cancel in the limits and we obtain 
+\begin_inset Formula $\hat{d}^{AC}\to d$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{d}_{C}^{AC}\to d_{C}$
+\end_inset
+
+,
+ so 
+\begin_inset Formula $\hat{\kappa}_{C}^{AC}\to\kappa_{C}$
+\end_inset
+
+.
+ If raters are not exchangeable but the missingness is uniformly at random (Definition 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "def:missingness"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+),
+ then the observation probabilities are constant across indices,
+ so the limits again reduce to the unweighted averages defining 
+\begin_inset Formula $d$
+\end_inset
+
+ and 
+\begin_inset Formula $d_{C}$
+\end_inset
+
+.Finally,
+ the displayed limits show why inconsistency is typical under more general mechanisms:
+ if 
+\begin_inset Formula $C_{jk}(X^{\star})$
+\end_inset
+
+ or 
+\begin_inset Formula $C_{j}(X^{\star})$
+\end_inset
+
+ depends on 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+ in a way that is correlated with 
+\begin_inset Formula $l(X_{j}^{\star},X_{k}^{\star})$
+\end_inset
+
+ or 
+\begin_inset Formula $l(X_{j}^{\star},Y_{k}^{\star})$
+\end_inset
+
+,
+ then the probability limits target reweighted versions of 
+\begin_inset Formula $d$
+\end_inset
+
+ and 
+\begin_inset Formula $d_{C}$
+\end_inset
+
+rather than the desired parameters.
+\end_layout
+
+\begin_layout Remark
+The same limit calculation can be carried out for Gwet's estimator as defined in the main text by replacing the chance-disagreement sums with their 
+\begin_inset Formula $\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}$
+\end_inset
+
+ reweighted versions.
+ Under MCAR the reweighting cancels (since 
+\begin_inset Formula $C_{j}(X^{\star})=\pi_{j}$
+\end_inset
+
+),
+ but under more general mechanisms where 
+\begin_inset Formula $C_{j}(X^{\star})$
+\end_inset
+
+ depends on 
+\begin_inset Formula $X^{\star}$
+\end_inset
+
+,
+ the probability limit of the chance term is generally a reweighted target and need not equal 
+\begin_inset Formula $d_{C}$
+\end_inset
+
+ or 
+\begin_inset Formula $d_{F}$
+\end_inset
+
+.
 \end_layout
 
 \end_body
