@@ -1,5 +1,7 @@
 # TODO for manuscript
 
+For a structured revision plan (targets + hard/soft TODOs), see `notes/revision-plan.md`.
+
 ## Content
 * **Count form.** Add math and "explainer" (short) for count form.
   * Estimation, inference, computation.
