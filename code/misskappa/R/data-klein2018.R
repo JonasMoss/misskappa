@@ -3,9 +3,9 @@
 #' Agreement study (n = 10) from Klein (2018). This data set contains
 #'    missing ratings.
 #'
-#' @usage dat.zapf2016
+#' @usage dat.klein2018
 #'
-#' @format A `n` times `R` matrix. There are `n = 20` row corresponding to the
+#' @format A `n` times `R` matrix. There are `n = 10` rows corresponding to the
 #'   different items. Each of the `R = 5` columns contains the ratings of
 #'   the `j`th judge.
 #'

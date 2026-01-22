@@ -7,6 +7,7 @@
 \textclass amsart
 \begin_preamble
 \usepackage{xcolor}
+\usepackage{booktabs}
 \definecolor{refred}{RGB}{120,30,30}
 \definecolor{citeblue}{RGB}{0,0,120}
 \definecolor{urlblue}{RGB}{40,40,150}
@@ -808,15 +809,18 @@ Illustrations
 Other estimators
 \end_layout
 
+\begin_layout Standard
+For context and comparison,
+ we record two simple estimators that are commonly encountered in applied work and software for incomplete ratings.
+ They are useful baselines and reference points when discussing robustness and inconsistency under missing at random (MAR).
+\end_layout
+
 \begin_layout Subsection
-Available-case estimator
+Gwet's estimator (irrCAC)
 \end_layout
 
 \begin_layout Standard
-The available-case (pairwise complete) estimator is a natural baseline when ratings are incomplete.
- It uses only the observed rater pairs and treats all observed pairs equally.
- Contrary to some common claims,
- the default missing-data behavior in the popular 
+The default missing-data behavior in the popular 
 \begin_inset Formula $\mathtt{R}$
 \end_inset
 
@@ -824,8 +828,68 @@ The available-case (pairwise complete) estimator is a natural baseline when rati
 \begin_inset Formula $\mathtt{irrCAC}$
 \end_inset
 
- is based on a Gwet-style reweighting;
- see the next subsection.
+ corresponds to a Gwet-style reweighting:
+ it keeps the observed disagreement component but changes the chance disagreement component to compensate for unequal rater observation probabilities.
+ In our notation we define,
+ for each 
+\begin_inset Formula $X\in\{C,F,BP\}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\hat{\kappa}_{X}^{G}=1-\hat{d}^{G}/\hat{d}_{X}^{G}$
+\end_inset
+
+,
+ where the observed disagreement is the same as the available-case estimator,
+\begin_inset Formula 
+\[
+\hat{d}^{G}=\hat{d}^{AC}=\frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}}.
+\]
+
+\end_inset
+
+For the chance disagreement we use empirical rater observation probabilities 
+\begin_inset Formula $\hat{\pi}_{j}=\hat{P}(M_{j}=1)$
+\end_inset
+
+ and define
+\begin_inset Formula 
+\begin{eqnarray*}
+\hat{d}_{C}^{G} & = & \frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
+\end{eqnarray*}
+
+\end_inset
+
+with 
+\begin_inset Formula $\hat{d}_{F}^{G}$
+\end_inset
+
+ being the obvious modification and 
+\begin_inset Formula $d_{BP}$
+\end_inset
+
+ as in equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:bp disagreement"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Available-case estimator
+\end_layout
+
+\begin_layout Standard
+The available-case (pairwise complete) estimator is a natural baseline when ratings are incomplete.
+ It uses only the observed rater pairs and treats all observed pairs equally.
  We may define the available case Conger's kappa estimator as 
 \begin_inset Formula $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$
 \end_inset
@@ -865,6 +929,14 @@ Observe that
 
 .
  
+\end_layout
+
+\begin_layout Subsection
+Properties of available-case and Gwet
+\end_layout
+
+\begin_layout Standard
+We summarize basic consistency properties of the available-case and Gwet estimators under simple missingness assumptions.
 \end_layout
 
 \begin_layout Definition
@@ -935,76 +1007,28 @@ The raters are not exchangeable and data is missing uniformly at random.
 \end_layout
 
 \end_deeper
+\begin_layout Standard
+Under the same two conditions,
+\begin_inset Formula $\hat{\kappa}_{X}^{G}$
+\end_inset
+
+ is strongly consistent as well.
+\end_layout
+
 \begin_layout Proposition
-The estimator is in general not consistent when data is missing at random,
+Both estimators are in general not consistent when data is missing at random,
  even when raters are exchangeable.
  
 \end_layout
 
 \begin_layout Subsection
-Gwet's estimator
+Data for Fleiss' kappa on count form
 \end_layout
 
 \begin_layout Standard
-Gwet's estimator is a reweighted variant that keeps the observed disagreement component but changes the chance disagreement component to compensate for unequal rater observation probabilities.
- In our notation we define,
- for each 
-\begin_inset Formula $X\in\{C,F,BP\}$
-\end_inset
-
-,
-\begin_inset Formula $\hat{\kappa}_{X}^{G}=1-\hat{d}^{G}/\hat{d}_{X}^{G}$
-\end_inset
-
-,
- where the observed disagreement is the same as the available-case estimator,
-\begin_inset Formula 
-\[
-\hat{d}^{G}=\hat{d}^{AC}=\frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}}.
-\]
-
-\end_inset
-
-For the chance disagreement we use empirical rater observation probabilities 
-\begin_inset Formula $\hat{\pi}_{j}=\hat{P}(M_{j}=1)$
-\end_inset
-
- and define
-\begin_inset Formula 
-\begin{eqnarray*}
-\hat{d}_{C}^{G} & = & \frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
-\end{eqnarray*}
-
-\end_inset
-
-with 
-\begin_inset Formula $\hat{d}_{F}^{G}$
-\end_inset
-
- being the obvious modification and 
-\begin_inset Formula $d_{BP}$
-\end_inset
-
- as in equation 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:bp disagreement"
-plural "false"
-caps "false"
-noprefix "false"
-nolink "false"
-
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Section
-Simulations
-\end_layout
-
-\begin_layout Section
-Data for Fleiss' kappa on count form
+This section is included for completeness.
+ We do not propose any new methodology for Fleiss-form count data,
+ but only clarify what can (and cannot) be inferred when rater identities are unavailable.
 \end_layout
 
 \begin_layout Standard
@@ -1012,7 +1036,82 @@ Until now we have discussed estimators that require data on the form
 \begin_inset Formula $X^{*}\in\mathbb{R}^{J}$
 \end_inset
 
+ (raw ratings,
+ with one column per rater).
+ In many applications the data is only available on Fleiss' count form:
+ for each subject 
+\begin_inset Formula $i$
+\end_inset
+
+ we observe category counts 
+\begin_inset Formula $(N_{i1},\ldots,N_{iC})$
+\end_inset
+
+ with 
+\begin_inset Formula $\sum_{a=1}^{C}N_{ia}=R_{i}$
+\end_inset
+
+ and no rater identities.
+ This aggregation makes Fleiss' kappa well-defined under exchangeability,
+ but it also removes the information needed to define rater-specific observation probabilities 
+\begin_inset Formula $\pi_{j}$
+\end_inset
+
+ and hence rater-specific estimators defined for raw data,
+ such as the available-case estimator.
+\end_layout
+
+\begin_layout Standard
+An illustration is provided by the data from Fleiss' original paper 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Fleiss1971-to"
+literal "false"
+
+\end_inset
+
+,
+ available as 
+\begin_inset Formula $\mathtt{dat.fleiss1971}$
+\end_inset
+
+ in the 
+\begin_inset Formula $\mathtt{misskappa}$
+\end_inset
+
+ package.
+ It contains 
+\begin_inset Formula $n=30$
+\end_inset
+
+ subjects,
  
+\begin_inset Formula $C=5$
+\end_inset
+
+ categories,
+ and 
+\begin_inset Formula $R_{i}=6$
+\end_inset
+
+ diagnoses per subject.
+ Importantly,
+ the set of six psychiatrists is not the same for all patients,
+ which is naturally represented by counts but would correspond to a sparse raw rating matrix if all psychiatrists were indexed.
+\end_layout
+
+\begin_layout Standard
+For these data the non-parametric estimator yields 
+\begin_inset Formula $\hat{\kappa}_{F}=0.430$
+\end_inset
+
+,
+ with Wald standard error 0.053 and a 95 percent confidence interval [0.326,
+ 0.535].
+\end_layout
+
+\begin_layout Section
+Simulations
 \end_layout
 
 \begin_layout Section
@@ -1022,6 +1121,110 @@ The
 
  package 
 \begin_inset Formula $\mathtt{misskappa}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+All methods proposed in this paper are implemented in the 
+\begin_inset Formula $\mathtt{misskappa}$
+\end_inset
+
+ package.
+ The main entry points are 
+\begin_inset Formula $\mathtt{kappa\_raw}$
+\end_inset
+
+ for raw categorical rating matrices (subjects 
+\begin_inset Formula $\times$
+\end_inset
+
+ raters, with missing values encoded as 
+\begin_inset Formula $\text{NA}$
+\end_inset
+
+),
+ and 
+\begin_inset Formula $\mathtt{kappa\_counts}$
+\end_inset
+
+ for Fleiss-form count data.
+\end_layout
+
+\begin_layout Standard
+Example (raw ratings with missing values).
+ The dataset 
+\begin_inset Formula $\mathtt{dat.gwet2014}$
+\end_inset
+
+ included with the package contains 
+\begin_inset Formula $n=20$
+\end_inset
+
+ items rated by 
+\begin_inset Formula $R=5$
+\end_inset
+
+ raters with several missing ratings.
+ The following code computes agreement under the three incomplete-data estimators discussed in the paper.
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{verbatim}
+library(misskappa)
+data(dat.gwet2014)
+x <- as.matrix(dat.gwet2014)
+
+kappa_raw(x, method = "available", weight = "identity")  # AC
+kappa_raw(x, method = "ipw",       weight = "identity")  # Hajek-type IPW
+kappa_raw(x, method = "gwet",      weight = "identity")  # Gwet (comparison)
+\backslash
+end{verbatim}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Example (Fleiss-form counts).
+ The dataset 
+\begin_inset Formula $\mathtt{dat.fleiss1971}$
+\end_inset
+
+ provides Fleiss' original count-form example (Table 1 in 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Fleiss1971-to"
+literal "false"
+
+\end_inset
+
+).
+ Fleiss' kappa (and Brennan--Prediger) can be computed directly from counts via
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{verbatim}
+library(misskappa)
+data(dat.fleiss1971)
+
+# r is the number of diagnoses per subject (here, r = 6).
+kappa_counts(dat.fleiss1971, method = "available", weight = "identity", r = 6)
+\backslash
+end{verbatim}
+\end_layout
+
 \end_inset
 
 
