@@ -18,9 +18,10 @@ Approved plan stub at `~/.claude/plans/ok-so-its-been-glowing-duckling.md`.
    `tests/fixtures/` via `tests/tools/regen_oracle.R`.
 4. **IPW + Gwet.** Port the IPW + Gwet branches; property test that IPW
    under uniform MCAR collapses to available-case.
-5. **FIML / EM.** Port `emdiscrete.{h,cpp}` + `kappaml.cpp` to `src/fiml.cpp`
-   and `include/misskappa/em.hpp`. Bounded iteration; `Error::not_converged`
-   on non-convergence. Louis observed-information + delta-method variance.
+5. **FIML / EM.** Port `emdiscrete.{h,cpp}` + `kappaml.cpp` to
+   `src/estimate_fiml.cpp` and `include/misskappa/em.hpp`. Bounded
+   iteration; `Error::not_converged` on non-convergence. Louis
+   observed-information + delta-method variance.
 6. **Inference consolidation.** Move shared influence-function / delta-method
    plumbing into `src/inference.cpp` behind `include/misskappa/inference.hpp`.
 7. **R package wiring.** `r-package/src/Makevars` -> prebuilt

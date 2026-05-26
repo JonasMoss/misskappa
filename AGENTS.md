@@ -108,10 +108,14 @@ The C++ surface lives in one namespace, `misskappa`. Sub-namespaces are
 introduced only when there is a clear boundary:
 
 - `misskappa::loss` — weight matrix and loss-function factories.
-- `misskappa::em` — EM machinery for FIML.
-- `misskappa` (top-level) — the four estimator entry points and shared types.
+- `misskappa` (top-level) — all estimator entry points and shared types.
+  Input shape is encoded in the function name (`_counts`, `_continuous`)
+  rather than via per-shape sub-namespaces; this keeps callers from
+  having to switch namespaces when comparing estimators across shapes.
 
-No deep nesting. No per-estimator namespaces.
+No deep nesting. No per-estimator or per-shape namespaces. Private
+implementation helpers live in `misskappa::detail` (in `src/detail_*.hpp`)
+or in anonymous namespaces inside the `.cpp` that owns them.
 
 ## Conventions
 
