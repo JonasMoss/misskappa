@@ -1,0 +1,5 @@
+"mechanism","coefficient","truth"
+"m1_rater_mcar","Fleiss",0.652494739899285
+"m1_rater_mcar","Brennan-Prediger",0.656030112
+"m2_value_dropout","Fleiss",0.737614095591926
+"m2_value_dropout","Brennan-Prediger",0.7403728

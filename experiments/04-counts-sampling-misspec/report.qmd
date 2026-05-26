@@ -1,0 +1,133 @@
+---
+title: "Counts-FIML Under Sampling Misspecification"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- tryCatch(knitr::current_input(), error = function(e) NA_character_)
+base_dir <- if (is.na(input)) getwd() else dirname(normalizePath(input, mustWork = FALSE))
+candidate_dirs <- c(
+  file.path(base_dir, "results"),
+  "results",
+  file.path("experiments", "04-counts-sampling-misspec", "results")
+)
+result_dir <- candidate_dirs[file.exists(file.path(candidate_dirs, "summary.csv"))][1L]
+if (is.na(result_dir)) {
+  stop("Missing results. Run: Rscript experiments/04-counts-sampling-misspec/run_experiment.R")
+}
+
+summary <- read.csv(file.path(result_dir, "summary.csv"), stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(result_dir, "metadata.csv"), stringsAsFactors = FALSE)
+category_shift <- read.csv(file.path(result_dir, "category_shift.csv"), stringsAsFactors = FALSE)
+mechanisms <- read.csv(file.path(result_dir, "mechanisms.csv"), stringsAsFactors = FALSE)
+
+meta <- function(key) metadata$value[match(key, metadata$key)]
+fmt <- function(x, digits = 4) ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+fmt_bias_sd <- function(b, s) paste0(fmt(b), " (", fmt(s), ")")
+
+mechanism_label <- setNames(mechanisms$label, mechanisms$mechanism)
+estimator_label <- c(
+  counts_fiml = "Counts FIML",
+  raw_fiml = "Raw FIML",
+  raw_ipw = "Raw IPW"
+)
+
+get_bias <- function(mechanism, estimator, coefficient = "Fleiss") {
+  idx <- summary$mechanism == mechanism &
+    summary$estimator == estimator &
+    summary$coefficient == coefficient
+  summary$bias[idx][1L]
+}
+
+m1_counts <- get_bias("m1_rater_mcar", "counts_fiml")
+m1_raw_fiml <- get_bias("m1_rater_mcar", "raw_fiml")
+m1_raw_ipw <- get_bias("m1_rater_mcar", "raw_ipw")
+m2_counts <- get_bias("m2_value_dropout", "counts_fiml")
+m2_raw_fiml <- get_bias("m2_value_dropout", "raw_fiml")
+m2_raw_ipw <- get_bias("m2_value_dropout", "raw_ipw")
+```
+
+## Question
+
+How badly does counts-FIML break when Assumption (S), uniform
+hypergeometric subsampling of observed counts from full counts, fails?
+
+The experiment uses two failure mechanisms. M1 has heterogeneous raters
+with rater-specific MCAR observation rates, then discards rater labels
+before fitting counts-FIML. M2 has exchangeable raters but value-dependent
+dropout, so low categories are less often observed.
+
+## Short Answer
+
+In M1, counts-FIML is the estimator that moves. Fleiss bias is
+`r fmt(m1_counts)`, compared with `r fmt(m1_raw_fiml)` for raw FIML and
+`r fmt(m1_raw_ipw)` for raw IPW. This is the clean Assumption (S)
+failure. Rater labels contain the information needed to undo the
+rater-specific observation process.
+
+In M2, the missingness is value-dependent, so the problem is NMAR for
+all three estimators. Fleiss bias is `r fmt(m2_counts)` for counts-FIML,
+`r fmt(m2_raw_fiml)` for raw FIML, and `r fmt(m2_raw_ipw)` for raw IPW.
+This cell is a boundary case rather than a counts-specific repair story.
+
+## Evidence
+
+```{r}
+summary_display <- summary
+summary_display$Mechanism <- mechanism_label[summary_display$mechanism]
+summary_display$Estimator <- estimator_label[summary_display$estimator]
+summary_display$`Coefficient` <- summary_display$coefficient
+summary_display$`Truth` <- fmt(summary_display$truth)
+summary_display$`Mean Estimate` <- fmt(summary_display$mean_estimate)
+summary_display$`Bias (SD)` <- fmt_bias_sd(summary_display$bias, summary_display$sd)
+summary_display$`RMSE` <- fmt(summary_display$rmse)
+summary_display$`Failures` <- summary_display$failures
+summary_display <- summary_display[order(
+  summary_display$Mechanism, summary_display$Coefficient, summary_display$Estimator
+), c("Mechanism", "Estimator", "Coefficient", "Truth", "Mean Estimate", "Bias (SD)", "RMSE", "Failures")]
+knitr::kable(summary_display, align = "lllrrrrr")
+```
+
+The category marginals below show the sampling distortion after rater
+labels are removed.
+
+```{r}
+shift_display <- category_shift
+shift_display$Mechanism <- mechanism_label[shift_display$mechanism]
+shift_display$Category <- shift_display$category
+shift_display$`Full Share` <- fmt(shift_display$full_share)
+shift_display$`Observed Share` <- fmt(shift_display$observed_share)
+shift_display$`Observed - Full` <- fmt(shift_display$shift)
+shift_display <- shift_display[order(shift_display$Mechanism, shift_display$Category),
+                               c("Mechanism", "Category", "Full Share", "Observed Share", "Observed - Full")]
+knitr::kable(shift_display, align = "lrrrr")
+```
+
+## Caveats
+
+The truth values are analytic expectations under the complete-data
+rating model. The experiment used `r meta("reps")` replicates at
+$n = `r meta("n")`$, so the Monte Carlo standard error of the reported
+bias is the `mc_se_bias` column in `results/summary.csv`.
+
+M1 is designed to isolate a counts-model failure after aggregation. M2 is
+designed to show the broader boundary under value-dependent dropout.
+
+## Reproduce
+
+```sh
+Rscript experiments/04-counts-sampling-misspec/run_experiment.R
+```
+
+For a cheap check:
+
+```sh
+Rscript experiments/04-counts-sampling-misspec/run_experiment.R --smoke
+```

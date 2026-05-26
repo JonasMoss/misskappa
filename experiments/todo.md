@@ -78,28 +78,6 @@ large.
 visibly at moderate `n`, Section 3.3 of the manuscript needs a finite-
 sample correction or an explicit caveat.
 
-### `04-counts-sampling-misspec` — owner: codex
-
-**Question.** How badly does counts-FIML break when Assumption (S)
-(uniform hypergeometric subsampling) fails?
-
-**Approach.** Generate raw rater-identified data with rater-specific
-dropout, aggregate to counts, run `kappa_counts(..., method = "fiml")`.
-Two failure flavours:
-
-- M1: rater-specific MCAR dropout (`π_j` varies); after aggregation the
-  observed counts are biased toward the more-observed raters' marginal.
-- M2: value-dependent dropout (low-category raters drop more often).
-  NMAR for any of the estimators.
-
-Compare counts-FIML bias to (a) rater-identified FIML on the same
-underlying data and (b) raw-data IPW. Establishes the scope claim in
-Section 4 of the manuscript.
-
-**Why it matters.** Counts-FIML's Assumption (S) is plausible only under
-MCAR with exchangeable raters. The paper says this; the simulation
-should show how badly it fails when (S) is violated.
-
 ## Done
 
 ### `02-rater-model-sensitivity`
@@ -109,3 +87,11 @@ Runner + report landed under
 unstable Conger identity-loss orderings between the truth-plus-guess
 and Dawid-Skene models, so a full-grade run is needed before changing
 the paper DGP.
+
+### `04-counts-sampling-misspec`
+
+Runner + report landed under `experiments/04-counts-sampling-misspec/`.
+Counts-FIML is badly biased when heterogeneous rater MCAR data are
+aggregated first (Fleiss bias +0.092 at `n = 500`, `B = 30`), while raw
+FIML and raw IPW stay near truth. Value-dependent dropout biases all
+methods.

@@ -45,10 +45,11 @@ point of running them outside `paper/`.
       paper's framing. If no realistic MCAR cell shows AC > IPW SD, the
       Section 5.1 "inefficient" remark needs softening — AC vs FIML is
       the cleaner contrast.
-- [ ] `04-counts-sampling-misspec` — Counts-FIML under violations of
+- [x] `04-counts-sampling-misspec` — Counts-FIML under violations of
       Assumption (S). Rater-specific dropout aggregated into counts is
-      realistic and out-of-model; how bad is the bias? Establishes the
-      scope of the counts story in Section 4.
+      realistic and out-of-model. Runner/report landed and showed large
+      counts-FIML bias under heterogeneous rater MCAR after aggregation,
+      while raw FIML/IPW stayed near truth.
 - [ ] `05-fiml-sparsity-scaling` — Does FIML bias under MCAR-exchangeable
       shrink at `1/n` as theory predicts, or does the `C^R` parameter-space
       dimension create a slow regime? Resolves whether the smoke-run bias
