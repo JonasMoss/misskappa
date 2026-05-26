@@ -2,42 +2,69 @@
 
 Paper-specific TODO. Repo-level TODO is in `../../dev/notes/todo.md`.
 
-## Conversion
+The 2025 rewrite refocused the manuscript on four estimators across two data
+forms: (raw, counts) × (FIML, IPW). The available-case, Gwet, and quadratic
+estimators are now a short comparison section. See `paper/AGENTS.md` for the
+declared scope.
 
-- [ ] One-shot convert `dev/legacy/kappa-missing.lyx` -> `paper/kappa-missing.tex`
-      via `lyx -e latex` plus cleanup pass. Document the conversion in
-      `paper/dev/notes/`.
-- [ ] Move relevant content from `dev/legacy/notes/{em,mcar-ipw,semiparametrics,gwet-case.tex,inference-eif-raw.tex}`
-      into `paper/dev/notes/`.
-- [ ] Port `dev/legacy/code-analysis/simulations_raw_three_estimators.R` to
-      `paper/scripts/`, adjusted to write raw output to `results/raw/` and
-      curated CSVs to `results/`.
+## Open
 
-## Manuscript
+### Simulations
 
-- [ ] Write a counts-FIML appendix subsection based on
-      `paper/dev/notes/counts-fiml-model.md`. Crystal clear statement of
-      assumptions (E) exchangeable raters + (S) uniform hypergeometric
-      subsampling; identifiability story (theta not identified from
-      partial counts, kappa is); MCAR / MAR distinction for counts is
-      narrow; FIML-counts is not "FIML for arbitrary missingness" the
-      way rater-identified FIML is.
+- [ ] Run the full-grade simulation (`SIM_FULL=1 Rscript
+      scripts/simulations_raw_three_estimators.R`). Smoke-run output is fine
+      for layout, but the Psychometrika-bound numbers need `B_mod=500`,
+      `B_big=200`. Note: includes FIML; expect tens of minutes to hours.
+- [ ] Investigate the residual FIML bias under DGP A (smoke run shows
+      ~−0.015 at n=1000 with B_big=8). Most likely sparse-pattern shrinkage
+      from `prune_tol`/`start_alpha`; confirm it vanishes at full sample
+      size and replication count, or document the regularisation effect.
+- [ ] Add a counts simulation script (`scripts/simulations_counts.R`)
+      mirroring the raw script for the available-on-counts vs counts-FIML
+      comparison. Single MAR-counts cell suffices.
+- [ ] Decide on a final main-text table shape (4 methods × 3 DGPs gets wide;
+      consider splitting into one MCAR cell and one MAR cell).
 
+### Manuscript
 
-- [ ] Fix the truncated "We w" sentence in the Introduction.
-- [ ] Fill in Section 2.3 "Computation".
-- [ ] Fill in Section 2.4 "Illustrations".
-- [ ] Fill in "Concluding remarks".
-- [ ] Tighten the abstract phrasing once the rest of the paper settles.
-- [ ] Add a Symbol Glossary section near the front.
-- [ ] Expand bibliography: missing-data foundations (MCAR/MAR, IPW/Hajek),
-      Tsiatis / van der Vaart / Robins-Rotnitzky-Zhao, U-statistics for
-      asymptotic variance.
+- [ ] Tighten the inference recipe (Section 3.3): the Louis-information
+      paragraph is currently a sketch. Either expand with the explicit form
+      or move it to the supplement and cite.
+- [ ] Add a worked numeric example for inference (Section 7) — at least one
+      coefficient with its Wald CI from `vcov()`.
+- [ ] Expand citations: `Rubin1976-rb`, `Robins1994-jp`, `Gwet2014-pj`,
+      `Conger1980-co` are now in `kappa-missing.bib`. Add U-statistics /
+      EM references if a referee asks for them.
+- [ ] Decide whether the appendix proof of Proposition
+      \ref{prop:ac-consistency} should also state and prove the
+      corresponding Gwet limit explicitly (currently in a `\begin{rem}`).
+- [ ] Sentence-level pass against `paper/STYLE.md`: no em-dashes, no
+      semicolons, no LLM-isms, no antithesis. The current draft mostly
+      complies but a final sweep is worth doing.
 
-## Build infrastructure
+### Build infrastructure
 
-- [ ] Wire `paper/justfile` recipes: `pdf`, `sims`, `tables`, `figures`,
-      `paper`, `archive`, `clean`.
-- [ ] Add `paper/scripts/build_tables.R` and `paper/scripts/build_figures.R`
-      stubs.
-- [ ] Add `paper/tables/<slug>_stats.tex` macro file with `??` fallbacks.
+- [ ] Wire `paper/justfile` recipes that are still TODO: confirm `archive`,
+      `tables`, `figures` are functional. `pdf` and `sim` are working.
+- [ ] Add `paper/scripts/build_tables.R` (stub for `just tables`) — currently
+      the simulation script writes the tables directly.
+- [ ] Add `paper/tables/<slug>_stats.tex` macro file with `??` fallbacks for
+      any cited numbers in the prose (none currently, but if the worked
+      example adds one, this becomes load-bearing).
+
+## Done (2025 rewrite)
+
+- [x] Rewrite scope in `paper/AGENTS.md` to (raw, counts) × (FIML, IPW).
+- [x] Rewrite `paper/kappa-missing.tex` around four headline estimators.
+      Adds Section 3.2 (FIML, raw), Section 4 (counts + exchangeable raters),
+      Section 5 (other estimators, including quadratic special case),
+      symbol glossary. Fills the previously empty "Concluding remarks".
+- [x] Add missing bibliography entries: `Rubin1976-rb`, `Robins1994-jp`,
+      `Gwet2014-pj`, `Conger1980-co`.
+- [x] Extend `scripts/simulations_raw_three_estimators.R` with FIML
+      (`em_options = list(max_iter = 50000, tol = 1e-7)` to handle harder
+      DGPs).
+- [x] Counts-FIML model write-up: `paper/dev/notes/counts-fiml-model.md`
+      (carried over from earlier work).
+- [x] Fix the truncated "We w" sentence in the Introduction.
+- [x] Fill Section 7 (R package) and Section 8 (Concluding remarks).

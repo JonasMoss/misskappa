@@ -44,7 +44,7 @@ if (sim_full) {
   B_big   <- 8L
 }
 
-methods <- c("available", "ipw", "gwet")
+methods <- c("available", "ipw", "fiml", "gwet")
 weight_main <- "identity"
 weight_appendix <- "linear"
 
@@ -82,7 +82,11 @@ apply_missing_mar_truth <- function(x_star, truth, pi_truth) {
 }
 
 kappa_all <- function(x, method, weight) {
-  misskappa::kappa(x, method = method, weight = weight)$estimates
+  args <- list(x = x, method = method, weight = weight)
+  if (method == "fiml") {
+    args$em_options <- list(max_iter = 50000L, tol = 1e-7)
+  }
+  do.call(misskappa::kappa, args)$estimates
 }
 
 estimate_truth <- function(dgp, weight) {
@@ -189,7 +193,7 @@ dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(supplement_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
 
-method_labels <- c(available = "AC", ipw = "IPW", gwet = "Gwet")
+method_labels <- c(available = "AC", ipw = "IPW", fiml = "FIML", gwet = "Gwet")
 
 latex_table_conger <- function(summaries_mod, summaries_big, truth_lookup) {
   hdr <- c("\\begin{tabular}{llrrrr}", "\\toprule",
@@ -237,7 +241,7 @@ latex_table_appendix <- function(kappa_name, key) {
 
 note_dgps <- function() {
   paste(
-    "\\textit{Note.} Rating model: $T_i\\sim\\mathrm{Categorical}(p)$; conditional on $T_i$, rater $j$ reports $T_i$ with probability $\\rho_{ij}$ and otherwise guesses from $p$. Missingness indicators $M_{ij}\\in\\{0,1\\}$ are independent across $(i,j)$ given the specified mechanism. DGP A: exchangeable raters, MCAR rater-specific. DGP B: non-exchangeable, MCAR rater-specific. DGP C: difficulty-dependent skill, MAR via the truth $T_i$. AC = available-case, IPW = inverse-probability-weighted, Gwet = Gwet's reweighting.",
+    "\\textit{Note.} Rating model: $T_i\\sim\\mathrm{Categorical}(p)$; conditional on $T_i$, rater $j$ reports $T_i$ with probability $\\rho_{ij}$ and otherwise guesses from $p$. Missingness indicators $M_{ij}\\in\\{0,1\\}$ are independent across $(i,j)$ given the specified mechanism. DGP A: exchangeable raters, MCAR rater-specific. DGP B: non-exchangeable, MCAR rater-specific. DGP C: difficulty-dependent skill, MAR via the truth $T_i$. AC = available-case, IPW = inverse-probability-weighted, FIML = full-information maximum likelihood, Gwet = Gwet's reweighting.",
     collapse = " ")
 }
 

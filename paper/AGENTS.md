@@ -6,22 +6,29 @@ Target journal: Psychometrika.
 
 ## Scope
 
-This manuscript presents two estimators for weighted kappa coefficients
-(Cohen / Fleiss / Brennan-Prediger) with incomplete categorical ratings:
+This manuscript presents four estimators for weighted kappa coefficients
+(Cohen / Fleiss / Brennan-Prediger) with incomplete categorical ratings,
+organised by data form and missingness assumption:
 
-- Available-case (pairwise complete observations).
-- IPW / Hajek (inverse-probability-weighted).
+- **Raw (rater-identified) data.** Hájek-type IPW (MCAR) and FIML / EM
+  (MAR). IPW is consistent under MCAR with no parametric assumption on the
+  rater joint; FIML is consistent under MAR and attains the semiparametric
+  bound under the discrete-data full model.
+- **Counts data with exchangeable raters.** Available-on-counts (the
+  pairwise plug-in, which under exchangeability coincides with IPW) and
+  FIML / EM (hypergeometric completion of partial counts).
 
-Both are MCAR estimators. The paper proves consistency under MCAR, gives
-joint inferential theory via influence functions, and shows that Gwet's
-earlier inferential method (the comparison baseline) is inconsistent. A
-small simulation study under MCAR / MAR illustrates the order-of-magnitude
-differences in finite samples; a worked empirical example demonstrates the
-companion R package.
+The available-case (raw), Gwet, and closed-form quadratic estimators
+appear as a short comparison section. Available-case is consistent under
+narrower conditions and inefficient; Gwet is generally inconsistent; the
+quadratic estimator is closed-form efficient in the two-rater / pairwise-
+complete case (`E[l(X^*, X^*) | X]` constant in `X`).
 
-FIML / EM is implemented in the `misskappa` library and used in the
-simulation, but the efficient-missing-data story (EM efficiency, sandwich
-robustness) is deliberately deferred to a follow-up paper.
+The paper develops consistency and inference (influence functions for
+IPW, Louis observed information for FIML), shows that Gwet's reweighting
+is inconsistent under MAR, and demonstrates the bias / efficiency
+ordering in a small simulation study. A worked empirical example
+exercises the companion R package.
 
 ## Conventions
 
