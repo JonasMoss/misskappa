@@ -1,0 +1,62 @@
+---
+title: "Short benchmark of Fleiss' kappa and Brennan-Prediger"
+subtitle: "Benchmark for the aggregated functions"
+author: "Jonas Moss"
+output: html_document
+editor: visual
+date: 4/25/2023
+---
+
+The most feature complete `R` package for agreement coefficients is `irrCAC`. It implements Fleiss' kappa and the Brennan-Prediger coefficient for both aggregated and long form data. Despite the fact that their method of inference, based on $U$-statistics, does not look the same as ours (based on moments) they are equivalent in the case of aggregated data. Compare the confidence intervals below to be convinced of this.
+
+```{r}
+library("quadagree")
+irrCAC::bp.coeff.dist(dat.fleiss1971, weights = "quadratic")
+kappa_aggr(dat.fleiss1971)
+```
+
+For aggregated data, `quadagree` supports user-supplied `values` vectors, transforms, and studentized bootstrapping, which `irrCAC` does not. But is it faster? It turns out `quadagree` is roughly twice as fast for reasonable numbers of raters. This suggests there is no benefit in using the moment formulation (as done in `quadagree`) when calculating these coefficients, as `quadagree` is likely to be substantially more optimized than `irrCAC`.
+
+We note that no effort has been made to bin the values. One of the benefits of the moment formulation of Fleiss' kappa and the Brennan–Prediger coefficient is its ability to handle continuous values, and binning will not help here.
+
+# Benchmarks
+
+We will run three benchmarks of various sizes using the `microbenchmark` package. We start off with `dat.fleiss1971`, which contains $n=30$ rows.
+
+```{r}
+x <- dat.fleiss1971
+irr_bp <- \(x) irrCAC::bp.coeff.dist(x, weights = "quadratic")
+irr_fleiss <- \(x) irrCAC::fleiss.kappa.dist(x, weights = "quadratic")
+microbenchmark::microbenchmark(
+  irr_bp(x),
+  kappa_aggr(x),
+  irr_fleiss(x),
+  times = 1000
+)
+```
+
+So `quadagree` is roughly twice as fast. Let's see what happens when $n=300$.
+
+```{r}
+x <- dat.fleiss1971
+x <- rbind(x, x, x, x, x, x, x, x, x, x)
+microbenchmark::microbenchmark(
+  irr_bp(x),
+  kappa_aggr(x),
+  irr_fleiss(x),
+  times = 1000
+)
+```
+
+The run time is almost the same for all methods as it was for $n=30$, suggesting that there is substantial overhead to both methods. Let's check $n=3000$.
+
+```{r}
+x <- rbind(x, x, x, x, x, x, x, x, x, x)
+# x has 3000 elements.
+microbenchmark::microbenchmark(
+  irr_bp(x),
+  kappa_aggr(x),
+  irr_fleiss(x),
+  times = 1000
+)
+```

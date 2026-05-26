@@ -1,0 +1,75 @@
+---
+title: "Benchmark of Fleiss' kappa, Cohen's kappa, and the Brennan-Prediger coefficient"
+subtitle: "Benchmark for the non-aggregrated functions"
+author: "Jonas Moss"
+output: html_document
+editor: visual
+date: 4/25/2023
+---
+
+The main benefit of `quadagree` versus `irrCAC` for data on long form is its support for missing data and continuous data, but bootstrapping and transformations can come in handy as well. As it turns out, `quadagree` is sightly faster than `irrCAC` for most practical data sizes. The largest difference is found for Conger's kappa, as the method used by `irrCAC`, which works for any weighting function, must necessarily do much more work for Conger's kappa. For `quadagree`, Fleiss's kappa and Conger's kappa are equally fast.
+
+The following benchmark is being run on $n=50$ ratings and $R=4$ raters.
+
+```{r}
+library("quadagree")
+x <- dat.zapf2016
+irr_conger <- \(x) irrCAC::conger.kappa.raw(x, weights = "quadratic")
+irr_fleiss <- \(x) irrCAC::fleiss.kappa.raw(x, weights = "quadratic")
+irr_bp <- \(x) irrCAC::bp.coeff.raw(x, weights = "quadratic")
+microbenchmark::microbenchmark(
+  irr_conger(x),
+  congerci(x),
+  irr_fleiss(x),
+  fleissci(x),
+  irr_bp(x),
+  bpci(x),
+  times = 1000
+)
+```
+
+Let's try $n=500$.
+
+```{r}
+y <- rbind(x, x, x, x, x, x, x, x, x, x)
+# 500 ratings
+microbenchmark::microbenchmark(
+  irr_conger(y),
+  congerci(y),
+  irr_fleiss(y),
+  fleissci(y),
+  irr_bp(y),
+  bpci(y),
+  times = 1000
+)
+```
+
+For $n=3000$, `quadagree` is roughly $5$ times faster than `irrCAC` for Conger's kappa and the Brennan-Prediger coefficient.
+
+```{r}
+z <- rbind(y, y, y, y, y, y, y, y, y, y)
+# 5000 ratings
+microbenchmark::microbenchmark(
+  irr_conger(z),
+  congerci(z),
+  irr_fleiss(z),
+  fleissci(z),
+  irr_bp(z),
+  bpci(z)
+)
+```
+
+If we increase the number of categories, the differential becomes very large.
+
+```{r}
+w <- cbind(y, y, y, y, y, y, y, y, y, y)
+# 500 ratings and 40 categories.
+microbenchmark::microbenchmark(
+  irr_conger(w),
+  congerci(w),
+  irr_fleiss(w),
+  fleissci(w),
+  irr_bp(w),
+  bpci(w)
+)
+```
