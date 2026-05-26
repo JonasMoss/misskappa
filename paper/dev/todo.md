@@ -33,12 +33,11 @@ point of running them outside `paper/`.
       Wald CIs hit nominal coverage at moderate n? Single column added to
       the bias/SD table answers the obvious referee question. Cheap, both
       variance estimators are already implemented.
-- [ ] `02-rater-model-sensitivity` — Do A/B/C bias and efficiency orderings
+- [x] `02-rater-model-sensitivity` — Do A/B/C bias and efficiency orderings
       survive a Dawid-Skene rater model (per-rater confusion matrix)? The
       current latent-truth-plus-guess model is easy to describe but very
-      constrained. If orderings are stable, keep the simple model; if they
-      flip in places, switch the paper sims to D-S. Drives the DGP choice
-      for the final manuscript.
+      constrained. Smoke runner/report landed and showed unstable orderings;
+      run full-grade before changing the manuscript DGP.
 - [ ] `03-ac-vs-ipw-efficiency` — Where exactly does AC inefficiency
       become visible? Sweep π-variability against rater-exchangeability.
       Smoke run currently shows IPW SD > AC SD under DGP A (MCAR +
