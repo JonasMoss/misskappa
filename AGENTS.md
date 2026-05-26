@@ -46,7 +46,8 @@ inferential method is inconsistent.
 - `r-package/` — Rcpp bindings; consumes the prebuilt `libmisskappa.a`,
   separate from and not part of the C++ build.
 - `paper/` — manuscript, bibliography, figures, tables, simulation scripts,
-  curated results. Follows the structure documented in `claude_new/AGENTS.md`.
+  curated results. Each subdir documented in `paper/AGENTS.md`; the prose /
+  table / figure style guide is `paper/STYLE.md`.
 - `dev/legacy/` — frozen reference: original R package, C++ implementation,
   analysis scripts, LyX manuscript, supporting notes. Unbuilt, do not edit.
 - `dev/notes/` — repo-level development notes (port plan, validation plan, todo).
