@@ -261,9 +261,4 @@ Result<Estimation> estimate_gwet(IntMatView ratings, RealMatView weights) {
   return detail::estimate_raw(ratings, weights, detail::Reweighting::gwet);
 }
 
-Result<Estimation> estimate_fiml(IntMatView /*ratings*/, RealMatView /*weights*/, EmOptions /*opts*/) {
-  // Implemented in step 5 (src/fiml.cpp).
-  return std::unexpected(Error::not_supported);
-}
-
 }  // namespace misskappa
