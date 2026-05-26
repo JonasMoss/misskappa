@@ -30,6 +30,20 @@ Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);
 Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 
+// --- Counts-format input ---------------------------------------------------
+//
+// `counts` is n x C of non-negative integers: counts(i, k) is the number of
+// raters who assigned subject i to category k. Row sum r_i is the number of
+// raters who rated subject i (need not be the same across subjects). Per-
+// rater identity is not preserved, so IPW / Gwet (which need rater-specific
+// observation rates) are not meaningful here.
+//
+// Estimates returned: (Fleiss, Brennan-Prediger). Conger requires identified
+// raters and is not in scope for counts. FIML for counts (with the multi-
+// variate hypergeometric weights needed when row sums vary) is a future
+// addition; see dev/notes/todo.md.
+Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights);
+
 // --- Continuous-rating estimators -------------------------------------------
 //
 // `ratings` is n x R of real values; entries that are not finite (NaN or

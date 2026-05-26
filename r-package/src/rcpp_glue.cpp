@@ -162,6 +162,53 @@ Rcpp::List rcpp_kappa_raw(
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_kappa_counts(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values) {
+  const int C = x.ncol();
+  if (C < 1) Rcpp::stop("Counts matrix must have at least one category column.");
+
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mapped(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) mapped(i, j) = x(i, j);
+  }
+
+  Eigen::VectorXd v(C);
+  if (values.isNotNull()) {
+    Rcpp::NumericVector vv(values);
+    if (vv.size() != C) Rcpp::stop("Length of 'values' must equal the number of category columns.");
+    for (int i = 0; i < C; ++i) v(i) = vv[i];
+  } else {
+    for (int i = 0; i < C; ++i) v(i) = static_cast<double>(i + 1);
+  }
+
+  Eigen::MatrixXd W;
+  if (weight_type == "identity" || weight_type == "unweighted") {
+    W = unwrap(misskappa::loss::identity_weights(C));
+  } else if (weight_type == "linear") {
+    W = unwrap(misskappa::loss::linear_weights(C, v));
+  } else if (weight_type == "quadratic") {
+    W = unwrap(misskappa::loss::quadratic_weights(C, v));
+  } else if (weight_type == "ordinal") {
+    W = unwrap(misskappa::loss::ordinal_weights(C));
+  } else if (weight_type == "radical") {
+    W = unwrap(misskappa::loss::radical_weights(C, v));
+  } else if (weight_type == "ratio") {
+    W = unwrap(misskappa::loss::ratio_weights(C, v));
+  } else if (weight_type == "circular") {
+    W = unwrap(misskappa::loss::circular_weights(C, v));
+  } else if (weight_type == "bipolar") {
+    W = unwrap(misskappa::loss::bipolar_weights(C, v));
+  } else {
+    Rcpp::stop("Unknown weight type: " + weight_type);
+  }
+
+  auto r = misskappa::estimate_available_counts(mapped, W);
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_continuous(
     const Rcpp::NumericMatrix& x,
     std::string method,
