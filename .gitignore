@@ -1,24 +1,42 @@
-*~
-*.lyx~
-*.lyx.emergency*
-*.emergency*
-\#*\#
-.Rhistory
-.RData
-.Rproj.user/
+# Build outputs
+build/
+build-*/
 *.o
 *.so
+*.a
 *.dll
-notes/_autosave/
-notes/archive/
-!notes/archive/README.md
-!notes/archive/2025-07-duplicate-notes/README.md
+*.dylib
 
-*.aux
-*.bbl
-*.blg
-*.log
-*.out
-*.toc
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Testing/
+CTestTestfile.cmake
+
+# Local source mirrors and scratch
+external/
+resources/
+
+# Reference docs copied in during the C++23 restart; conventions are
+# now folded into AGENTS.md and paper/AGENTS.md.
+claude_new/
+
+# R artifacts
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
 *.Rcheck/
 *.tar.gz
+r-package/src/*.o
+r-package/src/*.so
+r-package/src/*.dll
+r-package/src/symbols.rds
+
+# Editor / OS
+*~
+\#*\#
+.DS_Store
+
+# Paper build is paper/-local; paper/.gitignore handles its own outputs.

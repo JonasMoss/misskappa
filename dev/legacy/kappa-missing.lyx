@@ -1114,6 +1114,49 @@ For these data the non-parametric estimator yields
 Simulations
 \end_layout
 
+\begin_layout Standard
+We use a small Monte Carlo study to illustrate (i) settings where the available-case estimator behaves well, (ii) settings where it can be badly biased even under MCAR, and (iii) settings where all simple reweighting approaches fail under MAR.
+The simulation design is described in the table note.
+\end_layout
+
+\begin_layout Standard
+In particular, under non-exchangeable raters with unequal observation probabilities (DGP B), the available-case and Gwet-style estimators are biased, while the Hájek-type IPW estimator is approximately unbiased.
+When missingness depends on latent item difficulty (DGP C), all three estimators target a reweighted parameter and exhibit similar bias.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+input{notes/simulations-raw-three-estimators-main.tex}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Additional simulation tables (linear/absolute loss, and Fleiss/Brennan--Prediger variants) are available as a separate snippet in
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+texttt{notes/simulations-raw-three-estimators-appendix.tex}
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
 \begin_layout Section
 The 
 \begin_inset Formula $\mathtt{R}$

@@ -1,0 +1,694 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass amsart
+\use_default_options true
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+\end_modules
+\maintain_unincluded_children no
+\language american
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement class
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\end_header
+
+\begin_body
+
+\begin_layout Definition
+Let 
+\begin_inset Formula $\mathcal{P}$
+\end_inset
+
+ and be a set of mutually continuous densities and 
+\begin_inset Formula $p\in\mathcal{P}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Definition
+A 
+\emph on
+path
+\emph default
+ to 
+\begin_inset Formula $p$
+\end_inset
+
+ is a parametric model 
+\begin_inset Formula $p_{t}$
+\end_inset
+
+ with 
+\begin_inset Formula $t\in(0,\epsilon)$
+\end_inset
+
+ that is differentiable in quadratic mean with score function 
+\begin_inset Formula $g$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Definition
+The maximal tangent set is the the set of all such pairs 
+\begin_inset Formula $\{(p_{t},g)\}$
+\end_inset
+
+ projected onto the second coordinate.
+ Any subset of the maximal tangent set is also a tanget set.
+ We denote tangent sets by 
+\begin_inset Formula $T_{p}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Definition
+For each 
+\begin_inset Formula $g\in T_{p}$
+\end_inset
+
+ let 
+\begin_inset Formula $p_{t}[g]$
+\end_inset
+
+ be the set of paths realizing 
+\begin_inset Formula $g$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The maximal tangent set is a cone,
+ i.e.,
+ 
+\begin_inset Formula $aT\subset T$
+\end_inset
+
+ whenever 
+\begin_inset Formula $a>0$
+\end_inset
+
+.
+ This follows from the fact hat 
+\begin_inset Formula $p_{ta}$
+\end_inset
+
+ is a path whenever 
+\begin_inset Formula $p_{t}$
+\end_inset
+
+ is,
+ and the resulting score function is 
+\begin_inset Formula $ag$
+\end_inset
+
+.
+ Most tangent sets are also cones.
+\end_layout
+
+\begin_layout Standard
+It suffices to work with tangent sets that are dense in 
+\begin_inset Formula $\overline{\text{span}T_{p}}$
+\end_inset
+
+ where 
+\begin_inset Formula $T_{p}$
+\end_inset
+
+ is the maximal tangent set.
+ A tangent set satisfying this condition is called 
+\emph on
+complete
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Definition
+The functional 
+\begin_inset Formula $\psi:\mathcal{P}\to\mathbb{R}^{k}$
+\end_inset
+
+ is 
+\emph on
+differentiable
+\emph default
+ at 
+\begin_inset Formula $P$
+\end_inset
+
+ with relative to the tangent set 
+\begin_inset Formula $T_{P}$
+\end_inset
+
+ if 
+\begin_inset Formula 
+\[
+\psi(P_{t}[g])=\psi(P)+t\dot{\psi}_{P}g+o(t),
+\]
+
+\end_inset
+
+for all 
+\begin_inset Formula $g\in T(\mathcal{P})_{p}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+[[Now it's probably time to derive properties of these derivatives.]]
+\end_layout
+
+\begin_layout Definition
+Let 
+\begin_inset Formula $X,Y$
+\end_inset
+
+ be normed spaces,
+ 
+\begin_inset Formula $W\subset X$
+\end_inset
+
+ and 
+\begin_inset Formula $\psi:W\to Y$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula $\psi$
+\end_inset
+
+ is Hadamard differentiable at 
+\begin_inset Formula $x\in W$
+\end_inset
+
+ on 
+\begin_inset Formula $W$
+\end_inset
+
+ if there exists a bounded linear map
+\begin_inset Formula $D_{x}\psi$
+\end_inset
+
+ so that
+\begin_inset Formula 
+\[
+\psi(x+t_{n}h_{n})=\psi(x)+D_{x}\psi h+o(t_{n}),
+\]
+
+\end_inset
+
+for all 
+\begin_inset Formula $h_{n}\to h$
+\end_inset
+
+ and 
+\begin_inset Formula $t_{n}\to0$
+\end_inset
+
+ where 
+\begin_inset Formula $x+t_{n}h_{n}\in W$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Definition
+Alright.
+ So now we have 
+\begin_inset Formula $h\in T_{p}$
+\end_inset
+
+ and a set of 
+\begin_inset Quotes eld
+\end_inset
+
+allowed paths
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\begin_inset Formula $t_{n}h_{n}$
+\end_inset
+
+ which must satisfy:
+\end_layout
+
+\begin_layout Definition
+(a) 
+\begin_inset Formula $p_{n}^{1/2}=p^{1/2}+t_{n}h_{n}\in\mathcal{P}^{1/2}$
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Definition
+(b) (DQM) 
+\begin_inset Formula $\int(p_{t}^{1/2}-p^{1/2}-\frac{1}{2}tgp^{1/2})^{2}=o(\|t\|^{2})$
+\end_inset
+
+ so 
+\begin_inset Formula $p_{t}^{1/2}=p^{1/2}+\frac{1}{2}tgp^{1/2}+o(t)$
+\end_inset
+
+.
+ Hence 
+\begin_inset Formula $p_{t}^{1/2}=p^{1/2}+\frac{1}{2}tgp^{1/2}+o(t)$
+\end_inset
+
+.
+ (Does it suffice to use these paths,
+ i.e.,
+ 
+\begin_inset Formula $t_{n}h_{n}$
+\end_inset
+
+ with 
+\begin_inset Formula $h_{n}=\frac{1}{2}gp^{1/2}+o(1)$
+\end_inset
+
+?)
+\end_layout
+
+\begin_layout Definition
+(c) IF that is the case we could,
+ potentially,
+ reformulate as 
+\begin_inset Formula $p_{t}^{1/2}=p^{1/2}(1+\frac{1}{2}tg)+o(t)\in\mathcal{P}^{1/2}$
+\end_inset
+
+,
+ and the paths 
+\end_layout
+
+\begin_layout Standard
+So our Hadamard condition is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\psi(P+t_{n}g_{n})=\psi(P)+D_{P}\psi g+o(t_{n})
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Consider the set of probability measures that can be represented as 
+\begin_inset Formula 
+\[
+P_{n}=P+n^{-1/2}h+o(n^{-1/2}),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $h_{n}\to h\in T_{P}$
+\end_inset
+
+.
+ (Aha,
+ this is equivalent to the DQM condition!) This is imprecise.
+ 
+\end_layout
+
+\begin_layout Standard
+Then we have differentiable if 
+\begin_inset Formula 
+\[
+\psi(P_{n})=\psi(P)+n^{-1/2}D_{P}\psi h+o(n^{-1/2})
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+.
+\end_layout
+
+\begin_layout Standard
+Suppose 
+\begin_inset Formula $\psi$
+\end_inset
+
+ is differentiable as above.
+ By the Riesz representation theorem we have 
+\begin_inset Formula $\dot{\psi}_{p}g=\left\langle \tilde{\psi}_{p},g\right\rangle _{L_{p}^{2}}$
+\end_inset
+
+ for some 
+\begin_inset Formula $\tilde{\psi}_{p}\in L_{p}^{2}$
+\end_inset
+
+.
+ Such functions are called 
+\emph on
+influence functions
+\emph default
+.
+\end_layout
+
+\begin_layout Definition
+The efficient influence function is a function in 
+\begin_inset Formula $\tilde{\psi}_{p}\in\overline{\text{span}T_{p}}$
+\end_inset
+
+ satisfying 
+\begin_inset Formula $\dot{\psi}_{p}g=\left\langle \tilde{\psi}_{p},g\right\rangle _{L_{p}^{2}}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Proposition
+Let 
+\begin_inset Formula $\psi$
+\end_inset
+
+ be differentiable.
+ Then the efficient influence function exists and is unique.
+\end_layout
+
+\begin_layout Proof
+Let 
+\begin_inset Formula $\check{\psi}_{p}$
+\end_inset
+
+ be any influence function.
+ Let 
+\begin_inset Formula $\Pi$
+\end_inset
+
+ be the projection onto 
+\begin_inset Formula $\overline{\text{span}T_{p}}$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula 
+\begin{eqnarray*}
+\left\langle \check{\psi}_{p},g\right\rangle  & = & \left\langle \Pi\check{\psi}_{p}+(I-\Pi)\check{\psi}_{p},g\right\rangle ,\\
+ & = & \left\langle \Pi\check{\psi}_{p},g\right\rangle +\left\langle (I-\Pi)\check{\psi}_{p},g\right\rangle ,\\
+ & = & \left\langle \Pi\check{\psi}_{p},g\right\rangle +\left\langle \check{\psi}_{p},(I-\Pi)g\right\rangle ,\\
+ & = & \left\langle \Pi\check{\psi}_{p},g\right\rangle .
+\end{eqnarray*}
+
+\end_inset
+
+Moreover,
+ 
+\begin_inset Formula $\left\langle \Pi(\check{\psi}_{p}^{1}-\check{\psi}_{p}^{2}),g\right\rangle =0,$
+\end_inset
+
+and since they are equal 
+\begin_inset Formula $T_{p}$
+\end_inset
+
+ they are equal on 
+\begin_inset Formula $\overline{\text{span}T_{p}}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Section
+Efficient score functions
+\end_layout
+
+\begin_layout Standard
+When we deal with 
+\begin_inset Formula $\mathcal{P}=\{P_{\theta,\eta}\mid\theta\in\Theta,\eta\in H\}$
+\end_inset
+
+.
+ (Here 
+\begin_inset Formula $H$
+\end_inset
+
+ is capital 
+\begin_inset Formula $\eta$
+\end_inset
+
+,
+ which is not in general a Hilbert space.).
+\end_layout
+
+\begin_layout Part*
+Keep
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+L_{P*}^{2}=\{g\in L_{P}^{2}\mid\left\langle g,1\right\rangle =0\}
+\]
+
+\end_inset
+
+Define 
+\begin_inset Formula $\mathcal{P}_{P}$
+\end_inset
+
+ as the set of differentiable paths in 
+\begin_inset Formula $P$
+\end_inset
+
+.
+ A path is a map 
+\begin_inset Formula $t\mapsto p_{t}$
+\end_inset
+
+ where 
+\begin_inset Formula $p_{t}$
+\end_inset
+
+ is a density wrt to 
+\begin_inset Formula $P$
+\end_inset
+
+ and
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{p_{t}}{p}=1+o(t)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+f(x+a)=f(x)+f'(x)h+o(h)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In this case we have 
+\begin_inset Formula $\int(t^{-1}(p_{t}^{1/2}-p^{1/2})-\frac{1}{2}gp^{1/2})^{2}\to0$
+\end_inset
+
+ which is equivalent to
+\begin_inset Formula 
+\[
+\int(t^{-1}2\left(\frac{p_{t}^{1/2}-p^{1/2}}{p^{1/2}}\right)-g)^{2}dP
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+2\left(\frac{p_{\theta+t}^{1/2}-p_{\theta}^{1/2}}{p_{\theta}^{1/2}}\right) & = & g_{\theta}h+o(h)\\
+\log p_{\theta+t} & = & g_{\theta}h+o(h)
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\int\left(\frac{\log p_{\theta+t}-\log p_{\theta}}{t}-g\right)^{2}dP\to0,\quad P_{\theta}g=0
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\int\left(\frac{1}{t}\left[\log\left(\frac{p_{\theta+t}}{p_{\theta}}\right)-\log\left(\frac{p_{\theta}}{p_{\theta}}\right)\right]-g\right)^{2}dP\to0
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Hypotheses
+\end_layout
+
+\begin_layout Standard
+1.
+ DQM iff 
+\begin_inset Formula $\int\left(\frac{\log p_{\theta+t}-\log p_{\theta}}{t}-g\right)^{2}dP\to0$
+\end_inset
+
+?
+\end_layout
+
+\begin_layout Standard
+2.
+ 
+\begin_inset Formula $\int\left(\frac{\log p_{\theta+t}-\log p_{\theta}}{t}-u_{\theta}\right)^{2}dP\to0$
+\end_inset
+
+ implies 
+\begin_inset Formula $P_{\theta}u_{\theta}=0$
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
