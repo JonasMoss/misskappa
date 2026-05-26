@@ -117,6 +117,21 @@ test_that("kappa_continuous() handles available/ipw/gwet and matches legacy", {
                tolerance = 1e-9)
 })
 
+test_that("kappa_counts() reproduces Fleiss 1971", {
+  fit_id <- kappa_counts(dat.fleiss1971, weight = "identity")
+  expect_s3_class(fit_id, "misskappa_estimate")
+  expect_named(fit_id$estimates, c("Fleiss", "Brennan-Prediger"))
+  expect_equal(unname(fit_id$estimates["Fleiss"]), 0.4302445200601408,
+               tolerance = 1e-9)
+  expect_equal(unname(fit_id$estimates["Brennan-Prediger"]), 4 / 9,
+               tolerance = 1e-9)
+
+  fit_q <- kappa_counts(dat.fleiss1971, weight = "quadratic",
+                        values = c(1, 2, 3, 4, 5))
+  expect_equal(unname(fit_q$estimates["Fleiss"]), 0.2840722495894910,
+               tolerance = 1e-9)
+})
+
 test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {
   x <- matrix(c(1.0, 1.0, 2.5, 2.5, 3.3, 3.3), nrow = 3, byrow = TRUE)
   fit <- kappa_continuous(x, method = "available", weight = "quadratic")

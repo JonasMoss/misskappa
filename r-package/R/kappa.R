@@ -103,6 +103,60 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
   )
 }
 
+#' Weighted agreement coefficients for counts-format input
+#'
+#' @description
+#' Estimates Fleiss and Brennan-Prediger weighted agreement coefficients
+#' for counts-format data: each row is one subject; each column is a
+#' category; `x[i, k]` is the number of raters who assigned subject `i`
+#' to category `k`. Row sums (number of raters per subject) need not be
+#' uniform across subjects.
+#'
+#' Conger is not reported (raters are not identified in this input format),
+#' and neither IPW nor Gwet are meaningful (per-rater observation rates are
+#' aggregated away by the counts representation).
+#'
+#' @param x A subjects-by-categories non-negative integer matrix.
+#' @param weight Weighting scheme: `"identity"` (default; equivalent to
+#'   `"unweighted"`), `"linear"`, `"quadratic"`, `"ordinal"`, `"radical"`,
+#'   `"ratio"`, `"circular"`, or `"bipolar"`.
+#' @param values Optional length-C numeric vector of category scores used
+#'   by the metric weightings. Defaults to `1:C`.
+#'
+#' @return A `misskappa_estimate` object with `Fleiss` and
+#'   `Brennan-Prediger` coefficients and the 2x2 vcov.
+#'
+#' @export
+kappa_counts <- function(x,
+                         weight = c("identity", "unweighted", "linear", "quadratic",
+                                    "ordinal", "radical", "ratio", "circular", "bipolar"),
+                         values = NULL) {
+  weight <- match.arg(weight)
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  storage.mode(x_mat) <- "integer"
+
+  out <- rcpp_kappa_counts(x = x_mat, weight_type = weight, values = values)
+
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- c("Fleiss", "Brennan-Prediger")
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      method = "available",
+      weight = weight
+    ),
+    class = "misskappa_estimate"
+  )
+}
+
 #' Weighted agreement coefficients for continuous ratings
 #'
 #' @description

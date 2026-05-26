@@ -18,6 +18,11 @@ Rcpp::List rcpp_kappa_continuous(
     std::string method,
     std::string weight_type);
 
+Rcpp::List rcpp_kappa_counts(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values);
+
 RcppExport SEXP _misskappa_rcpp_kappa_raw(
     SEXP xSEXP, SEXP methodSEXP, SEXP weight_typeSEXP,
     SEXP valuesSEXP, SEXP em_optionsSEXP) {
@@ -47,9 +52,23 @@ RcppExport SEXP _misskappa_rcpp_kappa_continuous(
   END_RCPP
 }
 
+RcppExport SEXP _misskappa_rcpp_kappa_counts(
+    SEXP xSEXP, SEXP weight_typeSEXP, SEXP valuesSEXP) {
+  BEGIN_RCPP
+  Rcpp::RObject rcpp_result_gen;
+  Rcpp::RNGScope rcpp_rngScope_gen;
+  Rcpp::traits::input_parameter<const Rcpp::IntegerMatrix&>::type x(xSEXP);
+  Rcpp::traits::input_parameter<std::string>::type weight_type(weight_typeSEXP);
+  Rcpp::traits::input_parameter<Rcpp::Nullable<Rcpp::NumericVector>>::type values(valuesSEXP);
+  rcpp_result_gen = Rcpp::wrap(rcpp_kappa_counts(x, weight_type, values));
+  return rcpp_result_gen;
+  END_RCPP
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_kappa_raw", (DL_FUNC)&_misskappa_rcpp_kappa_raw, 5},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC)&_misskappa_rcpp_kappa_continuous, 3},
+    {"_misskappa_rcpp_kappa_counts", (DL_FUNC)&_misskappa_rcpp_kappa_counts, 3},
     {NULL, NULL, 0}
 };
 

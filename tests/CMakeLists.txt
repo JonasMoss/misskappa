@@ -15,6 +15,7 @@ add_executable(misskappa_tests
   unit/ipw_gwet_test.cpp
   unit/fiml_test.cpp
   unit/continuous_test.cpp
+  unit/counts_test.cpp
 )
 target_link_libraries(misskappa_tests PRIVATE misskappa doctest)
 add_test(NAME misskappa_tests COMMAND misskappa_tests)
