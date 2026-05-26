@@ -2,18 +2,21 @@
 
 Two independent oracles cover the port:
 
-## Primary: irrCAC
+## Primary: irrcacsmoke
 
-`irrCAC` (CRAN) is the primary numerical oracle for agreement coefficients
-on complete and incomplete data. The plumbing:
+`dev/irrcacsmoke` is the local numeric oracle fork for complete-data
+agreement smoke tests. It is derived from `irrCAC`, but smoke-facing
+functions return named numeric vectors (`estimate`, `variance`, `se`,
+`pa`, `pe`) and use the asymptotic `Gamma / n` variance convention.
 
-- `tests/tools/regen_oracle.R` calls installed `irrCAC` over a curated set
-  of small input fixtures (different `n`, `R`, `C`, weighting schemes, and
-  missingness patterns) and writes JSON files into `tests/fixtures/`.
-- `tests/golden/irrcac_parity_test.cpp` reads each JSON fixture, runs the
-  corresponding `misskappa::` estimator, and asserts agreement to a
-  documented numerical tolerance (default 1e-9).
-- The fixture set is checked in. CI does not invoke R.
+- `r-package/tests/testthat/test-parity-irrcacsmoke.R` skips unless
+  `irrcacsmoke` is installed locally.
+- Raw complete-data smokes compare Conger, Fleiss, and Brennan-Prediger
+  estimates plus diagonal variances.
+- Counts-format smokes compare Fleiss and Brennan-Prediger estimates plus
+  diagonal variances on `dat.fleiss1971`.
+- CI should not install oracle packages from CRAN; checked JSON fixtures can
+  be added later if C++ golden tests need the same oracle.
 
 ## Secondary: dev/legacy/misskappa
 
