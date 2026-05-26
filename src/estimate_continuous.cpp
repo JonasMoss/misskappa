@@ -23,6 +23,31 @@ namespace {
 
 constexpr double zero_tol = 1e-9;
 
+struct KernelMoments {
+  RealVec row_sum;
+  RealVec col_sum;
+  double total = 0.0;
+
+  explicit KernelMoments(int n)
+      : row_sum(RealVec::Zero(n)), col_sum(RealVec::Zero(n)) {}
+
+  void add(int row, int col, double value) {
+    row_sum(row) += value;
+    col_sum(col) += value;
+    total += value;
+  }
+
+  double mean(int n) const {
+    return total / (static_cast<double>(n) * n);
+  }
+
+  RealVec influence(double psi, int n) const {
+    const double inv_n = 1.0 / static_cast<double>(n);
+    return ((row_sum.array() * inv_n - psi)
+            + (col_sum.array() * inv_n - psi)).matrix();
+  }
+};
+
 Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
 build_finite_mask(RealMatView ratings) {
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m(ratings.rows(), ratings.cols());
@@ -73,10 +98,10 @@ Result<Estimation> estimate_continuous(
   const double psi_dD_hat = h_dD.mean();
 
   // --- V-statistic kernels (chance disagreement under independence) ---
-  RealMat kernel_CN = RealMat::Zero(n, n);
-  RealMat kernel_CD = RealMat::Zero(n, n);
-  RealMat kernel_FN = RealMat::Zero(n, n);
-  RealMat kernel_FD = RealMat::Zero(n, n);
+  KernelMoments kernel_CN(n);
+  KernelMoments kernel_CD(n);
+  KernelMoments kernel_FN(n);
+  KernelMoments kernel_FD(n);
   for (int i = 0; i < n; ++i) {
     for (int ip = 0; ip < n; ++ip) {
       double h_cn = 0, h_cd = 0, h_fn = 0, h_fd = 0;
@@ -97,16 +122,16 @@ Result<Estimation> estimate_continuous(
           }
         }
       }
-      kernel_CN(i, ip) = h_cn;
-      kernel_CD(i, ip) = h_cd;
-      kernel_FN(i, ip) = h_fn;
-      kernel_FD(i, ip) = h_fd;
+      kernel_CN.add(i, ip, h_cn);
+      kernel_CD.add(i, ip, h_cd);
+      kernel_FN.add(i, ip, h_fn);
+      kernel_FD.add(i, ip, h_fd);
     }
   }
-  const double psi_CN_hat = kernel_CN.sum() / (static_cast<double>(n) * n);
-  const double psi_CD_hat = kernel_CD.sum() / (static_cast<double>(n) * n);
-  const double psi_FN_hat = kernel_FN.sum() / (static_cast<double>(n) * n);
-  const double psi_FD_hat = kernel_FD.sum() / (static_cast<double>(n) * n);
+  const double psi_CN_hat = kernel_CN.mean(n);
+  const double psi_CD_hat = kernel_CD.mean(n);
+  const double psi_FN_hat = kernel_FN.mean(n);
+  const double psi_FD_hat = kernel_FD.mean(n);
 
   // --- Point estimates (Conger, Fleiss) ---
   const double d_hat   = (psi_dD_hat > zero_tol) ? psi_dN_hat / psi_dD_hat : 0.0;
@@ -125,15 +150,10 @@ Result<Estimation> estimate_continuous(
   RealVec phi_dN = h_dN.array() - psi_dN_hat;
   RealVec phi_dD = h_dD.array() - psi_dD_hat;
 
-  auto v_stat_if = [](const RealMat& K, double psi) {
-    RealVec row_mean = K.rowwise().mean();
-    RealVec col_mean = K.colwise().mean().transpose();
-    return RealVec((row_mean.array() - psi) + (col_mean.array() - psi));
-  };
-  RealVec phi_CN = v_stat_if(kernel_CN, psi_CN_hat);
-  RealVec phi_CD = v_stat_if(kernel_CD, psi_CD_hat);
-  RealVec phi_FN = v_stat_if(kernel_FN, psi_FN_hat);
-  RealVec phi_FD = v_stat_if(kernel_FD, psi_FD_hat);
+  RealVec phi_CN = kernel_CN.influence(psi_CN_hat, n);
+  RealVec phi_CD = kernel_CD.influence(psi_CD_hat, n);
+  RealVec phi_FN = kernel_FN.influence(psi_FN_hat, n);
+  RealVec phi_FD = kernel_FD.influence(psi_FD_hat, n);
 
   RealMat phi_matrix(n, 6);
   phi_matrix.col(0) = phi_dN;

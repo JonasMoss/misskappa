@@ -258,33 +258,37 @@ RealMat em_variance(
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
     const std::uint32_t offset = in.group_offsets[g];
-    std::vector<Eigen::Index> in_pruned;
-    in_pruned.reserve(n_comps);
+
+    double sum_theta_subset = 0.0;
+    bool has_pruned_completion = false;
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const std::uint64_t rank = in.completion_indices[offset + k];
       auto it = rank_to_pruned.find(rank);
-      if (it != rank_to_pruned.end()) in_pruned.push_back(it->second);
+      if (it != rank_to_pruned.end()) {
+        has_pruned_completion = true;
+        sum_theta_subset += theta_pruned(it->second);
+      }
     }
-    if (in_pruned.empty()) continue;
+    if (!has_pruned_completion || sum_theta_subset <= singular_tol) continue;
 
-    double sum_theta_subset = 0.0;
-    for (Eigen::Index idx : in_pruned) sum_theta_subset += theta_pruned(idx);
-    if (sum_theta_subset <= singular_tol) continue;
-
-    // Score for theta_pruned: posterior / theta_pruned at each completion.
-    Eigen::VectorXd s_star = Eigen::VectorXd::Zero(n_final);
-    for (Eigen::Index idx : in_pruned) {
-      const double posterior = theta_pruned(idx) / sum_theta_subset;
-      s_star(idx) = posterior / theta_pruned(idx);
+    // Score for theta_pruned: posterior / theta_pruned. In raw FIML this is
+    // constant across all compatible retained completions.
+    const double retained_score = 1.0 / sum_theta_subset;
+    double ref_score = 0.0;
+    Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      const std::uint64_t rank = in.completion_indices[offset + k];
+      auto it = rank_to_pruned.find(rank);
+      if (it == rank_to_pruned.end()) continue;
+      const Eigen::Index idx = it->second;
+      if (idx == ref) {
+        ref_score = retained_score;
+      } else {
+        const Eigen::Index reduced_idx = (idx < ref) ? idx : idx - 1;
+        s_reduced(reduced_idx) = retained_score;
+      }
     }
-
-    // Reduce by removing the reference index (subtract its score from others).
-    Eigen::VectorXd s_reduced(n_final - 1);
-    Eigen::Index w = 0;
-    for (Eigen::Index k = 0; k < n_final; ++k) {
-      if (k == ref) continue;
-      s_reduced(w++) = s_star(k) - s_star(ref);
-    }
+    if (ref_score != 0.0) s_reduced.array() -= ref_score;
 
     info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
                           * s_reduced * s_reduced.transpose();
