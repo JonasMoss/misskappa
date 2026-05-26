@@ -30,9 +30,13 @@ r-install: opt
   @R CMD INSTALL --preclean r-package
 
 r-check: opt
-  @R CMD build r-package
-  @R CMD check --no-manual misskappa_*.tar.gz
-  @rm -f misskappa_*.tar.gz
+  @cleanup() { rm -f misskappa_*.tar.gz; }; \
+    cleanup; \
+    trap cleanup EXIT; \
+    R CMD build r-package; \
+    MISSKAPPA_INCLUDE="$PWD/include" \
+    MISSKAPPA_LIB="$PWD/build-opt/libmisskappa.a" \
+    R CMD check --no-manual misskappa_*.tar.gz
 
 # Regenerate irrCAC oracle fixtures (requires R + irrCAC installed).
 regen-oracle:
