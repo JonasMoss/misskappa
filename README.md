@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="misskappa" width="360">
+</p>
+
 # misskappa
 
 A C++23 library for agreement coefficients (Cohen / Fleiss / Brennan-Prediger)
