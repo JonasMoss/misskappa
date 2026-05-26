@@ -117,6 +117,28 @@ test_that("kappa_continuous() handles available/ipw/gwet and matches legacy", {
                tolerance = 1e-9)
 })
 
+test_that("kappa_quadratic() matches legacy on a small raw fixture", {
+  x <- matrix(c(
+    1, 2, 1,  2, 2, 3,  3, 3, 3,  4, 4, 5,
+    5, 5, 5,  1, 1, 2,  3, 3, 4,  4, 5, 4,
+    2, 3, 2,  5, 4, 5,  1, 2, NA, 3, NA, 4
+  ), nrow = 12, byrow = TRUE)
+  fit <- kappa_quadratic(x, values = c(1, 2, 3, 4, 5))
+  expect_named(fit$estimates, c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_equal(unname(fit$estimates["Conger"]), 0.8374174174174175,
+               tolerance = 1e-9)
+  expect_equal(unname(fit$estimates["Fleiss"]), 0.8344881466279811,
+               tolerance = 1e-9)
+})
+
+test_that("kappa_quadratic_counts() matches legacy on Fleiss 1971", {
+  fit <- kappa_quadratic_counts(dat.fleiss1971, values = c(1, 2, 3, 4, 5),
+                                r_total = 6)
+  expect_named(fit$estimates, c("Fleiss", "Brennan-Prediger"))
+  expect_equal(unname(fit$estimates["Fleiss"]), 0.2840722495894910,
+               tolerance = 1e-9)
+})
+
 test_that("kappa_counts() reproduces Fleiss 1971", {
   fit_id <- kappa_counts(dat.fleiss1971, weight = "identity")
   expect_s3_class(fit_id, "misskappa_estimate")

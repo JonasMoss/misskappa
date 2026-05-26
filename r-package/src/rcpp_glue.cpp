@@ -162,6 +162,37 @@ Rcpp::List rcpp_kappa_raw(
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_kappa_quadratic(
+    const Rcpp::NumericMatrix& x,
+    Rcpp::NumericVector values) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+  Eigen::VectorXd v(values.size());
+  for (int i = 0; i < values.size(); ++i) v(i) = values[i];
+
+  auto r = misskappa::estimate_quadratic(ratings, v);
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_quadratic_counts(
+    const Rcpp::IntegerMatrix& x,
+    Rcpp::NumericVector values,
+    int r_total) {
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mapped(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) mapped(i, j) = x(i, j);
+  }
+  Eigen::VectorXd v(values.size());
+  for (int i = 0; i < values.size(); ++i) v(i) = values[i];
+
+  auto r = misskappa::estimate_quadratic_counts(mapped, v, r_total);
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_counts(
     const Rcpp::IntegerMatrix& x,
     std::string weight_type,

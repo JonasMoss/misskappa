@@ -5,6 +5,8 @@ importFrom(Rcpp, sourceCpp)
 export(kappa)
 export(kappa_continuous)
 export(kappa_counts)
+export(kappa_quadratic)
+export(kappa_quadratic_counts)
 export(sim)
 
 S3method(print, misskappa_estimate)

@@ -103,6 +103,95 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
   )
 }
 
+#' Closed-form quadratic-loss kappa estimator
+#'
+#' @description
+#' Closed-form moment-based estimator for the quadratically-weighted
+#' Conger / Fleiss / Brennan-Prediger family. Treats categorical ratings
+#' as numeric scores and uses per-rater means and covariances.
+#'
+#' Use this when the quadratic weighting is the right loss and a parametric
+#' moment-based estimate is preferred over the U-statistic version
+#' (`kappa(x, method = "available", weight = "quadratic")`). The two
+#' agree under the usual asymptotics; the closed form can be faster on
+#' large `n`.
+#'
+#' @param x A subjects-by-raters numeric matrix of category scores; `NA`
+#'   marks missing entries.
+#' @param values Length-C numeric vector of category scores. The quadratic
+#'   loss is `(values[i] - values[j])^2 / (max - min)^2`.
+#'
+#' @return A `misskappa_estimate` object with `Conger`, `Fleiss`,
+#'   `Brennan-Prediger` coefficients and the 3x3 vcov.
+#'
+#' @export
+kappa_quadratic <- function(x, values) {
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  storage.mode(x_mat) <- "double"
+  if (!is.numeric(values)) stop("'values' must be numeric.")
+
+  out <- rcpp_kappa_quadratic(x = x_mat, values = as.numeric(values))
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      method = "quadratic",
+      weight = "quadratic"
+    ),
+    class = "misskappa_estimate"
+  )
+}
+
+#' Closed-form quadratic-loss kappa for counts-format input
+#'
+#' @description
+#' Counts-format counterpart of `kappa_quadratic()`. Useful when only the
+#' per-subject category counts are available (and not the rater-level data).
+#'
+#' @param x A subjects-by-categories non-negative integer matrix.
+#' @param values Length-C numeric vector of category scores.
+#' @param r_total Total number of raters per subject.
+#'
+#' @return A `misskappa_estimate` object with `Fleiss` and
+#'   `Brennan-Prediger` coefficients and the 2x2 vcov.
+#'
+#' @export
+kappa_quadratic_counts <- function(x, values, r_total) {
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  storage.mode(x_mat) <- "integer"
+  if (!is.numeric(values)) stop("'values' must be numeric.")
+  if (!is.numeric(r_total) || length(r_total) != 1L || r_total < 2) {
+    stop("'r_total' must be an integer >= 2.")
+  }
+
+  out <- rcpp_kappa_quadratic_counts(
+    x = x_mat, values = as.numeric(values), r_total = as.integer(r_total)
+  )
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- c("Fleiss", "Brennan-Prediger")
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      method = "quadratic",
+      weight = "quadratic"
+    ),
+    class = "misskappa_estimate"
+  )
+}
+
 #' Weighted agreement coefficients for counts-format input
 #'
 #' @description

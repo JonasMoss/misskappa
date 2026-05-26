@@ -30,6 +30,23 @@ Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);
 Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 
+// --- Closed-form quadratic estimator (raw, real-valued) --------------------
+//
+// Moment-based estimator for the quadratically-weighted Cohen / Fleiss /
+// Conger / Brennan-Prediger family. Treats categorical ratings as numeric
+// scores; missing entries are NaN. Closed form via per-rater means and
+// covariances; variance uses the asymptotic covariance of those moments
+// with the delta method.
+//
+// `ratings` is n x R real-valued; `values` is the length-C category-score
+// vector used to define the quadratic loss. Returns (Conger, Fleiss,
+// Brennan-Prediger).
+Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values);
+
+// Counts-format counterpart of estimate_quadratic. `counts` is n x C, R is
+// the total number of raters. Returns (Fleiss, Brennan-Prediger).
+Result<Estimation> estimate_quadratic_counts(IntMatView counts, const RealVec& values, int R);
+
 // --- Counts-format input ---------------------------------------------------
 //
 // `counts` is n x C of non-negative integers: counts(i, k) is the number of
