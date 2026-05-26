@@ -1366,7 +1366,7 @@ Concluding remarks
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 btprint "btPrintCited"
-bibfiles "../bib/misskappa"
+bibfiles "misskappa"
 options "bibtotoc,plain"
 encoding "default"
 
