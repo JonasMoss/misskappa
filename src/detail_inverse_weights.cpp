@@ -15,7 +15,8 @@ Result<InverseWeights> compute_inverse_weights(
 
   if (mode == Reweighting::available) return w;
 
-  RealVec pi_j = rating_mask.cast<double>().colwise().sum().transpose() / n;
+  RealMat mask_d = rating_mask.cast<double>();
+  RealVec pi_j = mask_d.colwise().sum().transpose() / n;
   if (pi_j.minCoeff() < zero_tol) {
     return std::unexpected(Error::singular_weight);
   }
@@ -24,7 +25,6 @@ Result<InverseWeights> compute_inverse_weights(
   if (mode == Reweighting::gwet) return w;
 
   // mode == ipw: pi_{jk} = (1/n) sum_i M_ij M_ik, then invert entrywise.
-  RealMat mask_d = rating_mask.cast<double>();
   RealMat pi_jk = (mask_d.transpose() * mask_d) / static_cast<double>(n);
   for (int j = 0; j < R; ++j) {
     for (int k = 0; k < R; ++k) {
