@@ -102,3 +102,60 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
     stringsAsFactors = FALSE
   )
 }
+
+#' Weighted agreement coefficients for continuous ratings
+#'
+#' @description
+#' Estimates Conger / Fleiss weighted agreement coefficients for raw
+#' real-valued ratings under MCAR missingness (`"available"`, `"ipw"`,
+#' `"gwet"`). Missing entries are encoded as `NA` (or any non-finite
+#' value).
+#'
+#' Brennan-Prediger is not reported for continuous data; the chance-
+#' disagreement baseline requires a finite number of categories.
+#'
+#' @param x A subjects-by-raters numeric matrix.
+#' @param method One of `"available"`, `"ipw"`, `"gwet"`.
+#' @param weight Continuous loss kernel: `"identity"` (binary 0/1),
+#'   `"linear"`, `"quadratic"`, `"radical"`, or `"ratio"`. The data range
+#'   `[min(x), max(x)]` is used to parameterise the kernel.
+#'
+#' @return A `misskappa_estimate` object carrying named coefficients
+#'   (`Conger`, `Fleiss`) and the 2x2 asymptotic covariance matrix.
+#'
+#' @export
+kappa_continuous <- function(x,
+                             method = c("available", "ipw", "gwet"),
+                             weight = c("quadratic", "linear", "identity",
+                                        "unweighted", "radical", "ratio")) {
+  method <- match.arg(method)
+  weight <- match.arg(weight)
+
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  storage.mode(x_mat) <- "double"
+
+  out <- rcpp_kappa_continuous(
+    x = x_mat,
+    method = method,
+    weight_type = weight
+  )
+
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- c("Conger", "Fleiss")
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      method = method,
+      weight = weight
+    ),
+    class = "misskappa_estimate"
+  )
+}

@@ -27,7 +27,9 @@ endif()
 
 add_library(misskappa STATIC
   src/loss.cpp
+  src/detail_inverse_weights.cpp
   src/estimate_raw.cpp
+  src/estimate_continuous.cpp
   src/fiml.cpp
 )
 # Allow private detail_*.hpp to be included with relative paths from src/.

@@ -3,6 +3,7 @@ useDynLib(misskappa, .registration = TRUE)
 importFrom(Rcpp, sourceCpp)
 
 export(kappa)
+export(kappa_continuous)
 export(sim)
 
 S3method(print, misskappa_estimate)

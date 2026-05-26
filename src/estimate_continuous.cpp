@@ -1,4 +1,16 @@
-#include "detail_estimate_raw.hpp"
+// Continuous-ratings estimators (available-case, IPW, Gwet).
+//
+// Algorithm parallels src/estimate_raw.cpp: same available / IPW / Gwet
+// reweighting structure, same V/U-statistic kernel pipeline, same delta-
+// method variance. The differences are:
+//   - inputs are real-valued, with NaN (or +/-Inf) marking missing entries
+//     instead of an integer sentinel;
+//   - the loss is evaluated by calling a continuous loss kernel rather than
+//     indexing a finite C x C agreement matrix;
+//   - there are only two coefficients in the output (Conger, Fleiss); the
+//     Brennan-Prediger chance baseline is not meaningful without a finite
+//     category count.
+
 #include "detail_inverse_weights.hpp"
 #include "misskappa/estimate.hpp"
 
@@ -11,60 +23,39 @@ namespace {
 
 constexpr double zero_tol = 1e-9;
 
-// Build mask: 1 if observed, 0 if na_code. Returns also (n, R) for convenience.
 Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
-build_mask(IntMatView ratings) {
+build_finite_mask(RealMatView ratings) {
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m(ratings.rows(), ratings.cols());
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
     for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
-      m(i, j) = (ratings(i, j) == na_code) ? 0 : 1;
+      m(i, j) = std::isfinite(ratings(i, j)) ? 1 : 0;
     }
   }
   return m;
 }
 
-}  // namespace
-
-namespace detail {
-
-Result<Estimation> estimate_raw(
-    IntMatView ratings, RealMatView weights, Reweighting mode) {
+Result<Estimation> estimate_continuous(
+    RealMatView ratings, loss::ContinuousLoss loss, detail::Reweighting mode) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
   if (n < 1) return std::unexpected(Error::invalid_argument);
   if (R < 2) return std::unexpected(Error::invalid_argument);
 
-  // Validate category indices: must be na_code or in [0, C-1] where C is
-  // the dimension of the weight matrix.
-  const int C = static_cast<int>(weights.rows());
-  if (weights.cols() != C) return std::unexpected(Error::dimension_mismatch);
-  if (C < 1) return std::unexpected(Error::invalid_argument);
-  bool any_observed = false;
-  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
-      const int x = ratings(i, j);
-      if (x == na_code) continue;
-      any_observed = true;
-      if (x < 0 || x >= C) return std::unexpected(Error::invalid_argument);
-    }
-  }
+  const auto mask = build_finite_mask(ratings);
+  bool any_observed = mask.sum() > 0;
   if (!any_observed) return std::unexpected(Error::invalid_argument);
 
-  const auto mask = build_mask(ratings);
-  auto wres = compute_inverse_weights(mask, n, R, mode);
+  auto wres = detail::compute_inverse_weights(mask, n, R, mode);
   if (!wres) return std::unexpected(wres.error());
   const RealVec& pi_j_inv = wres->pi_j_inv;
   const RealMat& pi_jk_inv = wres->pi_jk_inv;
 
-  // Convention: `weights` is the AGREEMENT matrix (1 on diagonal), matching
-  // irrCAC's identity.weights / quadratic.weights and the standard
-  // weighted-kappa literature. The kappa formulas below run on the
-  // disagreement matrix L = 1 - W.
-  const RealMat L = RealMat::Constant(C, C, 1.0) - weights;
+  // Helper to evaluate the loss kernel.
+  auto L = [&](double a, double b) {
+    return loss.compute(a, b, loss.min_val, loss.max_val);
+  };
 
-  // --- Per-subject U-statistic kernels (observed-disagreement) ---
-  // h_dN_i = sum over j<k of M_ij M_ik * loss(x_ij, x_ik) * pi_jk_inv(j, k)
-  // h_dD_i = sum over j<k of M_ij M_ik * pi_jk_inv(j, k)
+  // --- Per-subject U-statistic for observed disagreement ---
   RealVec h_dN = RealVec::Zero(n);
   RealVec h_dD = RealVec::Zero(n);
   for (int i = 0; i < n; ++i) {
@@ -73,9 +64,7 @@ Result<Estimation> estimate_raw(
       for (int k = j + 1; k < R; ++k) {
         if (!mask(i, k)) continue;
         const double w_jk = pi_jk_inv(j, k);
-        const int a = ratings(i, j);
-        const int b = ratings(i, k);
-        h_dN(i) += L(a, b) * w_jk;
+        h_dN(i) += L(ratings(i, j), ratings(i, k)) * w_jk;
         h_dD(i) += w_jk;
       }
     }
@@ -83,10 +72,7 @@ Result<Estimation> estimate_raw(
   const double psi_dN_hat = h_dN.mean();
   const double psi_dD_hat = h_dD.mean();
 
-  // --- V-statistic kernels (chance disagreement) ---
-  // kernel_CN(i, i') = sum over j<k of M_ij M_{i'k} * loss(x_ij, x_{i'k})
-  //                                                 * pi_j_inv(j) * pi_j_inv(k)
-  // kernel_FN(i, i') = sum over all j, k same, but without the j<k restriction.
+  // --- V-statistic kernels (chance disagreement under independence) ---
   RealMat kernel_CN = RealMat::Zero(n, n);
   RealMat kernel_CD = RealMat::Zero(n, n);
   RealMat kernel_FN = RealMat::Zero(n, n);
@@ -97,17 +83,15 @@ Result<Estimation> estimate_raw(
       for (int j = 0; j < R; ++j) {
         if (!mask(i, j)) continue;
         const double w_j = pi_j_inv(j);
-        const int a = ratings(i, j);
+        const double a = ratings(i, j);
         for (int k = 0; k < R; ++k) {
           if (!mask(ip, k)) continue;
           const double w_jk = w_j * pi_j_inv(k);
-          const int b = ratings(ip, k);
-          const double l = L(a, b);
+          const double l = L(a, ratings(ip, k));
           // Fleiss: all (j, k).
           h_fn += l * w_jk;
           h_fd += w_jk;
-          // Conger: j < k only.
-          if (j < k) {
+          if (j < k) {  // Conger: j < k only.
             h_cn += l * w_jk;
             h_cd += w_jk;
           }
@@ -124,35 +108,28 @@ Result<Estimation> estimate_raw(
   const double psi_FN_hat = kernel_FN.sum() / (static_cast<double>(n) * n);
   const double psi_FD_hat = kernel_FD.sum() / (static_cast<double>(n) * n);
 
-  // --- Point estimates ---
+  // --- Point estimates (Conger, Fleiss) ---
   const double d_hat   = (psi_dD_hat > zero_tol) ? psi_dN_hat / psi_dD_hat : 0.0;
   const double d_C_hat = (psi_CD_hat > zero_tol) ? psi_CN_hat / psi_CD_hat : 0.0;
   const double d_F_hat = (psi_FD_hat > zero_tol) ? psi_FN_hat / psi_FD_hat : 0.0;
-  const double d_BP    = L.sum() / (static_cast<double>(C) * C);
 
-  RealVec estimates(3);
+  RealVec estimates(2);
   estimates(0) = (d_C_hat > zero_tol)
                      ? 1.0 - d_hat / d_C_hat
                      : std::numeric_limits<double>::quiet_NaN();
   estimates(1) = (d_F_hat > zero_tol)
                      ? 1.0 - d_hat / d_F_hat
                      : std::numeric_limits<double>::quiet_NaN();
-  estimates(2) = (d_BP > zero_tol)
-                     ? 1.0 - d_hat / d_BP
-                     : std::numeric_limits<double>::quiet_NaN();
 
   // --- Influence functions ---
-  // U-statistic IFs: phi_i = h_i - psi.
   RealVec phi_dN = h_dN.array() - psi_dN_hat;
   RealVec phi_dD = h_dD.array() - psi_dD_hat;
 
-  // V-statistic IFs: phi_i = (mean over j of K(i, j) - psi) + (mean over j of K(j, i) - psi).
   auto v_stat_if = [](const RealMat& K, double psi) {
     RealVec row_mean = K.rowwise().mean();
     RealVec col_mean = K.colwise().mean().transpose();
     return RealVec((row_mean.array() - psi) + (col_mean.array() - psi));
   };
-  (void)n;  // n is captured implicitly via K dimensions; silence unused-warning
   RealVec phi_CN = v_stat_if(kernel_CN, psi_CN_hat);
   RealVec phi_CD = v_stat_if(kernel_CD, psi_CD_hat);
   RealVec phi_FN = v_stat_if(kernel_FN, psi_FN_hat);
@@ -165,10 +142,9 @@ Result<Estimation> estimate_raw(
   phi_matrix.col(3) = phi_CD;
   phi_matrix.col(4) = phi_FN;
   phi_matrix.col(5) = phi_FD;
-
   RealMat Gamma_hat = (phi_matrix.transpose() * phi_matrix) / static_cast<double>(n);
 
-  // --- Delta method 1: disagreement covariance Sigma_hat ---
+  // --- Delta method: disagreement covariance Sigma_hat ---
   RealMat J_d = RealMat::Zero(3, 6);
   if (psi_dD_hat > zero_tol) {
     J_d(0, 0) = 1.0 / psi_dD_hat;
@@ -184,10 +160,8 @@ Result<Estimation> estimate_raw(
   }
   RealMat Sigma_hat = J_d * Gamma_hat * J_d.transpose();
 
-  // --- Delta method 2: kappa covariance ---
-  // d_BP is a constant (depends only on the weight matrix, not the data),
-  // so its row in J_kappa is just -1 / d_BP times the d-coordinate.
-  RealMat J_kappa = RealMat::Zero(3, 3);
+  // --- Delta method: kappa covariance (Conger, Fleiss) ---
+  RealMat J_kappa = RealMat::Zero(2, 3);
   if (d_C_hat > zero_tol) {
     J_kappa(0, 0) = -1.0 / d_C_hat;
     J_kappa(0, 1) = d_hat / (d_C_hat * d_C_hat);
@@ -196,29 +170,26 @@ Result<Estimation> estimate_raw(
     J_kappa(1, 0) = -1.0 / d_F_hat;
     J_kappa(1, 2) = d_hat / (d_F_hat * d_F_hat);
   }
-  if (d_BP > zero_tol) {
-    J_kappa(2, 0) = -1.0 / d_BP;
-  }
-
   RealMat kappa_cov = (J_kappa * Sigma_hat * J_kappa.transpose()) / static_cast<double>(n);
 
   return Estimation{std::move(estimates), std::move(kappa_cov)};
 }
 
-}  // namespace detail
+}  // namespace
 
-// --- Public entry points -----------------------------------------------------
-
-Result<Estimation> estimate_available(IntMatView ratings, RealMatView weights) {
-  return detail::estimate_raw(ratings, weights, detail::Reweighting::available);
+Result<Estimation> estimate_available_continuous(
+    RealMatView ratings, loss::ContinuousLoss loss) {
+  return estimate_continuous(ratings, loss, detail::Reweighting::available);
 }
 
-Result<Estimation> estimate_ipw(IntMatView ratings, RealMatView weights) {
-  return detail::estimate_raw(ratings, weights, detail::Reweighting::ipw);
+Result<Estimation> estimate_ipw_continuous(
+    RealMatView ratings, loss::ContinuousLoss loss) {
+  return estimate_continuous(ratings, loss, detail::Reweighting::ipw);
 }
 
-Result<Estimation> estimate_gwet(IntMatView ratings, RealMatView weights) {
-  return detail::estimate_raw(ratings, weights, detail::Reweighting::gwet);
+Result<Estimation> estimate_gwet_continuous(
+    RealMatView ratings, loss::ContinuousLoss loss) {
+  return estimate_continuous(ratings, loss, detail::Reweighting::gwet);
 }
 
 }  // namespace misskappa
