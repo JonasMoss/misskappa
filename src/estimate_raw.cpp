@@ -1,5 +1,5 @@
-#include "detail_estimate_raw.hpp"
 #include "detail_inverse_weights.hpp"
+#include "detail_kernel_moments.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
@@ -10,31 +10,6 @@ namespace misskappa {
 namespace {
 
 constexpr double zero_tol = 1e-9;
-
-struct KernelMoments {
-  RealVec row_sum;
-  RealVec col_sum;
-  double total = 0.0;
-
-  explicit KernelMoments(int n)
-      : row_sum(RealVec::Zero(n)), col_sum(RealVec::Zero(n)) {}
-
-  void add(int row, int col, double value) {
-    row_sum(row) += value;
-    col_sum(col) += value;
-    total += value;
-  }
-
-  double mean(int n) const {
-    return total / (static_cast<double>(n) * n);
-  }
-
-  RealVec influence(double psi, int n) const {
-    const double inv_n = 1.0 / static_cast<double>(n);
-    return ((row_sum.array() * inv_n - psi)
-            + (col_sum.array() * inv_n - psi)).matrix();
-  }
-};
 
 // Build mask: 1 if observed, 0 if na_code. Returns also (n, R) for convenience.
 Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
@@ -48,12 +23,8 @@ build_mask(IntMatView ratings) {
   return m;
 }
 
-}  // namespace
-
-namespace detail {
-
 Result<Estimation> estimate_raw(
-    IntMatView ratings, RealMatView weights, Reweighting mode) {
+    IntMatView ratings, RealMatView weights, detail::Reweighting mode) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
   if (n < 1) return std::unexpected(Error::invalid_argument);
@@ -76,7 +47,7 @@ Result<Estimation> estimate_raw(
   if (!any_observed) return std::unexpected(Error::invalid_argument);
 
   const auto mask = build_mask(ratings);
-  auto wres = compute_inverse_weights(mask, n, R, mode);
+  auto wres = detail::compute_inverse_weights(mask, n, R, mode);
   if (!wres) return std::unexpected(wres.error());
   const RealVec& pi_j_inv = wres->pi_j_inv;
   const RealMat& pi_jk_inv = wres->pi_jk_inv;
@@ -112,10 +83,10 @@ Result<Estimation> estimate_raw(
   // kernel_CN(i, i') = sum over j<k of M_ij M_{i'k} * loss(x_ij, x_{i'k})
   //                                                 * pi_j_inv(j) * pi_j_inv(k)
   // kernel_FN(i, i') = sum over all j, k same, but without the j<k restriction.
-  KernelMoments kernel_CN(n);
-  KernelMoments kernel_CD(n);
-  KernelMoments kernel_FN(n);
-  KernelMoments kernel_FD(n);
+  detail::KernelMoments kernel_CN(n);
+  detail::KernelMoments kernel_CD(n);
+  detail::KernelMoments kernel_FN(n);
+  detail::KernelMoments kernel_FD(n);
   for (int i = 0; i < n; ++i) {
     for (int ip = 0; ip < n; ++ip) {
       double h_cn = 0, h_cd = 0, h_fn = 0, h_fd = 0;
@@ -224,20 +195,20 @@ Result<Estimation> estimate_raw(
   return Estimation{std::move(estimates), std::move(kappa_cov)};
 }
 
-}  // namespace detail
+}  // namespace
 
 // --- Public entry points -----------------------------------------------------
 
 Result<Estimation> estimate_available(IntMatView ratings, RealMatView weights) {
-  return detail::estimate_raw(ratings, weights, detail::Reweighting::available);
+  return estimate_raw(ratings, weights, detail::Reweighting::available);
 }
 
 Result<Estimation> estimate_ipw(IntMatView ratings, RealMatView weights) {
-  return detail::estimate_raw(ratings, weights, detail::Reweighting::ipw);
+  return estimate_raw(ratings, weights, detail::Reweighting::ipw);
 }
 
 Result<Estimation> estimate_gwet(IntMatView ratings, RealMatView weights) {
-  return detail::estimate_raw(ratings, weights, detail::Reweighting::gwet);
+  return estimate_raw(ratings, weights, detail::Reweighting::gwet);
 }
 
 }  // namespace misskappa

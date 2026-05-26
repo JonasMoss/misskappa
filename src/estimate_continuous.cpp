@@ -12,6 +12,7 @@
 //     category count.
 
 #include "detail_inverse_weights.hpp"
+#include "detail_kernel_moments.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
@@ -22,31 +23,6 @@ namespace misskappa {
 namespace {
 
 constexpr double zero_tol = 1e-9;
-
-struct KernelMoments {
-  RealVec row_sum;
-  RealVec col_sum;
-  double total = 0.0;
-
-  explicit KernelMoments(int n)
-      : row_sum(RealVec::Zero(n)), col_sum(RealVec::Zero(n)) {}
-
-  void add(int row, int col, double value) {
-    row_sum(row) += value;
-    col_sum(col) += value;
-    total += value;
-  }
-
-  double mean(int n) const {
-    return total / (static_cast<double>(n) * n);
-  }
-
-  RealVec influence(double psi, int n) const {
-    const double inv_n = 1.0 / static_cast<double>(n);
-    return ((row_sum.array() * inv_n - psi)
-            + (col_sum.array() * inv_n - psi)).matrix();
-  }
-};
 
 Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
 build_finite_mask(RealMatView ratings) {
@@ -98,10 +74,10 @@ Result<Estimation> estimate_continuous(
   const double psi_dD_hat = h_dD.mean();
 
   // --- V-statistic kernels (chance disagreement under independence) ---
-  KernelMoments kernel_CN(n);
-  KernelMoments kernel_CD(n);
-  KernelMoments kernel_FN(n);
-  KernelMoments kernel_FD(n);
+  detail::KernelMoments kernel_CN(n);
+  detail::KernelMoments kernel_CD(n);
+  detail::KernelMoments kernel_FN(n);
+  detail::KernelMoments kernel_FD(n);
   for (int i = 0; i < n; ++i) {
     for (int ip = 0; ip < n; ++ip) {
       double h_cn = 0, h_cd = 0, h_fn = 0, h_fd = 0;
