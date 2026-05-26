@@ -5,8 +5,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# -fPIC so libmisskappa.a can link into the R package shared object.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Non-negotiables: no exceptions, no RTTI. Eigen runs under EIGEN_NO_EXCEPTIONS.
-add_compile_options(-fno-exceptions -fno-rtti -Wall -Wextra -Wpedantic)
+# (-fno-exceptions / -fno-rtti are applied only to the library target below, so
+# the R package's Rcpp glue can compile with the defaults R expects.)
+add_compile_options(-Wall -Wextra -Wpedantic)
 add_compile_definitions(EIGEN_NO_EXCEPTIONS)
 
 # Eigen: prefer system / submodule. Fail fast if not found rather than
@@ -27,6 +32,7 @@ add_library(misskappa STATIC
 )
 # Allow private detail_*.hpp to be included with relative paths from src/.
 target_include_directories(misskappa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_options(misskappa PRIVATE -fno-exceptions -fno-rtti)
 target_include_directories(misskappa PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )

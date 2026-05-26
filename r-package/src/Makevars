@@ -1,0 +1,13 @@
+# Link against the prebuilt opt-preset libmisskappa.a so a header change forces
+# the R glue to recompile against the new ABI. Build the lib first with
+# `cmake --preset opt && cmake --build --preset opt` (or `just opt`).
+
+CXX_STD = CXX23
+
+REPO_ROOT = $(CURDIR)/../..
+
+PKG_CPPFLAGS = -I$(REPO_ROOT)/include -DEIGEN_NO_EXCEPTIONS
+PKG_LIBS = $(REPO_ROOT)/build-opt/libmisskappa.a
+
+# Force the R glue to relink when the static library changes.
+$(SHLIB): $(REPO_ROOT)/build-opt/libmisskappa.a

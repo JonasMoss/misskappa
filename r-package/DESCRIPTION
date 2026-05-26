@@ -1,0 +1,28 @@
+Package: misskappa
+Type: Package
+Title: Agreement Coefficients with Missing Data
+Version: 2.0.0
+Authors@R:
+    person("Jonas", "Moss", , "jonas.moss.statistics@gmail.com",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-6876-6964"))
+Description: Estimation and inference for weighted agreement coefficients
+    (Cohen, Fleiss, Conger, Brennan-Prediger) with arbitrary numbers of
+    raters and arbitrary pairwise loss functions. Supports incomplete
+    categorical ratings under MCAR (available-case, IPW) and MAR (FIML / EM).
+    Wraps the standalone C++23 'misskappa' library.
+License: CC BY 4.0
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 4.0.0)
+Imports:
+    Rcpp
+LinkingTo:
+    Rcpp,
+    RcppEigen
+Suggests:
+    testthat (>= 3.0.0),
+    irrCAC
+Config/testthat/edition: 3
+RoxygenNote: 7.3.2

@@ -1,0 +1,12 @@
+useDynLib(misskappa, .registration = TRUE)
+
+importFrom(Rcpp, sourceCpp)
+
+export(kappa)
+export(sim)
+
+S3method(print, misskappa_estimate)
+S3method(coef, misskappa_estimate)
+S3method(vcov, misskappa_estimate)
+S3method(confint, misskappa_estimate)
+S3method(as.data.frame, misskappa_estimate)

@@ -21,6 +21,7 @@ resources/
 # Reference docs copied in during the C++23 restart; conventions are
 # now folded into AGENTS.md and paper/AGENTS.md.
 claude_new/
+experiments/
 
 # R artifacts
 .Rhistory
