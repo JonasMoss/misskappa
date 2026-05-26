@@ -4,10 +4,11 @@
 
 CXX_STD = CXX23
 
-REPO_ROOT = $(CURDIR)/../..
+MISSKAPPA_INCLUDE ?= $(CURDIR)/../../include
+MISSKAPPA_LIB ?= $(CURDIR)/../../build-opt/libmisskappa.a
 
-PKG_CPPFLAGS = -I$(REPO_ROOT)/include -DEIGEN_NO_EXCEPTIONS
-PKG_LIBS = $(REPO_ROOT)/build-opt/libmisskappa.a
+PKG_CPPFLAGS = -I$(MISSKAPPA_INCLUDE) -DEIGEN_NO_EXCEPTIONS
+PKG_LIBS = $(MISSKAPPA_LIB)
 
 # Force the R glue to relink when the static library changes.
-$(SHLIB): $(REPO_ROOT)/build-opt/libmisskappa.a
+$(SHLIB): $(MISSKAPPA_LIB)
