@@ -8,6 +8,8 @@ This folder is organized by topic:
 - `notes/bib/`: BibTeX files used by the notes.
 - `notes/gwet-case.tex`: what `method = "gwet"` does in the current `misskappa` code.
 - `notes/inference-eif-raw.tex`: EIF-based inference formulas for the `kappa_raw()` backend.
+- `notes/simulations-raw-three-estimators-main.tex`: auto-generated simulation table snippet (included in `kappa-missing.lyx` via `\input{...}`).
+- `notes/simulations-raw-three-estimators-appendix.tex`: auto-generated extra simulation tables (appendix/online supplement candidate).
 
 Supporting folders:
 
