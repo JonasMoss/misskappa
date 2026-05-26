@@ -52,10 +52,9 @@ point of running them outside `paper/`.
       while raw FIML/IPW stayed near truth.
 - [ ] `05-fiml-sparsity-scaling` — Does FIML bias under MCAR-exchangeable
       shrink at `1/n` as theory predicts, or does the `C^R` parameter-space
-      dimension create a slow regime? Resolves whether the smoke-run bias
-      (~-0.015 at n=1000) is finite-sample noise or a structural concern.
-      Also informs the "prune_tol affects vcov but not point estimate"
-      hypothesis from the manuscript.
+      dimension create a slow regime? Starter runner/report landed with
+      a low-rep grid. High-rep run still needed to drive Monte Carlo SE
+      below `0.001` and settle the manuscript caveat.
 
 ### Manuscript
 

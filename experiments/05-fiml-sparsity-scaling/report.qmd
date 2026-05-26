@@ -1,0 +1,139 @@
+---
+title: "FIML Bias and Sparsity Scaling"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- tryCatch(knitr::current_input(), error = function(e) NA_character_)
+base_dir <- if (is.na(input)) getwd() else dirname(normalizePath(input, mustWork = FALSE))
+candidate_dirs <- c(
+  file.path(base_dir, "results"),
+  "results",
+  file.path("experiments", "05-fiml-sparsity-scaling", "results")
+)
+result_dir <- candidate_dirs[file.exists(file.path(candidate_dirs, "summary.csv"))][1L]
+if (is.na(result_dir)) {
+  stop("Missing results. Run: Rscript experiments/05-fiml-sparsity-scaling/run_experiment.R --smoke")
+}
+
+summary <- read.csv(file.path(result_dir, "summary.csv"), stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(result_dir, "metadata.csv"), stringsAsFactors = FALSE)
+truth <- read.csv(file.path(result_dir, "truth.csv"), stringsAsFactors = FALSE)
+
+meta <- function(key) metadata$value[match(key, metadata$key)]
+fmt <- function(x, digits = 4) ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+fmt_tol <- function(x) formatC(x, format = "e", digits = 0)
+
+headline <- subset(summary, phase == "scaling" & coefficient == "Conger")
+headline <- headline[order(headline$profile, headline$n), ]
+last_by_profile <- do.call(rbind, lapply(split(headline, headline$profile), function(x) x[which.max(x$n), ]))
+```
+
+## Question
+
+Does the FIML point-estimate bias under an exchangeable MCAR rating model
+shrink at the expected rate, or does the `C^R` pattern space create a
+slow sparse regime?
+
+The runner fixes a truth-plus-guess DGP with exchangeable raters,
+identity loss, and rater-specific MCAR observation rates. P1 is the
+paper-sized grid (`C = 5`, `R = 6`, `C^R = 15625`). P2 is a low-dimensional
+sanity grid (`C = 3`, `R = 4`, `C^R = 81`).
+
+## Short Answer
+
+This is a starter run, not a full-grade answer. It uses
+`r meta("reps")` replicates per scaling cell, so the Monte Carlo error is
+too large to decide whether bias times `n` is stable. The runner and
+report are in place for the full replication budget.
+
+At the largest starter sample size in each profile, Conger bias was:
+
+```{r}
+largest_display <- last_by_profile
+largest_display$Profile <- largest_display$profile_label
+largest_display$`n` <- largest_display$n
+largest_display$`Truth` <- fmt(largest_display$truth)
+largest_display$`Mean Estimate` <- fmt(largest_display$mean_estimate)
+largest_display$`Bias` <- fmt(largest_display$bias)
+largest_display$`MC SE(Bias)` <- fmt(largest_display$mc_se_bias)
+largest_display$`Bias x n` <- fmt(largest_display$bias_times_n, 2)
+largest_display <- largest_display[, c("Profile", "n", "Truth", "Mean Estimate",
+                                       "Bias", "MC SE(Bias)", "Bias x n")]
+knitr::kable(largest_display, align = "lrrrrrr")
+```
+
+## Evidence
+
+The scaling grid below uses the default `prune_tol = 1e-9`.
+
+```{r}
+scaling_display <- subset(summary, phase == "scaling" & coefficient == "Conger")
+scaling_display <- scaling_display[order(scaling_display$profile, scaling_display$n), ]
+scaling_display$Profile <- scaling_display$profile_label
+scaling_display$`n` <- scaling_display$n
+scaling_display$`Bias` <- fmt(scaling_display$bias)
+scaling_display$`SD` <- fmt(scaling_display$sd)
+scaling_display$`MC SE(Bias)` <- fmt(scaling_display$mc_se_bias)
+scaling_display$`Bias x n` <- fmt(scaling_display$bias_times_n, 2)
+scaling_display$`Failures` <- scaling_display$failures
+scaling_display <- scaling_display[, c("Profile", "n", "Bias", "SD",
+                                       "MC SE(Bias)", "Bias x n", "Failures")]
+knitr::kable(scaling_display, align = "lrrrrrr")
+```
+
+The pruning sweep holds $n = `r meta("prune_n")`$ and varies the EM
+support threshold. If pruning only affects the Louis covariance, the
+point-estimate rows should be nearly identical within Monte Carlo error
+while `Mean SE` can move.
+
+```{r}
+prune_display <- subset(summary, phase == "prune" & coefficient == "Conger")
+prune_display <- prune_display[order(prune_display$profile, prune_display$prune_tol), ]
+prune_display$Profile <- prune_display$profile_label
+prune_display$`Prune Tol` <- fmt_tol(prune_display$prune_tol)
+prune_display$`Bias` <- fmt(prune_display$bias)
+prune_display$`Mean SE` <- fmt(prune_display$mean_se)
+prune_display$`MC SE(Bias)` <- fmt(prune_display$mc_se_bias)
+prune_display$`Failures` <- prune_display$failures
+prune_display <- prune_display[, c("Profile", "Prune Tol", "Bias", "Mean SE",
+                                   "MC SE(Bias)", "Failures")]
+knitr::kable(prune_display, align = "lrrrrr")
+```
+
+## Caveats
+
+The committed outputs are a starter run. A full-grade run should raise
+`--reps` enough that `mc_se_bias` is below `0.001` for the cells used in
+the manuscript decision. The high-dimensional P1 cells are feasible on
+this machine, but the replication budget is the real cost.
+
+Only identity-loss FIML is included. The analytic truth values are for
+the complete-data distribution under the same rating model.
+
+## Reproduce
+
+For the starter run:
+
+```sh
+Rscript experiments/05-fiml-sparsity-scaling/run_experiment.R
+```
+
+For a cheap mechanical check:
+
+```sh
+Rscript experiments/05-fiml-sparsity-scaling/run_experiment.R --smoke
+```
+
+For a higher-grade run:
+
+```sh
+Rscript experiments/05-fiml-sparsity-scaling/run_experiment.R --reps 200 --prune-reps 60
+```

@@ -14,7 +14,11 @@ proceed. Do not touch entries other agents are working on.
 
 ## Open
 
-### `05-fiml-sparsity-scaling`
+(none)
+
+## In progress
+
+### `05-fiml-sparsity-scaling` — owner: codex
 
 **Question.** Does the smoke-run FIML bias under MCAR-exchangeable
 (`~−0.015` at `n = 1000`, `B = 8`) shrink at the `1/n` rate as theory
@@ -36,8 +40,6 @@ estimate.
 **Why it matters.** Decides whether the residual FIML bias seen in the
 smoke run is finite-sample MLE bias (clears at full grade) or a
 structural concern that warrants a manuscript caveat.
-
-## In progress
 
 ### `03-ac-vs-ipw-efficiency` — owner: claude
 
