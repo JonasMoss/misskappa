@@ -15,15 +15,47 @@ declared scope.
       scripts/simulations_raw_three_estimators.R`). Smoke-run output is fine
       for layout, but the Psychometrika-bound numbers need `B_mod=500`,
       `B_big=200`. Note: includes FIML; expect tens of minutes to hours.
-- [ ] Investigate the residual FIML bias under DGP A (smoke run shows
-      ~−0.015 at n=1000 with B_big=8). Most likely sparse-pattern shrinkage
-      from `prune_tol`/`start_alpha`; confirm it vanishes at full sample
-      size and replication count, or document the regularisation effect.
 - [ ] Add a counts simulation script (`scripts/simulations_counts.R`)
       mirroring the raw script for the available-on-counts vs counts-FIML
       comparison. Single MAR-counts cell suffices.
 - [ ] Decide on a final main-text table shape (4 methods × 3 DGPs gets wide;
       consider splitting into one MCAR cell and one MAR cell).
+
+### Pre-paper exploration (in `experiments/`, not bound to manuscript yet)
+
+Open questions about the current sim design before committing the paper to
+specific DGPs / claims. Each is one focused experiment folder per
+`experiments/AGENTS.md`. Findings may motivate manuscript changes, may
+soften / sharpen specific claims, or may end in the trash — that's the
+point of running them outside `paper/`.
+
+- [ ] `01-coverage-iif-louis` — Do IPW influence-function and FIML Louis
+      Wald CIs hit nominal coverage at moderate n? Single column added to
+      the bias/SD table answers the obvious referee question. Cheap, both
+      variance estimators are already implemented.
+- [ ] `02-rater-model-sensitivity` — Do A/B/C bias and efficiency orderings
+      survive a Dawid-Skene rater model (per-rater confusion matrix)? The
+      current latent-truth-plus-guess model is easy to describe but very
+      constrained. If orderings are stable, keep the simple model; if they
+      flip in places, switch the paper sims to D-S. Drives the DGP choice
+      for the final manuscript.
+- [ ] `03-ac-vs-ipw-efficiency` — Where exactly does AC inefficiency
+      become visible? Sweep π-variability against rater-exchangeability.
+      Smoke run currently shows IPW SD > AC SD under DGP A (MCAR +
+      exchangeable + rater-varying π), which is the opposite of the
+      paper's framing. If no realistic MCAR cell shows AC > IPW SD, the
+      Section 5.1 "inefficient" remark needs softening — AC vs FIML is
+      the cleaner contrast.
+- [ ] `04-counts-sampling-misspec` — Counts-FIML under violations of
+      Assumption (S). Rater-specific dropout aggregated into counts is
+      realistic and out-of-model; how bad is the bias? Establishes the
+      scope of the counts story in Section 4.
+- [ ] `05-fiml-sparsity-scaling` — Does FIML bias under MCAR-exchangeable
+      shrink at `1/n` as theory predicts, or does the `C^R` parameter-space
+      dimension create a slow regime? Resolves whether the smoke-run bias
+      (~-0.015 at n=1000) is finite-sample noise or a structural concern.
+      Also informs the "prune_tol affects vcov but not point estimate"
+      hypothesis from the manuscript.
 
 ### Manuscript
 
