@@ -1,0 +1,92 @@
+---
+title: "Using the quadagree package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using the quadagree package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(quadagree)
+```
+
+Use the `quadagree` package to estimate and do inference on the quadratically weighted Fleiss' kappa and Conger's kappa (the multirater variant of Cohen's kappa). It supports data on two forms: Raw or aggregated. An example of data on "raw" or "wide" form is the following data set with 4 raters and 5 categories from Zapf et al. (2016).
+
+```{r}
+knitr::kable(head(dat.zapf2016))
+```
+
+To calculate asymptotic confidence intervals for Fleiss' kappa, use
+```{r}
+fleissci(dat.zapf2016)
+```
+If you want to calculate Conger's kappa (multi-rater Cohen's kappa), use
+```{r}
+cohenci(dat.zapf2016)
+```
+Finally, the quadratic Brennan-Prediger coefficient can be found by
+```{r}
+bpci(dat.zapf2016, kind = 1)
+```
+Kind `1` returns the classical Brennan-Prediger coefficients, while `2` returns
+the new formulation by Moss (2023).
+```{r}
+bpci(dat.zapf2016, kind = 2)
+```
+
+It is also possible to use the studentized bootstrap by selecting the option `bootstrap = "TRUE`", but this appears to confer no benefits and we would recommend sticking to the standard methods.
+
+The package supports several options for estimating the asymptotic covariance 
+matrix using the `type` argument. The `adf` option makes no assumptions about the data-generating process and is recommended. The `elliptical` option assumes the rating data is elliptical, and the `normal` option that it is normal. There are also a couple of transforms for the confidence intervals; `none`, `fisher`, and `arcsin`. The Fisher and arcsine transforms appear to work slightly better in practice.
+
+All examples in this vignette use categorical data, but the package also supports continuous data, which is most meaningful for Fleiss' kappa, Conger's kappa, and the new Brennan-Prediger coefficient (i.e., with `kind = 2`).
+
+This package supports missing data in the following sense: If the same set of raters rate every item, but some raters are missing for some of the rows. An example is the Klein (2018) data:
+
+```{r}
+knitr::kable(dat.klein2018)
+```
+Here missing data is marked as `N/A`. The estimators of the coefficients are consistent, and the inference is based on pairwise available data using the method of van Praag (1985)
+
+```{r}
+fleissci(dat.klein2018)
+```
+
+It's not supported to do inference on data with less than $2$ ratings per pair. The following data from Gwet (2014) is an example
+
+```{r}
+knitr::kable(dat.gwet2014)
+```
+
+Observe that only one row is rated by both rater 4 and 5. Hence you get an error when calling
+
+```{r}
+#| error: true
+fleissci(dat.gwet2014)
+```
+
+## Aggregated data
+Data on aggregated form looks different, with each row aggregating the number of ratings for each category. The following example is from Fleiss (1971).
+
+```{r}
+knitr::kable(head(dat.fleiss1971))
+```
+
+The dataset has categories
+```{r}
+colnames(dat.fleiss1971)
+```
+Provided we understand `depression` as being `1`, `personality disorder` as being `2`, and so on, we can calculate and do inference on the quadratically weighted Fleiss kappa (but not Conger's kappa) for data on this form.
+
+```{r}
+fleissci_aggr(dat.fleiss1971)
+```
+The results from using the aggregated functions agree with `irrCAC`, despite the underlying methodology being different. The main contributions of this package when it comes to aggregated data is the ability to calculate the new variant of the Brennan-Prediger coefficient, the support for a a `values` telling the program what value to attach to each rating, and the support for transforms. The calculations are also marginally faster, about $2$ times, but this is unlikely to have an impact. Note that inference for missing data on aggregated form is not supported. Data on aggregated form can, however, be bootstrapped, and the transforms `none`, `fisher` and `arcsin` are supported. The `type` options used in the long form do not make sense in this context.
