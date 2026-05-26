@@ -33,7 +33,7 @@ robustness) is deliberately deferred to a follow-up paper.
 - Length: target ~12 published pages (Math profile lower quartile for
   Psychometrika). Online supplement carries heavier derivations.
 - Voice: impersonal ("The estimator solves..."), past tense for results.
-- Style: see `claude_new/STYLE.md`. Booktabs always; Okabe-Ito palette;
+- Style: see `paper/STYLE.md`. Booktabs always; Okabe-Ito palette;
   every cited number flows from `tables/<slug>_stats.tex`.
 
 ## Build
