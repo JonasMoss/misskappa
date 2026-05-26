@@ -12,10 +12,15 @@ struct EmOptions {
 };
 
 // Categorical raw-rating estimators. `ratings` is n x R; entries are
-// non-negative integer category codes or `na_code` (= -1) for missing.
-// `weights` is the c x c loss matrix returned by misskappa::loss factories.
-// Each estimator returns Fleiss/Conger and Brennan-Prediger by default;
-// Cohen falls out of the R=2 case of Fleiss/Conger.
+// non-negative integer category codes in [0, C-1], or `na_code` (= -1) for
+// missing. `weights` is the C x C AGREEMENT matrix (1 on diagonal, partial
+// agreement off-diagonal), matching irrCAC's identity.weights /
+// quadratic.weights convention and what the misskappa::loss factories
+// return. The estimator computes its disagreement coefficients on
+// L = 1 - weights internally.
+//
+// Estimates returned: (Conger, Fleiss, Brennan-Prediger). Cohen's kappa is
+// the R=2 case of Fleiss / Conger.
 Result<Estimation> estimate_available(IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);

@@ -22,7 +22,10 @@ endif()
 
 add_library(misskappa STATIC
   src/loss.cpp
+  src/estimate_raw.cpp
 )
+# Allow private detail_*.hpp to be included with relative paths from src/.
+target_include_directories(misskappa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(misskappa PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
