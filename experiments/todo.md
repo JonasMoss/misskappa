@@ -41,46 +41,26 @@ estimate.
 smoke run is finite-sample MLE bias (clears at full grade) or a
 structural concern that warrants a manuscript caveat.
 
-### `03-ac-vs-ipw-efficiency` — owner: claude
-
-**Question.** Under what conditions on `π`-variability and rater-
-exchangeability does IPW's MSE actually beat AC's — i.e. when is
-the "AC is inefficient" claim visible in finite samples?
-
-**Approach.** Hold the rater model fixed (latent truth + guess). Sweep
-over (i) exchangeability vs not, (ii) variance of the `π_j` vector,
-(iii) within-pair correlation of `M_{i,j} M_{i,k}` (introduce a per-
-subject latent missingness factor). Report bias, SD, and MSE for AC and
-IPW at one moderate `n`.
-
-**Why it matters.** The smoke run of the paper sim has IPW SD `> AC SD`
-under MCAR + exchangeable + rater-varying `π` (DGP A), the opposite of
-the paper's framing. If no realistic MCAR cell shows `SD(IPW) < SD(AC)`,
-the manuscript Section 5.1 "inefficient" prose should soften — AC
-inconsistent under non-exchangeability is the cleaner contrast.
-
-### `01-coverage-iif-louis` — owner: claude
-
-**Question.** Do IPW influence-function Wald CIs and FIML Louis Wald CIs
-for the weighted kappas achieve nominal coverage at moderate `n`?
-
-**Approach.** Reuse DGPs A / B / C from
-`paper/scripts/simulations_raw_three_estimators.R`. For each
-DGP × estimator × `n`, run `B` replicates; on each, fit
-`kappa(x, method = m)`, extract estimate and `sqrt(diag(vcov))`, form
-the 95% Wald CI, check inclusion of the truth. Report empirical
-coverage (90 / 95 / 99), mean CI width, and the standardised residual
-`(κ − truth) / SE` (which should be approximately `N(0, 1)`).
-
-Conger × identity is the headline; extend to Fleiss / Brennan-Prediger
-only if the answer is ambiguous. Sample sizes span small / moderate /
-large.
-
-**Why it matters.** The first referee question. If FIML undercovers
-visibly at moderate `n`, Section 3.3 of the manuscript needs a finite-
-sample correction or an explicit caveat.
-
 ## Done
+
+### `01-coverage-iif-louis`
+
+Runner + report landed under `experiments/01-coverage-iif-louis/`. At
+`n ∈ {500, 2000, 8000}`, `B = 50`: IPW Wald coverage is near nominal
+under MCAR (DGPs A and B, `cov_95 ∈ [0.92, 0.98]`, `SD(z) ≈ 1`); FIML
+Louis SE is systematically too large under DGP A and **does not shrink
+at the parametric rate** (mean SE / MC SD ratio grows from 3.6× at
+`n = 500` to 9.3× at `n = 8000`), pointing at pseudo-inverse handling
+of unidentified θ-directions in the Louis information. Under DGP C the
+FIML estimator is biased, not merely conservative, with `cov_95`
+collapsing from 0.94 (n = 500) to 0 (n = 8000) and mean `z` growing as
+`~√n`: DGP C is technically MNAR for FIML's `X*`-only model because
+missingness depends on the latent truth `T_i`, not on observed entries.
+Two manuscript implications: (a) Section 3.3 needs a "Louis SE is
+conservative in finite samples" caveat or a finite-sample correction;
+(b) Section 6 should replace DGP C with a cleanly MAR mechanism (e.g.
+missingness conditional on observed ratings of other raters) or rewrite
+the prose to flag the MNAR boundary.
 
 ### `02-rater-model-sensitivity`
 
@@ -97,3 +77,14 @@ Counts-FIML is badly biased when heterogeneous rater MCAR data are
 aggregated first (Fleiss bias +0.092 at `n = 500`, `B = 30`), while raw
 FIML and raw IPW stay near truth. Value-dependent dropout biases all
 methods.
+
+### `03-ac-vs-ipw-efficiency`
+
+Runner + report landed under `experiments/03-ac-vs-ipw-efficiency/`. At
+`n = 1000`, `B = 500`, IPW wins MSE for Conger's kappa exactly when
+raters are non-exchangeable AND `π_j` varies (AC bias up to `+0.085`,
+MSE ratio AC/IPW up to `29×`). Under exchangeable raters AC is unbiased
+and slightly tighter than IPW, so the "AC is inefficient" framing is
+backwards in finite samples; the cleaner manuscript framing is "AC is
+inconsistent under non-exchangeability". Within-subject correlation in
+`M` shifts variance but does not flip the ordering.

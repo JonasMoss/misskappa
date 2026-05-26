@@ -29,10 +29,15 @@ specific DGPs / claims. Each is one focused experiment folder per
 soften / sharpen specific claims, or may end in the trash — that's the
 point of running them outside `paper/`.
 
-- [ ] `01-coverage-iif-louis` — Do IPW influence-function and FIML Louis
-      Wald CIs hit nominal coverage at moderate n? Single column added to
-      the bias/SD table answers the obvious referee question. Cheap, both
-      variance estimators are already implemented.
+- [x] `01-coverage-iif-louis` — Runner/report landed; B = 50, n up to
+      8000 showed IPW Wald near nominal under MCAR (DGPs A, B), but FIML
+      Louis SEs are systematically too large and the SE/MC-SD ratio
+      grows with n on DGP A (3.6× → 9.3×), pointing at pseudo-inverse
+      handling of unidentified θ. Under DGP C the FIML estimator is
+      biased (coverage 0 at n = 8000) because that DGP is technically
+      MNAR for FIML's X*-only model. Implications: Section 3.3 needs a
+      conservative-SE caveat; Section 6 should swap DGP C for a cleanly
+      MAR mechanism or reframe.
 - [x] `02-rater-model-sensitivity` — Do A/B/C bias and efficiency orderings
       survive a Dawid-Skene rater model (per-rater confusion matrix)? The
       current latent-truth-plus-guess model is easy to describe but very
