@@ -1,0 +1,440 @@
+%% LyX 2.4.2.1 created this file.  For more info, see https://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[oneside,american]{amsart}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amstext}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage[a4paper]{geometry}
+\geometry{verbose,tmargin=4cm,bmargin=4cm,lmargin=4cm,rmargin=4cm}
+\usepackage[authoryear]{natbib}
+
+\makeatletter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\theoremstyle{plain}
+\newtheorem{prop}{\protect\propositionname}
+\theoremstyle{definition}
+\newtheorem{defn}{\protect\definitionname}
+\theoremstyle{remark}
+\newtheorem{rem}{\protect\remarkname}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\usepackage{xcolor}
+\usepackage{booktabs}
+\definecolor{refred}{RGB}{120,30,30}
+\definecolor{citeblue}{RGB}{0,0,120}
+\definecolor{urlblue}{RGB}{40,40,150}
+
+\usepackage[
+colorlinks=true,
+linkcolor=refred,
+citecolor=citeblue,
+urlcolor=urlblue
+]{hyperref}
+
+\makeatother
+
+\usepackage{babel}
+\providecommand{\definitionname}{Definition}
+\providecommand{\propositionname}{Proposition}
+\providecommand{\remarkname}{Remark}
+
+\begin{document}
+\title{Agreement coefficients with missing raters}
+\author{Jonas Moss}
+\date{\today}
+\address{Department of Data Science and Analytics, BI Norwegian Business School,
+Oslo, Norway}
+\begin{abstract}
+Missing data is a pervasive challenge in studies of inter-rater agreement,
+yet common agreement coefficients, such as Conger’s kappa, Fleiss’
+kappa, and the Brennan--Prediger coefficient, are often applied without
+clear justification when ratings are incomplete. We develop a general
+framework for handling missing data in agreement analysis that supports
+both categorical and continuous responses, allows arbitrary disagreement
+functions, and hold provided the data is pairwise missing completely
+at random. Then we characterize when pairwise-available estimators
+remain consistent, derive their correct standard errors, and identify
+settings where conventional formulas fail. We then propose reweighted
+kappa estimators that remain valid under substantially weaker assumptions.
+Asymptotic covariance matrices enable joint inference across coefficients,
+and simulations verify the theoretical claims. The methods are implemented
+in an R package $\mathtt{misskappa}$ designed for applied use.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+A chance-corrected agreement coefficient is any coefficient on the
+form $\kappa_{x}=1-\frac{d}{d_{x}}$ where $d$ is a measure of disagreement
+and $d_{x}$ a measure of chance disagreement. Let $X^{\star}$ be
+a random vector with $R$ components. The vector contains all rating
+data, including potentially unobserved ratings. Define disagreement
+as
+\begin{equation}
+d=\binom{R}{2}^{-1}\sum_{j<k}E[l(X_{j}^{\star},X_{k}^{\star})],\label{eq:population disagreement}
+\end{equation}
+where $l(x,y)\geq0$ is a symmetric loss function satisfying $l(x,x)=0$.
+The by far most common are the nominal ($l(x,y)=1[x\neq y]$), absolute
+value ($l(x,y)=|x-y|$), and quadratic ($l(x,y)=(x-y)^{2}$) losses.
+
+We cover three variants of chance disagreement, the Fleiss-type \citep{Fleiss1971-to},
+Cohen-type \citep{Cohen1968-sb}, and Brennan--Prediger-type \citep{Brennan1981-kf}.
+These are defined as
+\begin{eqnarray}
+d_{F} & = & R^{-2}\sum_{j,k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:fleiss disagreement}\\
+d_{C} & = & \binom{R}{2}^{-1}\sum_{j<k}E[l(X_{ij}^{\star},X_{i'k}^{\star})],\label{eq:cohendisagreement}\\
+d_{BP} & = & C^{-2}\sum_{a,b}l(a,b),\label{eq:bp disagreement}
+\end{eqnarray}
+where $X_{i\cdot}^{\star}$ and $X_{i'\cdot}^{\star}$ are independent
+samples from the same distribution. In the case of Brennan--Prediger
+we must assume that $X^{\star}$ takes on $C<\infty$ categorical
+values. Interpretations of these chance disagreements are well-known
+and can be found elsewhere.
+
+For complete data, the kappa coefficients are estimated using the
+natural sample counterparts. Their standard errors may be found using
+either multinomial theory or $U$-statistics \citep{Moss2024-cc}. 
+
+Our task is to estimate and do inference on agreement coefficients
+in the presence of missing or incomplete data. When dealing with incomplete
+data we do not observe all ratings in$X^{\star}$. We formalize this
+by defining
+\[
+X_{j}=\begin{cases}
+X_{j}^{\star} & M_{j}=1,\\
+\text{NA} & \text{otherwise}.
+\end{cases}
+\]
+ where $M$ is the missingness indicator and $\text{NA}$ denotes
+a missing value. We naturally assume that $X_{j}^{\star}$ cannot
+take on the value $\text{NA}$. 
+
+We w
+
+\section{Hájek-type inverse probability-weighted estimator}
+
+We begin by describing an inverse probability-weighted estimator of
+the Hájek-type. 
+
+\subsection{Definition}
+
+Define the observation probabilities $\pi_{j}=P(M_{j}=1)$ and $\pi_{jk}=P(M_{j}M_{k}=1)$.
+Then define the natural sample estimators $\hat{\pi}_{j}=\hat{P}(M_{j}=1)$
+and $\hat{\pi}_{jk}=\hat{P}(M_{j}M_{k}=1)$, with $\hat{P}$ being
+the empirical probabilities. 
+
+The \emph{Hájek-type inverse probability-weighted estimator} is $\hat{\kappa}_{X}^{IPW}=1-\hat{d}^{IPW}/\hat{d}_{C}^{IPW}$,
+where we define
+\begin{eqnarray*}
+\hat{d}^{IPW} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij},X_{ik})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}},\\
+\hat{d}_{C}^{IPW} & = & \frac{\sum_{i,i'}\sum_{j<k}l(X_{ij},X_{i'k})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
+\end{eqnarray*}
+with $\hat{d}_{F}^{IPW}$being defined analogously to $\hat{d}_{C}^{IPW}$,
+with summation over all $j,k$. This is the natural extension of the
+Hájek estimator to the agreement setting. 
+
+It follows from the strong law of large numbers, Slutsky's theorem,
+and the continuous mapping theorem \citep[see, e.g.,][]{Van_der_Vaart2000-qc}
+that
+\begin{eqnarray}
+\hat{d}^{IPW} & \stackrel{a.s.}{\to} & \binom{R}{2}^{-1}\sum_{j<k}\pi_{jk}^{-1}E[l(X_{1j},X_{1k})M_{1j}M_{1k}],\label{eq:d_IPW}\\
+\hat{d}_{C}^{IPW} & \stackrel{a.s.}{\to} & \binom{R}{2}^{-1}\sum_{j<k}\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{1j},X_{2k})M_{1j}M_{2k}],\nonumber 
+\end{eqnarray}
+with a similar limit for $\hat{d}_{F}^{IPW}$. An obvious sufficient
+condition for $\hat{\kappa}_{X}^{IPW}$ to be consistent is that $\pi_{jk}^{-1}E[l(X_{ij},X_{ik})M_{ij}M_{ik}]$
+equals $E[l(X_{ij}^{\star},X_{ik}^{\star})]$ and that $\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{ij},X_{i'k})M_{ij}M_{i'k}]$
+equals $E[l(X_{ij}^{\star},X_{i'k}^{\star})]$, and these conditions
+hold when the data is missing completely at random. We also require
+that $d_{X}>0$ for $\kappa_{X}$ to be defined, and that all $\pi_{jk}>0$,
+so all rater combinations are counted.
+\begin{prop}
+\label{prop:hajek estimator}The estimators $\hat{\kappa}_{X}^{IPW}$
+are strongly consistent for all $X\in\{C,F,BP\}$ when the data is
+missing completely at random, exchangeable raters or not, provided
+that $d_{X}>0$ and all $\pi_{jk}>0$. 
+\end{prop}
+\begin{proof}
+That $\pi_{jk}^{-1}E[l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}]=E[l(X_{ij}^{\star},X_{ik}^{\star})]$
+is equivalent to $E[l(X_{ij}^{\star},X_{ik}^{\star})]=E[l(X_{ij}^{\star},X_{ik}^{\star})|M_{ij}M_{ik}=1]$,
+which holds true when data is missing completely at random. The same
+reasoning holds for $\pi_{j}^{-1}\pi_{k}^{-1}E[l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}]=E[l(X_{ij}^{\star},X_{i'k}^{\star})]$
+as well. 
+\end{proof}
+
+\paragraph*{Motivation sketch}
+
+Proposition \ref{prop:hajek estimator} tells us that $\hat{\kappa}_{X}^{IPW}$
+is strongly consistent. This is nice, but we usually desire our estimators
+to be efficient. It is well-known form semi-parametric efficiency
+theory that this estimator is not efficient \citep{Tsiatis2006-sx}.
+Constructing efficient estimators either require complex semi-parametric
+machinery for general data or iterative methods such as the EM-algorithm
+for categorical data. We intend to explore the EM-algorithm in a future
+paper, but will remark that semiparametric methods for efficiency
+gains is likely to backfire, and the complexity is not worth the investment
+in our situation.
+
+Our motivation for the Hájek-type estimator cannot be based on efficiency
+directly, but we can make a weaker case for it. If we construct the
+population values $\kappa_{X}^{IPW}$ using the limits in equation
+\ref{eq:d_IPW}, the plugin-estimator $\hat{\kappa}_{X}^{IPW}$ is
+trivially efficient from standard theory. Moreover, it is consistent
+under reasonable assumptions that are weaker than missing completely
+at random. This is more than what we can say of its competitors
+
+\subsection{On inference}
+
+The estimators $\hat{\kappa}_{X}^{IPW}$ are asymptotically normal
+under the mild condition that the random values $l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}$
+have finite second moments. For each $X\in\{C,F,BP\}$, we have that
+\[
+\sqrt{n}\big(\hat{\kappa}_{X}^{IPW}-\kappa_{X}^{IPW}\big)\stackrel{d}{\to}N(0,\sigma_{X}^{2}),
+\]
+where $\kappa_{X}^{IPW}$ is the almost sure limit of $\hat{\kappa}_{X}^{IPW}$,
+which equals $\kappa_{X}$ under the conditions of Proposition \ref{prop:hajek estimator}.
+The asymptotic variance $\sigma_{X}^{2}$, can be expressed using
+an (efficient) influence function in the observed-data model, and
+we estimate it by plugging in estimated influence functions.
+\begin{equation}
+\phi_{\kappa_{X}}=-d_{X}^{-1}\phi_{d}+d\,d_{X}^{-2}\phi_{d_{X}}.\label{eq:influence}
+\end{equation}
+To make this operational, write the IPW estimators as ratios. For
+the observed disagreement,$\hat{d}^{IPW}=\hat{\psi}_{dN}/\hat{\psi}_{dD}$
+where
+\begin{eqnarray*}
+\hat{\psi}_{dN} & = & \frac{1}{n}\sum_{i=1}^{n}h_{dN,i},\quad h_{dN,i}=\sum_{j<k}l(X_{ij},X_{ik})M_{ij}M_{ik}\hat{\pi}_{jk}^{-1},\\
+\hat{\psi}_{dD} & = & \frac{1}{n}\sum_{i=1}^{n}h_{dD,i},\quad h_{dD,i}=\sum_{j<k}M_{ij}M_{ik}\hat{\pi}_{jk}^{-1}.
+\end{eqnarray*}
+Then
+\begin{eqnarray*}
+\hat{\phi}_{d,i} & = & \hat{\psi}_{dD}^{-1}\big(\hat{\phi}_{dN,i}-\hat{d}^{IPW}\hat{\phi}_{dD,i}\big),\\
+\hat{\phi}_{dN,i} & = & h_{dN,i}-\hat{\psi}_{dN},\\
+\hat{\phi}_{dD,i} & = & h_{dD,i}-\hat{\psi}_{dD}.
+\end{eqnarray*}
+Similarly, for $X\in\{C,F\}$ write$\hat{d}_{X}^{IPW}=\hat{\psi}_{XN}/\hat{\psi}_{XD}$
+with $\hat{\psi}_{XN},\hat{\psi}_{XD}$ defined by the corresponding
+double sums in the definition of $\hat{d}_{X}^{IPW}$. Let $K_{XN}$
+and $K_{XD}$ denote the associated kernels, and define $Z_{i}=(X_{i\cdot},M_{i\cdot})$
+so that
+\[
+\hat{\psi}_{X\bullet}=\frac{1}{n^{2}}\sum_{i,i'}K_{X\bullet}\big((X_{i\cdot},M_{i\cdot}),(X_{i'\cdot},M_{i'\cdot})\big),\qquad X\bullet\in\{XN,XD\}.
+\]
+Estimate their influence functions by the usual $V$-statistic projections:
+\begin{eqnarray*}
+\hat{\phi}_{X\bullet,i} & = & \big(\hat{g}_{X\bullet,1,i}-\hat{\psi}_{X\bullet}\big)+\big(\hat{g}_{X\bullet,2,i}-\hat{\psi}_{X\bullet}\big),\\
+\hat{g}_{X\bullet,1,i} & = & \frac{1}{n}\sum_{i'}K_{X\bullet}(Z_{i},Z_{i'}),\\
+\hat{g}_{X\bullet,2,i} & = & \frac{1}{n}\sum_{i'}K_{X\bullet}(Z_{i'},Z_{i}),
+\end{eqnarray*}
+and then set $\hat{\phi}_{d_{X},i}=\hat{\psi}_{XD}^{-1}\big(\hat{\phi}_{XN,i}-\hat{d}_{X}^{IPW}\hat{\phi}_{XD,i}\big).$
+For the Brennan--Prediger coefficient, $d_{X}=d_{BP}$ is constant,
+so $\phi_{d_{X}}=0$. 
+
+A consistent estimator of $\sigma_{X}^{2}$ is $\hat{\sigma}_{X}^{2}=\frac{1}{n}\sum_{i=1}^{n}\hat{\phi}_{\kappa_{X},i}^{2},$and
+the same construction yields a joint asymptotic covariance matrix
+by replacing the square with an outer product. The same influence-function
+formalism applies to the available-case and Gwet-estimators, introduced
+below, by substituting their corresponding weights in the definitions
+of $\hat{d}$ and $\hat{d}_{X}$. We may use the same influence functions
+for the covariance between agreement coefficients as well.
+
+\subsection{Computation }
+
+\subsection{Illustrations}
+
+\section{Other estimators}
+
+For context and comparison, we record two simple estimators that are
+commonly encountered in applied work and software for incomplete ratings.
+They are useful baselines and reference points when discussing robustness
+and inconsistency under missing at random (MAR).
+
+\subsection{Gwet's estimator (irrCAC)}
+
+The default missing-data behavior in the popular $\mathtt{R}$ package
+$\mathtt{irrCAC}$ corresponds to a Gwet-style reweighting: it keeps
+the observed disagreement component but changes the chance disagreement
+component to compensate for unequal rater observation probabilities.
+In our notation we define, for each $X\in\{C,F,BP\}$, $\hat{\kappa}_{X}^{G}=1-\hat{d}^{G}/\hat{d}_{X}^{G}$,
+where the observed disagreement is the same as the available-case
+estimator,
+\[
+\hat{d}^{G}=\hat{d}^{AC}=\frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}}.
+\]
+For the chance disagreement we use empirical rater observation probabilities
+$\hat{\pi}_{j}=\hat{P}(M_{j}=1)$ and define
+\begin{eqnarray*}
+\hat{d}_{C}^{G} & = & \frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}},
+\end{eqnarray*}
+with $\hat{d}_{F}^{G}$ being the obvious modification and $d_{BP}$
+as in equation \ref{eq:bp disagreement}.
+
+\subsection{Available-case estimator}
+
+The available-case (pairwise complete) estimator is a natural baseline
+when ratings are incomplete. It uses only the observed rater pairs
+and treats all observed pairs equally. We may define the available
+case Conger's kappa estimator as $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$,
+where 
+\begin{eqnarray*}
+\hat{d}^{AC} & = & \frac{\sum_{i=1}^{n}\sum_{j<k}l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}}{\sum_{i=1}^{n}\sum_{j<k}M_{ij}M_{ik}},\quad\hat{d}_{C}^{AC}=\frac{\sum_{i,i'}\sum_{j<k}l(X_{ij}^{\star},X_{i'k}^{\star})M_{ij}M_{i'k}}{\sum_{i,i'}\sum_{j<k}M_{ij}M_{i'k}}.
+\end{eqnarray*}
+Observe that $l(X_{ij}^{\star},X_{ik}^{\star})M_{ij}M_{ik}=l(X_{ij},X_{ik})$
+if we extend the loss $l$ to satisfy $l(x,y)=0$ when $x$ or $y$
+is $\text{NA}$. 
+
+\subsection{Properties of available-case and Gwet}
+
+We summarize basic consistency properties of the available-case and
+Gwet estimators under simple missingness assumptions.
+\begin{defn}
+\label{def:missingness} Let $X^{\star}$ be a random vector of size
+$R$ and $X$ be the observed incomplete data. The components of $X$
+are missing \emph{uniformly at random} if the component-wise missingness
+probabilities are constant (i.e., $P(M_{i})=\pi$ for all $i$) and
+$M_{i}$ and $M_{j}$ are independent.
+\end{defn}
+\begin{prop}
+\label{prop:The-available-case}The available case estimator is strongly
+consistent if either
+\begin{enumerate}
+\item The raters are exchangeable and data is missing completely at random.
+\item The raters are not exchangeable and data is missing uniformly at random.
+\end{enumerate}
+\end{prop}
+Under the same two conditions,$\hat{\kappa}_{X}^{G}$ is strongly
+consistent as well.
+\begin{prop}
+Both estimators are in general not consistent when data is missing
+at random, even when raters are exchangeable. 
+\end{prop}
+
+\subsection{Data for Fleiss' kappa on count form}
+
+This section is included for completeness. We do not propose any new
+methodology for Fleiss-form count data, but only clarify what can
+(and cannot) be inferred when rater identities are unavailable.
+
+Until now we have discussed estimators that require data on the form
+$X^{*}\in\mathbb{R}^{J}$ (raw ratings, with one column per rater).
+In many applications the data is only available on Fleiss' count form:
+for each subject $i$ we observe category counts $(N_{i1},\ldots,N_{iC})$
+with $\sum_{a=1}^{C}N_{ia}=R_{i}$ and no rater identities. This aggregation
+makes Fleiss' kappa well-defined under exchangeability, but it also
+removes the information needed to define rater-specific observation
+probabilities $\pi_{j}$ and hence rater-specific estimators defined
+for raw data, such as the available-case estimator.
+
+An illustration is provided by the data from Fleiss' original paper
+\citep{Fleiss1971-to}, available as $\mathtt{dat.fleiss1971}$ in
+the $\mathtt{misskappa}$ package. It contains $n=30$ subjects, $C=5$
+categories, and $R_{i}=6$ diagnoses per subject. Importantly, the
+set of six psychiatrists is not the same for all patients, which is
+naturally represented by counts but would correspond to a sparse raw
+rating matrix if all psychiatrists were indexed.
+
+For these data the non-parametric estimator yields $\hat{\kappa}_{F}=0.430$,
+with Wald standard error 0.053 and a 95 percent confidence interval
+{[}0.326, 0.535{]}.
+
+\section{Simulations}
+
+We use a small Monte Carlo study to illustrate (i) settings where
+the available-case estimator behaves well, (ii) settings where it
+can be badly biased even under MCAR, and (iii) settings where all
+simple reweighting approaches fail under MAR.The simulation design
+is described in the table note.
+
+In particular, under non-exchangeable raters with unequal observation
+probabilities (DGP B), the available-case and Gwet-style estimators
+are biased, while the Hájek-type IPW estimator is approximately unbiased.When
+missingness depends on latent item difficulty (DGP C), all three estimators
+target a reweighted parameter and exhibit similar bias.
+
+\input{tables/simulations-raw-three-estimators-main.tex}
+
+Additional simulation tables (linear/absolute loss, and Fleiss/Brennan-{}-Prediger
+variants) are in the online supplement, \texttt{supplement/simulations-raw-three-estimators-appendix.tex}.
+
+\section{The $\mathtt{R}$ package $\mathtt{misskappa}$}
+
+All methods proposed in this paper are implemented in the $\mathtt{misskappa}$
+package. The main entry points are $\mathtt{kappa\_raw}$ for raw
+categorical rating matrices (subjects $\times$ raters, with missing
+values encoded as $\text{NA}$), and $\mathtt{kappa\_counts}$ for
+Fleiss-form count data.
+
+Example (raw ratings with missing values). The dataset $\mathtt{dat.gwet2014}$
+included with the package contains $n=20$ items rated by $R=5$ raters
+with several missing ratings. The following code computes agreement
+under the three incomplete-data estimators discussed in the paper.\begin{verbatim}library(misskappa)data(dat.gwet2014)x <- as.matrix(dat.gwet2014)kappa_raw(x, method = "available", weight = "identity")  # ACkappa_raw(x, method = "ipw",       weight = "identity")  # Hajek-type IPWkappa_raw(x, method = "gwet",      weight = "identity")  # Gwet (comparison)\end{verbatim}
+
+Example (Fleiss-form counts). The dataset $\mathtt{dat.fleiss1971}$
+provides Fleiss' original count-form example (Table 1 in \citep{Fleiss1971-to}).
+Fleiss' kappa (and Brennan-{}-Prediger) can be computed directly from
+counts via\begin{verbatim}library(misskappa)data(dat.fleiss1971)# r is the number of diagnoses per subject (here, r = 6).kappa_counts(dat.fleiss1971, method = "available", weight = "identity", r = 6)\end{verbatim}
+
+\section{Concluding remarks}
+
+\bibliographystyle{plainnat}
+\bibliography{kappa-missing}
+
+\appendix
+
+\section{Appendix: Proofs}
+
+\subsection{Proof of Proposition \ref{prop:The-available-case}}
+\begin{proof}[of Proposition \ref{prop:The-available-case}]
+We sketch the argument for $\hat{\kappa}_{C}^{AC}=1-\hat{d}^{AC}/\hat{d}_{C}^{AC}$;
+the same reasoning applies to the corresponding Fleiss and Brennan--Prediger
+versions. Define
+\[
+C_{jk}(x^{\star})=P(M_{j}M_{k}=1\mid X^{\star}=x^{\star}),\qquad C_{j}(x^{\star})=P(M_{j}=1\mid X^{\star}=x^{\star}).
+\]
+Then
+\[
+E\!\big[l(X_{j}^{\star},X_{k}^{\star})M_{j}M_{k}\big]=E\!\big[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})\big],\qquad E[M_{j}M_{k}]=E[C_{jk}(X^{\star})].
+\]
+By the law of large numbers and the continuous mapping theorem,
+\[
+\hat{d}^{AC}\stackrel{a.s.}{\to}\frac{\sum_{j<k}E\!\big[l(X_{j}^{\star},X_{k}^{\star})C_{jk}(X^{\star})\big]}{\sum_{j<k}E[C_{jk}(X^{\star})]}.
+\]
+Next, let $Y^{\star}$ be an independent copy of $X^{\star}$. A similar
+calculation yields
+\[
+\hat{d}_{C}^{AC}\stackrel{a.s.}{\to}\frac{\sum_{j<k}E\!\big[l(X_{j}^{\star},Y_{k}^{\star})C_{j}(X^{\star})C_{k}(Y^{\star})\big]}{\sum_{j<k}E[C_{j}(X^{\star})]E[C_{k}(Y^{\star})]},
+\]
+where the $i=i'$ terms are negligible relative to the $i\neq i'$
+terms. Therefore $\hat{\kappa}_{C}^{AC}$ converges to the corresponding
+ratio-of-limits.If the raters are exchangeable and the data are missing
+completely at random, then $C_{jk}(X^{\star})=\pi_{jk}$ and $C_{j}(X^{\star})=\pi_{j}$
+are constants, while exchangeability implies $E[l(X_{j}^{\star},X_{k}^{\star})]$
+and $E[l(X_{j}^{\star},Y_{k}^{\star})]$ do not depend on the indices.
+Hence the constants $\pi_{jk}$ and $\pi_{j}\pi_{k}$ cancel in the
+limits and we obtain $\hat{d}^{AC}\to d$ and $\hat{d}_{C}^{AC}\to d_{C}$,
+so $\hat{\kappa}_{C}^{AC}\to\kappa_{C}$. If raters are not exchangeable
+but the missingness is uniformly at random (Definition \ref{def:missingness}),
+then the observation probabilities are constant across indices, so
+the limits again reduce to the unweighted averages defining $d$ and
+$d_{C}$.Finally, the displayed limits show why inconsistency is typical
+under more general mechanisms: if $C_{jk}(X^{\star})$ or $C_{j}(X^{\star})$
+depends on $X^{\star}$ in a way that is correlated with $l(X_{j}^{\star},X_{k}^{\star})$
+or $l(X_{j}^{\star},Y_{k}^{\star})$, then the probability limits
+target reweighted versions of $d$ and $d_{C}$rather than the desired
+parameters.
+\end{proof}
+\begin{rem}
+The same limit calculation can be carried out for Gwet's estimator
+as defined in the main text by replacing the chance-disagreement sums
+with their $\hat{\pi}_{j}^{-1}\hat{\pi}_{k}^{-1}$ reweighted versions.
+Under MCAR the reweighting cancels (since $C_{j}(X^{\star})=\pi_{j}$),
+but under more general mechanisms where $C_{j}(X^{\star})$ depends
+on $X^{\star}$, the probability limit of the chance term is generally
+a reweighted target and need not equal $d_{C}$ or $d_{F}$.
+\end{rem}
+
+\end{document}
