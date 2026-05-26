@@ -14,32 +14,6 @@ proceed. Do not touch entries other agents are working on.
 
 ## Open
 
-### `02-rater-model-sensitivity`
-
-**Question.** Do the A / B / C bias and efficiency orderings reported in
-`paper/scripts/simulations_raw_three_estimators.R` survive a Dawid-Skene
-rater model?
-
-**Approach.** Replicate the design of `simulations_raw_three_estimators.R`,
-replacing the latent-truth-plus-guess rating model with per-rater
-confusion matrices `θ^j_{c,c'} = P(X_j = c' | T = c)`. Construct three
-DGPs in the D-S framework that match the spirit of A / B / C:
-
-- A': all raters share a single confusion matrix (exchangeable). MCAR
-  rater-specific dropout, same `π` as paper DGP A.
-- B': raters have heterogeneous confusion matrices (non-exchangeable).
-  MCAR rater-specific dropout, same `π` as paper DGP B.
-- C': raters share a confusion matrix; missingness depends on the
-  observed rating of the previous rater (a clean MAR mechanism, not
-  truth-dependent).
-
-Fit AC / IPW / FIML / Gwet on each cell. Report bias and SD side by side
-with the paper sims. Drives the DGP choice for the final manuscript.
-
-**Why it matters.** Current paper sims use a constrained rater model
-(identity confusion plus uniform mixture). If orderings change under
-D-S, the paper should run D-S; if they hold, the simpler model stays.
-
 ### `05-fiml-sparsity-scaling`
 
 **Question.** Does the smoke-run FIML bias under MCAR-exchangeable
@@ -128,4 +102,10 @@ should show how badly it fails when (S) is violated.
 
 ## Done
 
-(none yet)
+### `02-rater-model-sensitivity`
+
+Runner + report landed under
+`experiments/02-rater-model-sensitivity/`; the smoke run showed
+unstable Conger identity-loss orderings between the truth-plus-guess
+and Dawid-Skene models, so a full-grade run is needed before changing
+the paper DGP.
