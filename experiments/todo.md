@@ -83,10 +83,10 @@ sample correction or an explicit caveat.
 ### `02-rater-model-sensitivity`
 
 Runner + report landed under
-`experiments/02-rater-model-sensitivity/`; the smoke run showed
-unstable Conger identity-loss orderings between the truth-plus-guess
-and Dawid-Skene models, so a full-grade run is needed before changing
-the paper DGP.
+`experiments/02-rater-model-sensitivity/`; the larger `n = 1000`,
+`B = 50` run showed unstable Conger identity-loss orderings between
+the truth-plus-guess and Dawid-Skene models, so the paper DGP needs a
+deliberate choice rather than assuming model invariance.
 
 ### `04-counts-sampling-misspec`
 

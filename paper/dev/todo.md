@@ -36,8 +36,8 @@ point of running them outside `paper/`.
 - [x] `02-rater-model-sensitivity` — Do A/B/C bias and efficiency orderings
       survive a Dawid-Skene rater model (per-rater confusion matrix)? The
       current latent-truth-plus-guess model is easy to describe but very
-      constrained. Smoke runner/report landed and showed unstable orderings;
-      run full-grade before changing the manuscript DGP.
+      constrained. Runner/report landed; the `n = 1000`, `B = 50` run
+      showed unstable orderings, so choose the manuscript DGP deliberately.
 - [ ] `03-ac-vs-ipw-efficiency` — Where exactly does AC inefficiency
       become visible? Sweep π-variability against rater-exchangeability.
       Smoke run currently shows IPW SD > AC SD under DGP A (MCAR +

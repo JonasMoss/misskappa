@@ -121,7 +121,7 @@ Full per-replicate estimates are in `results/per_rep.csv`; grouped summaries are
 
 ## Caveats
 
-The Dawid-Skene cells are representative stress tests, not an exhaustive family of rater models. The complete-data truth is estimated by simulation, so `n_truth` should be large before using this to choose the manuscript DGP. The C cell uses missingness driven by the previous observed rating, so it is MAR through observed history rather than truth-dependent missingness.
+The Dawid-Skene cells are representative stress tests, not an exhaustive family of rater models. The complete-data truth is computed analytically from the known rater model, so Monte Carlo error comes from the incomplete-data replicates. The C cell uses missingness driven by the previous observed rating, so it is MAR through observed history rather than truth-dependent missingness.
 
 ## Reproduce
 
@@ -134,7 +134,7 @@ Rscript experiments/02-rater-model-sensitivity/run_experiment.R --smoke
 Larger run:
 
 ```sh
-Rscript experiments/02-rater-model-sensitivity/run_experiment.R --reps 200 --n 4000 --n-truth 200000
+Rscript experiments/02-rater-model-sensitivity/run_experiment.R --reps 50 --n 1000
 ```
 
-This report used n = `r meta[["n"]]`, reps = `r meta[["reps"]]`, n_truth = `r meta[["n_truth"]]`, and seed base `r meta[["seed_base"]]`.
+This report used n = `r meta[["n"]]`, reps = `r meta[["reps"]]`, analytic complete-data truth, and seed base `r meta[["seed_base"]]`.
