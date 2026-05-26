@@ -139,6 +139,29 @@ test_that("kappa_quadratic_counts() matches legacy on Fleiss 1971", {
                tolerance = 1e-9)
 })
 
+test_that("kappa_counts(method='fiml') matches available on Fleiss 1971", {
+  fit_av <- kappa_counts(dat.fleiss1971, method = "available", weight = "identity")
+  fit_ml <- kappa_counts(dat.fleiss1971, method = "fiml", weight = "identity")
+  expect_equal(unname(fit_av$estimates), unname(fit_ml$estimates),
+               tolerance = 1e-9)
+})
+
+test_that("kappa_counts(method='fiml') differs from available with partial counts", {
+  # r_total = 4 but only one row sums to 4; others sum to 3 (partial counts).
+  y <- matrix(c(
+    3, 1, 0,  0, 2, 1,  2, 0, 1,  1, 2, 0,
+    0, 0, 3,  2, 1, 0,  3, 0, 0,  0, 1, 2
+  ), nrow = 8, byrow = TRUE)
+  fit_av <- kappa_counts(y, method = "available", weight = "identity")
+  fit_ml <- kappa_counts(y, method = "fiml", weight = "identity", r_total = 4)
+  expect_false(isTRUE(all.equal(unname(fit_av$estimates),
+                                unname(fit_ml$estimates),
+                                tolerance = 1e-9)))
+  # Frozen against legacy.
+  expect_equal(unname(fit_ml$estimates["Fleiss"]), 0.2725053215314407,
+               tolerance = 1e-7)
+})
+
 test_that("kappa_counts() reproduces Fleiss 1971", {
   fit_id <- kappa_counts(dat.fleiss1971, weight = "identity")
   expect_s3_class(fit_id, "misskappa_estimate")

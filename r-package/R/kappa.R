@@ -201,25 +201,44 @@ kappa_quadratic_counts <- function(x, values, r_total) {
 #' to category `k`. Row sums (number of raters per subject) need not be
 #' uniform across subjects.
 #'
+#' Counts data assumes **exchangeable iid raters** drawn from a single
+#' category distribution. For non-exchangeable raters, use rater-
+#' identified data and `kappa(x, method = "fiml")` instead.
+#'
 #' Conger is not reported (raters are not identified in this input format),
 #' and neither IPW nor Gwet are meaningful (per-rater observation rates are
 #' aggregated away by the counts representation).
 #'
 #' @param x A subjects-by-categories non-negative integer matrix.
+#' @param method Either `"available"` (moment-based; pooled over observed
+#'   pair counts) or `"fiml"` (EM over the composition simplex with multi-
+#'   variate hypergeometric weights for completing partial counts). The
+#'   two agree exactly when every row of `x` sums to `r_total`; with
+#'   partial counts (some `r_i < r_total`) the FIML estimator can be more
+#'   efficient.
 #' @param weight Weighting scheme: `"identity"` (default; equivalent to
 #'   `"unweighted"`), `"linear"`, `"quadratic"`, `"ordinal"`, `"radical"`,
 #'   `"ratio"`, `"circular"`, or `"bipolar"`.
 #' @param values Optional length-C numeric vector of category scores used
 #'   by the metric weightings. Defaults to `1:C`.
+#' @param r_total Total number of raters per subject. Defaults to the
+#'   maximum observed row sum. Required for `method = "fiml"` when rows
+#'   have varying totals.
+#' @param em_options Named list of EM options for `method = "fiml"`:
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`.
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
 #'   `Brennan-Prediger` coefficients and the 2x2 vcov.
 #'
 #' @export
 kappa_counts <- function(x,
+                         method = c("available", "fiml"),
                          weight = c("identity", "unweighted", "linear", "quadratic",
                                     "ordinal", "radical", "ratio", "circular", "bipolar"),
-                         values = NULL) {
+                         values = NULL,
+                         r_total = NULL,
+                         em_options = list()) {
+  method <- match.arg(method)
   weight <- match.arg(weight)
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -228,7 +247,18 @@ kappa_counts <- function(x,
   if (!is.numeric(x_mat)) stop("'x' must be numeric.")
   storage.mode(x_mat) <- "integer"
 
-  out <- rcpp_kappa_counts(x = x_mat, weight_type = weight, values = values)
+  if (method == "available") {
+    out <- rcpp_kappa_counts(x = x_mat, weight_type = weight, values = values)
+  } else {
+    if (is.null(r_total)) r_total <- as.integer(max(rowSums(x_mat)))
+    out <- rcpp_kappa_fiml_counts(
+      x = x_mat,
+      weight_type = weight,
+      values = values,
+      r_total = as.integer(r_total),
+      em_options = em_options
+    )
+  }
 
   estimates <- as.numeric(out$estimates)
   names(estimates) <- c("Fleiss", "Brennan-Prediger")
@@ -239,7 +269,7 @@ kappa_counts <- function(x,
     list(
       estimates = estimates,
       vcov = vcov_mat,
-      method = "available",
+      method = method,
       weight = weight
     ),
     class = "misskappa_estimate"

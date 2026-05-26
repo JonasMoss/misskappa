@@ -1,0 +1,549 @@
+// FIML / EM estimator for counts-format input under exchangeable raters.
+//
+// Model: each subject's full data is a composition Z_i in {(z_1, ..., z_C):
+// sum z_c = r_total}; we parameterise its law theta over the simplex of
+// such compositions. Given full counts Z_i and a per-subject observed
+// total r_i <= r_total, the observed counts N_i^obs are a uniformly-random
+// subsample without replacement; the likelihood factor is the multivariate
+// hypergeometric
+//
+//   P(N_i^obs | Z_i, r_i) = prod_c (Z_i(c) choose N_i^obs(c)) / (r_total choose r_i).
+//
+// The (r_total choose r_i) factor is constant in theta and dropped. EM
+// alternates between the posterior over completions e (e + N_i^obs = Z_i)
+// and the renormalised theta update. Louis observed-information on the
+// pruned reference-removed parametrisation gives the asymptotic
+// covariance of theta_hat; a closed-form delta-method composition maps it
+// onto the (Fleiss, Brennan-Prediger) covariance.
+//
+// Ported from dev/legacy/misskappa/src/emdiscrete.cpp (counts branch) +
+// kappaml.cpp (kappa_counts), but using the agreement-matrix input
+// convention shared with the rest of the misskappa C++ API (L = 1 - W is
+// computed internally).
+
+#include "misskappa/estimate.hpp"
+
+#include <Eigen/QR>
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+namespace misskappa {
+
+namespace {
+
+constexpr double zero_tol = 1e-9;
+constexpr double singular_tol = 1e-12;
+
+// --- Binomial coefficient table ----------------------------------------------
+
+struct Binomial {
+  std::vector<std::vector<std::uint64_t>> memo;
+  explicit Binomial(int max_n)
+      : memo(static_cast<std::size_t>(max_n + 1),
+             std::vector<std::uint64_t>(static_cast<std::size_t>(max_n + 1), 0)) {}
+  std::uint64_t at(int n, int k) {
+    if (k < 0 || k > n) return 0;
+    if (k == 0 || k == n) return 1;
+    if (k > n / 2) k = n - k;
+    auto& cell = memo[static_cast<std::size_t>(n)][static_cast<std::size_t>(k)];
+    if (cell != 0) return cell;
+    cell = at(n - 1, k - 1) + at(n - 1, k);
+    return cell;
+  }
+};
+
+// --- Composition rank / unrank (lexicographic order) -------------------------
+//
+// rank/unrank place a total order on compositions of `n` into `c` non-negative
+// integers summing to n. Each cell in the lookup is computed once via
+// Binomial::at.
+
+std::uint64_t rank_composition(const std::vector<int>& v, int n, int c, Binomial& B) {
+  std::uint64_t rank = 0;
+  int remaining = n;
+  for (int i = 0; i < c - 1; ++i) {
+    const int vi = v[static_cast<std::size_t>(i)];
+    for (int j = 0; j < vi; ++j) {
+      rank += B.at(remaining - j + (c - 1 - i), c - 1 - i);
+    }
+    remaining -= vi;
+  }
+  return rank;
+}
+
+std::vector<int> unrank_composition(std::uint64_t rank, int n, int c, Binomial& B) {
+  std::vector<int> v(static_cast<std::size_t>(c), 0);
+  int remaining = n;
+  std::uint64_t r = rank;
+  for (int i = 0; i < c - 1; ++i) {
+    if (remaining == 0) break;
+    int count = 0;
+    while (true) {
+      const std::uint64_t block = B.at(remaining - count + c - 1 - i, c - 1 - i);
+      if (r < block) break;
+      r -= block;
+      ++count;
+    }
+    v[static_cast<std::size_t>(i)] = count;
+    remaining -= count;
+  }
+  if (remaining > 0) v[static_cast<std::size_t>(c - 1)] = remaining;
+  return v;
+}
+
+// All compositions of n into c non-negative integers.
+void enumerate_compositions_recursive(
+    int n, int c, std::vector<int>& cur, std::size_t pos,
+    std::vector<std::vector<int>>& out) {
+  if (pos + 1 == static_cast<std::size_t>(c)) {
+    cur[pos] = n;
+    out.push_back(cur);
+    return;
+  }
+  for (int i = 0; i <= n; ++i) {
+    cur[pos] = i;
+    enumerate_compositions_recursive(n - i, c, cur, pos + 1, out);
+  }
+}
+
+std::vector<std::vector<int>> enumerate_compositions(int n, int c) {
+  std::vector<std::vector<int>> out;
+  if (c <= 0) return out;
+  std::vector<int> cur(static_cast<std::size_t>(c), 0);
+  enumerate_compositions_recursive(n, c, cur, 0, out);
+  return out;
+}
+
+// --- Internal EM types -------------------------------------------------------
+//
+// "Group" = unique observed counts row; multiple subjects share a group when
+// their counts match. For each group we precompute the indices of all
+// compatible full compositions (in the active rank space) plus their
+// multivariate-hypergeometric coefficients.
+
+struct EmInputCounts {
+  std::size_t n_active = 0;
+  int c = 0;
+  int r_total = 0;
+  std::vector<std::uint32_t> group_n_subjects;
+  std::vector<std::uint32_t> group_offsets;
+  std::vector<std::uint32_t> group_n_completions;
+  std::vector<std::uint32_t> completion_indices;   // index into active_ranks
+  std::vector<double> mvhg_coeffs;                 // length sum(group_n_completions)
+  std::vector<std::uint64_t> active_ranks;         // active idx -> global composition rank
+};
+
+struct EmRunResultCounts {
+  Eigen::VectorXd theta_hat;
+  RealMat vcov;
+  std::vector<std::uint64_t> pattern_ranks;  // global ranks of surviving patterns
+  int c = 0;
+  int r_total = 0;
+  int iterations = 0;
+  bool converged = false;
+  std::size_t n_subjects = 0;
+};
+
+Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
+  if (counts.rows() == 0 || counts.cols() == 0) {
+    return std::unexpected(Error::invalid_argument);
+  }
+  EmInputCounts in;
+  in.c = static_cast<int>(counts.cols());
+  in.r_total = r_total;
+
+  // Validate counts: non-negative, row sum <= r_total.
+  for (Eigen::Index i = 0; i < counts.rows(); ++i) {
+    int row_sum = 0;
+    for (Eigen::Index k = 0; k < counts.cols(); ++k) {
+      const int v = counts(i, k);
+      if (v < 0) return std::unexpected(Error::invalid_argument);
+      row_sum += v;
+    }
+    if (row_sum > r_total) return std::unexpected(Error::invalid_argument);
+  }
+
+  Binomial B(r_total + in.c + 1);
+
+  // Bucket subjects by unique observed row.
+  std::map<std::string, std::pair<std::vector<int>, std::uint32_t>> by_key;
+  std::vector<std::string> pattern_order;
+  pattern_order.reserve(static_cast<std::size_t>(counts.rows()));
+  for (Eigen::Index i = 0; i < counts.rows(); ++i) {
+    std::vector<int> row(static_cast<std::size_t>(in.c));
+    std::string key;
+    for (int k = 0; k < in.c; ++k) {
+      row[static_cast<std::size_t>(k)] = counts(i, k);
+      key += std::to_string(counts(i, k));
+      key += ',';
+    }
+    auto it = by_key.find(key);
+    if (it == by_key.end()) {
+      by_key.emplace(key, std::make_pair(std::move(row), std::uint32_t{1}));
+      pattern_order.push_back(std::move(key));
+    } else {
+      it->second.second += 1;
+    }
+  }
+
+  // For each unique observed row, enumerate compatible completions.
+  std::map<int, std::vector<std::vector<int>>> completions_cache;  // by missing count s
+  std::map<std::uint64_t, bool> active_rank_set;
+  std::vector<std::vector<std::uint64_t>> group_ranks_raw;
+  std::vector<std::vector<double>> group_coeffs_raw;
+  group_ranks_raw.reserve(pattern_order.size());
+  group_coeffs_raw.reserve(pattern_order.size());
+
+  for (const auto& key : pattern_order) {
+    const auto& entry = by_key.at(key);
+    const std::vector<int>& obs = entry.first;
+    int r_obs = 0;
+    for (int v : obs) r_obs += v;
+    const int s = r_total - r_obs;
+
+    auto cached = completions_cache.find(s);
+    if (cached == completions_cache.end()) {
+      cached = completions_cache.emplace(s, enumerate_compositions(s, in.c)).first;
+    }
+    const auto& exts = cached->second;
+
+    std::vector<std::uint64_t> g_ranks;
+    std::vector<double> g_coeffs;
+    g_ranks.reserve(exts.size());
+    g_coeffs.reserve(exts.size());
+    for (const auto& ext : exts) {
+      std::vector<int> z(static_cast<std::size_t>(in.c));
+      for (int k = 0; k < in.c; ++k) {
+        z[static_cast<std::size_t>(k)] = obs[static_cast<std::size_t>(k)]
+                                         + ext[static_cast<std::size_t>(k)];
+      }
+      const std::uint64_t rk = rank_composition(z, r_total, in.c, B);
+      active_rank_set[rk] = true;
+      g_ranks.push_back(rk);
+
+      double prod = 1.0;
+      for (int k = 0; k < in.c; ++k) {
+        prod *= static_cast<double>(B.at(z[static_cast<std::size_t>(k)],
+                                          obs[static_cast<std::size_t>(k)]));
+      }
+      g_coeffs.push_back(prod);
+    }
+    group_ranks_raw.push_back(std::move(g_ranks));
+    group_coeffs_raw.push_back(std::move(g_coeffs));
+  }
+
+  // Active rank space: only compositions reachable from at least one observed
+  // row stay in theta's support.
+  in.active_ranks.reserve(active_rank_set.size());
+  for (const auto& kv : active_rank_set) in.active_ranks.push_back(kv.first);
+  std::sort(in.active_ranks.begin(), in.active_ranks.end());
+  std::unordered_map<std::uint64_t, std::uint32_t> rank_to_active;
+  rank_to_active.reserve(in.active_ranks.size());
+  for (std::size_t i = 0; i < in.active_ranks.size(); ++i) {
+    rank_to_active.emplace(in.active_ranks[i], static_cast<std::uint32_t>(i));
+  }
+  in.n_active = in.active_ranks.size();
+
+  // Pack group bookkeeping.
+  std::uint32_t cum_offset = 0;
+  for (std::size_t g = 0; g < pattern_order.size(); ++g) {
+    const auto& key = pattern_order[g];
+    const std::uint32_t subj_count = by_key.at(key).second;
+    in.group_n_subjects.push_back(subj_count);
+    in.group_offsets.push_back(cum_offset);
+    const auto& g_ranks = group_ranks_raw[g];
+    const auto& g_coeffs = group_coeffs_raw[g];
+    in.group_n_completions.push_back(static_cast<std::uint32_t>(g_ranks.size()));
+    for (std::size_t k = 0; k < g_ranks.size(); ++k) {
+      in.completion_indices.push_back(rank_to_active.at(g_ranks[k]));
+      in.mvhg_coeffs.push_back(g_coeffs[k]);
+    }
+    cum_offset += static_cast<std::uint32_t>(g_ranks.size());
+  }
+
+  return in;
+}
+
+// --- EM loop -----------------------------------------------------------------
+
+Eigen::VectorXd initialise_theta(const EmInputCounts& in, double start_alpha) {
+  Eigen::VectorXd theta = Eigen::VectorXd::Constant(
+      static_cast<Eigen::Index>(in.n_active), start_alpha);
+  if (in.n_active == 0) return theta;
+  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+    const std::uint32_t n_subs = in.group_n_subjects[g];
+    const std::uint32_t n_comps = in.group_n_completions[g];
+    if (n_comps == 0) continue;
+    const std::uint32_t offset = in.group_offsets[g];
+    const double weight = static_cast<double>(n_subs) / static_cast<double>(n_comps);
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      theta(static_cast<Eigen::Index>(in.completion_indices[offset + k])) += weight;
+    }
+  }
+  const double sum = theta.sum();
+  if (sum < zero_tol) return Eigen::VectorXd::Zero(theta.size());
+  theta /= sum;
+  return theta;
+}
+
+struct EmIterStatus {
+  int iterations = 0;
+  bool converged = false;
+};
+
+EmIterStatus run_em_iterations(
+    Eigen::VectorXd& theta, const EmInputCounts& in, EmOptions opts) {
+  EmIterStatus status;
+  std::size_t n_total = 0;
+  for (std::uint32_t s : in.group_n_subjects) n_total += s;
+  if (n_total == 0) {
+    status.converged = true;
+    return status;
+  }
+  Eigen::VectorXd expected = Eigen::VectorXd::Zero(theta.size());
+  for (int it = 0; it < opts.max_iter; ++it) {
+    status.iterations = it + 1;
+    expected.setZero();
+    for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+      const std::uint32_t n_comps = in.group_n_completions[g];
+      if (n_comps == 0) continue;
+      const std::uint32_t offset = in.group_offsets[g];
+      // weights = mvhg * theta on this group's completions.
+      double sum_w = 0.0;
+      for (std::uint32_t k = 0; k < n_comps; ++k) {
+        const Eigen::Index idx = static_cast<Eigen::Index>(in.completion_indices[offset + k]);
+        sum_w += in.mvhg_coeffs[offset + k] * theta(idx);
+      }
+      if (sum_w <= singular_tol) continue;
+      const double scale = static_cast<double>(in.group_n_subjects[g]) / sum_w;
+      for (std::uint32_t k = 0; k < n_comps; ++k) {
+        const Eigen::Index idx = static_cast<Eigen::Index>(in.completion_indices[offset + k]);
+        expected(idx) += scale * in.mvhg_coeffs[offset + k] * theta(idx);
+      }
+    }
+    const double total = expected.sum();
+    Eigen::VectorXd new_theta = (total > singular_tol)
+                                    ? (expected / total).eval()
+                                    : Eigen::VectorXd::Constant(theta.size(), 1.0 / theta.size());
+    const double max_change = (new_theta - theta).cwiseAbs().maxCoeff();
+    if (max_change < opts.tol) {
+      theta = std::move(new_theta);
+      status.converged = true;
+      return status;
+    }
+    theta = std::move(new_theta);
+  }
+  return status;
+}
+
+// Louis observed information on the (n_final - 1)-dim reference-removed
+// parametrisation (drops the largest-mass entry to enforce the sum-to-1
+// constraint), then expands back to the full n_final dim via the Jacobian.
+RealMat em_variance(
+    const Eigen::VectorXd& theta_pruned,
+    const std::vector<std::uint64_t>& pruned_active_indices,
+    const EmInputCounts& in) {
+  const Eigen::Index n_final = theta_pruned.size();
+  if (n_final <= 1) return RealMat::Zero(n_final, n_final);
+
+  Eigen::Index ref = 0;
+  for (Eigen::Index i = 1; i < n_final; ++i) {
+    if (theta_pruned(i) > theta_pruned(ref)) ref = i;
+  }
+  std::unordered_map<std::uint64_t, Eigen::Index> active_to_pruned;
+  active_to_pruned.reserve(pruned_active_indices.size());
+  for (Eigen::Index i = 0; i < n_final; ++i) {
+    active_to_pruned.emplace(pruned_active_indices[static_cast<std::size_t>(i)], i);
+  }
+
+  RealMat info_star = RealMat::Zero(n_final - 1, n_final - 1);
+
+  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+    const std::uint32_t n_comps = in.group_n_completions[g];
+    const std::uint32_t offset = in.group_offsets[g];
+    std::vector<Eigen::Index> in_pruned_idx;
+    std::vector<double> in_pruned_mvhg;
+    in_pruned_idx.reserve(n_comps);
+    in_pruned_mvhg.reserve(n_comps);
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      const std::uint64_t aidx = in.completion_indices[offset + k];
+      auto it = active_to_pruned.find(aidx);
+      if (it != active_to_pruned.end()) {
+        in_pruned_idx.push_back(it->second);
+        in_pruned_mvhg.push_back(in.mvhg_coeffs[offset + k]);
+      }
+    }
+    if (in_pruned_idx.empty()) continue;
+
+    double sum_w = 0.0;
+    for (std::size_t k = 0; k < in_pruned_idx.size(); ++k) {
+      sum_w += in_pruned_mvhg[k] * theta_pruned(in_pruned_idx[k]);
+    }
+    if (sum_w <= singular_tol) continue;
+
+    Eigen::VectorXd s_star = Eigen::VectorXd::Zero(n_final);
+    for (std::size_t k = 0; k < in_pruned_idx.size(); ++k) {
+      const Eigen::Index idx = in_pruned_idx[k];
+      const double posterior = in_pruned_mvhg[k] * theta_pruned(idx) / sum_w;
+      s_star(idx) = posterior / theta_pruned(idx);
+    }
+    Eigen::VectorXd s_reduced(n_final - 1);
+    Eigen::Index w = 0;
+    for (Eigen::Index k = 0; k < n_final; ++k) {
+      if (k == ref) continue;
+      s_reduced(w++) = s_star(k) - s_star(ref);
+    }
+    info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
+                          * s_reduced * s_reduced.transpose();
+  }
+
+  info_star = 0.5 * (info_star + info_star.transpose());
+  Eigen::CompleteOrthogonalDecomposition<RealMat> cod(info_star);
+  RealMat var_star = cod.pseudoInverse();
+
+  RealMat J = RealMat::Zero(n_final, n_final - 1);
+  Eigen::Index w = 0;
+  for (Eigen::Index i = 0; i < n_final; ++i) {
+    if (i == ref) continue;
+    J(i, w++) = 1.0;
+  }
+  for (Eigen::Index j = 0; j < n_final - 1; ++j) J(ref, j) = -1.0;
+
+  return J * var_star * J.transpose();
+}
+
+Result<EmRunResultCounts> run_em(
+    IntMatView counts, int r_total, EmOptions opts) {
+  auto in_res = preprocess_counts(counts, r_total);
+  if (!in_res) return std::unexpected(in_res.error());
+  const EmInputCounts& in = *in_res;
+
+  EmRunResultCounts out;
+  out.c = in.c;
+  out.r_total = in.r_total;
+  for (std::uint32_t s : in.group_n_subjects) out.n_subjects += s;
+
+  if (in.n_active == 0) {
+    out.converged = true;
+    return out;
+  }
+  Eigen::VectorXd theta = initialise_theta(in, opts.start_alpha);
+  const EmIterStatus status = run_em_iterations(theta, in, opts);
+  out.iterations = status.iterations;
+  out.converged = status.converged;
+  if (!out.converged) return std::unexpected(Error::not_converged);
+
+  // Prune low-mass entries.
+  std::vector<std::uint64_t> pruned_active;
+  std::vector<double> pruned_theta;
+  pruned_active.reserve(static_cast<std::size_t>(theta.size()));
+  pruned_theta.reserve(static_cast<std::size_t>(theta.size()));
+  for (Eigen::Index i = 0; i < theta.size(); ++i) {
+    if (theta(i) > opts.prune_tol) {
+      pruned_active.push_back(static_cast<std::uint64_t>(i));
+      pruned_theta.push_back(theta(i));
+    }
+  }
+  if (pruned_active.empty()) return std::unexpected(Error::numerical_error);
+
+  Eigen::VectorXd tp = Eigen::Map<Eigen::VectorXd>(
+      pruned_theta.data(), static_cast<Eigen::Index>(pruned_theta.size()));
+  const double s = tp.sum();
+  if (s < zero_tol) return std::unexpected(Error::numerical_error);
+  tp /= s;
+
+  out.theta_hat = std::move(tp);
+  // Map active-space indices back to global composition ranks for the
+  // theta -> kappa step.
+  out.pattern_ranks.reserve(pruned_active.size());
+  for (std::uint64_t a : pruned_active) {
+    out.pattern_ranks.push_back(in.active_ranks[static_cast<std::size_t>(a)]);
+  }
+  out.vcov = em_variance(out.theta_hat, pruned_active, in);
+  return out;
+}
+
+// --- theta_hat -> (Fleiss, BP) coefficients + delta-method vcov --------------
+
+Estimation map_to_kappa(const EmRunResultCounts& em, RealMatView weights) {
+  const int C = static_cast<int>(weights.rows());
+  const int R = em.r_total;
+  const Eigen::Index n_final = em.theta_hat.size();
+  const double r_pair = static_cast<double>(R) * (R - 1.0);
+
+  const RealMat L = RealMat::Constant(C, C, 1.0) - weights;
+  const RealVec L_diag = L.diagonal();
+
+  // Per-pattern observed disagreement d_z = (z L z - diag(L) . z) / (R(R-1)).
+  // Build z's by unranking and pack into pattern_matrix (C x n_final).
+  Binomial B(R + C + 1);
+  RealMat pattern_matrix(C, n_final);
+  RealVec d_vec(n_final);
+  for (Eigen::Index j = 0; j < n_final; ++j) {
+    auto z = unrank_composition(em.pattern_ranks[static_cast<std::size_t>(j)], R, C, B);
+    for (int k = 0; k < C; ++k) {
+      pattern_matrix(k, j) = static_cast<double>(z[static_cast<std::size_t>(k)]);
+    }
+    RealVec zv = pattern_matrix.col(j);
+    d_vec(j) = (zv.transpose() * L * zv).value() - L_diag.dot(zv);
+    d_vec(j) /= r_pair;
+  }
+
+  // A_map (n_final x C): A_map[j, c] = z_j(c) / R, so p_hat = A_map^T theta.
+  const RealMat A_map = pattern_matrix.transpose() / static_cast<double>(R);
+  const double d_bp = L.sum() / (static_cast<double>(C) * C);
+
+  const Eigen::VectorXd& theta = em.theta_hat;
+  const double pd = d_vec.dot(theta);                       // E_theta[d_z]
+  const RealVec p_hat = A_map.transpose() * theta;          // length C
+  const double pe_f = (p_hat.transpose() * L * p_hat).value();
+
+  RealVec estimates(2);
+  estimates(0) = (pe_f > zero_tol)
+                     ? 1.0 - pd / pe_f
+                     : std::numeric_limits<double>::quiet_NaN();
+  estimates(1) = (d_bp > zero_tol)
+                     ? 1.0 - pd / d_bp
+                     : std::numeric_limits<double>::quiet_NaN();
+
+  // Jacobian rows of (Fleiss, BP) wrt theta.
+  RealMat jacobian = RealMat::Zero(2, theta.size());
+  const Eigen::VectorXd grad_pd = d_vec;
+  if (pe_f > zero_tol) {
+    const RealVec grad_pe_f = 2.0 * A_map * L * p_hat;     // d(p^T L p)/dtheta
+    jacobian.row(0) = (-(grad_pd * pe_f - pd * grad_pe_f).transpose()) / (pe_f * pe_f);
+  }
+  if (d_bp > zero_tol) {
+    jacobian.row(1) = -grad_pd.transpose() / d_bp;
+  }
+
+  RealMat vcov = jacobian * em.vcov * jacobian.transpose();
+  return Estimation{std::move(estimates), std::move(vcov)};
+}
+
+}  // namespace
+
+Result<Estimation> estimate_fiml_counts(
+    IntMatView counts, RealMatView weights, int r_total, EmOptions opts) {
+  if (counts.rows() < 1) return std::unexpected(Error::invalid_argument);
+  if (r_total < 2) return std::unexpected(Error::invalid_argument);
+  const int C = static_cast<int>(weights.rows());
+  if (weights.cols() != C || counts.cols() != C) {
+    return std::unexpected(Error::dimension_mismatch);
+  }
+
+  auto em = run_em(counts, r_total, opts);
+  if (!em) return std::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+
+  return map_to_kappa(*em, weights);
+}
+
+}  // namespace misskappa
