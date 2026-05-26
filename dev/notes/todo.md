@@ -16,6 +16,15 @@ The port plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Backlog
 
+- [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
+      The Eigen API is already thin for the two consumers we have (in-tree
+      C++ tests and R via Rcpp+RcppEigen). If we ever add a Python / Julia /
+      standalone-CLI binding, add overloads in
+      `include/misskappa/estimate.hpp` that take
+      `(const int* ratings, int n, int R, const double* W, int C)` and write
+      results into caller buffers, with the Eigen versions becoming
+      one-liners over `Eigen::Map`. Until then, not worth the surface
+      doubling.
 - [ ] Wire CI (compile-only job under multiple compilers; R CMD check job).
 - [ ] Decide whether to enable the `asan` preset by default once Fedora's
       libasan / libubsan runtime packages are installed locally.

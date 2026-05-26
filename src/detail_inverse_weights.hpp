@@ -1,0 +1,27 @@
+#ifndef MISSKAPPA_SRC_DETAIL_INVERSE_WEIGHTS_HPP
+#define MISSKAPPA_SRC_DETAIL_INVERSE_WEIGHTS_HPP
+
+#include "misskappa/result.hpp"
+#include "misskappa/types.hpp"
+
+namespace misskappa::detail {
+
+enum class Reweighting {
+  available,  // no reweighting; pi_j^{-1} = 1, pi_{jk}^{-1} = 1.
+  ipw,        // pi_j^{-1} = n / sum_i M_ij, pi_{jk}^{-1} = n / sum_i M_ij M_ik.
+  gwet,       // pi_j^{-1} = n / sum_i M_ij, pi_{jk}^{-1} = 1.
+};
+
+struct InverseWeights {
+  RealVec pi_j_inv;   // length R
+  RealMat pi_jk_inv;  // R x R; symmetric, with diagonal pi_jj^{-1}.
+};
+
+// rating_mask(i, j) = 1 if rating (i, j) is observed, 0 otherwise.
+Result<InverseWeights> compute_inverse_weights(
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& rating_mask,
+    int n, int R, Reweighting mode);
+
+}  // namespace misskappa::detail
+
+#endif  // MISSKAPPA_SRC_DETAIL_INVERSE_WEIGHTS_HPP

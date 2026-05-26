@@ -8,6 +8,9 @@
 #include <Rcpp.h>
 #include <RcppEigen.h>
 
+#include <cmath>
+#include <limits>
+
 #include "misskappa/estimate.hpp"
 #include "misskappa/loss.hpp"
 
@@ -154,6 +157,54 @@ Rcpp::List rcpp_kappa_raw(
     r = misskappa::estimate_fiml(in.ratings_indexed, in.weights, opts);
   } else {
     Rcpp::stop("Unknown method: " + method);
+  }
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_continuous(
+    const Rcpp::NumericMatrix& x,
+    std::string method,
+    std::string weight_type) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  double mn = std::numeric_limits<double>::infinity();
+  double mx = -std::numeric_limits<double>::infinity();
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) {
+      const double v = x(i, j);
+      ratings(i, j) = v;
+      if (std::isfinite(v)) {
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+    }
+  }
+  if (!std::isfinite(mn)) Rcpp::stop("All ratings are missing.");
+
+  misskappa::loss::ContinuousLoss loss;
+  if (weight_type == "identity" || weight_type == "unweighted") {
+    loss = unwrap(misskappa::loss::identity_loss());
+  } else if (weight_type == "linear") {
+    loss = unwrap(misskappa::loss::linear_loss(mn, mx));
+  } else if (weight_type == "quadratic") {
+    loss = unwrap(misskappa::loss::quadratic_loss(mn, mx));
+  } else if (weight_type == "radical") {
+    loss = unwrap(misskappa::loss::radical_loss(mn, mx));
+  } else if (weight_type == "ratio") {
+    loss = unwrap(misskappa::loss::ratio_loss(mn, mx));
+  } else {
+    Rcpp::stop("Unknown weight type for continuous data: " + weight_type);
+  }
+
+  misskappa::Result<misskappa::Estimation> r;
+  if (method == "available") {
+    r = misskappa::estimate_available_continuous(ratings, loss);
+  } else if (method == "ipw") {
+    r = misskappa::estimate_ipw_continuous(ratings, loss);
+  } else if (method == "gwet") {
+    r = misskappa::estimate_gwet_continuous(ratings, loss);
+  } else {
+    Rcpp::stop("Unknown method for continuous data: " + method);
   }
   return estimation_to_list(unwrap(std::move(r)));
 }

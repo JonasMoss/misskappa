@@ -92,3 +92,33 @@ test_that("Bundled datasets load", {
   expect_true(is.numeric(as.matrix(dat.klein2018)))
   expect_true(is.numeric(as.matrix(dat.zapf2016)))
 })
+
+test_that("kappa_continuous() handles available/ipw/gwet and matches legacy", {
+  x <- matrix(c(
+    1.0, 1.2, 0.9,  3.5, 3.4, 3.6,  2.0, 2.1, 1.9,  4.0, 4.2, 3.8,
+    1.5, 1.4, 1.6,  3.0, 2.9, 3.1,  2.5, 2.6, 2.4,  4.5, 4.4, 4.6,
+    1.0, NA,  1.1,  3.5, 3.6, NA
+  ), nrow = 10, byrow = TRUE)
+
+  fit_av <- kappa_continuous(x, method = "available", weight = "quadratic")
+  expect_s3_class(fit_av, "misskappa_estimate")
+  expect_named(fit_av$estimates, c("Conger", "Fleiss"))
+  expect_equal(unname(fit_av$estimates["Conger"]), 0.9893902893012867,
+               tolerance = 1e-9)
+  expect_equal(unname(fit_av$estimates["Fleiss"]), 0.9893337228643995,
+               tolerance = 1e-9)
+
+  fit_ipw <- kappa_continuous(x, method = "ipw", weight = "quadratic")
+  expect_equal(unname(fit_ipw$estimates["Conger"]), 0.9889592202554336,
+               tolerance = 1e-9)
+
+  fit_gw <- kappa_continuous(x, method = "gwet", weight = "quadratic")
+  expect_equal(unname(fit_gw$estimates["Conger"]), 0.9893896826901533,
+               tolerance = 1e-9)
+})
+
+test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {
+  x <- matrix(c(1.0, 1.0, 2.5, 2.5, 3.3, 3.3), nrow = 3, byrow = TRUE)
+  fit <- kappa_continuous(x, method = "available", weight = "quadratic")
+  expect_equal(unname(fit$estimates["Conger"]), 1.0, tolerance = 1e-9)
+})

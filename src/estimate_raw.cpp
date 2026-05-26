@@ -1,4 +1,5 @@
 #include "detail_estimate_raw.hpp"
+#include "detail_inverse_weights.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
@@ -9,47 +10,6 @@ namespace misskappa {
 namespace {
 
 constexpr double zero_tol = 1e-9;
-
-struct InverseWeights {
-  RealVec pi_j_inv;     // length R
-  RealMat pi_jk_inv;    // R x R; symmetric, with diagonal pi_jj^{-1}.
-};
-
-// rating_mask(i, j) = 1 if rating (i, j) is observed, 0 if na_code.
-Result<InverseWeights> compute_inverse_weights(
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& rating_mask,
-    int n, int R, detail::Reweighting mode) {
-  InverseWeights w;
-  w.pi_j_inv.setOnes(R);
-  w.pi_jk_inv.setOnes(R, R);
-
-  if (mode == detail::Reweighting::available) {
-    return w;
-  }
-
-  // For ipw and gwet we need pi_j = (# observed for rater j) / n.
-  RealVec pi_j = rating_mask.cast<double>().colwise().sum().transpose() / n;
-  if (pi_j.minCoeff() < zero_tol) {
-    return std::unexpected(Error::singular_weight);
-  }
-  w.pi_j_inv = pi_j.cwiseInverse();
-
-  if (mode == detail::Reweighting::gwet) {
-    // Gwet: per-pair weights remain 1; per-rater inverse weights still apply
-    // to the chance-disagreement V-statistic.
-    return w;
-  }
-
-  // mode == ipw: pi_{jk} = (1/n) sum_i M_ij M_ik, then invert.
-  RealMat mask_d = rating_mask.cast<double>();
-  RealMat pi_jk = (mask_d.transpose() * mask_d) / static_cast<double>(n);
-  for (int j = 0; j < R; ++j) {
-    for (int k = 0; k < R; ++k) {
-      w.pi_jk_inv(j, k) = (pi_jk(j, k) > zero_tol) ? 1.0 / pi_jk(j, k) : 0.0;
-    }
-  }
-  return w;
-}
 
 // Build mask: 1 if observed, 0 if na_code. Returns also (n, R) for convenience.
 Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
