@@ -7,8 +7,10 @@
 namespace misskappa {
 
 struct EmOptions {
-  int max_iter = 500;
-  double tol = 1e-9;
+  int max_iter = 10000;
+  double tol = 1e-8;
+  double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
+  double start_alpha = 0.1;  // smoothing on initial theta; small positive.
 };
 
 // Categorical raw-rating estimators. `ratings` is n x R; entries are
