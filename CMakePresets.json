@@ -25,11 +25,11 @@
     },
     {
       "name": "opt",
-      "displayName": "Opt (release, -march=native)",
+      "displayName": "Opt (release; no -march, matches R defaults)",
       "binaryDir": "${sourceDir}/build-opt",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -march=native"
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG"
       }
     }
   ],
