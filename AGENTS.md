@@ -48,6 +48,8 @@ inferential method is inconsistent.
 - `paper/` — manuscript, bibliography, figures, tables, simulation scripts,
   curated results. Each subdir documented in `paper/AGENTS.md`; the prose /
   table / figure style guide is `paper/STYLE.md`.
+- `docs/` — repo-level documentation assets, including shared artwork such as
+  the project logo.
 - `dev/legacy/` — frozen reference: original R package, C++ implementation,
   analysis scripts, LyX manuscript, supporting notes. Unbuilt, do not edit.
 - `dev/notes/` — repo-level development notes (port plan, validation plan, todo).
@@ -118,6 +120,8 @@ No deep nesting. No per-estimator namespaces.
 - Public headers include with `#include "misskappa/foo.hpp"`. Private detail
   headers under `src/detail_*.hpp` include with relative paths.
 - Comments only when the why is non-obvious. Headers carry the contract.
+- Agent instructions live in `AGENTS.md` files and installed Codex skills; do
+  not keep copied agent-skill snapshots under `dev/legacy/`.
 - Keep `dev/notes/todo.md` as the single active backlog. Fold finished planning
   docs into it or remove them; do not create parallel roadmaps.
 - Keep `paper/AGENTS.md` and `paper/dev/todo.md` current when the manuscript or
