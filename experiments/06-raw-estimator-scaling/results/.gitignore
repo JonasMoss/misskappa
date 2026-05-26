@@ -1,0 +1,3 @@
+# Keep the directory; ignore raw diagnostic dumps.
+raw/
+*.rds
