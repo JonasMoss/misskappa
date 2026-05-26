@@ -46,26 +46,46 @@ Do the IPW influence-function Wald CIs and FIML Louis-information Wald
 CIs for Conger's $\kappa$ achieve nominal coverage at moderate sample
 sizes, across MCAR (DGPs A and B) and MAR (DGP C) missingness?
 
-## Short answer
+Three findings, in priority order for the manuscript.
 
-IPW Wald coverage tracks the consistency picture, not a variance defect.
-Under MCAR with exchangeable raters (DGP A) and MCAR with non-exchangeable
-raters (DGP B), the empirical 95% IPW coverage is close to nominal. Under
-MAR (DGP C) the IPW estimator is biased (Proposition 3.1 of the manuscript
-gives consistency under MCAR only), and the Wald CI accordingly fails to
-cover the truth.
+**1. IPW Wald coverage is close to nominal under MCAR.** On DGPs A and
+B, with `B = 50` replicates per cell, the empirical 95% coverage runs
+in the 0.92 – 0.98 band across `n ∈ {500, 2000, 8000}`. The standardised
+residual `z = (κ̂ − κ) / SE` is approximately `N(0, 1)` (`SD(z)` in
+0.93 – 1.07). Mean SE runs 5 – 10% above the Monte Carlo SD, i.e. a
+mild and stable conservative bias. The IPW influence-function variance
+in Section 3.3 of the manuscript is good as written.
 
-FIML Wald coverage is at or above nominal under all three DGPs, with the
-mean Louis SE running larger than the Monte Carlo SD — i.e. the FIML
-Wald interval is conservative at small `n`. The conservatism shrinks as
-`n` grows but does not vanish in the range tested. Likely explanation:
-the Louis information at the EM optimum is computed on the pruned
-parameter space; the pseudo-inverse handling of unidentified directions
-widens the propagated variance.
+**2. FIML Louis SEs are systematically too large and do not shrink at
+the parametric rate.** On DGP A, the mean Louis SE is roughly 3.6× the
+Monte Carlo SD at `n = 500`, 7.9× at `n = 2000`, and 9.3× at `n = 8000`.
+Both quantities are shrinking, but the SE shrinks too slowly: as `n`
+grows the Wald interval becomes more, not less, conservative in
+relative terms. Coverage is at or above nominal as a consequence, which
+sounds harmless until one tries to detect a difference between two
+weighted kappas — power vanishes. The mechanism is most likely the
+pseudo-inverse handling of unidentified θ-directions in the Louis
+information at the EM limit on the pruned parameter space. This is the
+"prune_tol affects vcov, not the point estimate" hypothesis flagged in
+the manuscript todo, now with evidence. **Section 3.3 of the
+manuscript needs a finite-sample correction or an honest "conservative
+in finite samples" caveat before submission.**
 
-A finite-sample correction or an explicit "conservative" caveat in
-Section 3.3 of the manuscript looks warranted. Whether the IPW figures
-are good enough as-is depends on the editor; they look fine under MCAR.
+**3. The MAR claim in Section 6 needs reframing.** Under DGP C the FIML
+estimator is *biased*, not merely conservative: coverage collapses
+from 0.94 at `n = 500` to 0.08 at `n = 2000` to 0.00 at `n = 8000`,
+with mean `z` growing as `~√n` (0.5, 3.1, 7.7). The reason: DGP C
+generates missingness conditional on the latent truth `T_i`, not on
+observed entries. Conditional on the full data `X*`, the missingness
+mechanism then depends on `X*` through the posterior `P(T | X*)`, and
+since `T` is not in the FIML model, this is MNAR with respect to the
+`X*`-only model FIML actually fits. Rubin ignorability does not apply
+to DGP C. Section 6 of the manuscript currently states "FIML is
+approximately unbiased under MAR (DGP C)" — that claim is wrong in
+spirit. Either replace DGP C with a cleanly MAR mechanism (missingness
+conditional on observed ratings of other raters) or rewrite the prose
+to flag that DGP C is technically MNAR and the residual FIML bias is
+much smaller than IPW/AC/Gwet bias but not zero.
 
 ## Evidence
 
