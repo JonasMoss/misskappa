@@ -130,6 +130,29 @@ No deep nesting. No per-estimator namespaces.
   handing back, unless the user explicitly asks not to commit. Keep work on the
   current branch unless explicitly asked to branch.
 
+## Git hygiene
+
+Multiple agents may be working in this repo at the same time. To avoid
+clobbering each other's pending work:
+
+- **Stage explicitly.** Run `git add <specific paths>` for the files your task
+  touched. Do not use `git add -A`, `git add .`, or `git commit -a` — those
+  bulk forms silently pull another agent's in-flight changes into your commit,
+  producing a commit whose message no longer matches its contents.
+- **Sanity-check before committing.** Run `git diff --cached --name-only` and
+  confirm every file listed belongs to the task you just finished. If you see
+  files you didn't touch, `git restore --staged <path>` them out.
+- **Do not `git reset HEAD~N` to undo a commit you regret.** Mixed reset (the
+  default) leaves the working tree alone, so HEAD and the working tree diverge
+  — every change in the discarded commit reappears as unstaged, often after
+  the next agent has already moved on from that state. Prefer:
+    - `git revert <sha>` to back out a committed change cleanly, or
+    - `git reset --soft HEAD~1` followed by `git restore --staged <paths>` for
+      the files that shouldn't have been in the commit, then re-commit. Only
+      do this if the commit is the tip of `HEAD` and is yours alone.
+- Avoid amending or rebasing a commit unless you authored it and it has not
+  been built on by another agent's work.
+
 ## Working with the legacy reference
 
 `dev/legacy/misskappa/` contains the original Armadillo + Rcpp implementation.
