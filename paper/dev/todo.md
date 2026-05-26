@@ -15,6 +15,15 @@ Paper-specific TODO. Repo-level TODO is in `../../dev/notes/todo.md`.
 
 ## Manuscript
 
+- [ ] Write a counts-FIML appendix subsection based on
+      `paper/dev/notes/counts-fiml-model.md`. Crystal clear statement of
+      assumptions (E) exchangeable raters + (S) uniform hypergeometric
+      subsampling; identifiability story (theta not identified from
+      partial counts, kappa is); MCAR / MAR distinction for counts is
+      narrow; FIML-counts is not "FIML for arbitrary missingness" the
+      way rater-identified FIML is.
+
+
 - [ ] Fix the truncated "We w" sentence in the Introduction.
 - [ ] Fill in Section 2.3 "Computation".
 - [ ] Fill in Section 2.4 "Illustrations".

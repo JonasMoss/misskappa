@@ -61,6 +61,20 @@ Result<Estimation> estimate_quadratic_counts(IntMatView counts, const RealVec& v
 // addition; see dev/notes/todo.md.
 Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights);
 
+// FIML / EM counterpart of estimate_available_counts. Models the full
+// composition (length-C count vector summing to `r_total`) under
+// exchangeable iid raters, and uses uniformly-random hypergeometric
+// subsampling to relate full counts to observed counts. Each subject's
+// observed row sum may be < r_total; FIML weights subjects by how much
+// their partial counts pin down the full composition. Returned
+// coefficients: (Fleiss, Brennan-Prediger).
+//
+// Assumption: raters are exchangeable iid from a common distribution.
+// Counts data cannot identify rater-specific distributions; for the
+// non-exchangeable case use rater-identified data and estimate_fiml.
+Result<Estimation> estimate_fiml_counts(
+    IntMatView counts, RealMatView weights, int r_total, EmOptions opts);
+
 // --- Continuous-rating estimators -------------------------------------------
 //
 // `ratings` is n x R of real values; entries that are not finite (NaN or
