@@ -80,11 +80,37 @@ methods.
 
 ### `03-ac-vs-ipw-efficiency`
 
-Runner + report landed under `experiments/03-ac-vs-ipw-efficiency/`. At
-`n = 1000`, `B = 500`, IPW wins MSE for Conger's kappa exactly when
-raters are non-exchangeable AND `π_j` varies (AC bias up to `+0.085`,
-MSE ratio AC/IPW up to `29×`). Under exchangeable raters AC is unbiased
-and slightly tighter than IPW, so the "AC is inefficient" framing is
-backwards in finite samples; the cleaner manuscript framing is "AC is
-inconsistent under non-exchangeability". Within-subject correlation in
-`M` shifts variance but does not flip the ordering.
+Runner + report landed under `experiments/03-ac-vs-ipw-efficiency/`.
+Conger × identity, `n = 1000`, `B = 500`, factorial over exchangeability
+× `var(π_j)` × within-subject `corr(M_{i,j}, M_{i,k})`.
+
+**Exchangeable raters (truth = 0.843).** AC and IPW are both unbiased
+to MC noise in every cell. AC SD ≤ IPW SD throughout, with the gap
+growing in `var(π_j)`: at `var(π_j) = 0`, SDs coincide (IPW reduces to
+AC); at the high `π`-variance level, AC SD `≈ 0.010` vs IPW SD
+`≈ 0.012`. AC wins MSE in every exchangeable cell. The "AC is
+inefficient" claim does not show up here.
+
+**Non-exchangeable raters (truth = 0.695).** AC inherits a large bias
+from rater-specific observation rates: `+0.047` (mid `π`-var),
+`+0.085` (high `π`-var); IPW residual bias is within MC noise (`|t| < 2`
+at `B = 500`). AC's SD is slightly smaller than IPW's (`0.011` vs
+`0.016` at high `π`-var, no `corr_M`), but the squared bias dominates.
+MSE ratios AC/IPW: `11×` at mid `π`-var, `29×` at high `π`-var. The
+exception is `var(π_j) = 0`: AC's pair weighting becomes uniform, so
+both estimators are consistent and indistinguishable in MSE.
+
+**Within-subject correlation in `M`.** Across `corr_M ∈ {0, 0.4, 0.8}`,
+SDs move by a few thousandths in both directions but the AC vs IPW
+ordering never flips. AC's bias under non-exchangeability is set by
+the marginal `π_j` schedule, so it barely moves with `corr_M`.
+
+**Implications for the manuscript.** Section 5.1's "AC is inefficient"
+framing is backwards in finite samples: at moderate `n` under MCAR
+with rater-varying `π`, AC has the lower variance whenever it is
+consistent. The clean contrast is "AC is inconsistent under
+non-exchangeable raters", not a variance argument. Suggest rewriting
+Section 5.1 around the bias mechanism (with a pointer to this
+experiment for the simulation evidence) and dropping the inefficiency
+claim, or restricting it to "asymptotic efficiency relative to FIML"
+where it is on firmer ground.
