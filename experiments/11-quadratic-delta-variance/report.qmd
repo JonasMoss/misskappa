@@ -1,0 +1,182 @@
+---
+title: "Experiment 11: Quadratic Delta Variance"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- knitr::current_input()
+base_dir <- if (!is.null(input)) dirname(normalizePath(input)) else getwd()
+summary_path <- file.path(base_dir, "results", "summary.csv")
+metadata_path <- file.path(base_dir, "results", "metadata.csv")
+
+if (!file.exists(summary_path) || !file.exists(metadata_path)) {
+  stop(
+    "Missing experiment results. Run: Rscript experiments/11-quadratic-delta-variance/run_experiment.R --smoke",
+    call. = FALSE
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+
+method_order <- c(
+  "basic_if_n", "basic_if_unbiased", "basic_delta2_var", "basic_delta2_center_var",
+  "arcsine_if_n", "arcsine_if_unbiased", "arcsine_delta2_var", "arcsine_delta2_center_var",
+  "fisher_if_n", "fisher_if_unbiased", "fisher_delta2_var", "fisher_delta2_center_var"
+)
+summary$method <- factor(summary$method, levels = method_order)
+focus <- summary[summary$coefficient %in% c("Conger", "Fleiss"), ]
+focus <- focus[order(focus$target, focus$coefficient, focus$R, focus$n, focus$method), ]
+
+overall <- aggregate(
+  cbind(coverage, miss_below, miss_above, mean_length) ~ target + method,
+  data = focus,
+  FUN = mean
+)
+overall <- overall[order(overall$target, overall$method), ]
+overall_value <- function(target, method, column) {
+  overall[overall$target == target & as.character(overall$method) == method, column][[1]]
+}
+overall_tab <- data.frame(
+  Target = overall$target,
+  Method = overall$method,
+  Coverage = fmt(overall$coverage),
+  `Miss Below` = fmt(overall$miss_below),
+  `Miss Above` = fmt(overall$miss_above),
+  `Mean Length` = fmt(overall$mean_length),
+  check.names = FALSE
+)
+
+variance_diag <- aggregate(
+  cbind(mean_variance_ratio_unbiased, mean_variance_ratio_delta2, mean_bias_delta2, mean_se_if_n) ~ target,
+  data = focus[focus$method == "basic_if_n", ],
+  FUN = mean
+)
+variance_diag <- variance_diag[order(variance_diag$target), ]
+variance_tab <- data.frame(
+  Target = variance_diag$target,
+  `n-1 Var Ratio` = fmt(variance_diag$mean_variance_ratio_unbiased),
+  `Delta2 Var Ratio` = fmt(variance_diag$mean_variance_ratio_delta2),
+  `Delta2 Bias` = fmt(variance_diag$mean_bias_delta2, 4),
+  `Mean IF SE` = fmt(variance_diag$mean_se_if_n),
+  check.names = FALSE
+)
+
+worst <- focus[order(focus$coverage), ][1, ]
+worst_tab <- head(focus[order(focus$coverage), ], 14)
+worst_tab <- data.frame(
+  Target = worst_tab$target,
+  Coefficient = worst_tab$coefficient,
+  R = worst_tab$R,
+  n = worst_tab$n,
+  Method = worst_tab$method,
+  Coverage = fmt(worst_tab$coverage),
+  `Miss Below` = fmt(worst_tab$miss_below),
+  `Miss Above` = fmt(worst_tab$miss_above),
+  `Mean Length` = fmt(worst_tab$mean_length),
+  check.names = FALSE
+)
+
+best_by_cell <- do.call(rbind, lapply(split(
+  focus,
+  interaction(focus$target, focus$coefficient, focus$R, focus$n)
+), function(d) {
+  d[which.min(abs(d$coverage - 0.95)), ]
+}))
+best_tab <- data.frame(
+  Target = best_by_cell$target,
+  Coefficient = best_by_cell$coefficient,
+  R = best_by_cell$R,
+  n = best_by_cell$n,
+  Method = best_by_cell$method,
+  Coverage = fmt(best_by_cell$coverage),
+  `Mean Length` = fmt(best_by_cell$mean_length),
+  check.names = FALSE
+)
+```
+
+## Question
+
+Can finite-sample analytic corrections to the influence-function variance improve coverage for complete categorical quadratic kappa?
+
+## Short Answer
+
+This directly probes the variance idea, without bootstrap. The `if_unbiased` correction is just the empirical influence covariance with denominator `n - 1`. The `delta2_var` correction adds the second-order normal delta variance term for the ratio map `theta = 1 - A / B`. The `delta2_center_var` correction also subtracts the corresponding second-order delta bias estimate from the interval center.
+
+The short version: variance inflation helps a little, but it is small. The `n - 1` correction mostly behaves like a mild interval-length bump. The second-order delta variance is also modest in this Perreault-Leigh grid: on the Fisher scale, average coverage moves from `r fmt(overall_value(0.9, "fisher_if_n", "coverage"))` to `r fmt(overall_value(0.9, "fisher_delta2_center_var", "coverage"))` at target `0.9`, and from `r fmt(overall_value(0.95, "fisher_if_n", "coverage"))` to `r fmt(overall_value(0.95, "fisher_delta2_center_var", "coverage"))` at target `0.95`. The bias correction is not a clear win, which suggests the worst upper-boundary failures are not mainly caused by a missing smooth-ratio bias term. The worst coverage is `r fmt(worst$coverage)` for target `r worst$target`, `r worst$coefficient`, `R = r worst$R`, `n = r worst$n`, method `r worst$method`.
+
+## Evidence
+
+`Miss Below` means the interval upper endpoint is below the true coefficient; `Miss Above` means the lower endpoint is above it.
+
+Average over coefficients, rater counts, and sample sizes:
+
+```{r}
+knitr::kable(overall_tab, align = "rlrrrr")
+```
+
+Average size of the variance and bias corrections:
+
+```{r}
+knitr::kable(variance_tab, align = "rrrrr")
+```
+
+Worst cells:
+
+```{r}
+knitr::kable(worst_tab, align = "rlrrlrrrr")
+```
+
+Closest-to-nominal method by cell:
+
+```{r}
+knitr::kable(best_tab, align = "rlrrlrr")
+```
+
+## Methods
+
+The data-generating model is the complete categorical Perreault-Leigh setup used by Moss (2024): five uniform categories, complete rectangular ratings, and knowledge probability `sqrt(target)`, so the population quadratic coefficient equals `target`.
+
+Write the coefficient as `theta = 1 - A / B`, where `A` is the observed disagreement and `B` is the chance disagreement. The baseline influence variance uses the first derivative of this ratio map and the empirical covariance of the estimated influence functions for `(A, B)`.
+
+The second-order variance uses the normal delta approximation
+
+```text
+Var[g(T)] ~= grad' Sigma grad / n + trace(H Sigma H Sigma) / (2 n^2),
+```
+
+where `g(A, B) = 1 - A / B`, `grad` is its gradient, `H` is its Hessian, and `Sigma` is estimated from the item-level influence values using denominator `n - 1`. The second-order bias estimate is `trace(H Sigma) / (2 n)`.
+
+Each correction is applied on three scales: identity/basic, Moss's arcsine transform, and Moss's Fisher transform.
+
+## Caveats
+
+This is still a smooth approximation to a discrete bounded statistic. It does not include exact finite-sample U-statistic covariance terms, category-count discreteness, or a lattice/boundary correction. Those may be the next places to look if the smooth delta terms remain too small.
+
+## Reproduce
+
+Smoke run:
+
+```sh
+Rscript experiments/11-quadratic-delta-variance/run_experiment.R --smoke
+```
+
+Exploratory run used here:
+
+```sh
+Rscript experiments/11-quadratic-delta-variance/run_experiment.R --reps 500 --target-grid 0.5,0.8,0.9,0.95 --n-grid 10,20,40 --r-grid 2,5 --progress
+```
+
+This report used n grid `r meta[["n_grid"]]`, R grid `r meta[["r_grid"]]`, reps `r meta[["reps"]]`, target grid `r meta[["target_grid"]]`, and seed base `r meta[["seed_base"]]`.
