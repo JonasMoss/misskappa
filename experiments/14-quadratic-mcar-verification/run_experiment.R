@@ -1,13 +1,13 @@
 #!/usr/bin/env Rscript
 #
 # Experiment 14: MCAR verification sims for the closed-form quadratic
-# kappa estimator. Continuous (multivariate normal) ratings, MCAR
-# missingness, empirical and normal-Gamma Wald inference. Reports bias,
-# SE accuracy, and Wald coverage for Fleiss and Conger on a small grid.
+# kappa estimator. Perreault-Leigh judge-skill DGP, MCAR missingness,
+# empirical and normal Gamma. Reports bias, SE accuracy, Wald coverage,
+# and RMSE for Fleiss and Conger. Includes a paired comparison between
+# the pairwise-available estimator and listwise deletion.
 
 suppressPackageStartupMessages({
   library(misskappa)
-  library(MASS)
 })
 
 usage <- function(status = 0L) {
@@ -16,16 +16,16 @@ usage <- function(status = 0L) {
     "Options:\n",
     "  --help              Show this help and exit.\n",
     "  --smoke             Cheap mechanical check (small grid, few reps).\n",
-    "  --n-grid CSV        Sample sizes. Default: 50,200,500.\n",
+    "  --n-grid CSV        Sample sizes. Default: 10,50,200,500.\n",
     "  --r-grid CSV        Rater counts. Default: 2,4.\n",
-    "  --miss-grid CSV     Pairwise observation rates in (0,1]. Default: 0.6,1.0.\n",
+    "  --miss-grid CSV     Pairwise observation rates in (0,1]. Default: 0.6.\n",
     "  --reps N            Monte Carlo replicates per cell. Default: 1000.\n",
     "  --seed-base N       Base seed. Default: 141414.\n",
     "  --out-dir PATH      Output directory. Default: script-local results/.\n",
     "  --progress          One line per design cell.\n\n",
-    "Examples:\n",
-    "  Rscript run_experiment.R --smoke\n",
-    "  Rscript run_experiment.R --reps 1000 --progress\n"
+    "DGP: Perreault-Leigh judge-skill model with knowledge probability\n",
+    "p_k = 0.8 and integer category scores {-2,-1,0,1,2}. Implies\n",
+    "kappa_F = kappa_C = 0.8 for any R.\n"
   ))
   quit(save = "no", status = status)
 }
@@ -49,9 +49,9 @@ parse_num_csv <- function(x, arg_name) {
 parse_args <- function(argv) {
   opts <- list(
     smoke = FALSE,
-    n_grid = c(50L, 200L, 500L),
+    n_grid = c(10L, 50L, 200L, 500L),
     r_grid = c(2L, 4L),
-    miss_grid = c(0.6, 1.0),
+    miss_grid = 0.6,
     reps = 1000L,
     seed_base = 141414L,
     out_dir = NULL,
@@ -61,14 +61,8 @@ parse_args <- function(argv) {
   while (i <= length(argv)) {
     arg <- argv[[i]]
     if (arg == "--help" || arg == "-h") usage(0L)
-    if (arg == "--smoke") {
-      opts$smoke <- TRUE
-      i <- i + 1L; next
-    }
-    if (arg == "--progress") {
-      opts$progress <- TRUE
-      i <- i + 1L; next
-    }
+    if (arg == "--smoke") { opts$smoke <- TRUE; i <- i + 1L; next }
+    if (arg == "--progress") { opts$progress <- TRUE; i <- i + 1L; next }
     needs_value <- c("--n-grid", "--r-grid", "--miss-grid", "--reps",
                      "--seed-base", "--out-dir")
     if (arg %in% needs_value) {
@@ -85,9 +79,9 @@ parse_args <- function(argv) {
     stop("Unknown argument: ", arg, call. = FALSE)
   }
   if (opts$smoke) {
-    opts$n_grid <- c(50L, 200L)
+    opts$n_grid <- c(10L, 50L)
     opts$r_grid <- 2L
-    opts$miss_grid <- c(0.6, 1.0)
+    opts$miss_grid <- 0.6
     opts$reps <- 50L
   }
   if (is.na(opts$reps) || opts$reps < 1L) stop("--reps must be >= 1.", call. = FALSE)
@@ -95,70 +89,80 @@ parse_args <- function(argv) {
   opts
 }
 
-# DGP definitions ------------------------------------------------------------
+# Perreault-Leigh DGP --------------------------------------------------------
 #
-# DGP-A (exchangeable): all rater means 5, unit variance, common correlation
-# rho = 0.7. Implies kappa_F = kappa_C = 0.7 for any R.
-#
-# DGP-B (heterogeneous means): rater means linearly spread by +/- 0.5 about 5,
-# unit variance, common correlation 0.85. Yields kappa_F < kappa_C.
+# Categories C = {-2, -1, 0, 1, 2}, knowledge probability p_k = 0.9 (matches
+# Moss 2024 Example 3). For each subject draw a truth uniformly from C; each
+# rater independently reports the truth with probability p_k or a uniform
+# guess otherwise. The marginal is uniform on C, so the (mu, Sigma)-based
+# Conger and Fleiss kappa both equal p_k^2 under exchangeable raters:
+# Cov(X_j, X_k) = p_k^2 Var(T) and Var(X_j) = Var(T). At p_k = 0.9 the truth
+# is therefore 0.81 (Moss 2024 Example 3 reports 0.816 following Perreault &
+# Leigh 1989; the small gap is a normalization detail of their derivation).
 
-dgp_A <- function(R) {
-  Sigma <- matrix(0.7, R, R)
-  diag(Sigma) <- 1.0
-  list(mu = rep(5.0, R), Sigma = Sigma)
-}
+VALUES <- c(-2, -1, 0, 1, 2)
+KNOWLEDGE_PROB <- 0.9
+TRUTH <- KNOWLEDGE_PROB^2  # exchangeable PL: kappa_F = kappa_C = p_k^2
 
-dgp_B <- function(R) {
-  Sigma <- matrix(0.85, R, R)
-  diag(Sigma) <- 1.0
-  list(mu = 5 + 0.5 * (seq_len(R) - (R + 1) / 2), Sigma = Sigma)
-}
-
-true_kappas <- function(mu, Sigma) {
-  R <- length(mu)
-  t1 <- sum(Sigma)
-  t2 <- sum(diag(Sigma))
-  t3 <- sum((mu - mean(mu))^2)
-  c(
-    Fleiss = (t1 - t2 - t3) / ((R - 1) * (t2 + t3)),
-    Conger = (t1 - t2) / ((R - 1) * t2 + R * t3)
-  )
-}
-
-# Per-replicate fit ----------------------------------------------------------
-
-VALUES_PLACEHOLDER <- c(0, 1)  # unused by Fleiss / Conger; only c1 (BP) needs it
-
-draw <- function(n, mu, Sigma, p_pair) {
-  R <- length(mu)
-  X <- MASS::mvrnorm(n, mu, Sigma)
-  if (p_pair < 1.0) {
-    p_cell <- sqrt(p_pair)
-    M <- matrix(stats::rbinom(n * R, 1L, p_cell), n, R)
-    X[M == 0L] <- NA_real_
-    # Drop rows with < 2 observed entries (pairwise estimator drops them anyway,
-    # but kappa_quadratic() does not currently handle all-NA rows gracefully).
-    keep <- rowSums(!is.na(X)) >= 2L
-    X <- X[keep, , drop = FALSE]
+simulate_perreault_leigh <- function(n, R) {
+  C <- length(VALUES)
+  truth_idx <- sample.int(C, n, replace = TRUE)
+  x <- matrix(NA_integer_, nrow = n, ncol = R)
+  for (j in seq_len(R)) {
+    knows <- stats::runif(n) < KNOWLEDGE_PROB
+    guesses <- sample.int(C, n, replace = TRUE)
+    x[, j] <- ifelse(knows, truth_idx, guesses)
   }
+  matrix(VALUES[x], nrow = n, ncol = R)
+}
+
+apply_mcar <- function(X, p_pair) {
+  if (p_pair >= 1.0) return(X)
+  n <- nrow(X); R <- ncol(X)
+  p_cell <- sqrt(p_pair)
+  M <- matrix(stats::rbinom(n * R, 1L, p_cell), n, R)
+  X[M == 0L] <- NA_real_
   X
 }
 
-fit_one <- function(X, vcov_kind) {
-  est <- tryCatch(
-    misskappa::kappa_quadratic(X, values = VALUES_PLACEHOLDER, vcov = vcov_kind),
-    error = function(e) NULL
-  )
-  if (is.null(est)) return(NULL)
-  coefs <- est$estimates[c("Fleiss", "Conger")]
-  ses <- sqrt(diag(est$vcov)[c("Fleiss", "Conger")])
-  data.frame(
-    coefficient = c("Fleiss", "Conger"),
-    estimate = as.numeric(coefs),
-    se = as.numeric(ses),
-    stringsAsFactors = FALSE
-  )
+# Fit pair (raw matrix) and listwise (complete.cases subset) under both Gamma
+# variants. Returns a data.frame with one row per (estimator, vcov_kind,
+# coefficient) successful fit, NULL if all fits fail.
+
+fit_paired <- function(X, vcov_kinds = c("empirical", "normal")) {
+  rows <- list(); pos <- 1L
+  # Pair: keep every row with at least one observed entry. Singleton-observed
+  # rows still contribute to rater means under the pairwise-available
+  # estimator. Listwise: drop any row with at least one NA.
+  X_pair <- X[rowSums(!is.na(X)) >= 1L, , drop = FALSE]
+  X_lw <- X[stats::complete.cases(X), , drop = FALSE]
+  fit_at <- function(Xfit, estimator) {
+    if (nrow(Xfit) < 3L) return(NULL)
+    out <- list()
+    for (vk in vcov_kinds) {
+      fit <- tryCatch(
+        misskappa::kappa_quadratic(Xfit, values = VALUES, vcov = vk),
+        error = function(e) NULL
+      )
+      if (is.null(fit)) next
+      coefs <- fit$estimates[c("Fleiss", "Conger")]
+      ses <- sqrt(diag(fit$vcov)[c("Fleiss", "Conger")])
+      for (k in c("Fleiss", "Conger")) {
+        if (!is.finite(coefs[k]) || !is.finite(ses[k])) next
+        out[[length(out) + 1L]] <- data.frame(
+          estimator = estimator, vcov_kind = vk, coefficient = k,
+          estimate = unname(coefs[k]), se = unname(ses[k]),
+          n_used = nrow(Xfit),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+    if (length(out) == 0L) NULL else do.call(rbind, out)
+  }
+  pair_rows <- fit_at(X_pair, "pair")
+  lw_rows <- fit_at(X_lw, "listwise")
+  if (is.null(pair_rows) && is.null(lw_rows)) return(NULL)
+  do.call(rbind, list(pair_rows, lw_rows))
 }
 
 # Driver ---------------------------------------------------------------------
@@ -174,60 +178,38 @@ opts <- parse_args(commandArgs(trailingOnly = TRUE))
 if (is.null(opts$out_dir)) opts$out_dir <- file.path(script_dir, "results")
 
 z975 <- stats::qnorm(0.975)
-dgp_specs <- list(A_exch = dgp_A, B_het = dgp_B)
-vcov_kinds <- c("empirical", "normal")
+rows <- vector("list", 0L); pos <- 1L
 
-rows <- vector("list", 0L)
-pos <- 1L
-
-for (dgp_name in names(dgp_specs)) {
-  dgp_fn <- dgp_specs[[dgp_name]]
-  for (R in opts$r_grid) {
-    spec <- dgp_fn(R)
-    truth <- true_kappas(spec$mu, spec$Sigma)
-    for (n in opts$n_grid) {
-      for (p_pair in opts$miss_grid) {
-        if (opts$progress) {
-          message(sprintf(
-            "dgp=%s R=%d n=%d p_pair=%.2f reps=%d",
-            dgp_name, R, n, p_pair, opts$reps
-          ))
-        }
-        for (rep in seq_len(opts$reps)) {
-          seed <- opts$seed_base +
-            1e7 * match(dgp_name, names(dgp_specs)) +
-            1e5 * R +
-            1e2 * round(100 * p_pair) +
-            rep
-          set.seed(seed)
-          X <- draw(n, spec$mu, spec$Sigma, p_pair)
-          if (nrow(X) < 5L) next  # degenerate; skip
-          for (vk in vcov_kinds) {
-            fit <- fit_one(X, vk)
-            if (is.null(fit)) next
-            for (i in seq_len(nrow(fit))) {
-              co <- fit$coefficient[[i]]
-              est <- fit$estimate[[i]]
-              se <- fit$se[[i]]
-              if (!is.finite(est) || !is.finite(se)) next
-              rows[[pos]] <- data.frame(
-                dgp = dgp_name,
-                R = R,
-                n = n,
-                p_pair = p_pair,
-                rep = rep,
-                vcov_kind = vk,
-                coefficient = co,
-                truth = unname(truth[co]),
-                estimate = est,
-                se = se,
-                lower = est - z975 * se,
-                upper = est + z975 * se,
-                stringsAsFactors = FALSE
-              )
-              pos <- pos + 1L
-            }
-          }
+for (R in opts$r_grid) {
+  for (n in opts$n_grid) {
+    for (p_pair in opts$miss_grid) {
+      if (opts$progress) {
+        message(sprintf("R=%d n=%d p_pair=%.2f reps=%d", R, n, p_pair, opts$reps))
+      }
+      for (rep in seq_len(opts$reps)) {
+        seed <- opts$seed_base + 1e7 * R + 1e4 * n + 1e2 * round(100 * p_pair) + rep
+        set.seed(seed)
+        X <- simulate_perreault_leigh(n, R)
+        X <- apply_mcar(X, p_pair)
+        fits <- fit_paired(X)
+        if (is.null(fits)) next
+        for (i in seq_len(nrow(fits))) {
+          est <- fits$estimate[[i]]
+          se <- fits$se[[i]]
+          rows[[pos]] <- data.frame(
+            R = R, n = n, p_pair = p_pair, rep = rep,
+            estimator = fits$estimator[[i]],
+            vcov_kind = fits$vcov_kind[[i]],
+            coefficient = fits$coefficient[[i]],
+            n_used = fits$n_used[[i]],
+            truth = TRUTH,
+            estimate = est,
+            se = se,
+            lower = est - z975 * se,
+            upper = est + z975 * se,
+            stringsAsFactors = FALSE
+          )
+          pos <- pos + 1L
         }
       }
     }
@@ -238,48 +220,51 @@ estimates <- do.call(rbind, rows)
 estimates$covered <- estimates$lower <= estimates$truth &
   estimates$truth <= estimates$upper
 
-key <- with(estimates, interaction(dgp, R, n, p_pair, vcov_kind, coefficient,
-                                   drop = TRUE, sep = "|"))
+key <- with(estimates, interaction(R, n, p_pair, estimator, vcov_kind,
+                                   coefficient, drop = TRUE, sep = "|"))
 pieces <- split(estimates, key)
 summary <- do.call(rbind, lapply(pieces, function(d) {
   data.frame(
-    dgp = d$dgp[1L],
-    R = d$R[1L],
-    n = d$n[1L],
-    p_pair = d$p_pair[1L],
-    vcov_kind = d$vcov_kind[1L],
+    R = d$R[1L], n = d$n[1L], p_pair = d$p_pair[1L],
+    estimator = d$estimator[1L], vcov_kind = d$vcov_kind[1L],
     coefficient = d$coefficient[1L],
     truth = d$truth[1L],
     reps = nrow(d),
+    mean_n_used = mean(d$n_used),
     bias = mean(d$estimate) - d$truth[1L],
     mc_sd = stats::sd(d$estimate),
     mean_se = mean(d$se),
     se_over_sd = mean(d$se) / stats::sd(d$estimate),
+    rmse = sqrt(mean((d$estimate - d$truth[1L])^2)),
     cov95 = mean(d$covered),
     stringsAsFactors = FALSE
   )
 }))
-summary <- summary[order(summary$dgp, summary$coefficient, summary$vcov_kind,
-                         summary$R, summary$n, summary$p_pair), ]
+summary <- summary[order(summary$coefficient, summary$estimator,
+                         summary$vcov_kind, summary$R, summary$n,
+                         summary$p_pair), ]
 
 dir.create(opts$out_dir, recursive = TRUE, showWarnings = FALSE)
 write.csv(estimates, file.path(opts$out_dir, "estimates.csv"), row.names = FALSE)
 write.csv(summary, file.path(opts$out_dir, "summary.csv"), row.names = FALSE)
 
 metadata <- data.frame(
-  key = c("experiment", "n_grid", "r_grid", "miss_grid", "reps",
-          "seed_base", "dgps", "vcov_kinds", "values_placeholder",
+  key = c("experiment", "dgp", "knowledge_prob", "values",
+          "n_grid", "r_grid", "miss_grid", "reps", "seed_base",
+          "estimators", "vcov_kinds",
           "R_version", "misskappa_version"),
   value = c(
     "14-quadratic-mcar-verification",
+    "perreault-leigh (Moss 2024 Sec 5.1.1)",
+    as.character(KNOWLEDGE_PROB),
+    paste(VALUES, collapse = ","),
     paste(opts$n_grid, collapse = ","),
     paste(opts$r_grid, collapse = ","),
     paste(opts$miss_grid, collapse = ","),
     as.character(opts$reps),
     as.character(opts$seed_base),
-    paste(names(dgp_specs), collapse = ","),
-    paste(vcov_kinds, collapse = ","),
-    paste(VALUES_PLACEHOLDER, collapse = ","),
+    "pair,listwise",
+    "empirical,normal",
     R.version.string,
     as.character(utils::packageVersion("misskappa"))
   ),

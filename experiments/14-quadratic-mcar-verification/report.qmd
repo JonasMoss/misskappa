@@ -1,5 +1,5 @@
 ---
-title: "Experiment 14: MCAR verification for the closed-form quadratic kappa"
+title: "Experiment 14: MCAR verification under the Perreault–Leigh DGP"
 format:
   html:
     toc: true
@@ -17,10 +17,8 @@ summary_path <- file.path(base_dir, "results", "summary.csv")
 metadata_path <- file.path(base_dir, "results", "metadata.csv")
 
 if (!file.exists(summary_path) || !file.exists(metadata_path)) {
-  stop(
-    "Missing experiment results. Run: Rscript experiments/14-quadratic-mcar-verification/run_experiment.R",
-    call. = FALSE
-  )
+  stop("Missing results. Run: Rscript experiments/14-quadratic-mcar-verification/run_experiment.R",
+       call. = FALSE)
 }
 
 summary <- read.csv(summary_path, stringsAsFactors = FALSE)
@@ -34,58 +32,62 @@ fmt <- function(x, digits = 3) {
 
 ## Question
 
-Does the closed-form quadratic moment estimator
+Under the Perreault–Leigh judge-skill DGP with MCAR missingness, does
+the closed-form quadratic moment estimator
 (`misskappa::kappa_quadratic`) deliver negligible bias and approximately
-nominal Wald coverage for the Fleiss and Conger coefficients under
-MCAR, across a small $(n, R, \text{pairwise rate})$ grid? And does the
-normal-theory $\Gamma_N$ option track the empirical $\hat\Gamma$ when
-the data-generating process is multivariate normal?
+nominal Wald coverage for Fleiss and Conger across a small
+$(n, R)$ grid? How does empirical $\widehat{\Gamma}$ compare to normal
+$\Gamma_{N}$? And how does the pairwise-available estimator compare to
+listwise deletion in RMSE?
 
 ## Short answer
 
-Yes on both counts.
-
-- Bias is small (around $-0.02$ to $-0.03$ at $n = 50$, below $0.01$ at
-  $n \ge 200$) and shrinks at the expected $1/n$ rate.
-- $\widehat{SE}/\mathrm{SD}$ sits near 1 at $n \ge 200$ for both
-  $\Gamma$ variants and shows mild under-estimation at $n = 50$ for
-  empirical $\hat\Gamma$.
-- 95% Wald coverage is at nominal at $n = 200$ and above; mild
-  undercoverage at $n = 50$ (between 0.89 and 0.94 in the harder
-  cells).
-- Normal $\Gamma_N$ buys slightly better small-$n$ coverage on a
-  multivariate-normal DGP but agrees with empirical $\hat\Gamma$
-  asymptotically.
+- **Verification.** Bias is small at $n \ge 50$ and substantial at
+  $n = 10$. Coverage under empirical $\widehat{\Gamma}$ reaches the
+  nominal $0.95$ by $n = 200$ and undercovers at $n = 10$. Normal
+  $\Gamma_{N}$ slightly undercovers at large $n$ and fails to fit on
+  many small-$n$ draws.
+- **Listwise efficiency.** At $R = 4$ the pairwise-available estimator
+  has visibly lower RMSE (ratio ~0.75). At $R = 2$ the two estimators
+  are roughly comparable (ratio ~1.07): pairwise-available picks up
+  singleton-observed rows for the rater means but not for the
+  covariance, and that trade does not always pay off at small $n$.
 
 ## Evidence
 
 ```{r}
-focus <- summary[, c("dgp", "vcov_kind", "coefficient", "R", "n",
-                     "p_pair", "truth", "bias", "se_over_sd", "cov95",
-                     "reps")]
-focus <- focus[order(focus$dgp, focus$coefficient, focus$vcov_kind,
+focus <- summary[, c("estimator", "vcov_kind", "coefficient", "R", "n",
+                     "p_pair", "truth", "reps", "mean_n_used",
+                     "bias", "se_over_sd", "cov95", "rmse")]
+focus <- focus[order(focus$estimator, focus$vcov_kind, focus$coefficient,
                      focus$R, focus$n, focus$p_pair), ]
 focus$bias <- fmt(focus$bias)
 focus$se_over_sd <- fmt(focus$se_over_sd, 2)
 focus$cov95 <- fmt(focus$cov95)
+focus$rmse <- fmt(focus$rmse)
 focus$truth <- fmt(focus$truth)
+focus$mean_n_used <- fmt(focus$mean_n_used, 1)
 knitr::kable(focus, row.names = FALSE,
-             col.names = c("DGP", "vcov", "coef", "R", "n", "p_pair",
-                           "truth", "bias", "SE/SD", "cov95", "reps"),
-             align = "lllrrrrrrrr")
+             col.names = c("estimator", "vcov", "coef", "R", "n", "p_pair",
+                           "truth", "reps", "n_used",
+                           "bias", "SE/SD", "cov95", "RMSE"),
+             align = "llllrrrrrrrr")
 ```
 
 ## Caveats
 
-- Multivariate normal DGP only. Heavy-tailed or skewed marginals are
-  out of scope; pseudo-elliptical $\Gamma$ would be the right vehicle
-  and is left to a follow-up.
-- Wald intervals only. Transform-based intervals (Fisher, arcsine) are
-  available in `misskappa` but not exercised here.
-- Brennan--Prediger is reported by the package but not displayed: under
-  quadratic loss it is an affine rescaling of the same observed
-  disagreement that drives Fleiss, so its bias and coverage track
-  Fleiss closely.
+- Single DGP (Perreault–Leigh, $p_{k} = 0.9$, $C = \{-2,\dots,2\}$).
+- Single pairwise observation rate ($0.6$).
+- Wald intervals only. Fisher and arcsine transforms from
+  \citet{Moss2024-cc} improve small-$n$ coverage but are not
+  exercised.
+- Brennan–Prediger is reported by the package but not displayed.
+- Normal $\Gamma_{N}$ returns a non-finite standard error on draws
+  where the empirical covariance is ill-conditioned (the Wald
+  quadratic form picks up a small negative diagonal entry). At
+  $n = 10$ a large fraction of draws are affected, so the
+  normal-$\Gamma$ coverage at small $n$ is reported on a selected
+  subset and should be read with caution.
 
 ## Reproduce
 
@@ -100,7 +102,8 @@ Rscript experiments/14-quadratic-mcar-verification/run_experiment.R --smoke
 ```
 
 ```{r}
-cat(sprintf("Metadata: n_grid=%s; r_grid=%s; miss_grid=%s; reps=%s; seed_base=%s; misskappa=%s\n",
+cat(sprintf("Metadata: dgp=%s; p_k=%s; n_grid=%s; r_grid=%s; miss=%s; reps=%s; seed_base=%s; misskappa=%s\n",
+            meta[["dgp"]], meta[["knowledge_prob"]],
             meta[["n_grid"]], meta[["r_grid"]], meta[["miss_grid"]],
             meta[["reps"]], meta[["seed_base"]], meta[["misskappa_version"]]))
 ```
