@@ -51,11 +51,14 @@ kappa <- function(x,
   names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
 
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
+      psi = psi_mat,
       method = method,
       weight = weight
     ),
@@ -77,6 +80,35 @@ coef.misskappa_estimate <- function(object, ...) object$estimates
 
 #' @export
 vcov.misskappa_estimate <- function(object, ...) object$vcov
+
+#' Per-subject influence-function matrix
+#'
+#' @description
+#' Returns the `n x K` matrix of per-subject influence functions for the
+#' coefficient estimates, where `n` is the number of subjects and `K` is
+#' the number of coefficients. Estimators that do not expose influence
+#' functions (FIML, quadratic, continuous, counts as of this version)
+#' return `NULL`.
+#'
+#' When non-null, the influence-function matrix satisfies
+#' `vcov(object) == (1 / n^2) * crossprod(influence(object))` up to
+#' floating-point noise. Stack the columns from independent fits on the
+#' same data with `joint_vcov()` to build a joint asymptotic covariance
+#' across estimators, weight schemes, or rater pairs.
+#'
+#' @param model A `misskappa_estimate` object.
+#' @param ... Unused; present for S3 generic conformance.
+#'
+#' @return A numeric matrix of dimension `n x K` with column names matching
+#'   `names(coef(model))`, or `NULL` if the estimator does not expose
+#'   influence functions.
+#'
+#' @export
+influence.misskappa_estimate <- function(model, ...) {
+  psi <- model$psi
+  if (is.null(psi) || prod(dim(psi)) == 0L) return(NULL)
+  psi
+}
 
 #' @export
 confint.misskappa_estimate <- function(object, parm = NULL, level = 0.95, ...) {
@@ -140,10 +172,13 @@ kappa_quadratic <- function(x, values) {
   names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
+      psi = psi_mat,
       method = "quadratic",
       weight = "quadratic"
     ),
@@ -183,10 +218,13 @@ kappa_quadratic_counts <- function(x, values, r_total) {
   names(estimates) <- c("Fleiss", "Brennan-Prediger")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
+      psi = psi_mat,
       method = "quadratic",
       weight = "quadratic"
     ),
@@ -266,11 +304,14 @@ kappa_counts <- function(x,
   names(estimates) <- c("Fleiss", "Brennan-Prediger")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
 
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
+      psi = psi_mat,
       method = method,
       weight = weight
     ),
@@ -323,11 +364,14 @@ kappa_continuous <- function(x,
   names(estimates) <- c("Conger", "Fleiss")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
 
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
+      psi = psi_mat,
       method = method,
       weight = weight
     ),

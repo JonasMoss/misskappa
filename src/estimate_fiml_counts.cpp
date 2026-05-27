@@ -525,7 +525,7 @@ Estimation map_to_kappa(const EmRunResultCounts& em, RealMatView weights) {
   }
 
   RealMat vcov = jacobian * em.vcov * jacobian.transpose();
-  return Estimation{std::move(estimates), std::move(vcov)};
+  return Estimation{std::move(estimates), std::move(vcov), {}};
 }
 
 }  // namespace

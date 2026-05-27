@@ -97,7 +97,7 @@ Result<Estimation> estimate_quadratic_counts(IntMatView counts, const RealVec& v
   estimates(0) = est_f;
   estimates(1) = est_bp;
   RealMat vcov = (G.transpose() * Psi_dist * G) / static_cast<double>(n_eff);
-  return Estimation{std::move(estimates), std::move(vcov)};
+  return Estimation{std::move(estimates), std::move(vcov), {}};
 }
 
 }  // namespace misskappa

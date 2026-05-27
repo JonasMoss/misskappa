@@ -2,6 +2,7 @@ useDynLib(misskappa, .registration = TRUE)
 
 importFrom(Rcpp, sourceCpp)
 
+export(joint_vcov)
 export(kappa)
 export(kappa_continuous)
 export(kappa_counts)
@@ -14,3 +15,4 @@ S3method(coef, misskappa_estimate)
 S3method(vcov, misskappa_estimate)
 S3method(confint, misskappa_estimate)
 S3method(as.data.frame, misskappa_estimate)
+S3method(influence, misskappa_estimate)
