@@ -10,6 +10,8 @@
 
 #include "misskappa/estimate.hpp"
 
+#include <Eigen/Eigenvalues>
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -40,12 +42,105 @@ build_finite_mask(RealMatView x) {
   return m;
 }
 
+Result<RealMat> calculate_elliptical_psi(
+    const RealMat& sigma_hat,
+    const RealVec& mu_hat,
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& M,
+    const RealVec& p1,
+    const RealMat& p2,
+    double beta) {
+  const int n = static_cast<int>(M.rows());
+  const int R = static_cast<int>(M.cols());
+  if (!std::isfinite(beta) || beta <= 0.0) return std::unexpected(Error::invalid_argument);
+
+  Eigen::SelfAdjointEigenSolver<RealMat> es(sigma_hat);
+  if (es.info() != Eigen::Success) return std::unexpected(Error::numerical_error);
+  const double scale = std::max(1.0, sigma_hat.diagonal().cwiseAbs().maxCoeff());
+  if (es.eigenvalues().minCoeff() < -1e-8 * scale) {
+    return std::unexpected(Error::invalid_argument);
+  }
+
+  RealMat psi = RealMat::Zero(3, 3);
+  bool complete = true;
+  for (int row = 0; row < n && complete; ++row) {
+    for (int j = 0; j < R; ++j) {
+      if (!M(row, j)) {
+        complete = false;
+        break;
+      }
+    }
+  }
+
+  if (complete) {
+    const double t1 = sigma_hat.sum();
+    const double t2 = sigma_hat.diagonal().sum();
+    const RealVec sigma_one = sigma_hat * RealVec::Ones(R);
+    const double tr11 = t1 * t1;
+    const double tr12 = sigma_one.squaredNorm();
+    const double tr22 = sigma_hat.squaredNorm();
+    psi(0, 0) = 2.0 * beta * tr11 + (beta - 1.0) * t1 * t1;
+    psi(0, 1) = 2.0 * beta * tr12 + (beta - 1.0) * t1 * t2;
+    psi(1, 0) = psi(0, 1);
+    psi(1, 1) = 2.0 * beta * tr22 + (beta - 1.0) * t2 * t2;
+    const RealVec hmu = (mu_hat.array() - mu_hat.mean()).matrix();
+    psi(2, 2) = 4.0 * (hmu.transpose() * sigma_hat * hmu)(0);
+    return psi;
+  }
+
+  RealMat A1(R, R);
+  RealVec d2(R);
+  for (int row = 0; row < n; ++row) {
+    A1.setZero();
+    d2.setZero();
+    for (int j = 0; j < R; ++j) {
+      if (!M(row, j)) continue;
+      d2(j) = 1.0 / p1(j);
+      for (int k = 0; k < R; ++k) {
+        if (M(row, k)) A1(j, k) = 1.0 / p2(j, k);
+      }
+    }
+
+    const double q1 = A1.cwiseProduct(sigma_hat).sum();
+    const double q2 = d2.dot(sigma_hat.diagonal());
+
+    const RealMat A1_sigma = A1 * sigma_hat;
+    const double tr11 = (A1_sigma * A1_sigma).trace();
+
+    double tr12 = 0.0;
+    double tr22 = 0.0;
+    for (int j = 0; j < R; ++j) {
+      for (int k = 0; k < R; ++k) {
+        tr12 += A1_sigma(j, k) * d2(k) * sigma_hat(k, j);
+        tr22 += d2(j) * d2(k) * sigma_hat(j, k) * sigma_hat(j, k);
+      }
+    }
+
+    psi(0, 0) += 2.0 * beta * tr11 + (beta - 1.0) * q1 * q1;
+    psi(0, 1) += 2.0 * beta * tr12 + (beta - 1.0) * q1 * q2;
+    psi(1, 1) += 2.0 * beta * tr22 + (beta - 1.0) * q2 * q2;
+  }
+  psi(0, 0) /= static_cast<double>(n);
+  psi(0, 1) /= static_cast<double>(n);
+  psi(1, 0) = psi(0, 1);
+  psi(1, 1) /= static_cast<double>(n);
+
+  RealMat gamma_mu = RealMat::Zero(R, R);
+  for (int j = 0; j < R; ++j) {
+    for (int k = 0; k < R; ++k) {
+      gamma_mu(j, k) = (p2(j, k) / (p1(j) * p1(k))) * sigma_hat(j, k);
+    }
+  }
+  const RealVec hmu = (mu_hat.array() - mu_hat.mean()).matrix();
+  psi(2, 2) = 4.0 * (hmu.transpose() * gamma_mu * hmu)(0);
+  return psi;
+}
+
 // Heavy-lifter: from raw real-valued ratings + finiteness mask, compute the
 // 3x3 covariance of (t1 = sum(sigma_hat), t2 = trace(sigma_hat),
 // t3 = sum((mu - mean(mu))^2)) using the moment-level influence functions.
 Result<AcovResults> calculate_psi(
     const RealMat& x, const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& M,
-    int n) {
+    int n, QuadraticOptions opts) {
   const int R = static_cast<int>(x.cols());
   AcovResults out;
   out.R = R;
@@ -107,31 +202,39 @@ Result<AcovResults> calculate_psi(
     }
   }
 
-  // Assemble Psi (3 x 3 covariance of the summary influence functions).
-  out.psi = RealMat::Zero(3, 3);
-  RealVec v_dmu = 2.0 * (out.mu_hat.array() - out.mu_hat.mean()).matrix();
-  for (int row = 0; row < n; ++row) {
-    RealVec phi = RealVec::Zero(3);
-    for (int j = 0; j < R; ++j) {
-      if (!M(row, j)) continue;
-      phi(2) += (v_dmu(j) / p1(j)) * Y_hat(row, j);
-      for (int k = 0; k < R; ++k) {
-        if (!M(row, k)) continue;
-        const double term = (Y_hat(row, j) * Y_hat(row, k) - out.sigma_hat(j, k)) / p2(j, k);
-        phi(0) += term;
-        if (j == k) phi(1) += term;
+  if (opts.vcov == QuadraticVcov::normal || opts.vcov == QuadraticVcov::elliptical) {
+    const double beta = (opts.vcov == QuadraticVcov::normal) ? 1.0 : opts.relative_kurtosis;
+    auto psi = calculate_elliptical_psi(out.sigma_hat, out.mu_hat, M, p1, p2, beta);
+    if (!psi) return std::unexpected(psi.error());
+    out.psi = std::move(*psi);
+  } else {
+    // Assemble Psi (3 x 3 covariance of the summary influence functions).
+    out.psi = RealMat::Zero(3, 3);
+    RealVec v_dmu = 2.0 * (out.mu_hat.array() - out.mu_hat.mean()).matrix();
+    for (int row = 0; row < n; ++row) {
+      RealVec phi = RealVec::Zero(3);
+      for (int j = 0; j < R; ++j) {
+        if (!M(row, j)) continue;
+        phi(2) += (v_dmu(j) / p1(j)) * Y_hat(row, j);
+        for (int k = 0; k < R; ++k) {
+          if (!M(row, k)) continue;
+          const double term = (Y_hat(row, j) * Y_hat(row, k) - out.sigma_hat(j, k)) / p2(j, k);
+          phi(0) += term;
+          if (j == k) phi(1) += term;
+        }
       }
+      out.psi.noalias() += phi * phi.transpose();
     }
-    out.psi.noalias() += phi * phi.transpose();
+    out.psi /= static_cast<double>(n);
   }
-  out.psi /= static_cast<double>(n);
 
   return out;
 }
 
 }  // namespace
 
-Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values) {
+Result<Estimation> estimate_quadratic(
+    RealMatView ratings, const RealVec& values, QuadraticOptions opts) {
   const int C = static_cast<int>(values.size());
   if (C < 1) return std::unexpected(Error::invalid_argument);
   if (ratings.rows() < 1 || ratings.cols() < 2) {
@@ -146,7 +249,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
 
-  auto acov = calculate_psi(x_all, M_full, n);
+  auto acov = calculate_psi(x_all, M_full, n, opts);
   if (!acov) return std::unexpected(acov.error());
 
   // Summary stats t1 = sum(Sigma), t2 = tr(Sigma), t3 = sum((mu - mean(mu))^2).
