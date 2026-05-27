@@ -46,15 +46,15 @@ TEST_CASE("estimate_quadratic raw: matches legacy on 12-subject 3-rater fixture"
   REQUIRE(r.has_value());
   REQUIRE(r->estimates.size() == 3);
 
-  // Frozen against dev/legacy/misskappa kappa_raw(method="quadratic",
-  // values=1:5).
+  // Point estimates frozen against dev/legacy/misskappa
+  // kappa_raw(method="quadratic", values=1:5).
   CHECK(std::abs(r->estimates(0) - 0.8374174174174175) < tol);  // Conger
   CHECK(std::abs(r->estimates(1) - 0.8344881466279811) < tol);  // Fleiss
   CHECK(std::abs(r->estimates(2) - 0.8508539944903584) < tol);  // BP
 
-  CHECK(std::abs(r->vcov(0, 0) - 0.004135272617399968) < 1e-12);
-  CHECK(std::abs(r->vcov(1, 1) - 0.004557886815372655) < 1e-12);
-  CHECK(std::abs(r->vcov(2, 2) - 0.002442329653736858) < 1e-12);
+  CHECK(std::abs(r->vcov(0, 0) - 0.003337365350253323) < 1e-12);
+  CHECK(std::abs(r->vcov(1, 1) - 0.0036216673879180795) < 1e-12);
+  CHECK(std::abs(r->vcov(2, 2) - 0.0019460442258634203) < 1e-12);
 }
 
 TEST_CASE("estimate_quadratic raw: variance is symmetric and PSD") {
@@ -86,7 +86,28 @@ TEST_CASE("estimate_quadratic raw: perfect agreement -> kappa = 1") {
   CHECK(std::abs(r->estimates(2) - 1.0) < tol);
 }
 
-TEST_CASE("estimate_quadratic raw: too few effective rows -> invalid_argument") {
+TEST_CASE("estimate_quadratic raw: singleton rows contribute to marginal moments") {
+  RealMat x(6, 3);
+  x << 1, 2, 3,
+       2, 3, 4,
+       3, 4, 5,
+       5, na_d, na_d,
+       na_d, 1, na_d,
+       na_d, na_d, 5;
+  RealVec v(5);
+  v << 1.0, 2.0, 3.0, 4.0, 5.0;
+  auto r = ms::estimate_quadratic(x, v);
+  REQUIRE(r.has_value());
+
+  CHECK(std::abs(r->estimates(0) - 0.29357798165137616) < tol);  // Conger
+  CHECK(std::abs(r->estimates(1) - 0.18661971830985918) < tol);  // Fleiss
+  CHECK(std::abs(r->estimates(2) - 0.19791666666666685) < tol);  // BP
+  CHECK(std::abs(r->vcov(0, 0) - 0.014298806444653409) < 1e-12);
+  CHECK(std::abs(r->vcov(1, 1) - 0.026515177274675391) < 1e-12);
+  CHECK(std::abs(r->vcov(2, 2) - 0.053811909239969126) < 1e-12);
+}
+
+TEST_CASE("estimate_quadratic raw: too few overlapping pairs -> invalid_argument") {
   RealMat x(2, 3);
   x << 1, na_d, na_d,
        na_d, 2, na_d;
