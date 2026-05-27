@@ -122,9 +122,18 @@ Rcpp::List estimation_to_list(const misskappa::Estimation& e) {
   for (Eigen::Index i = 0; i < e.vcov.rows(); ++i) {
     for (Eigen::Index j = 0; j < e.vcov.cols(); ++j) vcov(i, j) = e.vcov(i, j);
   }
+  // psi is the per-subject influence-function matrix (n x K). Estimators
+  // that do not expose IFs leave it empty (0 x 0); that empty shape
+  // round-trips to R as a 0 x 0 numeric matrix, which the R-side
+  // accessor reads as "no IF available".
+  Rcpp::NumericMatrix psi(e.psi.rows(), e.psi.cols());
+  for (Eigen::Index i = 0; i < e.psi.rows(); ++i) {
+    for (Eigen::Index j = 0; j < e.psi.cols(); ++j) psi(i, j) = e.psi(i, j);
+  }
   return Rcpp::List::create(
       Rcpp::Named("estimates") = est,
-      Rcpp::Named("vcov") = vcov);
+      Rcpp::Named("vcov") = vcov,
+      Rcpp::Named("psi") = psi);
 }
 
 misskappa::EmOptions parse_em_options(Rcpp::List em_options) {

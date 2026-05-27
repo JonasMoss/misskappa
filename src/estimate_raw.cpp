@@ -231,7 +231,17 @@ Result<Estimation> estimate_raw(
 
   RealMat kappa_cov = (J_kappa * Sigma_hat * J_kappa.transpose()) / static_cast<double>(n);
 
-  return Estimation{std::move(estimates), std::move(kappa_cov)};
+  // Per-subject influence functions on the 3-vector of kappas. Composing
+  // the moment IFs phi (n x 6) with the chained Jacobian J_kappa * J_d
+  // (3 x 6) gives psi_i = (J_kappa J_d) phi_i. By construction,
+  // (1 / n^2) psi^T psi = kappa_cov to floating-point noise, so callers
+  // can stack `psi` from independent fits on the same data to obtain a
+  // joint vcov across estimators.
+  const RealMat J_combined = J_kappa * J_d;
+  RealMat psi_kappa = build_psi_from_phi(phi_matrix, J_combined);
+
+  return Estimation{std::move(estimates), std::move(kappa_cov),
+                    std::move(psi_kappa)};
 }
 
 }  // namespace

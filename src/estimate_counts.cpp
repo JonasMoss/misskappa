@@ -127,7 +127,7 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
   }
   RealMat kappa_cov = (J_kappa * Sigma_hat * J_kappa.transpose()) / static_cast<double>(n);
 
-  return Estimation{std::move(estimates), std::move(kappa_cov)};
+  return Estimation{std::move(estimates), std::move(kappa_cov), {}};
 }
 
 }  // namespace misskappa

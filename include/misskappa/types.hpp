@@ -20,12 +20,24 @@ using RealMatView = Eigen::Ref<const RealMat>;
 
 // Plain aggregate returned by every estimator entry point. Estimates are
 // coefficient values in a stable order; vcov is the corresponding asymptotic
-// covariance matrix. `labels` is a packed string of fixed-length names so
-// the binding layer can label the output without allocating.
+// covariance matrix. `psi` is the per-subject influence-function matrix
+// (n x K) for estimators that expose it; empty (0 x 0) otherwise. When
+// populated, vcov = (1 / n^2) * psi^T psi up to numerical noise, and the
+// caller can stack `psi` columns from independent fits on the same data to
+// build a joint vcov across estimators / weight schemes / rater pairs.
 struct Estimation {
   RealVec estimates;
   RealMat vcov;
+  RealMat psi;
 };
+
+// psi_i = J * phi_i  =>  psi = phi * J^T. Centralised so estimators that
+// already compute the moment-level IF matrix `phi` (n x M) and the
+// delta-method Jacobian J (K x M) get the kappa-level IF matrix
+// (n x K) in one place.
+inline RealMat build_psi_from_phi(const RealMat& phi, const RealMat& J) {
+  return phi * J.transpose();
+}
 
 }  // namespace misskappa
 

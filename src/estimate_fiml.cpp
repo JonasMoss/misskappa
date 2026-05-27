@@ -508,7 +508,7 @@ Result<Estimation> estimate_fiml(
   }
 
   RealMat vcov = jacobian * em->vcov * jacobian.transpose();
-  return Estimation{std::move(estimates), std::move(vcov)};
+  return Estimation{std::move(estimates), std::move(vcov), {}};
 }
 
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(

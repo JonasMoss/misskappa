@@ -292,7 +292,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   estimates(0) = conger_est;
   estimates(1) = fleiss_est;
   estimates(2) = bp_est;
-  return Estimation{std::move(estimates), std::move(vcov)};
+  return Estimation{std::move(estimates), std::move(vcov), {}};
 }
 
 }  // namespace misskappa

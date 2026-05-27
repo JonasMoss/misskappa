@@ -26,6 +26,10 @@ uc8  <- read.csv(file.path(results_dir, "uc8_summary.csv"))
 uc1  <- read.csv(file.path(results_dir, "uc1_summary.csv"))
 uc4  <- read.csv(file.path(results_dir, "uc4_summary.csv"))
 uc2  <- read.csv(file.path(results_dir, "uc2_summary.csv"))
+uc4_an_path <- file.path(results_dir, "uc4_analytical_summary.csv")
+uc1_an_path <- file.path(results_dir, "uc1_analytical_summary.csv")
+uc4_an <- if (file.exists(uc4_an_path)) read.csv(uc4_an_path) else NULL
+uc1_an <- if (file.exists(uc1_an_path)) read.csv(uc1_an_path) else NULL
 meta <- read.csv(file.path(results_dir, "metadata.csv"),
                  stringsAsFactors = FALSE)
 mkv  <- setNames(meta$value, meta$key)
@@ -315,13 +319,91 @@ bootstrap detour), UC2, and any future joint-inference contrast. The
 bootstrap can stay as the validation oracle for the influence-function
 port — UC4 already shows them agreeing to 3 significant figures.
 
+## Analytical follow-up: IF-based joint vcov
+
+After the pilot, the `misskappa` C++ library was extended to expose
+per-subject influence functions on the categorical raw estimators
+(`available`, `ipw`, `gwet`), plus a `joint_vcov()` helper. This
+replaces the subject-resample bootstrap with the analytical
+`V = (1 / n^2) * crossprod(cbind(psi_1, psi_2, ...))` for any joint
+contrast across two or more fits on the same subjects. Runners
+under `scripts/uc4_analytical.R` and `scripts/uc1_analytical.R`
+repeat UC4 and UC1 with the same DGPs / seeds.
+
+```{r uc4-compare, eval = !is.null(uc4_an)}
+uc4_an_cmp <- merge(
+  uc4[, c("cell", "mean_se_boot", "mean_boot_cor", "reject_05")],
+  uc4_an[, c("cell", "mean_se_analytical", "mean_cor_AC_IPW",
+             "reject_05", "sd_delta_mc")],
+  by = "cell", suffixes = c(".boot", ".analytical")
+)
+tab <- data.frame(
+  Cell             = uc4_an_cmp$cell,
+  `MC SD(delta)`   = fmt(uc4_an_cmp$sd_delta_mc, 4),
+  `SE boot`        = fmt(uc4_an_cmp$mean_se_boot, 4),
+  `SE analytical`  = fmt(uc4_an_cmp$mean_se_analytical, 4),
+  `Reject boot`    = fmt(uc4_an_cmp$reject_05.boot, 2),
+  `Reject analytical` = fmt(uc4_an_cmp$reject_05.analytical, 2),
+  check.names = FALSE
+)
+knitr::kable(tab, align = "lrrrrr",
+             caption = "UC4: bootstrap vs analytical joint vcov at n = 500.")
+```
+
+Headline from the comparison: under the exchangeable + MCAR null, the
+analytical SE for the contrast (`r fmt(uc4_an$mean_se_analytical[uc4_an$cell == "null"], 4)`)
+matches the MC SD of the contrast (`r fmt(uc4_an$sd_delta_mc[uc4_an$cell == "null"], 4)`)
+to within `~2%`, while the bootstrap SE at `B = `r boots_str``
+(`r fmt(uc4$mean_se_boot[uc4$cell == "null"], 4)`) is nearly 2× too
+large. As a result, the analytical Wald rejects at
+`r fmt(uc4_an$reject_05[uc4_an$cell == "null"], 2)` (close to nominal
+0.05) where the bootstrap was over-conservative at
+`r fmt(uc4$reject_05[uc4$cell == "null"], 2)`. Under the non-exchangeable
+cell, both reject 200/200 and the analytical SE matches MC SD to
+within MC noise.
+
+```{r uc1-compare, eval = !is.null(uc1_an)}
+uc1_cmp <- merge(
+  uc1[, c("cell", "mean_wald", "median_wald", "reject_05")],
+  uc1_an[, c("cell", "mean_wald", "median_wald", "reject_05")],
+  by = "cell", suffixes = c(".boot", ".analytical")
+)
+tab <- data.frame(
+  Cell             = uc1_cmp$cell,
+  `Mean Wald boot`        = fmt(uc1_cmp$mean_wald.boot, 1),
+  `Mean Wald analytical`  = fmt(uc1_cmp$mean_wald.analytical, 1),
+  `Reject boot`           = fmt(uc1_cmp$reject_05.boot, 2),
+  `Reject analytical`     = fmt(uc1_cmp$reject_05.analytical, 2),
+  check.names = FALSE
+)
+knitr::kable(tab, align = "lrrrr",
+             caption = "UC1: bootstrap vs analytical pairwise homogeneity Wald (chi-sq df=14) at n = 500.")
+```
+
+UC1's size inflation drops from
+`r fmt(uc1$reject_05[uc1$cell == "null"], 2)` (bootstrap) to
+`r fmt(uc1_an$reject_05[uc1_an$cell == "null"], 2)` (analytical) at
+`n = 500`. The residual gap to nominal `0.05` is a finite-sample chi-sq
+approximation issue, not a vcov issue: a sanity run at `n = 2000`
+brings the analytical rejection rate to `~0.075` and the mean Wald
+statistic to `14.5` (versus chi-sq df=14 mean of 14). Power against
+one miscalibrated rater is `200/200` in both bootstrap and analytical
+versions.
+
+The analytical pass also runs `~10x-100x` faster than the bootstrap:
+UC4 analytical completes the full 200-replicate sweep in `<1 s`
+versus `~60 s` for the bootstrap; UC1 analytical in `~1 s` versus
+`~3.5 min` for the bootstrap.
+
 ## Reproduce
 
 ```bash
 cd experiments/09-joint-vcov-pilot
-Rscript run_experiment.R                       # full run, ~10 min
+Rscript run_experiment.R                       # full bootstrap run, ~10 min
 Rscript run_experiment.R --smoke               # 20 reps, B=50, ~30 s
 Rscript run_experiment.R --only uc4 --reps 50  # one UC, faster
+Rscript scripts/uc4_analytical.R               # IF-based UC4, ~1 s
+Rscript scripts/uc1_analytical.R               # IF-based UC1, ~1 s
 quarto render report.qmd
 ```
 
