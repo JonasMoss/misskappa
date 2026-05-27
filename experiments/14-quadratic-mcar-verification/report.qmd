@@ -1,0 +1,106 @@
+---
+title: "Experiment 14: MCAR verification for the closed-form quadratic kappa"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- knitr::current_input()
+base_dir <- if (!is.null(input)) dirname(normalizePath(input)) else getwd()
+summary_path <- file.path(base_dir, "results", "summary.csv")
+metadata_path <- file.path(base_dir, "results", "metadata.csv")
+
+if (!file.exists(summary_path) || !file.exists(metadata_path)) {
+  stop(
+    "Missing experiment results. Run: Rscript experiments/14-quadratic-mcar-verification/run_experiment.R",
+    call. = FALSE
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+```
+
+## Question
+
+Does the closed-form quadratic moment estimator
+(`misskappa::kappa_quadratic`) deliver negligible bias and approximately
+nominal Wald coverage for the Fleiss and Conger coefficients under
+MCAR, across a small $(n, R, \text{pairwise rate})$ grid? And does the
+normal-theory $\Gamma_N$ option track the empirical $\hat\Gamma$ when
+the data-generating process is multivariate normal?
+
+## Short answer
+
+Yes on both counts.
+
+- Bias is small (around $-0.02$ to $-0.03$ at $n = 50$, below $0.01$ at
+  $n \ge 200$) and shrinks at the expected $1/n$ rate.
+- $\widehat{SE}/\mathrm{SD}$ sits near 1 at $n \ge 200$ for both
+  $\Gamma$ variants and shows mild under-estimation at $n = 50$ for
+  empirical $\hat\Gamma$.
+- 95% Wald coverage is at nominal at $n = 200$ and above; mild
+  undercoverage at $n = 50$ (between 0.89 and 0.94 in the harder
+  cells).
+- Normal $\Gamma_N$ buys slightly better small-$n$ coverage on a
+  multivariate-normal DGP but agrees with empirical $\hat\Gamma$
+  asymptotically.
+
+## Evidence
+
+```{r}
+focus <- summary[, c("dgp", "vcov_kind", "coefficient", "R", "n",
+                     "p_pair", "truth", "bias", "se_over_sd", "cov95",
+                     "reps")]
+focus <- focus[order(focus$dgp, focus$coefficient, focus$vcov_kind,
+                     focus$R, focus$n, focus$p_pair), ]
+focus$bias <- fmt(focus$bias)
+focus$se_over_sd <- fmt(focus$se_over_sd, 2)
+focus$cov95 <- fmt(focus$cov95)
+focus$truth <- fmt(focus$truth)
+knitr::kable(focus, row.names = FALSE,
+             col.names = c("DGP", "vcov", "coef", "R", "n", "p_pair",
+                           "truth", "bias", "SE/SD", "cov95", "reps"),
+             align = "lllrrrrrrrr")
+```
+
+## Caveats
+
+- Multivariate normal DGP only. Heavy-tailed or skewed marginals are
+  out of scope; pseudo-elliptical $\Gamma$ would be the right vehicle
+  and is left to a follow-up.
+- Wald intervals only. Transform-based intervals (Fisher, arcsine) are
+  available in `misskappa` but not exercised here.
+- Brennan--Prediger is reported by the package but not displayed: under
+  quadratic loss it is an affine rescaling of the same observed
+  disagreement that drives Fleiss, so its bias and coverage track
+  Fleiss closely.
+
+## Reproduce
+
+```bash
+Rscript experiments/14-quadratic-mcar-verification/run_experiment.R --progress
+```
+
+Smoke variant:
+
+```bash
+Rscript experiments/14-quadratic-mcar-verification/run_experiment.R --smoke
+```
+
+```{r}
+cat(sprintf("Metadata: n_grid=%s; r_grid=%s; miss_grid=%s; reps=%s; seed_base=%s; misskappa=%s\n",
+            meta[["n_grid"]], meta[["r_grid"]], meta[["miss_grid"]],
+            meta[["reps"]], meta[["seed_base"]], meta[["misskappa_version"]]))
+```
