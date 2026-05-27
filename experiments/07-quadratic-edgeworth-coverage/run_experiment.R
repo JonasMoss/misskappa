@@ -15,13 +15,14 @@ usage <- function(status = 0L) {
     "  --n-grid CSV        Sample sizes. Default: 10,20,40,100.\n",
     "  --r-grid CSV        Rater counts. Default: 2,5.\n",
     "  --reps N            Replicates per design cell. Default: 1000.\n",
-    "  --target K          True quadratic kappa. Default: 0.8.\n",
+    "  --target K          True quadratic kappa. Alias for --target-grid K.\n",
+    "  --target-grid CSV   True quadratic kappas. Default: 0.5,0.8,0.9.\n",
     "  --seed-base N       Base seed for deterministic runs.\n",
     "  --out-dir PATH      Output directory. Default: script-local results/.\n",
     "  --progress          Print one line per design cell.\n\n",
     "Examples:\n",
     "  Rscript run_experiment.R --smoke\n",
-    "  Rscript run_experiment.R --reps 400 --n-grid 10,20,40 --r-grid 2,5 --progress\n"
+    "  Rscript run_experiment.R --reps 400 --target-grid 0.5,0.8,0.9 --n-grid 10,20,40 --r-grid 2,5 --progress\n"
   ))
   quit(save = "no", status = status)
 }
@@ -34,13 +35,21 @@ parse_int_csv <- function(x, min_value, arg_name) {
   unique(out)
 }
 
+parse_num_csv <- function(x, arg_name) {
+  out <- as.numeric(strsplit(x, ",", fixed = TRUE)[[1L]])
+  if (any(is.na(out)) || any(out <= 0) || any(out >= 1)) {
+    stop(arg_name, " must contain numbers in (0, 1).", call. = FALSE)
+  }
+  unique(out)
+}
+
 parse_args <- function(argv) {
   opts <- list(
     smoke = FALSE,
     n_grid = c(10L, 20L, 40L, 100L),
     r_grid = c(2L, 5L),
     reps = 1000L,
-    target = 0.8,
+    target_grid = c(0.5, 0.8, 0.9),
     seed_base = 707070L,
     out_dir = NULL,
     progress = FALSE
@@ -59,14 +68,15 @@ parse_args <- function(argv) {
       i <- i + 1L
       next
     }
-    needs_value <- c("--n-grid", "--r-grid", "--reps", "--target", "--seed-base", "--out-dir")
+    needs_value <- c("--n-grid", "--r-grid", "--reps", "--target", "--target-grid", "--seed-base", "--out-dir")
     if (arg %in% needs_value) {
       if (i == length(argv)) stop(arg, " needs a value.", call. = FALSE)
       val <- argv[[i + 1L]]
       if (arg == "--n-grid") opts$n_grid <- parse_int_csv(val, 2L, "--n-grid")
       if (arg == "--r-grid") opts$r_grid <- parse_int_csv(val, 2L, "--r-grid")
       if (arg == "--reps") opts$reps <- as.integer(val)
-      if (arg == "--target") opts$target <- as.numeric(val)
+      if (arg == "--target") opts$target_grid <- parse_num_csv(val, "--target")
+      if (arg == "--target-grid") opts$target_grid <- parse_num_csv(val, "--target-grid")
       if (arg == "--seed-base") opts$seed_base <- as.integer(val)
       if (arg == "--out-dir") opts$out_dir <- val
       i <- i + 2L
@@ -78,11 +88,9 @@ parse_args <- function(argv) {
     opts$n_grid <- c(10L, 20L)
     opts$r_grid <- 2L
     opts$reps <- 40L
+    opts$target_grid <- c(0.8, 0.9)
   }
   if (is.na(opts$reps) || opts$reps < 1L) stop("--reps must be >= 1.", call. = FALSE)
-  if (is.na(opts$target) || opts$target <= 0 || opts$target >= 1) {
-    stop("--target must be in (0, 1).", call. = FALSE)
-  }
   if (is.na(opts$seed_base)) stop("--seed-base must be an integer.", call. = FALSE)
   opts
 }
@@ -239,13 +247,20 @@ make_interval <- function(theta, se, skew, n, method) {
 summarise_intervals <- function(intervals, estimates) {
   intervals$covered <- intervals$lower <= intervals$truth & intervals$truth <= intervals$upper
   intervals$length <- intervals$upper - intervals$lower
-  split_key <- interaction(intervals$R, intervals$n, intervals$coefficient, intervals$method, drop = TRUE)
+  intervals$miss_below <- intervals$upper < intervals$truth
+  intervals$miss_above <- intervals$lower > intervals$truth
+  split_key <- interaction(
+    intervals$target, intervals$R, intervals$n, intervals$coefficient, intervals$method,
+    drop = TRUE
+  )
   pieces <- split(intervals, split_key)
   out <- lapply(pieces, function(d) {
-    est <- estimates[estimates$R == d$R[1] & estimates$n == d$n[1] &
+    est <- estimates[estimates$target == d$target[1] &
+                       estimates$R == d$R[1] & estimates$n == d$n[1] &
                        estimates$coefficient == d$coefficient[1], ]
     valid <- is.finite(d$lower) & is.finite(d$upper)
     data.frame(
+      target = d$target[1],
       R = d$R[1],
       n = d$n[1],
       coefficient = d$coefficient[1],
@@ -253,9 +268,12 @@ summarise_intervals <- function(intervals, estimates) {
       reps = nrow(d),
       valid_reps = sum(valid),
       coverage = mean(d$covered[valid]),
+      miss_below = mean(d$miss_below[valid]),
+      miss_above = mean(d$miss_above[valid]),
       mean_length = mean(d$length[valid]),
       median_length = stats::median(d$length[valid]),
       mean_estimate = mean(est$estimate, na.rm = TRUE),
+      bias = mean(est$estimate, na.rm = TRUE) - d$target[1],
       sd_estimate = stats::sd(est$estimate, na.rm = TRUE),
       mean_se = mean(est$se, na.rm = TRUE),
       mean_skew_if = mean(est$skew_if, na.rm = TRUE),
@@ -265,53 +283,63 @@ summarise_intervals <- function(intervals, estimates) {
   do.call(rbind, out)
 }
 
-knowledge_prob <- sqrt(opts$target)
 estimate_rows <- list()
 interval_rows <- list()
 estimate_pos <- 1L
 interval_pos <- 1L
 
-for (R in opts$r_grid) {
-  for (n in opts$n_grid) {
-    if (opts$progress) {
-      message(sprintf("Running R=%d n=%d reps=%d", R, n, opts$reps))
-    }
-    for (rep in seq_len(opts$reps)) {
-      seed <- opts$seed_base + 100000L * R + 1000L * n + rep
-      set.seed(seed)
-      x <- simulate_perreault_leigh(n, R, knowledge_prob)
+for (target_idx in seq_along(opts$target_grid)) {
+  target <- opts$target_grid[[target_idx]]
+  knowledge_prob <- sqrt(target)
+  for (R in opts$r_grid) {
+    for (n in opts$n_grid) {
+      if (opts$progress) {
+        message(sprintf(
+          "Running target=%.2f R=%d n=%d reps=%d",
+          target, R, n, opts$reps
+        ))
+      }
+      for (rep in seq_len(opts$reps)) {
+        seed <- opts$seed_base + 10000000L * target_idx + 100000L * R + 1000L * n + rep
+        set.seed(seed)
+        x <- simulate_perreault_leigh(n, R, knowledge_prob)
 
-      infl <- quadratic_if_complete(x, values)
+        infl <- quadratic_if_complete(x, values)
 
-      for (coefficient in coef_names) {
-        theta <- unname(infl$estimates[coefficient])
-        se <- unname(infl$se[coefficient])
-        skew <- unname(infl$skew[coefficient])
-        estimate_rows[[estimate_pos]] <- data.frame(
-          R = R, n = n, rep = rep, seed = seed,
-          coefficient = coefficient,
-          estimate = theta,
-          se = se,
-          if_estimate = theta,
-          if_se = se,
-          skew_if = skew,
-          truth = opts$target,
-          stringsAsFactors = FALSE
-        )
-        estimate_pos <- estimate_pos + 1L
-
-        for (method in methods) {
-          ci <- make_interval(theta, se, skew, n, method)
-          interval_rows[[interval_pos]] <- data.frame(
+        for (coefficient in coef_names) {
+          theta <- unname(infl$estimates[coefficient])
+          se <- unname(infl$se[coefficient])
+          skew <- unname(infl$skew[coefficient])
+          estimate_rows[[estimate_pos]] <- data.frame(
+            target = target,
+            knowledge_prob = knowledge_prob,
             R = R, n = n, rep = rep, seed = seed,
             coefficient = coefficient,
-            method = method,
-            lower = ci[[1L]],
-            upper = ci[[2L]],
-            truth = opts$target,
+            estimate = theta,
+            se = se,
+            if_estimate = theta,
+            if_se = se,
+            skew_if = skew,
+            truth = target,
             stringsAsFactors = FALSE
           )
-          interval_pos <- interval_pos + 1L
+          estimate_pos <- estimate_pos + 1L
+
+          for (method in methods) {
+            ci <- make_interval(theta, se, skew, n, method)
+            interval_rows[[interval_pos]] <- data.frame(
+              target = target,
+              knowledge_prob = knowledge_prob,
+              R = R, n = n, rep = rep, seed = seed,
+              coefficient = coefficient,
+              method = method,
+              lower = ci[[1L]],
+              upper = ci[[2L]],
+              truth = target,
+              stringsAsFactors = FALSE
+            )
+            interval_pos <- interval_pos + 1L
+          }
         }
       }
     }
@@ -321,7 +349,7 @@ for (R in opts$r_grid) {
 estimates <- do.call(rbind, estimate_rows)
 intervals <- do.call(rbind, interval_rows)
 summary <- summarise_intervals(intervals, estimates)
-summary <- summary[order(summary$coefficient, summary$R, summary$n, summary$method), ]
+summary <- summary[order(summary$target, summary$coefficient, summary$R, summary$n, summary$method), ]
 
 dir.create(opts$out_dir, recursive = TRUE, showWarnings = FALSE)
 write.csv(estimates, file.path(opts$out_dir, "estimates.csv"), row.names = FALSE)
@@ -330,7 +358,7 @@ write.csv(summary, file.path(opts$out_dir, "summary.csv"), row.names = FALSE)
 
 metadata <- data.frame(
   key = c(
-    "experiment", "n_grid", "r_grid", "reps", "target", "knowledge_prob",
+    "experiment", "n_grid", "r_grid", "reps", "target_grid", "knowledge_prob_grid",
     "seed_base", "category_count", "methods", "source"
   ),
   value = c(
@@ -338,8 +366,8 @@ metadata <- data.frame(
     paste(opts$n_grid, collapse = ","),
     paste(opts$r_grid, collapse = ","),
     as.character(opts$reps),
-    as.character(opts$target),
-    as.character(knowledge_prob),
+    paste(opts$target_grid, collapse = ","),
+    paste(sqrt(opts$target_grid), collapse = ","),
     as.character(opts$seed_base),
     as.character(category_count),
     paste(methods, collapse = ","),

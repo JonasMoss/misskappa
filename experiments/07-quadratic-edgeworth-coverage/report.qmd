@@ -31,26 +31,38 @@ fmt <- function(x, digits = 3) {
   ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
 }
 
-focus <- summary[summary$coefficient %in% c("Conger", "Fleiss"), ]
-focus <- focus[order(focus$coefficient, focus$R, focus$n, focus$method), ]
+display_methods <- c("basic", "arcsine", "fisher", "cf_student_minus")
+focus <- summary[
+  summary$coefficient %in% c("Conger", "Fleiss") &
+    summary$method %in% display_methods,
+]
+focus <- focus[order(focus$target, focus$coefficient, focus$R, focus$n, focus$method), ]
 tab <- data.frame(
+  Target = focus$target,
   Coefficient = focus$coefficient,
   R = focus$R,
   n = focus$n,
   Method = focus$method,
   `Valid Reps` = focus$valid_reps,
   Coverage = fmt(focus$coverage),
+  `Miss Below` = fmt(focus$miss_below),
+  `Miss Above` = fmt(focus$miss_above),
   `Mean Length` = fmt(focus$mean_length),
+  Bias = fmt(focus$bias),
   `Mean SE` = fmt(focus$mean_se),
   `Mean IF Skew` = fmt(focus$mean_skew_if),
   check.names = FALSE
 )
 
 worst <- focus[order(focus$coverage), ][1, ]
-best_by_cell <- do.call(rbind, lapply(split(focus, interaction(focus$coefficient, focus$R, focus$n)), function(d) {
+best_by_cell <- do.call(rbind, lapply(split(
+  focus,
+  interaction(focus$target, focus$coefficient, focus$R, focus$n)
+), function(d) {
   d[which.min(abs(d$coverage - 0.95)), ]
 }))
 best_tab <- data.frame(
+  Target = best_by_cell$target,
   Coefficient = best_by_cell$coefficient,
   R = best_by_cell$R,
   n = best_by_cell$n,
@@ -68,23 +80,25 @@ Can a simple Edgeworth-like correction improve small-sample Wald coverage for co
 
 ## Short Answer
 
-This is a first probe. The worst coverage in this run is `r fmt(worst$coverage)` for `r worst$coefficient`, `R = r worst$R`, `n = r worst$n`, method `r worst$method`. The table below shows that the Moss (2024) pattern is easy to reproduce: the untransformed interval is fragile at small `n`, while Fisher/arcsine transformations help. The influence-skewness Cornish-Fisher variants are exploratory; use the table to see whether either sign convention is promising before formalizing anything.
+This is still exploratory, but the second pass clarifies the shape of the problem. The worst coverage in this run is `r fmt(worst$coverage)` for target `r worst$target`, `r worst$coefficient`, `R = r worst$R`, `n = r worst$n`, method `r worst$method`. The Moss (2024) pattern is easy to reproduce: the untransformed interval is fragile at small `n`, especially as the true coefficient approaches the upper boundary. Fisher and arcsine transformations help more reliably than the one-term skewness correction. The promising Cornish-Fisher sign, `cf_student_minus`, mostly shifts misses from the upper tail, but it is not yet a standalone fix.
 
 ## Evidence
 
+`Miss Below` means the interval upper endpoint is below the true coefficient; `Miss Above` means the lower endpoint is above it.
+
 ```{r}
-knitr::kable(tab, align = "lrrlrrrr")
+knitr::kable(tab, align = "rlrrlrrrrrrrr")
 ```
 
 Closest-to-nominal method by cell:
 
 ```{r}
-knitr::kable(best_tab, align = "lrrlrr")
+knitr::kable(best_tab, align = "rlrrlrrr")
 ```
 
 ## Methods
 
-The simulation follows the complete categorical Perreault-Leigh setup used in Moss (2024): five uniform categories, complete rectangular ratings, and a knowledge probability of `sqrt(target)` so the true quadratic coefficient is `r meta[["target"]]`. The ordinary intervals are basic Wald, arcsine, and Fisher transforms. The extra intervals apply Cornish-Fisher quantile shifts from the estimated influence-function skewness:
+The simulation follows the complete categorical Perreault-Leigh setup used in Moss (2024): five uniform categories, complete rectangular ratings, and a knowledge probability of `sqrt(target)` so the true quadratic coefficient equals `target`. The ordinary intervals are basic Wald, arcsine, and Fisher transforms. The extra intervals apply Cornish-Fisher quantile shifts from the estimated influence-function skewness:
 
 - `cf_if`: `z + gamma / 6 * (z^2 - 1)`;
 - `cf_student_plus`: `z + gamma / 6 * (2 z^2 + 1)`;
@@ -107,7 +121,7 @@ Rscript experiments/07-quadratic-edgeworth-coverage/run_experiment.R --smoke
 Longer exploratory run:
 
 ```sh
-Rscript experiments/07-quadratic-edgeworth-coverage/run_experiment.R --reps 1000 --n-grid 10,20,40,100 --r-grid 2,5 --progress
+Rscript experiments/07-quadratic-edgeworth-coverage/run_experiment.R --reps 1000 --target-grid 0.5,0.8,0.9 --n-grid 10,20,40,100 --r-grid 2,5 --progress
 ```
 
-This report used n grid `r meta[["n_grid"]]`, R grid `r meta[["r_grid"]]`, reps `r meta[["reps"]]`, target `r meta[["target"]]`, and seed base `r meta[["seed_base"]]`.
+This report used n grid `r meta[["n_grid"]]`, R grid `r meta[["r_grid"]]`, reps `r meta[["reps"]]`, target grid `r meta[["target_grid"]]`, and seed base `r meta[["seed_base"]]`.
