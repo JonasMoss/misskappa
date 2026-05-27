@@ -1,8 +1,30 @@
-# paper/AGENTS.md
+# papers/combined/AGENTS.md
 
 Profile: Math
 
 Target journal: Psychometrika.
+
+## Status (2026-05-27): combined draft being split into three papers
+
+This directory holds the **combined source-of-truth draft** of the
+original kappa-missing manuscript. As of 2026-05-27 the work is being
+broken into three independent papers, each with its own sibling
+directory at the repo root:
+
+- `papers/ipw/` — practical IPW paper, target Psychometrika
+- `papers/fiml/` — semiparametric-efficient estimation under MAR
+- `papers/quadratic/` — closed-form quadratic / Lin's CCC
+
+The decision and section mapping live in `papers/combined/dev/split-plan.md`.
+New work should go in the appropriate `papers/<slug>/` directory; this
+directory remains canonical only until each section has been migrated
+and marked `% MIGRATED to papers/<slug>/`. Do not delete content from
+`papers/combined/kappa-missing.tex` until the corresponding spinoff compiles
+standalone.
+
+If you are arriving cold and would otherwise edit `papers/combined/kappa-missing.tex`,
+check `papers/combined/dev/split-plan.md` first to find the spinoff directory
+that owns the section you care about.
 
 ## Scope
 
@@ -40,7 +62,7 @@ exercises the companion R package.
 - Length: target ~12 published pages (Math profile lower quartile for
   Psychometrika). Online supplement carries heavier derivations.
 - Voice: impersonal ("The estimator solves..."), past tense for results.
-- Style: see `paper/STYLE.md`. Booktabs always; Okabe-Ito palette;
+- Style: see `papers/combined/STYLE.md`. Booktabs always; Okabe-Ito palette;
   every cited number flows from `tables/<slug>_stats.tex`.
 
 ## Build

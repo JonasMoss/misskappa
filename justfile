@@ -2,7 +2,7 @@
 #
 # C++ library lives at the repo root (include/, src/, tests/).
 # R bindings live under r-package/.
-# Manuscript lives under paper/ with its own justfile.
+# Manuscripts live under papers/<slug>/, each with its own justfile.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -42,9 +42,10 @@ r-check: opt
 regen-oracle:
   @Rscript tests/tools/regen_oracle.R
 
-# Delegate to the paper-local justfile for the manuscript.
-paper *args:
-  @cd paper && just {{args}}
+# Delegate to a paper-local justfile. Slug is one of: combined, ipw, fiml, quadratic.
+# Example: just paper ipw pdf
+paper slug *args:
+  @cd papers/{{slug}} && just {{args}}
 
 clean:
   @rm -rf build-dev build-opt

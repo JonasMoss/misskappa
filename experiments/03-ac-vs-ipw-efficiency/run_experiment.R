@@ -8,7 +8,7 @@
 #   (iii) within-pair correlation of M (3 levels: 0, 0.4, 0.8)
 # at one moderate n. Reports bias, MC SD, MSE for AC and IPW.
 #
-# Rater model: latent truth + guess (matches paper/scripts). Missingness:
+# Rater model: latent truth + guess (matches papers/combined/scripts). Missingness:
 # Gaussian-copula latent with equicorrelated within-subject structure. The
 # mechanism is independent of the latent truth, so IPW is consistent in
 # every cell; AC is consistent only under exchangeable raters.

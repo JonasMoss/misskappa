@@ -12,9 +12,53 @@ Multiple agents may work in parallel, one experiment per agent. Pick a
 slug from "Open", move it to "In progress" with your owner string, and
 proceed. Do not touch entries other agents are working on.
 
+## Paper mapping
+
+The combined `papers/combined/kappa-missing.tex` has been split into
+three papers (see `papers/combined/dev/split-plan.md`). Each
+`report.qmd` should annotate which paper(s) it feeds.
+
+- `01-coverage-iif-louis` — IPW coverage feeds **Paper A**; Louis-SE
+  conservatism finding feeds **Paper B** (needs resolution before
+  submission).
+- `02-rater-model-sensitivity` — DGP-choice question for **Paper A**
+  and **Paper B**.
+- `03-ac-vs-ipw-efficiency` — **Paper A** centerpiece (AC
+  inconsistency under non-exchangeable raters).
+- `04-counts-sampling-misspec` — **Paper B** (counts-FIML scope claim
+  needs to be sharpened to MCAR + actually exchangeable raters).
+- `05-fiml-sparsity-scaling` — **Paper B** (FIML bias scaling /
+  manuscript caveat).
+- `06-raw-estimator-scaling` — library engineering; feeds no paper
+  directly.
+- `07-quadratic-edgeworth-coverage` — Edgeworth coverage / quadratic
+  variance work feeding **Paper C** (created in parallel by another
+  agent; report under `experiments/07-quadratic-edgeworth-coverage/`).
+- `08-quadratic-vs-ipw` (open, below) — **Paper C** centerpiece.
+
 ## Open
 
-(none)
+### `08-quadratic-vs-ipw` — feeds Paper C
+
+**Question.** How does the closed-form quadratic-kappa moment
+estimator on pairwise-available data compare to raw IPW
+(continuous / quadratic-loss) in finite samples, and is it
+MAR-consistent on pairwise-available data?
+
+**Approach.** Continuous bivariate (and ≥ 3-rater) DGPs with known
+Lin's CCC. Three missingness mechanisms: (a) MCAR baseline,
+(b) MAR conditional on observed ratings of other raters,
+(c) MAR conditional on rater identity only. Sweep `n` and missingness
+rate. Compare bias, SD, MSE, Wald coverage between
+`misskappa::kappa_quadratic()` and `misskappa::kappa(method = "ipw")`
+(with quadratic loss). Tie variance estimates back to the U-statistic
+asymptotics from Moss (2024).
+
+**Why it matters.** Decides whether Paper C's headline result is
+MCAR-only or extends to MAR on pairwise-available data, and settles
+the efficiency-gain claim against Paper A's IPW. None of experiments
+01–06 are quadratic-focused; without 07 there is no empirical anchor
+for Paper C.
 
 ## In progress
 

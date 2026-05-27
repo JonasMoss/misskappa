@@ -46,6 +46,19 @@ urlcolor=urlblue
 \providecommand{\assumptionname}{Assumption}
 \providecommand{\remarkname}{Remark}
 
+% =============================================================
+% MIGRATION STATUS (2026-05-27)
+% This combined draft is the source-of-truth reference while the
+% three spinoff papers are being constructed:
+%   * papers/ipw/      Paper A (IPW + AC/Gwet, MCAR case)
+%   * papers/fiml/     Paper B (FIML, MAR case)
+%   * papers/quadratic/Paper C (closed-form quadratic = Lin's CCC)
+% Per-section MIGRATED comments below mark which spinoff carries
+% the material. Sections without a MIGRATED comment have not yet
+% been migrated to a spinoff. Do not delete migrated content from
+% this draft until the relevant spinoff compiles and reads cleanly
+% end-to-end.
+% =============================================================
 \begin{document}
 \title{Agreement coefficients with missing raters}
 \author{Jonas Moss}
@@ -71,6 +84,7 @@ in the R package \texttt{misskappa}.
 
 \maketitle
 
+% MIGRATED to papers/ipw/ (IPW-only rewrite of Introduction)
 \section{Introduction}
 
 Inter-rater agreement is routinely summarised by a chance-corrected
@@ -124,6 +138,8 @@ an R package \texttt{misskappa} with a single user-facing entry point;
 the empirical example in Section \ref{sec:rpackage} demonstrates its
 use.
 
+% MIGRATED to papers/ipw/ (full Setup section). Papers/fiml/ and
+% papers/quadratic/ will carry their own trimmed Setup sections.
 \section{Setup}
 
 \label{sec:setup}
@@ -223,6 +239,7 @@ data for subject $i$ is $(X_{i,1},\dots,X_{i,R})$ with possibly some
 entries equal to $\mathrm{NA}$. Subjects are assumed independent
 and identically distributed under the full-data model.
 
+% MIGRATED to papers/ipw/ (Sec 3.1 -> Paper A "Estimator and consistency")
 \subsection{IPW (Hájek-type) estimator}
 
 \label{sec:raw-ipw}
@@ -270,6 +287,7 @@ the chance component uses \emph{marginal product} weights $\hat{\pi}_{j}^{-1}\ha
 This reflects the within-subject versus cross-subject structure of
 the two terms.
 
+% NOT migrated to Paper A. Sec 3.2 (raw FIML) is Paper B material.
 \subsection{FIML estimator}
 
 \label{sec:raw-fiml}
@@ -321,6 +339,9 @@ The asymptotic variance $\sigma_{X,\mathrm{FIML}}^{2}$ is estimated
 from Louis' observed-information identity at convergence; see Section
 \ref{sec:raw-inference}.
 
+% PARTIALLY MIGRATED to papers/ipw/. The IPW influence-function / V-
+% statistic delta-method paragraphs are in Paper A Sec 3.2. The Louis
+% observed-information paragraphs (FIML side) are Paper B material.
 \subsection{Inference}
 
 \label{sec:raw-inference}
@@ -378,6 +399,7 @@ with $\sum_{c=1}^{C}N_{i,c}=r_{i}\leq R$, where $r_{i}$ is the number
 of raters who rated subject $i$. The model for this section is exchangeable
 raters with hypergeometric subsampling.
 
+% MIGRATED to papers/ipw/ (Sec 4.1 -> Paper A "Model and assumptions")
 \subsection{Model and assumptions}
 
 \label{sec:counts-model}
@@ -413,6 +435,8 @@ and $d_{F}(\theta)=p(\theta)^{\top}Lp(\theta)$ with $p(\theta)_{c}=\sum_{z}\thet
 The Conger variant requires rater identities and is not in scope for
 counts data.
 
+% NOT migrated to Paper A. Remark 1 (identifiability of kappa despite
+% non-identified theta) is Paper B material.
 \begin{rem}[Identifiability]
 \label{rem:identifiability}The parameter $\theta$ is not in general
 identified from partial counts: different distributions on full compositions
@@ -424,6 +448,7 @@ $\hat{\theta}$ on the same data, but the resulting $\hat{\kappa}_{X}$
 is unique.
 \end{rem}
 
+% MIGRATED to papers/ipw/ (Sec 4.2 -> Paper A "Pairwise plug-in estimator")
 \subsection{Pairwise plug-in estimator}
 
 \label{sec:counts-available}
@@ -460,6 +485,7 @@ and the strong law gives convergence of $\hat{d}^{\mathrm{AC}}$ to
 $d(\theta)$.
 \end{proof}
 
+% NOT migrated to Paper A. Sec 4.3 (counts FIML) is Paper B material.
 \subsection{FIML for counts}
 
 \label{sec:counts-fiml}
@@ -495,6 +521,9 @@ sums $r_{i}$ vary substantially across subjects, because it downweights
 short rows whose $N_{i}$ pins down $Z_{i}$ less tightly. When $r_{i}\equiv R$,
 the two estimators coincide.
 
+% PARTIALLY MIGRATED to papers/ipw/. Paper A's counts pairwise plug-in
+% inference is folded into Sec 4.2 as a one-paragraph pointer to Sec 3.2.
+% The FIML Moore-Penrose paragraph here is Paper B material.
 \subsection{Inference for counts}
 
 \label{sec:counts-inference}
@@ -517,6 +546,8 @@ to the choice of representative.
 Two estimators that appear in applied practice, and one closed-form
 special case, are recorded here for comparison.
 
+% MIGRATED to papers/ipw/ (Sec 5.1 -> Paper A Sec 5.1, reframed around
+% AC inconsistency under non-exchangeable raters per Exp 03).
 \subsection{Available-case (raw)}
 
 \label{sec:other-ac}
@@ -545,6 +576,7 @@ while the efficient estimator weights each pair inversely to its observation
 probability. The bias-and-efficiency picture is illustrated by simulation
 in Section \ref{sec:simulations}.
 
+% MIGRATED to papers/ipw/ (Sec 5.2 -> Paper A Sec 5.2)
 \subsection{Gwet's reweighting}
 
 \label{sec:other-gwet}
@@ -563,6 +595,8 @@ MCAR with constant $\pi_{j}$, and inherits the bias of the available-case
 observed-disagreement component when the missingness mechanism varies
 across raters.
 
+% NOT migrated to Paper A. Sec 5.3 (closed-form quadratic) is Paper C
+% material, where it anchors the Lin's-CCC framing.
 \subsection{Closed-form quadratic estimator}
 
 \label{sec:other-quadratic}
@@ -581,6 +615,9 @@ entries) but no longer efficient outside the two-rater special case;
 in those settings FIML on the discretised data is the recommended
 estimator.
 
+% PARTIALLY MIGRATED to papers/ipw/. Paper A keeps IPW / AC / Gwet
+% rows only and drops DGP C (MAR; Paper B). Table regeneration is
+% pending the script split.
 \section{Simulations}
 
 \label{sec:simulations}
@@ -612,6 +649,9 @@ are consistent, with comparable Monte Carlo SDs.
 Additional tables for the linear loss, Fleiss, and Brennan--Prediger
 variants are in \texttt{supplement/simulations-raw-three-estimators-appendix.tex}.
 
+% PARTIALLY MIGRATED to papers/ipw/. Paper A keeps IPW / AC / Gwet
+% paths only; the counts FIML example becomes a counts "available"
+% example. Paper B will document the FIML paths.
 \section{The R package \texttt{misskappa}}
 
 \label{sec:rpackage}
@@ -647,6 +687,9 @@ kappa_counts(dat.fleiss1971, method = "fiml",
 With $r_{i}\equiv R$ the pairwise plug-in and FIML coincide; the
 example is included to demonstrate the call shape.
 
+% PARTIALLY MIGRATED to papers/ipw/. Paper A's conclusion lands on
+% IPW with pointers to companion papers; the FIML / quadratic
+% paragraphs migrate to Papers B and C respectively.
 \section{Concluding remarks}
 
 \label{sec:remarks}
@@ -677,6 +720,7 @@ the efficiency theory is left for future work.
 
 \appendix
 
+% MIGRATED to papers/ipw/ (Appendix proof of Prop 5)
 \section{Proof of Proposition \ref{prop:ac-consistency}}
 
 \label{sec:appendix-ac}

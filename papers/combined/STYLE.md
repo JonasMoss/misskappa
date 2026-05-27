@@ -1,6 +1,6 @@
 # Style
 
-How misskappa papers look and read. Companion to `paper/AGENTS.md` (which
+How misskappa papers look and read. Companion to `papers/<slug>/AGENTS.md` (which
 defines manuscript structure and paper-specific direction). When you draft
 text or build a table or figure, this file is the reference.
 

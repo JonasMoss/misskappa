@@ -151,7 +151,7 @@ lines should be near 5%.
   `run_experiment.R`. The same `vcov` already carries all three diagonal
   entries.
 - DGPs A / B / C are inherited from
-  `paper/scripts/simulations_raw_three_estimators.R`; they use a
+  `papers/combined/scripts/simulations_raw_three_estimators.R`; they use a
   constrained latent-truth-plus-guess rater model. Coverage under a
   Dawid-Skene rater model is exercised in
   `experiments/02-rater-model-sensitivity`.
