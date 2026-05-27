@@ -287,7 +287,7 @@ the chance component uses \emph{marginal product} weights $\hat{\pi}_{j}^{-1}\ha
 This reflects the within-subject versus cross-subject structure of
 the two terms.
 
-% NOT migrated to Paper A. Sec 3.2 (raw FIML) is Paper B material.
+% MIGRATED to papers/fiml/ (Sec 3.2 -> Paper B Sec 3.1 + 3.2)
 \subsection{FIML estimator}
 
 \label{sec:raw-fiml}
@@ -339,9 +339,11 @@ The asymptotic variance $\sigma_{X,\mathrm{FIML}}^{2}$ is estimated
 from Louis' observed-information identity at convergence; see Section
 \ref{sec:raw-inference}.
 
-% PARTIALLY MIGRATED to papers/ipw/. The IPW influence-function / V-
-% statistic delta-method paragraphs are in Paper A Sec 3.2. The Louis
-% observed-information paragraphs (FIML side) are Paper B material.
+% MIGRATED:
+%   * IPW influence-function / V-statistic delta-method paragraphs ->
+%     papers/ipw/ Sec 3.2.
+%   * Louis observed-information paragraphs (FIML side) -> papers/fiml/
+%     Sec 3.3, with an added finite-sample caveat per experiment 01.
 \subsection{Inference}
 
 \label{sec:raw-inference}
@@ -435,8 +437,8 @@ and $d_{F}(\theta)=p(\theta)^{\top}Lp(\theta)$ with $p(\theta)_{c}=\sum_{z}\thet
 The Conger variant requires rater identities and is not in scope for
 counts data.
 
-% NOT migrated to Paper A. Remark 1 (identifiability of kappa despite
-% non-identified theta) is Paper B material.
+% MIGRATED to papers/fiml/ Sec 4.3 (Remark 1: kappa identified,
+% theta is not).
 \begin{rem}[Identifiability]
 \label{rem:identifiability}The parameter $\theta$ is not in general
 identified from partial counts: different distributions on full compositions
@@ -485,7 +487,10 @@ and the strong law gives convergence of $\hat{d}^{\mathrm{AC}}$ to
 $d(\theta)$.
 \end{proof}
 
-% NOT migrated to Paper A. Sec 4.3 (counts FIML) is Paper B material.
+% MIGRATED to papers/fiml/ Sec 4.2 (counts-FIML estimator + Prop 4),
+% with sharpened scope claim per experiment 04: counts-FIML requires
+% raters that are *actually* exchangeable (rater-specific dropout
+% aggregated into counts breaks it).
 \subsection{FIML for counts}
 
 \label{sec:counts-fiml}
@@ -521,9 +526,10 @@ sums $r_{i}$ vary substantially across subjects, because it downweights
 short rows whose $N_{i}$ pins down $Z_{i}$ less tightly. When $r_{i}\equiv R$,
 the two estimators coincide.
 
-% PARTIALLY MIGRATED to papers/ipw/. Paper A's counts pairwise plug-in
-% inference is folded into Sec 4.2 as a one-paragraph pointer to Sec 3.2.
-% The FIML Moore-Penrose paragraph here is Paper B material.
+% MIGRATED:
+%   * counts pairwise plug-in inference -> papers/ipw/ Sec 4.2 (folded
+%     as a one-paragraph pointer to Sec 3.2).
+%   * FIML Moore-Penrose pseudo-inverse paragraph -> papers/fiml/ Sec 4.4.
 \subsection{Inference for counts}
 
 \label{sec:counts-inference}
@@ -615,9 +621,11 @@ entries) but no longer efficient outside the two-rater special case;
 in those settings FIML on the discretised data is the recommended
 estimator.
 
-% PARTIALLY MIGRATED to papers/ipw/. Paper A keeps IPW / AC / Gwet
-% rows only and drops DGP C (MAR; Paper B). Table regeneration is
-% pending the script split.
+% MIGRATED:
+%   * papers/ipw/ Sec 6 (IPW / AC / Gwet rows; DGP C dropped from prose).
+%   * papers/fiml/ Sec 5 (FIML rows; DGP C honestly flagged as MNAR
+%     boundary per experiment 01; counts-FIML scope claim sharpened).
+% Table regeneration is pending the script split in either paper.
 \section{Simulations}
 
 \label{sec:simulations}
@@ -649,9 +657,11 @@ are consistent, with comparable Monte Carlo SDs.
 Additional tables for the linear loss, Fleiss, and Brennan--Prediger
 variants are in \texttt{supplement/simulations-raw-three-estimators-appendix.tex}.
 
-% PARTIALLY MIGRATED to papers/ipw/. Paper A keeps IPW / AC / Gwet
-% paths only; the counts FIML example becomes a counts "available"
-% example. Paper B will document the FIML paths.
+% MIGRATED:
+%   * papers/ipw/ Sec 7 (IPW / available / gwet paths; counts example
+%     uses method = "available").
+%   * papers/fiml/ Sec 6 (FIML paths; counts example uses method =
+%     "fiml" with wider em_options).
 \section{The R package \texttt{misskappa}}
 
 \label{sec:rpackage}
@@ -687,9 +697,11 @@ kappa_counts(dat.fleiss1971, method = "fiml",
 With $r_{i}\equiv R$ the pairwise plug-in and FIML coincide; the
 example is included to demonstrate the call shape.
 
-% PARTIALLY MIGRATED to papers/ipw/. Paper A's conclusion lands on
-% IPW with pointers to companion papers; the FIML / quadratic
-% paragraphs migrate to Papers B and C respectively.
+% MIGRATED:
+%   * papers/ipw/ Sec 8 (IPW-focused conclusion with pointers to B and C).
+%   * papers/fiml/ Sec 7 (efficiency-focused conclusion with the Louis
+%     finite-sample caveat and the counts-FIML scope sharpening).
+%   * Quadratic-paragraph migration to papers/quadratic/ is pending.
 \section{Concluding remarks}
 
 \label{sec:remarks}
