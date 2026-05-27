@@ -1,5 +1,5 @@
 ---
-title: "Experiment 14: MCAR verification under the Perreault–Leigh DGP"
+title: "Experiment 14: MCAR verification under a heterogeneous judge-skill DGP"
 format:
   html:
     toc: true
@@ -32,13 +32,18 @@ fmt <- function(x, digits = 3) {
 
 ## Question
 
-Under the Perreault–Leigh judge-skill DGP with MCAR missingness, does
-the closed-form quadratic moment estimator
+Under a heterogeneous judge-skill DGP (per-rater skill and per-rater
+guessing bias, on integer scores $C = \{-2,\dots,2\}$) with MCAR
+missingness, does the closed-form quadratic moment estimator
 (`misskappa::kappa_quadratic`) deliver negligible bias and approximately
-nominal Wald coverage for Fleiss and Conger across a small
-$(n, R)$ grid? How does empirical $\widehat{\Gamma}$ compare to normal
+nominal Wald coverage for Fleiss and Conger across a small $(n, R)$
+grid? How does empirical $\widehat{\Gamma}$ compare to normal
 $\Gamma_{N}$? And how does the pairwise-available estimator compare to
-listwise deletion in RMSE?
+listwise deletion in RMSE? Per-rater guessing bias is included so that
+$\kappa_{F}$ and $\kappa_{C}$ are genuinely distinct
+($(\kappa_{F}, \kappa_{C}) = (0.500, 0.523)$ at $R = 2$ and
+$(0.427, 0.445)$ at $R = 4$); under exchangeable Perreault–Leigh they
+would collapse.
 
 ## Short answer
 
@@ -76,7 +81,8 @@ knitr::kable(focus, row.names = FALSE,
 
 ## Caveats
 
-- Single DGP (Perreault–Leigh, $p_{k} = 0.9$, $C = \{-2,\dots,2\}$).
+- Single DGP (heterogeneous judge-skill on $C = \{-2,\dots,2\}$;
+  skills $(0.65, 0.70, 0.75, 0.70)$ with per-rater guessing matrix).
 - Single pairwise observation rate ($0.6$).
 - Wald intervals only. Fisher and arcsine transforms from
   \citet{Moss2024-cc} improve small-$n$ coverage but are not

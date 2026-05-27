@@ -1,10 +1,15 @@
 #!/usr/bin/env Rscript
 #
 # Experiment 14: MCAR verification sims for the closed-form quadratic
-# kappa estimator. Perreault-Leigh judge-skill DGP, MCAR missingness,
-# empirical and normal Gamma. Reports bias, SE accuracy, Wald coverage,
-# and RMSE for Fleiss and Conger. Includes a paired comparison between
-# the pairwise-available estimator and listwise deletion.
+# kappa estimator. Heterogeneous judge-skill DGP with per-rater
+# knowledge probabilities and per-rater guessing distributions, MCAR
+# missingness, empirical and normal Gamma. Reports bias, SE accuracy,
+# Wald coverage, and RMSE for Fleiss and Conger. Includes a paired
+# comparison between the pairwise-available estimator and listwise
+# deletion. The per-rater guessing distributions are intentionally
+# asymmetric across raters so that the rater means differ; this
+# separates kappa_F from kappa_C, which would otherwise collapse under
+# the exchangeable Perreault-Leigh special case.
 
 suppressPackageStartupMessages({
   library(misskappa)
@@ -23,9 +28,9 @@ usage <- function(status = 0L) {
     "  --seed-base N       Base seed. Default: 141414.\n",
     "  --out-dir PATH      Output directory. Default: script-local results/.\n",
     "  --progress          One line per design cell.\n\n",
-    "DGP: Perreault-Leigh judge-skill model with knowledge probability\n",
-    "p_k = 0.8 and integer category scores {-2,-1,0,1,2}. Implies\n",
-    "kappa_F = kappa_C = 0.8 for any R.\n"
+    "DGP: heterogeneous judge-skill model on category scores {-2,-1,0,1,2}.\n",
+    "Per-rater knowledge probabilities and per-rater guessing distributions\n",
+    "produce different rater means, separating kappa_F from kappa_C.\n"
   ))
   quit(save = "no", status = status)
 }
@@ -89,31 +94,70 @@ parse_args <- function(argv) {
   opts
 }
 
-# Perreault-Leigh DGP --------------------------------------------------------
+# Heterogeneous judge-skill DGP ----------------------------------------------
 #
-# Categories C = {-2, -1, 0, 1, 2}, knowledge probability p_k = 0.9 (matches
-# Moss 2024 Example 3). For each subject draw a truth uniformly from C; each
-# rater independently reports the truth with probability p_k or a uniform
-# guess otherwise. The marginal is uniform on C, so the (mu, Sigma)-based
-# Conger and Fleiss kappa both equal p_k^2 under exchangeable raters:
-# Cov(X_j, X_k) = p_k^2 Var(T) and Var(X_j) = Var(T). At p_k = 0.9 the truth
-# is therefore 0.81 (Moss 2024 Example 3 reports 0.816 following Perreault &
-# Leigh 1989; the small gap is a normalization detail of their derivation).
+# Categories C = {-2, -1, 0, 1, 2}, uniform truth distribution. Each rater
+# j has its own knowledge probability s_j and guessing distribution G[j, ].
+# With prob s_j rater j reports the truth; otherwise rater j draws from
+# G[j, ]. The bias rows below are intentionally asymmetric across raters
+# so that rater means differ -- this gives kappa_F < kappa_C.
+#
+# For R = 4 we use all four bias rows (raters span low-bias to high-bias).
+# For R = 2 we use rows 2 and 3 -- the two mildly biased raters -- so that
+# the kappa values stay in a comparable range to the R = 4 cells. This
+# yields the population truths kappa_F = 0.503, kappa_C = 0.525 at R = 2
+# and kappa_F = 0.428, kappa_C = 0.445 at R = 4 (computed in closed form
+# from the population (mu, Sigma) below).
 
 VALUES <- c(-2, -1, 0, 1, 2)
-KNOWLEDGE_PROB <- 0.9
-TRUTH <- KNOWLEDGE_PROB^2  # exchangeable PL: kappa_F = kappa_C = p_k^2
+TRUE_DIST <- rep(1 / length(VALUES), length(VALUES))
 
-simulate_perreault_leigh <- function(n, R) {
-  C <- length(VALUES)
-  truth_idx <- sample.int(C, n, replace = TRUE)
-  x <- matrix(NA_integer_, nrow = n, ncol = R)
-  for (j in seq_len(R)) {
-    knows <- stats::runif(n) < KNOWLEDGE_PROB
-    guesses <- sample.int(C, n, replace = TRUE)
-    x[, j] <- ifelse(knows, truth_idx, guesses)
+GUESS_FULL <- rbind(
+  c(0.70, 0.30, 0.00, 0.00, 0.00),
+  c(0.30, 0.50, 0.20, 0.00, 0.00),
+  c(0.00, 0.00, 0.20, 0.50, 0.30),
+  c(0.00, 0.00, 0.00, 0.30, 0.70)
+)
+SKILL_FULL <- c(0.65, 0.70, 0.75, 0.70)
+SELECT_FOR_R <- list(`2` = c(2L, 3L), `4` = 1:4)
+
+dgp_params <- function(R) {
+  key <- as.character(R)
+  if (is.null(SELECT_FOR_R[[key]])) {
+    stop("Unsupported R: ", R, ". Add an entry to SELECT_FOR_R.", call. = FALSE)
   }
-  matrix(VALUES[x], nrow = n, ncol = R)
+  idx <- SELECT_FOR_R[[key]]
+  list(s = SKILL_FULL[idx], G = GUESS_FULL[idx, , drop = FALSE])
+}
+
+simulate_jsm <- function(n, R) {
+  pars <- dgp_params(R)
+  x_idx <- misskappa::sim$jsm(n = n, s = pars$s, model = "general",
+                              true_dist = TRUE_DIST, guessing_dist = pars$G)
+  matrix(VALUES[x_idx], nrow = n, ncol = R)
+}
+
+true_kappas <- function(R) {
+  pars <- dgp_params(R); s <- pars$s; G <- pars$G
+  ET <- sum(VALUES * TRUE_DIST)
+  ET2 <- sum(VALUES^2 * TRUE_DIST)
+  EG <- as.numeric(G %*% VALUES)
+  EG2 <- as.numeric(G %*% (VALUES^2))
+  mu <- s * ET + (1 - s) * EG
+  EV <- s * (ET2 - ET^2) + (1 - s) * (EG2 - EG^2)
+  VE <- s * (ET - mu)^2 + (1 - s) * (EG - mu)^2
+  sigma_jj <- EV + VE
+  Sigma <- matrix(0, R, R); diag(Sigma) <- sigma_jj
+  for (j in 1:R) for (k in 1:R) if (j != k) {
+    EXX <- s[j] * s[k] * ET2 +
+           s[j] * (1 - s[k]) * ET * EG[k] +
+           (1 - s[j]) * s[k] * EG[j] * ET +
+           (1 - s[j]) * (1 - s[k]) * EG[j] * EG[k]
+    Sigma[j, k] <- EXX - mu[j] * mu[k]
+  }
+  t1 <- sum(Sigma); t2 <- sum(diag(Sigma)); t3 <- sum((mu - mean(mu))^2)
+  c(Fleiss = (t1 - t2 - t3) / ((R - 1) * (t2 + t3)),
+    Conger = (t1 - t2) / ((R - 1) * t2 + R * t3))
 }
 
 apply_mcar <- function(X, p_pair) {
@@ -179,8 +223,11 @@ if (is.null(opts$out_dir)) opts$out_dir <- file.path(script_dir, "results")
 
 z975 <- stats::qnorm(0.975)
 rows <- vector("list", 0L); pos <- 1L
+truth_by_R <- lapply(opts$r_grid, function(R) true_kappas(R))
+names(truth_by_R) <- as.character(opts$r_grid)
 
 for (R in opts$r_grid) {
+  truth <- truth_by_R[[as.character(R)]]
   for (n in opts$n_grid) {
     for (p_pair in opts$miss_grid) {
       if (opts$progress) {
@@ -189,20 +236,21 @@ for (R in opts$r_grid) {
       for (rep in seq_len(opts$reps)) {
         seed <- opts$seed_base + 1e7 * R + 1e4 * n + 1e2 * round(100 * p_pair) + rep
         set.seed(seed)
-        X <- simulate_perreault_leigh(n, R)
+        X <- simulate_jsm(n, R)
         X <- apply_mcar(X, p_pair)
         fits <- fit_paired(X)
         if (is.null(fits)) next
         for (i in seq_len(nrow(fits))) {
+          coef <- fits$coefficient[[i]]
           est <- fits$estimate[[i]]
           se <- fits$se[[i]]
           rows[[pos]] <- data.frame(
             R = R, n = n, p_pair = p_pair, rep = rep,
             estimator = fits$estimator[[i]],
             vcov_kind = fits$vcov_kind[[i]],
-            coefficient = fits$coefficient[[i]],
+            coefficient = coef,
             n_used = fits$n_used[[i]],
-            truth = TRUTH,
+            truth = unname(truth[coef]),
             estimate = est,
             se = se,
             lower = est - z975 * se,
@@ -249,14 +297,14 @@ write.csv(estimates, file.path(opts$out_dir, "estimates.csv"), row.names = FALSE
 write.csv(summary, file.path(opts$out_dir, "summary.csv"), row.names = FALSE)
 
 metadata <- data.frame(
-  key = c("experiment", "dgp", "knowledge_prob", "values",
+  key = c("experiment", "dgp", "skills_full", "values",
           "n_grid", "r_grid", "miss_grid", "reps", "seed_base",
           "estimators", "vcov_kinds",
           "R_version", "misskappa_version"),
   value = c(
     "14-quadratic-mcar-verification",
-    "perreault-leigh (Moss 2024 Sec 5.1.1)",
-    as.character(KNOWLEDGE_PROB),
+    "heterogeneous judge-skill (sim$jsm 'general'); per-rater bias",
+    paste(SKILL_FULL, collapse = ","),
     paste(VALUES, collapse = ","),
     paste(opts$n_grid, collapse = ","),
     paste(opts$r_grid, collapse = ","),
