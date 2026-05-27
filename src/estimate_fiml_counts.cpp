@@ -23,7 +23,8 @@
 
 #include "misskappa/estimate.hpp"
 
-#include <Eigen/QR>
+#include "detail_psd_inverse.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -353,7 +354,8 @@ EmIterStatus run_em_iterations(
 RealMat em_variance(
     const Eigen::VectorXd& theta_pruned,
     const std::vector<std::uint64_t>& pruned_active_indices,
-    const EmInputCounts& in) {
+    const EmInputCounts& in,
+    const EmOptions& opts) {
   const Eigen::Index n_final = theta_pruned.size();
   if (n_final <= 1) return RealMat::Zero(n_final, n_final);
 
@@ -404,9 +406,7 @@ RealMat em_variance(
                           * s_reduced * s_reduced.transpose();
   }
 
-  info_star = 0.5 * (info_star + info_star.transpose());
-  Eigen::CompleteOrthogonalDecomposition<RealMat> cod(info_star);
-  RealMat var_star = cod.pseudoInverse();
+  RealMat var_star = detail::pseudo_inverse_psd(info_star, opts.info_rcond);
 
   RealMat J = RealMat::Zero(n_final, n_final - 1);
   Eigen::Index w = 0;
@@ -466,7 +466,7 @@ Result<EmRunResultCounts> run_em(
   for (std::uint64_t a : pruned_active) {
     out.pattern_ranks.push_back(in.active_ranks[static_cast<std::size_t>(a)]);
   }
-  out.vcov = em_variance(out.theta_hat, pruned_active, in);
+  out.vcov = em_variance(out.theta_hat, pruned_active, in, opts);
   return out;
 }
 

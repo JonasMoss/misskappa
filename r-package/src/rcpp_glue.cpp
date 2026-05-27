@@ -12,6 +12,7 @@
 #include <limits>
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/diagnostics.hpp"
 #include "misskappa/loss.hpp"
 
 // [[Rcpp::depends(RcppEigen)]]
@@ -126,6 +127,27 @@ Rcpp::List estimation_to_list(const misskappa::Estimation& e) {
       Rcpp::Named("vcov") = vcov);
 }
 
+misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
+  misskappa::EmOptions opts;
+  if (em_options.containsElementNamed("tol"))
+    opts.tol = Rcpp::as<double>(em_options["tol"]);
+  if (em_options.containsElementNamed("max_iter"))
+    opts.max_iter = Rcpp::as<int>(em_options["max_iter"]);
+  if (em_options.containsElementNamed("prune_tol"))
+    opts.prune_tol = Rcpp::as<double>(em_options["prune_tol"]);
+  if (em_options.containsElementNamed("start_alpha"))
+    opts.start_alpha = Rcpp::as<double>(em_options["start_alpha"]);
+  if (em_options.containsElementNamed("info_rcond"))
+    opts.info_rcond = Rcpp::as<double>(em_options["info_rcond"]);
+  return opts;
+}
+
+Rcpp::NumericVector to_numeric_vector(const Eigen::VectorXd& x) {
+  Rcpp::NumericVector out(x.size());
+  for (Eigen::Index i = 0; i < x.size(); ++i) out[i] = x(i);
+  return out;
+}
+
 }  // namespace
 
 // [[Rcpp::export]]
@@ -145,15 +167,7 @@ Rcpp::List rcpp_kappa_raw(
   } else if (method == "gwet") {
     r = misskappa::estimate_gwet(in.ratings_indexed, in.weights);
   } else if (method == "fiml") {
-    misskappa::EmOptions opts;
-    if (em_options.containsElementNamed("tol"))
-      opts.tol = Rcpp::as<double>(em_options["tol"]);
-    if (em_options.containsElementNamed("max_iter"))
-      opts.max_iter = Rcpp::as<int>(em_options["max_iter"]);
-    if (em_options.containsElementNamed("prune_tol"))
-      opts.prune_tol = Rcpp::as<double>(em_options["prune_tol"]);
-    if (em_options.containsElementNamed("start_alpha"))
-      opts.start_alpha = Rcpp::as<double>(em_options["start_alpha"]);
+    misskappa::EmOptions opts = parse_em_options(em_options);
     r = misskappa::estimate_fiml(in.ratings_indexed, in.weights, opts);
   } else {
     Rcpp::stop("Unknown method: " + method);
@@ -206,18 +220,34 @@ Rcpp::List rcpp_kappa_fiml_counts(
     Rcpp::stop("Unknown weight type: " + weight_type);
   }
 
-  misskappa::EmOptions opts;
-  if (em_options.containsElementNamed("tol"))
-    opts.tol = Rcpp::as<double>(em_options["tol"]);
-  if (em_options.containsElementNamed("max_iter"))
-    opts.max_iter = Rcpp::as<int>(em_options["max_iter"]);
-  if (em_options.containsElementNamed("prune_tol"))
-    opts.prune_tol = Rcpp::as<double>(em_options["prune_tol"]);
-  if (em_options.containsElementNamed("start_alpha"))
-    opts.start_alpha = Rcpp::as<double>(em_options["start_alpha"]);
+  misskappa::EmOptions opts = parse_em_options(em_options);
 
   auto r = misskappa::estimate_fiml_counts(mapped, W, r_total, opts);
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_fiml_louis_spectrum(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::List em_options) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values);
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = unwrap(misskappa::diagnose_fiml_louis(in.ratings_indexed, in.weights, opts));
+  return Rcpp::List::create(
+      Rcpp::Named("eigenvalues") = to_numeric_vector(r.eigenvalues),
+      Rcpp::Named("gradient_projection") = to_numeric_vector(r.gradient_projection),
+      Rcpp::Named("variance_contribution") = to_numeric_vector(r.variance_contribution),
+      Rcpp::Named("variance") = r.variance,
+      Rcpp::Named("lambda_max") = r.lambda_max,
+      Rcpp::Named("threshold") = r.threshold,
+      Rcpp::Named("retained_rank") = r.retained_rank,
+      Rcpp::Named("kappa_conger") = r.kappa_conger,
+      Rcpp::Named("n_subjects") = static_cast<double>(r.n_subjects),
+      Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns),
+      Rcpp::Named("C") = r.c,
+      Rcpp::Named("R") = r.R);
 }
 
 // [[Rcpp::export]]

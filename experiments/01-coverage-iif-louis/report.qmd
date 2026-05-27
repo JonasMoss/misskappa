@@ -42,36 +42,35 @@ mc_se_cov <- function(p, B) sqrt(p * (1 - p) / B)
 
 ## Question
 
-Do the IPW influence-function Wald CIs and FIML Louis-information Wald
-CIs for Conger's $\kappa$ achieve nominal coverage at moderate sample
-sizes, across MCAR (DGPs A and B) and MAR (DGP C) missingness?
+Do the IPW influence-function Wald CIs and the rank-truncated FIML
+Louis-information Wald CIs for Conger's $\kappa$ achieve calibrated
+standard errors at moderate sample sizes, across MCAR (DGPs A and B)
+and the inherited DGP C?
 
 Three findings, in priority order for the manuscript.
 
-**1. IPW Wald coverage is close to nominal under MCAR.** On DGPs A and
-B, with `B = 50` replicates per cell, the empirical 95% coverage runs
-in the 0.92 – 0.98 band across `n ∈ {500, 2000, 8000}`. The standardised
-residual `z = (κ̂ − κ) / SE` is approximately `N(0, 1)` (`SD(z)` in
-0.93 – 1.07). Mean SE runs 5 – 10% above the Monte Carlo SD, i.e. a
-mild and stable conservative bias. The IPW influence-function variance
-in Section 3.3 of the manuscript is good as written.
+**1. IPW Wald SEs remain close to calibrated under MCAR.** On DGPs A
+and B, with `B = 50` replicates per cell, the empirical 95% coverage
+runs in the 0.92 – 0.98 band across `n ∈ {500, 2000, 8000}`. The
+standardised residual `z = (κ̂ − κ) / SE` is approximately `N(0, 1)`
+(`SD(z)` in 0.91 – 1.07). Mean SE is close to the Monte Carlo SD. The
+IPW influence-function variance in the companion manuscript remains
+good as written.
 
-**2. FIML Louis SEs are systematically too large and do not shrink at
-the parametric rate.** On DGP A, the mean Louis SE is roughly 3.6× the
-Monte Carlo SD at `n = 500`, 7.9× at `n = 2000`, and 9.3× at `n = 8000`.
-Both quantities are shrinking, but the SE shrinks too slowly: as `n`
-grows the Wald interval becomes more, not less, conservative in
-relative terms. Coverage is at or above nominal as a consequence, which
-sounds harmless until one tries to detect a difference between two
-weighted kappas — power vanishes. The mechanism is most likely the
-pseudo-inverse handling of unidentified θ-directions in the Louis
-information at the EM limit on the pruned parameter space. This is the
-"prune_tol affects vcov, not the point estimate" hypothesis flagged in
-the manuscript todo, now with evidence. **Section 3.3 of the
-manuscript needs a finite-sample correction or an honest "conservative
-in finite samples" caveat before submission.**
+**2. The FIML Louis SE explosion is fixed by rank truncation, but
+finite-sample MLE bias still matters.** The library now forms the
+symmetrised Louis information eigendecomposition and drops eigenvalues
+below `info_rcond * lambda_max` (`info_rcond = 5e-5` by default). On
+DGP A, the mean FIML SE / Monte Carlo SD ratio is now 1.22, 1.09, and
+1.12 at `n = 500, 2000, 8000`; previously it was 3.6, 7.9, and 9.3.
+On DGP B, the corresponding ratios are 1.00, 1.03, and 1.10. The
+runaway `n^{-1/4}` standard-error behaviour is gone. Coverage can
+still fall below nominal in moderate samples because the FIML point
+estimate has finite-sample bias, especially on DGP A/B at `n <= 2000`;
+that is a point-estimation caveat rather than the old Louis-inverse
+pathology.
 
-**3. The MAR claim in Section 6 needs reframing.** Under DGP C the FIML
+**3. The MAR claim in Section 6 still needs reframing.** Under DGP C the FIML
 estimator is *biased*, not merely conservative: coverage collapses
 from 0.94 at `n = 500` to 0.08 at `n = 2000` to 0.00 at `n = 8000`,
 with mean `z` growing as `~√n` (0.5, 3.1, 7.7). The reason: DGP C
@@ -150,6 +149,9 @@ lines should be near 5%.
   Fleiss / Brennan-Prediger could be added by extending `fit_one()` in
   `run_experiment.R`. The same `vcov` already carries all three diagonal
   entries.
+- The rank-truncation mechanism is diagnosed separately in
+  `experiments/10-louis-spectrum/`, which decomposes the Louis variance
+  by information eigen-direction.
 - DGPs A / B / C are inherited from
   `papers/combined/scripts/simulations_raw_three_estimators.R`; they use a
   constrained latent-truth-plus-guess rater model. Coverage under a

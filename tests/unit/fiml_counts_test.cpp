@@ -130,6 +130,24 @@ TEST_CASE("FIML-counts: variance is symmetric and PSD") {
   CHECK(es.eigenvalues().minCoeff() > -1e-8);
 }
 
+TEST_CASE("FIML-counts: info_rcond affects Louis variance, not estimates") {
+  IntMat y = partial_counts_fixture();
+  auto W = ms::loss::identity_weights(3);
+
+  EmOptions keep{};
+  keep.info_rcond = 0.0;
+  auto r_keep = ms::estimate_fiml_counts(y, *W, /*r_total=*/4, keep);
+  REQUIRE(r_keep.has_value());
+
+  EmOptions drop{};
+  drop.info_rcond = 1.0;
+  auto r_drop = ms::estimate_fiml_counts(y, *W, /*r_total=*/4, drop);
+  REQUIRE(r_drop.has_value());
+
+  CHECK((r_keep->estimates - r_drop->estimates).cwiseAbs().maxCoeff() < 1e-12);
+  CHECK(r_drop->vcov.norm() < r_keep->vcov.norm());
+}
+
 TEST_CASE("FIML-counts: perfect agreement -> kappa = 1") {
   IntMat x(4, 3);
   x << 4, 0, 0,

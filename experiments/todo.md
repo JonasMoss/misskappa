@@ -35,6 +35,13 @@ three papers (see `papers/combined/dev/split-plan.md`). Each
   variance work feeding **Paper C** (created in parallel by another
   agent; report under `experiments/07-quadratic-edgeworth-coverage/`).
 - `08-quadratic-vs-ipw` (open, below) — **Paper C** centerpiece.
+- `09-joint-vcov-pilot` — joint inference across non-independent kappa
+  estimates on the same data; pilot motivates a per-subject IF /
+  paired-spec C++ entry point that would feed **Paper A** (UC4
+  Hausman test) and possibly a future standalone note (UC1 pairwise
+  homogeneity).
+- `10-louis-spectrum` — **Paper B** diagnostic for the rank-truncated
+  Louis-information pseudo-inverse.
 
 ## Open
 
@@ -87,24 +94,67 @@ structural concern that warrants a manuscript caveat.
 
 ## Done
 
+### `09-joint-vcov-pilot`
+
+Runner + report under `experiments/09-joint-vcov-pilot/`. R-only
+pilot for joint inference across non-independent kappa estimates on
+the same data; uses subject-resample bootstrap of `misskappa::kappa()`
+fits to assemble joint vcov. `n = 500`, `B = 200`, `reps = 200`.
+
+Four sub-questions:
+
+- **UC8** (Fleiss-vs-BP same-fit contrast, analytic): well-calibrated.
+  Reject 0/200 under uniform marginals, 200/200 under skewed.
+  Methodological remark only; zero new code.
+- **UC4** (Hausman test, AC vs IPW on same incomplete data): main
+  positive result. Reject 0/200 under exchangeable + MCAR null;
+  reject 200/200 under the experiment-03 non-exchangeable cell. MC
+  SD of contrast matches bootstrap mean SE to 3 s.f. — strong
+  evidence the joint vcov is calibrated. Per-dataset diagnostic for
+  AC bias under non-exchangeability; feeds **Paper A**.
+- **UC1** (all 15 pairwise Cohen kappas + joint Wald homogeneity
+  test): power 200/200 against one miscalibrated rater, but
+  bootstrap joint vcov in 15 dimensions **over-rejects** at
+  size 0.215 under the exchangeable null at `B = 200`. The
+  methodological recipe is sound; the bootstrap is not the right
+  variance estimator. Motivates exposing per-subject moment kernels
+  or influence functions from C++ for `choose(R, 2)` pairwise
+  estimators jointly.
+- **UC2** (three weighted kappas on same data): identity vs
+  quadratic statistically distinct in 88% of replicates at `n = 500`
+  despite bootstrap correlation ≈ 0.94 between linear and quadratic.
+  Useful sensitivity demo.
+
+Combined ask: expose per-subject influence functions on the
+`Estimation` struct so the joint vcov is analytical, not bootstrap.
+That single change unlocks UC1 (with proper size), UC4 (without the
+bootstrap detour), UC2, and any future joint-contrast use case.
+
+### `10-louis-spectrum`
+
+Runner under `experiments/10-louis-spectrum/`. One DGP-A draw at
+`n = 8000` decomposes Conger's FIML Louis variance by eigendirection of
+the reduced observed-information matrix. With the untruncated inverse,
+effectively all variance comes from relative eigenvalues below `1e-3`;
+with `info_rcond = 5e-5`, the diagnostic variance matches the package
+`vcov()` value (`1.26e-5`) and removes the near-kernel blow-up.
+
 ### `01-coverage-iif-louis`
 
 Runner + report landed under `experiments/01-coverage-iif-louis/`. At
 `n ∈ {500, 2000, 8000}`, `B = 50`: IPW Wald coverage is near nominal
-under MCAR (DGPs A and B, `cov_95 ∈ [0.92, 0.98]`, `SD(z) ≈ 1`); FIML
-Louis SE is systematically too large under DGP A and **does not shrink
-at the parametric rate** (mean SE / MC SD ratio grows from 3.6× at
-`n = 500` to 9.3× at `n = 8000`), pointing at pseudo-inverse handling
-of unidentified θ-directions in the Louis information. Under DGP C the
-FIML estimator is biased, not merely conservative, with `cov_95`
-collapsing from 0.94 (n = 500) to 0 (n = 8000) and mean `z` growing as
-`~√n`: DGP C is technically MNAR for FIML's `X*`-only model because
-missingness depends on the latent truth `T_i`, not on observed entries.
-Two manuscript implications: (a) Section 3.3 needs a "Louis SE is
-conservative in finite samples" caveat or a finite-sample correction;
-(b) Section 6 should replace DGP C with a cleanly MAR mechanism (e.g.
-missingness conditional on observed ratings of other raters) or rewrite
-the prose to flag the MNAR boundary.
+under MCAR (DGPs A and B, `cov_95 ∈ [0.92, 0.98]`, `SD(z) ≈ 1`). The
+FIML Louis SE blow-up was resolved by the rank-truncated inverse
+(`info_rcond = 5e-5`): DGP-A mean SE / MC SD ratios are now
+`1.22, 1.09, 1.12` rather than the old `3.6, 7.9, 9.3`, and DGP-B
+ratios are `1.00, 1.03, 1.10`. Remaining subnominal coverage in some
+A/B cells is driven by finite-sample FIML point-estimate bias. Under
+DGP C the FIML estimator is biased, not merely conservative, with
+`cov_95` collapsing from 0.94 (n = 500) to 0 (n = 8000) and mean `z`
+growing as `~√n`: DGP C is technically MNAR for FIML's `X*`-only model
+because missingness depends on the latent truth `T_i`, not on observed
+entries. Section 6 should replace DGP C with a cleanly MAR mechanism
+or rewrite the prose to flag the MNAR boundary.
 
 ### `02-rater-model-sensitivity`
 

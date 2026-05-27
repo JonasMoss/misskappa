@@ -14,7 +14,9 @@
 #' @param values Optional numeric vector of category scores used by the
 #'   metric weightings. Defaults to the sorted unique observed categories.
 #' @param em_options Named list of options for `method = "fiml"`:
-#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`. Pass any subset.
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
+#'   `info_rcond` is the relative eigenvalue cutoff used when inverting
+#'   Louis' observed information. Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying the named
 #'   coefficient estimates and the 3x3 asymptotic covariance matrix.
@@ -225,7 +227,7 @@ kappa_quadratic_counts <- function(x, values, r_total) {
 #'   maximum observed row sum. Required for `method = "fiml"` when rows
 #'   have varying totals.
 #' @param em_options Named list of EM options for `method = "fiml"`:
-#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`.
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
 #'   `Brennan-Prediger` coefficients and the 2x2 vcov.

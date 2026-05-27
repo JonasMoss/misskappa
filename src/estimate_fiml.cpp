@@ -6,8 +6,11 @@
 // path is implemented; counts-format is out of Phase 1 scope.
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/diagnostics.hpp"
 
-#include <Eigen/QR>
+#include "detail_psd_inverse.hpp"
+
+#include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -50,6 +53,12 @@ struct EmRunResult {
   int iterations = 0;
   bool converged = false;
   std::size_t n_subjects = 0;
+};
+
+struct LouisReducedInfo {
+  RealMat info_star;
+  RealMat jacobian;
+  Eigen::Index ref = 0;
 };
 
 // --- Encoding / decoding of categorical patterns as base-c integers ---
@@ -233,19 +242,37 @@ EmIterStatus run_em_iterations(
   return status;
 }
 
-// Louis observed-information variance for the pruned theta.
-RealMat em_variance(
+RealMat constraint_jacobian(Eigen::Index n_final, Eigen::Index ref) {
+  if (n_final <= 1) return RealMat::Zero(n_final, 0);
+
+  RealMat J = RealMat::Zero(n_final, n_final - 1);
+  Eigen::Index w = 0;
+  for (Eigen::Index i = 0; i < n_final; ++i) {
+    if (i == ref) continue;
+    J(i, w++) = 1.0;
+  }
+  for (Eigen::Index j = 0; j < n_final - 1; ++j) J(ref, j) = -1.0;
+  return J;
+}
+
+LouisReducedInfo build_louis_reduced_info(
     const Eigen::VectorXd& theta_pruned,
     const std::vector<std::uint64_t>& pruned_ranks,
     const EmInput& in) {
+  LouisReducedInfo out;
   const Eigen::Index n_final = theta_pruned.size();
-  if (n_final <= 1) return RealMat::Zero(n_final, n_final);
+  if (n_final <= 1) {
+    out.info_star = RealMat::Zero(0, 0);
+    out.jacobian = RealMat::Zero(n_final, 0);
+    return out;
+  }
 
   // Identify the reference index (largest probability).
   Eigen::Index ref = 0;
   for (Eigen::Index i = 1; i < n_final; ++i) {
     if (theta_pruned(i) > theta_pruned(ref)) ref = i;
   }
+  out.ref = ref;
 
   std::unordered_map<std::uint64_t, Eigen::Index> rank_to_pruned;
   rank_to_pruned.reserve(pruned_ranks.size());
@@ -294,32 +321,28 @@ RealMat em_variance(
                           * s_reduced * s_reduced.transpose();
   }
 
-  // Symmetrise (numerical safety) and invert.
-  info_star = 0.5 * (info_star + info_star.transpose());
-  Eigen::CompleteOrthogonalDecomposition<RealMat> cod(info_star);
-  RealMat var_star = cod.pseudoInverse();
-
-  // Expand back to the full n_final dimension via the constraint that theta
-  // sums to 1: theta_ref = 1 - sum of others.
-  RealMat J = RealMat::Zero(n_final, n_final - 1);
-  Eigen::Index w = 0;
-  for (Eigen::Index i = 0; i < n_final; ++i) {
-    if (i == ref) continue;
-    J(i, w++) = 1.0;
-  }
-  for (Eigen::Index j = 0; j < n_final - 1; ++j) J(ref, j) = -1.0;
-
-  return J * var_star * J.transpose();
+  // Symmetrise for numerical safety before eigendecomposition.
+  out.info_star = 0.5 * (info_star + info_star.transpose());
+  out.jacobian = constraint_jacobian(n_final, ref);
+  return out;
 }
 
-Result<EmRunResult> run_em(IntMatView ratings, int c, EmOptions opts) {
-  if (ratings.rows() == 0 || ratings.cols() == 0) {
-    return std::unexpected(Error::invalid_argument);
-  }
-  auto in_res = preprocess_raw(ratings, c);
-  if (!in_res) return std::unexpected(in_res.error());
-  const EmInput& in = *in_res;
+// Louis observed-information variance for the pruned theta.
+RealMat em_variance(
+    const Eigen::VectorXd& theta_pruned,
+    const std::vector<std::uint64_t>& pruned_ranks,
+    const EmInput& in,
+    const EmOptions& opts) {
+  const Eigen::Index n_final = theta_pruned.size();
+  if (n_final <= 1) return RealMat::Zero(n_final, n_final);
 
+  const LouisReducedInfo info = build_louis_reduced_info(theta_pruned, pruned_ranks, in);
+  const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+  return info.jacobian * var_star * info.jacobian.transpose();
+}
+
+Result<EmRunResult> run_em_preprocessed(
+    const EmInput& in, int c, EmOptions opts, bool compute_vcov) {
   EmRunResult out;
   out.c = c;
   out.R = in.R;
@@ -356,7 +379,9 @@ Result<EmRunResult> run_em(IntMatView ratings, int c, EmOptions opts) {
 
   out.theta_hat = std::move(theta_pruned);
   out.pattern_indices = std::move(pruned_ranks);
-  out.vcov = em_variance(out.theta_hat, out.pattern_indices, in);
+  if (compute_vcov) {
+    out.vcov = em_variance(out.theta_hat, out.pattern_indices, in, opts);
+  }
   return out;
 }
 
@@ -441,7 +466,9 @@ Result<Estimation> estimate_fiml(
   if (weights.cols() != C) return std::unexpected(Error::dimension_mismatch);
   if (C < 1) return std::unexpected(Error::invalid_argument);
 
-  auto em = run_em(ratings, C, opts);
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return std::unexpected(in_res.error());
+  auto em = run_em_preprocessed(*in_res, C, opts, true);
   if (!em) return std::unexpected(em.error());
   if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
 
@@ -482,6 +509,78 @@ Result<Estimation> estimate_fiml(
 
   RealMat vcov = jacobian * em->vcov * jacobian.transpose();
   return Estimation{std::move(estimates), std::move(vcov)};
+}
+
+Result<FimlLouisDiagnostic> diagnose_fiml_louis(
+    IntMatView ratings, RealMatView weights, EmOptions opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  if (n < 1) return std::unexpected(Error::invalid_argument);
+  if (R < 2) return std::unexpected(Error::invalid_argument);
+  const int C = static_cast<int>(weights.rows());
+  if (weights.cols() != C) return std::unexpected(Error::dimension_mismatch);
+  if (C < 1) return std::unexpected(Error::invalid_argument);
+
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return std::unexpected(in_res.error());
+  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  if (!em) return std::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+
+  const KappaMap m = build_kappa_map(*em, weights);
+  const Eigen::VectorXd& theta = em->theta_hat;
+  const double pd = m.d_vec.dot(theta);
+  const double pec = (theta.transpose() * m.Qed_conger * theta).value();
+  if (std::abs(pec) <= singular_tol) return std::unexpected(Error::numerical_error);
+
+  const RealMat sym = 0.5 * (m.Qed_conger + m.Qed_conger.transpose());
+  const RealVec grad_pec = 2.0 * sym * theta;
+  const RealVec grad_full = -(m.d_vec * pec - pd * grad_pec) / (pec * pec);
+
+  const LouisReducedInfo info =
+      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
+
+  FimlLouisDiagnostic out;
+  out.c = C;
+  out.R = R;
+  out.n_subjects = em->n_subjects;
+  out.n_patterns = static_cast<std::size_t>(em->theta_hat.size());
+  out.kappa_conger = 1.0 - pd / pec;
+
+  const RealVec grad_reduced = info.jacobian.transpose() * grad_full;
+  if (info.info_star.rows() == 0) {
+    out.eigenvalues = RealVec::Zero(0);
+    out.gradient_projection = RealVec::Zero(0);
+    out.variance_contribution = RealVec::Zero(0);
+    return out;
+  }
+
+  Eigen::SelfAdjointEigenSolver<RealMat> es(info.info_star);
+  if (es.info() != Eigen::Success) return std::unexpected(Error::numerical_error);
+  const RealVec& evals = es.eigenvalues();
+  const RealMat& evecs = es.eigenvectors();
+  out.lambda_max = evals.maxCoeff();
+  const double rc = (std::isfinite(opts.info_rcond) && opts.info_rcond > 0.0)
+                        ? opts.info_rcond
+                        : 0.0;
+  out.threshold = out.lambda_max * rc;
+  out.eigenvalues = RealVec::Zero(evals.size());
+  out.gradient_projection = RealVec::Zero(evals.size());
+  out.variance_contribution = RealVec::Zero(evals.size());
+
+  for (Eigen::Index i = 0; i < evals.size(); ++i) {
+    const Eigen::Index src = evals.size() - 1 - i;
+    const double lambda = evals(src);
+    const double projection = evecs.col(src).dot(grad_reduced);
+    const bool retained = lambda > out.threshold;
+    const double contribution = retained ? (projection * projection) / lambda : 0.0;
+    out.eigenvalues(i) = lambda;
+    out.gradient_projection(i) = projection;
+    out.variance_contribution(i) = contribution;
+    out.variance += contribution;
+    if (retained) ++out.retained_rank;
+  }
+  return out;
 }
 
 }  // namespace misskappa
