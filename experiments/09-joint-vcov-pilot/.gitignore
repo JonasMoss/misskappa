@@ -1,0 +1,6 @@
+*.html
+*.pdf
+.quarto/
+_freeze/
+report_files/
+resources/
