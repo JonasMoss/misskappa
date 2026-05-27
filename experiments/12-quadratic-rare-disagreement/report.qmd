@@ -1,0 +1,201 @@
+---
+title: "Experiment 12: Rare-Disagreement Intervals"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- knitr::current_input()
+base_dir <- if (!is.null(input)) dirname(normalizePath(input)) else getwd()
+summary_path <- file.path(base_dir, "results", "summary.csv")
+metadata_path <- file.path(base_dir, "results", "metadata.csv")
+
+if (!file.exists(summary_path) || !file.exists(metadata_path)) {
+  stop(
+    "Missing experiment results. Run: Rscript experiments/12-quadratic-rare-disagreement/run_experiment.R --smoke",
+    call. = FALSE
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+
+method_order <- c(
+  "moss_fisher", "delta2_fisher",
+  "garwood_plug", "garwood_chance",
+  "jeffreys_plug", "jeffreys_chance",
+  "anscombe_plug", "anscombe_chance"
+)
+summary$method <- factor(summary$method, levels = method_order)
+focus <- summary[summary$coefficient %in% c("Conger", "Fleiss"), ]
+focus <- focus[order(focus$target, focus$coefficient, focus$R, focus$n, focus$method), ]
+
+overall <- aggregate(
+  cbind(coverage, miss_below, miss_above, mean_length, zero_disagreement_rate) ~ target + method,
+  data = focus,
+  FUN = mean
+)
+overall <- overall[order(overall$target, overall$method), ]
+overall_value <- function(target, method, column) {
+  overall[overall$target == target & as.character(overall$method) == method, column][[1]]
+}
+cell_value <- function(target, R, n, coefficient, method, column) {
+  focus[
+    focus$target == target &
+      focus$R == R &
+      focus$n == n &
+      focus$coefficient == coefficient &
+      as.character(focus$method) == method,
+    column
+  ][[1]]
+}
+overall_tab <- data.frame(
+  Target = overall$target,
+  Method = overall$method,
+  Coverage = fmt(overall$coverage),
+  `Miss Below` = fmt(overall$miss_below),
+  `Miss Above` = fmt(overall$miss_above),
+  `Mean Length` = fmt(overall$mean_length),
+  `Zero Disagree` = fmt(overall$zero_disagreement_rate),
+  check.names = FALSE
+)
+
+lattice_diag <- aggregate(
+  cbind(zero_disagreement_rate, mean_loss_units, mean_chance_disagreement) ~ target + R + n,
+  data = focus[focus$method == "moss_fisher" & focus$coefficient == "Conger", ],
+  FUN = mean
+)
+lattice_diag <- lattice_diag[order(lattice_diag$target, lattice_diag$R, lattice_diag$n), ]
+lattice_tab <- data.frame(
+  Target = lattice_diag$target,
+  R = lattice_diag$R,
+  n = lattice_diag$n,
+  `Zero Disagree` = fmt(lattice_diag$zero_disagreement_rate),
+  `Mean Loss Units` = fmt(lattice_diag$mean_loss_units, 1),
+  `Mean Chance Disagree` = fmt(lattice_diag$mean_chance_disagreement),
+  check.names = FALSE
+)
+
+worst <- focus[order(focus$coverage), ][1, ]
+worst_tab <- head(focus[order(focus$coverage), ], 14)
+worst_tab <- data.frame(
+  Target = worst_tab$target,
+  Coefficient = worst_tab$coefficient,
+  R = worst_tab$R,
+  n = worst_tab$n,
+  Method = worst_tab$method,
+  Coverage = fmt(worst_tab$coverage),
+  `Miss Below` = fmt(worst_tab$miss_below),
+  `Miss Above` = fmt(worst_tab$miss_above),
+  `Mean Length` = fmt(worst_tab$mean_length),
+  check.names = FALSE
+)
+
+best_by_cell <- do.call(rbind, lapply(split(
+  focus,
+  interaction(focus$target, focus$coefficient, focus$R, focus$n)
+), function(d) {
+  d[which.min(abs(d$coverage - 0.95)), ]
+}))
+best_tab <- data.frame(
+  Target = best_by_cell$target,
+  Coefficient = best_by_cell$coefficient,
+  R = best_by_cell$R,
+  n = best_by_cell$n,
+  Method = best_by_cell$method,
+  Coverage = fmt(best_by_cell$coverage),
+  `Mean Length` = fmt(best_by_cell$mean_length),
+  check.names = FALSE
+)
+```
+
+## Question
+
+Can a boundary-aware rare-disagreement interval repair the high-agreement quadratic-kappa coverage failures without bootstrap?
+
+## Short Answer
+
+The smooth delta expansion from Experiment 11 was too small because it still collapses when observed disagreement is zero. This experiment attacks that corner directly: it treats the observed quadratic disagreement numerator as a lattice count and uses standard Poisson count intervals before mapping back through `theta = 1 - A / B`.
+
+The boundary correction helps exactly where it should, but it is not a general fix. In the pathological target `0.95`, `R = 2`, `n = 10` Conger cell, Moss Fisher covers only `r fmt(cell_value(0.95, 2, 10, "Conger", "moss_fisher", "coverage"))`, while Garwood with a plug-in chance denominator covers `r fmt(cell_value(0.95, 2, 10, "Conger", "garwood_plug", "coverage"))` and Garwood with chance-denominator widening covers `r fmt(cell_value(0.95, 2, 10, "Conger", "garwood_chance", "coverage"))`. That is the zero-disagreement spike being fixed.
+
+But averaged over the grid, the count intervals are worse than Fisher/delta Fisher. At target `0.95`, average coverage is `r fmt(overall_value(0.95, "moss_fisher", "coverage"))` for Moss Fisher, `r fmt(overall_value(0.95, "delta2_fisher", "coverage"))` for smooth delta Fisher, and only `r fmt(overall_value(0.95, "garwood_chance", "coverage"))` for Garwood with chance widening. The pairwise loss-unit count is too clustered to behave like a simple Poisson count, especially for `R = 5`.
+
+## Evidence
+
+`Miss Below` means the interval upper endpoint is below the true coefficient; `Miss Above` means the lower endpoint is above it.
+
+Average over coefficients, rater counts, and sample sizes:
+
+```{r}
+knitr::kable(overall_tab, align = "rlrrrrr")
+```
+
+Lattice diagnostics for Conger:
+
+```{r}
+knitr::kable(lattice_tab, align = "rrrrrr")
+```
+
+Worst cells:
+
+```{r}
+knitr::kable(worst_tab, align = "rlrrlrrrr")
+```
+
+Closest-to-nominal method by cell:
+
+```{r}
+knitr::kable(best_tab, align = "rlrrlrr")
+```
+
+## Methods
+
+For five equally spaced categories `-2,-1,0,1,2`, the normalized quadratic loss is `(x-y)^2 / 16`. The observed disagreement numerator can therefore be written as a scaled nonnegative integer:
+
+```text
+A = M / (16 * choose(R, 2) * n),
+```
+
+where `M` is the sum of squared category-distance units across all item-rater pairs. Near perfect agreement, `M` is small and often zero. The usual influence variance for `A` is then zero, producing degenerate upper-boundary intervals.
+
+The count methods form a count interval for `M`, convert it to an interval for `A`, and then map it through `theta = 1 - A / B`. The `plug` versions hold the chance disagreement `B` fixed at its estimate. The `chance` versions also use a t interval for `B` from its influence function.
+
+The count intervals are:
+
+- `garwood`: exact Poisson count interval.
+- `jeffreys`: Jeffreys-prior Poisson count interval.
+- `anscombe`: Poisson variance-stabilizing square-root interval.
+
+The baselines are Moss's Fisher transform and the Fisher interval with the second-order delta variance from Experiment 11.
+
+## Caveats
+
+The observed-disagreement count is not literally Poisson. It is bounded, weighted, and generated by clustered raters within items. This is a rare-event boundary approximation, not a final theory. Its job is to test whether the zero-disagreement lattice is the source of the worst coverage failures.
+
+## Reproduce
+
+Smoke run:
+
+```sh
+Rscript experiments/12-quadratic-rare-disagreement/run_experiment.R --smoke
+```
+
+Exploratory run used here:
+
+```sh
+Rscript experiments/12-quadratic-rare-disagreement/run_experiment.R --reps 500 --target-grid 0.8,0.9,0.95 --n-grid 10,20,40 --r-grid 2,5 --progress
+```
+
+This report used n grid `r meta[["n_grid"]]`, R grid `r meta[["r_grid"]]`, reps `r meta[["reps"]]`, target grid `r meta[["target_grid"]]`, and seed base `r meta[["seed_base"]]`.
