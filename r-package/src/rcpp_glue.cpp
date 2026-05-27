@@ -262,7 +262,9 @@ Rcpp::List rcpp_fiml_louis_spectrum(
 // [[Rcpp::export]]
 Rcpp::List rcpp_kappa_quadratic(
     const Rcpp::NumericMatrix& x,
-    Rcpp::NumericVector values) {
+    Rcpp::NumericVector values,
+    std::string vcov_type,
+    double relative_kurtosis) {
   Eigen::MatrixXd ratings(x.nrow(), x.ncol());
   for (int i = 0; i < x.nrow(); ++i) {
     for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
@@ -270,7 +272,19 @@ Rcpp::List rcpp_kappa_quadratic(
   Eigen::VectorXd v(values.size());
   for (int i = 0; i < values.size(); ++i) v(i) = values[i];
 
-  auto r = misskappa::estimate_quadratic(ratings, v);
+  misskappa::QuadraticOptions opts;
+  if (vcov_type == "empirical") {
+    opts.vcov = misskappa::QuadraticVcov::empirical;
+  } else if (vcov_type == "normal") {
+    opts.vcov = misskappa::QuadraticVcov::normal;
+  } else if (vcov_type == "elliptical") {
+    opts.vcov = misskappa::QuadraticVcov::elliptical;
+  } else {
+    Rcpp::stop("'vcov' must be one of 'empirical', 'normal', or 'elliptical'.");
+  }
+  opts.relative_kurtosis = relative_kurtosis;
+
+  auto r = misskappa::estimate_quadratic(ratings, v, opts);
   return estimation_to_list(unwrap(std::move(r)));
 }
 

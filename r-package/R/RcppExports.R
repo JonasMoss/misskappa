@@ -13,8 +13,8 @@ rcpp_kappa_counts <- function(x, weight_type, values) {
   .Call(`_misskappa_rcpp_kappa_counts`, x, weight_type, values)
 }
 
-rcpp_kappa_quadratic <- function(x, values) {
-  .Call(`_misskappa_rcpp_kappa_quadratic`, x, values)
+rcpp_kappa_quadratic <- function(x, values, vcov_type, relative_kurtosis) {
+  .Call(`_misskappa_rcpp_kappa_quadratic`, x, values, vcov_type, relative_kurtosis)
 }
 
 rcpp_kappa_quadratic_counts <- function(x, values, r_total) {

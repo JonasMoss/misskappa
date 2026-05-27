@@ -131,6 +131,31 @@ test_that("kappa_quadratic() matches legacy on a small raw fixture", {
                tolerance = 1e-9)
 })
 
+test_that("kappa_quadratic() exposes normal and elliptical covariance modes", {
+  x <- matrix(c(
+    1, 2, 1,
+    2, 2, 3,
+    3, 3, 3,
+    4, 4, 5,
+    5, 5, 5,
+    NA, NA, NA
+  ), nrow = 6, byrow = TRUE)
+  fit_emp <- kappa_quadratic(x, values = c(1, 2, 3, 4, 5))
+  fit_norm <- kappa_quadratic(x, values = c(1, 2, 3, 4, 5), vcov = "normal")
+  fit_ell <- kappa_quadratic(x, values = c(1, 2, 3, 4, 5),
+                             vcov = "elliptical", relative_kurtosis = 1.6)
+
+  expect_equal(unname(fit_norm$estimates), unname(fit_emp$estimates),
+               tolerance = 1e-12)
+  expect_equal(unname(fit_ell$estimates), unname(fit_emp$estimates),
+               tolerance = 1e-12)
+  expect_true(all(is.finite(fit_norm$vcov)))
+  expect_true(all(is.finite(fit_ell$vcov)))
+  expect_false(isTRUE(all.equal(fit_norm$vcov, fit_ell$vcov,
+                                tolerance = 1e-12)))
+  expect_equal(fit_ell$vcov_type, "elliptical")
+})
+
 test_that("kappa_quadratic_counts() matches legacy on Fleiss 1971", {
   fit <- kappa_quadratic_counts(dat.fleiss1971, values = c(1, 2, 3, 4, 5),
                                 r_total = 6)
