@@ -2,9 +2,12 @@
 
 Decision (2026-05-27): the combined `papers/combined/kappa-missing.tex` manuscript
 is being broken into three independent papers, each with its own
-audience and venue. Single source of truth for the split lives in this
-file. See also `/home/jmoss/.claude/plans/i-think-we-might-tender-lerdorf.md`
-for the discussion that led here.
+audience and venue. The papers are intended for simultaneous submission
+as a coordinated family, so cross-references among Papers A/B/C are
+allowed and expected while drafting. Single source of truth for the
+split lives in this file. See also
+`/home/jmoss/.claude/plans/i-think-we-might-tender-lerdorf.md` for the
+discussion that led here.
 
 The combined draft remains the canonical reference for written content
 until each spinoff paper has migrated its sections; do not delete
@@ -118,14 +121,15 @@ papers/<slug>/
   supplement/           # online supplement source
 ```
 
-## Sequencing
+## Submission Coordination
 
-1. **Paper A first.** Cleanest cut; lands quickly in Psychometrika;
-   builds citation surface for B and C.
-2. **Paper B second**, in parallel with A in review. Substantial —
-   Louis-SE work is non-trivial.
-3. **Paper C last.** Needs new sims and Lin's CCC literature survey.
-   Build framing while Paper B is in late drafting.
+The current plan is simultaneous submission of Papers A/B/C, not a
+strict sequence where one paper must be accepted before the others can
+cite it. Drafts may cross-reference by stable provisional labels
+("Paper A", "Paper B", "Paper C" or "companion paper") until final
+titles, submission names, and bibliography keys are chosen. Keep shared
+notation and claims aligned across the three manuscripts as they move
+together.
 
 ## Migration policy
 

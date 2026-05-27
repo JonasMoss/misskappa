@@ -15,6 +15,11 @@ directory at the repo root:
 - `papers/fiml/` — semiparametric-efficient estimation under MAR
 - `papers/quadratic/` — closed-form quadratic / Lin's CCC
 
+These spinoffs are intended for simultaneous submission as a coordinated
+paper family. Cross-references among Papers A/B/C are allowed and expected;
+use provisional labels or "companion paper" language until final titles and
+bibliography keys are settled.
+
 The decision and section mapping live in `papers/combined/dev/split-plan.md`.
 New work should go in the appropriate `papers/<slug>/` directory; this
 directory remains canonical only until each section has been migrated
