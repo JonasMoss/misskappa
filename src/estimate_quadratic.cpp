@@ -3,11 +3,10 @@
 // src/estimate_quadratic_counts.cpp.
 //
 // Treats categorical ratings as numeric scores; missing entries are NaN.
-// Math ported from dev/legacy/misskappa/src/kappaqp.cpp onto Eigen +
-// Result<T>. Per-rater means and covariances are computed pairwise from
-// observed entries; the asymptotic covariance of those moments is
-// constructed from third- and fourth-order moments, and the delta method
-// gives the asymptotic covariance of the three kappa coefficients.
+// Per-rater means and covariances are computed from all available entries.
+// The asymptotic covariance is assembled from the influence functions of the
+// three summaries used by the quadratic coefficients, avoiding the full
+// fourth-moment tensor.
 
 #include "misskappa/estimate.hpp"
 
@@ -21,7 +20,7 @@ namespace {
 
 constexpr double zero_tol = 1e-9;
 
-// Internal moment-bundle output of CalculatePsi.
+// Internal moment-bundle output of calculate_psi.
 struct AcovResults {
   RealMat psi;       // 3 x 3 covariance of (t1, t2, t3) summary statistics
   RealVec mu_hat;    // length R per-rater means
@@ -43,10 +42,10 @@ build_finite_mask(RealMatView x) {
 
 // Heavy-lifter: from raw real-valued ratings + finiteness mask, compute the
 // 3x3 covariance of (t1 = sum(sigma_hat), t2 = trace(sigma_hat),
-// t3 = sum((mu - mean(mu))^2)) using 2nd / 3rd / 4th order moments.
+// t3 = sum((mu - mean(mu))^2)) using the moment-level influence functions.
 Result<AcovResults> calculate_psi(
     const RealMat& x, const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& M,
-    int n_eff) {
+    int n) {
   const int R = static_cast<int>(x.cols());
   AcovResults out;
   out.R = R;
@@ -62,6 +61,7 @@ Result<AcovResults> calculate_psi(
   RealVec count = M.cast<double>().colwise().sum().transpose();  // length R
   out.mu_hat.resize(R);
   for (int j = 0; j < R; ++j) {
+    if (count(j) <= zero_tol) return std::unexpected(Error::invalid_argument);
     out.mu_hat(j) = (count(j) > 0) ? Xf.col(j).sum() / count(j)
                                    : std::numeric_limits<double>::quiet_NaN();
   }
@@ -74,8 +74,13 @@ Result<AcovResults> calculate_psi(
     }
   }
 
-  RealVec p1 = count / static_cast<double>(n_eff);
-  RealMat p2 = (M.cast<double>().transpose() * M.cast<double>()) / static_cast<double>(n_eff);
+  RealVec p1 = count / static_cast<double>(n);
+  RealMat p2 = (M.cast<double>().transpose() * M.cast<double>()) / static_cast<double>(n);
+  for (int j = 0; j < R; ++j) {
+    for (int k = j; k < R; ++k) {
+      if (p2(j, k) <= zero_tol) return std::unexpected(Error::invalid_argument);
+    }
+  }
 
   // sigma_hat(j, k): pairwise covariance of raters j, k over rows where both observed.
   out.sigma_hat = RealMat::Zero(R, R);
@@ -83,8 +88,8 @@ Result<AcovResults> calculate_psi(
     for (int k = j; k < R; ++k) {
       // Find row indices where both raters observed.
       std::vector<int> idx;
-      idx.reserve(n_eff);
-      for (int i = 0; i < n_eff; ++i) {
+      idx.reserve(n);
+      for (int i = 0; i < n; ++i) {
         if (M(i, j) == 1 && M(i, k) == 1) idx.push_back(i);
       }
       if (!idx.empty()) {
@@ -102,93 +107,24 @@ Result<AcovResults> calculate_psi(
     }
   }
 
-  // 3rd / 4th order moments and matching observation probabilities.
-  // mu3[i][j][k] = E[Y_hat(:, i) * Y_hat(:, j) * Y_hat(:, k)] over rows where
-  //               all three are observed.
-  // mu4[i][j][k][l] = E[Y * Y * Y * Y] similarly.
-  // p3, p4 are the corresponding observed-fractions.
-  std::vector<double> p3(R * R * R, 0.0);
-  std::vector<double> mu3(R * R * R, 0.0);
-  std::vector<double> p4(R * R * R * R, 0.0);
-  std::vector<double> mu4(R * R * R * R, 0.0);
-  auto idx3 = [R](int i, int j, int k) { return ((i * R) + j) * R + k; };
-  auto idx4 = [R](int i, int j, int k, int l) { return (((i * R) + j) * R + k) * R + l; };
-
-  for (int i = 0; i < R; ++i) {
-    for (int j = 0; j < R; ++j) {
-      for (int k = 0; k < R; ++k) {
-        std::vector<int> rows3;
-        rows3.reserve(n_eff);
-        for (int row = 0; row < n_eff; ++row) {
-          if (M(row, i) && M(row, j) && M(row, k)) rows3.push_back(row);
-        }
-        p3[idx3(i, j, k)] = static_cast<double>(rows3.size()) / n_eff;
-        if (!rows3.empty()) {
-          double s = 0;
-          for (int row : rows3) s += Y_hat(row, i) * Y_hat(row, j) * Y_hat(row, k);
-          mu3[idx3(i, j, k)] = s / rows3.size();
-        }
-        for (int l = 0; l < R; ++l) {
-          std::vector<int> rows4;
-          rows4.reserve(n_eff);
-          for (int row : rows3) {
-            if (M(row, l)) rows4.push_back(row);
-          }
-          p4[idx4(i, j, k, l)] = static_cast<double>(rows4.size()) / n_eff;
-          if (!rows4.empty()) {
-            double s = 0;
-            for (int row : rows4) {
-              s += Y_hat(row, i) * Y_hat(row, j) * Y_hat(row, k) * Y_hat(row, l);
-            }
-            mu4[idx4(i, j, k, l)] = s / rows4.size();
-          }
-        }
-      }
-    }
-  }
-
-  // Assemble Psi (3 x 3 covariance of (t1, t2, t3)).
+  // Assemble Psi (3 x 3 covariance of the summary influence functions).
   out.psi = RealMat::Zero(3, 3);
   RealVec v_dmu = 2.0 * (out.mu_hat.array() - out.mu_hat.mean()).matrix();
-
-  for (int i = 0; i < R; ++i) {
+  for (int row = 0; row < n; ++row) {
+    RealVec phi = RealVec::Zero(3);
     for (int j = 0; j < R; ++j) {
+      if (!M(row, j)) continue;
+      phi(2) += (v_dmu(j) / p1(j)) * Y_hat(row, j);
       for (int k = 0; k < R; ++k) {
-        for (int l = 0; l < R; ++l) {
-          if (p2(i, j) > zero_tol && p2(k, l) > zero_tol) {
-            const double gamma = mu4[idx4(i, j, k, l)] - out.sigma_hat(i, j) * out.sigma_hat(k, l);
-            const double term = (p4[idx4(i, j, k, l)] / (p2(i, j) * p2(k, l))) * gamma;
-            out.psi(0, 0) += term;
-            if (k == l) out.psi(0, 1) += term;
-            if (i == j && k == l) out.psi(1, 1) += term;
-          }
-        }
+        if (!M(row, k)) continue;
+        const double term = (Y_hat(row, j) * Y_hat(row, k) - out.sigma_hat(j, k)) / p2(j, k);
+        phi(0) += term;
+        if (j == k) phi(1) += term;
       }
     }
+    out.psi.noalias() += phi * phi.transpose();
   }
-  out.psi(1, 0) = out.psi(0, 1);
-
-  for (int i = 0; i < R; ++i) {
-    for (int j = 0; j < R; ++j) {
-      if (p1(i) > zero_tol && p1(j) > zero_tol) {
-        out.psi(2, 2) += v_dmu(i) * v_dmu(j) * (p2(i, j) / (p1(i) * p1(j))) * out.sigma_hat(i, j);
-      }
-    }
-  }
-
-  for (int i = 0; i < R; ++i) {
-    for (int j = 0; j < R; ++j) {
-      for (int k = 0; k < R; ++k) {
-        if (p1(i) > zero_tol && p2(j, k) > zero_tol) {
-          const double omega = (p3[idx3(i, j, k)] / (p1(i) * p2(j, k))) * mu3[idx3(i, j, k)];
-          out.psi(0, 2) += v_dmu(i) * omega;
-          if (j == k) out.psi(1, 2) += v_dmu(i) * omega;
-        }
-      }
-    }
-  }
-  out.psi(2, 0) = out.psi(0, 2);
-  out.psi(2, 1) = out.psi(1, 2);
+  out.psi /= static_cast<double>(n);
 
   return out;
 }
@@ -205,26 +141,12 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   // Brennan-Prediger constant: 2 / C^2 * (C * sum(v^2) - sum(v)^2).
   const double c1 = (2.0 / (C * C)) * (C * values.squaredNorm() - std::pow(values.sum(), 2));
 
-  // Effective rows: at least 2 ratings observed.
   const auto M_full = build_finite_mask(ratings);
-  std::vector<int> eff_rows;
-  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    int obs = 0;
-    for (Eigen::Index j = 0; j < ratings.cols(); ++j) obs += M_full(i, j);
-    if (obs > 1) eff_rows.push_back(static_cast<int>(i));
-  }
-  if (eff_rows.size() < 2) return std::unexpected(Error::invalid_argument);
-
-  RealMat x_eff(eff_rows.size(), ratings.cols());
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> M_eff(eff_rows.size(), ratings.cols());
-  for (std::size_t k = 0; k < eff_rows.size(); ++k) {
-    x_eff.row(k) = ratings.row(eff_rows[k]);
-    M_eff.row(k) = M_full.row(eff_rows[k]);
-  }
-  const int n_eff = static_cast<int>(eff_rows.size());
+  RealMat x_all = ratings;
+  const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
 
-  auto acov = calculate_psi(x_eff, M_eff, n_eff);
+  auto acov = calculate_psi(x_all, M_full, n);
   if (!acov) return std::unexpected(acov.error());
 
   // Summary stats t1 = sum(Sigma), t2 = tr(Sigma), t3 = sum((mu - mean(mu))^2).
@@ -272,7 +194,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   }
 
   // scaled_acov = G^T * psi * G, in (Fleiss, Conger, BP) order, then divide
-  // by n_eff. Reorder rows/cols to (Conger, Fleiss, BP) so the output matches
+  // by n. Reorder rows/cols to (Conger, Fleiss, BP) so the output matches
   // the misskappa raw-categorical convention.
   RealMat G(3, 3);
   G.col(0) = gF;
@@ -286,7 +208,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
       vcov_reordered(r, c) = scaled(perm[r], perm[c]);
     }
   }
-  const RealMat vcov = vcov_reordered / static_cast<double>(n_eff);
+  const RealMat vcov = vcov_reordered / static_cast<double>(n);
 
   RealVec estimates(3);
   estimates(0) = conger_est;
