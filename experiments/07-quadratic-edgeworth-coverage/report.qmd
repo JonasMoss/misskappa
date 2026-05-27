@@ -1,0 +1,113 @@
+---
+title: "Experiment 07: Quadratic Kappa Coverage"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- knitr::current_input()
+base_dir <- if (!is.null(input)) dirname(normalizePath(input)) else getwd()
+summary_path <- file.path(base_dir, "results", "summary.csv")
+metadata_path <- file.path(base_dir, "results", "metadata.csv")
+
+if (!file.exists(summary_path) || !file.exists(metadata_path)) {
+  stop(
+    "Missing experiment results. Run: Rscript experiments/07-quadratic-edgeworth-coverage/run_experiment.R --smoke",
+    call. = FALSE
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+
+focus <- summary[summary$coefficient %in% c("Conger", "Fleiss"), ]
+focus <- focus[order(focus$coefficient, focus$R, focus$n, focus$method), ]
+tab <- data.frame(
+  Coefficient = focus$coefficient,
+  R = focus$R,
+  n = focus$n,
+  Method = focus$method,
+  `Valid Reps` = focus$valid_reps,
+  Coverage = fmt(focus$coverage),
+  `Mean Length` = fmt(focus$mean_length),
+  `Mean SE` = fmt(focus$mean_se),
+  `Mean IF Skew` = fmt(focus$mean_skew_if),
+  check.names = FALSE
+)
+
+worst <- focus[order(focus$coverage), ][1, ]
+best_by_cell <- do.call(rbind, lapply(split(focus, interaction(focus$coefficient, focus$R, focus$n)), function(d) {
+  d[which.min(abs(d$coverage - 0.95)), ]
+}))
+best_tab <- data.frame(
+  Coefficient = best_by_cell$coefficient,
+  R = best_by_cell$R,
+  n = best_by_cell$n,
+  Method = best_by_cell$method,
+  `Valid Reps` = best_by_cell$valid_reps,
+  Coverage = fmt(best_by_cell$coverage),
+  `Mean Length` = fmt(best_by_cell$mean_length),
+  check.names = FALSE
+)
+```
+
+## Question
+
+Can a simple Edgeworth-like correction improve small-sample Wald coverage for complete-data categorical quadratic kappa?
+
+## Short Answer
+
+This is a first probe. The worst coverage in this run is `r fmt(worst$coverage)` for `r worst$coefficient`, `R = r worst$R`, `n = r worst$n`, method `r worst$method`. The table below shows that the Moss (2024) pattern is easy to reproduce: the untransformed interval is fragile at small `n`, while Fisher/arcsine transformations help. The influence-skewness Cornish-Fisher variants are exploratory; use the table to see whether either sign convention is promising before formalizing anything.
+
+## Evidence
+
+```{r}
+knitr::kable(tab, align = "lrrlrrrr")
+```
+
+Closest-to-nominal method by cell:
+
+```{r}
+knitr::kable(best_tab, align = "lrrlrr")
+```
+
+## Methods
+
+The simulation follows the complete categorical Perreault-Leigh setup used in Moss (2024): five uniform categories, complete rectangular ratings, and a knowledge probability of `sqrt(target)` so the true quadratic coefficient is `r meta[["target"]]`. The ordinary intervals are basic Wald, arcsine, and Fisher transforms. The extra intervals apply Cornish-Fisher quantile shifts from the estimated influence-function skewness:
+
+- `cf_if`: `z + gamma / 6 * (z^2 - 1)`;
+- `cf_student_plus`: `z + gamma / 6 * (2 z^2 + 1)`;
+- `cf_student_minus`: the same studentized term with the opposite sign.
+
+These are deliberately labelled as probes, not final theory.
+
+## Caveats
+
+No missingness is included here. The experiment uses the categorical available-case implementation with complete data, so IPW and available-case coincide. The Edgeworth variants only use the first influence-skewness term and do not yet account for curvature of the kappa map or studentized standard-error estimation in a derived way.
+
+## Reproduce
+
+Smoke run:
+
+```sh
+Rscript experiments/07-quadratic-edgeworth-coverage/run_experiment.R --smoke
+```
+
+Longer exploratory run:
+
+```sh
+Rscript experiments/07-quadratic-edgeworth-coverage/run_experiment.R --reps 1000 --n-grid 10,20,40,100 --r-grid 2,5 --progress
+```
+
+This report used n grid `r meta[["n_grid"]]`, R grid `r meta[["r_grid"]]`, reps `r meta[["reps"]]`, target `r meta[["target"]]`, and seed base `r meta[["seed_base"]]`.
