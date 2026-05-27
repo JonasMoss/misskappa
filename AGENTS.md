@@ -18,6 +18,11 @@ three papers (see `papers/combined/dev/split-plan.md`):
 under MAR), and `papers/quadratic/` (Biometrics; closed-form quadratic =
 Lin's CCC on pairwise-available data).
 
+The three spinoffs are intended as a simultaneous submission family, not
+strictly sequential papers. Cross-references among Papers A/B/C are allowed and
+expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
+"companion paper") until final titles, names, and bibliography keys are chosen.
+
 ## Non-negotiables
 
 - **C++23**, built with `-fno-exceptions -fno-rtti`. Eigen is included under
