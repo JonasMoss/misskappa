@@ -43,13 +43,22 @@ point of running them outside `paper/`.
       current latent-truth-plus-guess model is easy to describe but very
       constrained. Runner/report landed; the `n = 1000`, `B = 50` run
       showed unstable orderings, so choose the manuscript DGP deliberately.
-- [ ] `03-ac-vs-ipw-efficiency` — Where exactly does AC inefficiency
-      become visible? Sweep π-variability against rater-exchangeability.
-      Smoke run currently shows IPW SD > AC SD under DGP A (MCAR +
-      exchangeable + rater-varying π), which is the opposite of the
-      paper's framing. If no realistic MCAR cell shows AC > IPW SD, the
-      Section 5.1 "inefficient" remark needs softening — AC vs FIML is
-      the cleaner contrast.
+- [x] `03-ac-vs-ipw-efficiency` — Runner/report landed. Conger ×
+      identity, `n = 1000`, `B = 500`, factorial over exchangeability ×
+      `var(π_j)` × within-pair `corr(M_{i,j}, M_{i,k})`. Under
+      exchangeable raters AC is unbiased and AC SD ≤ IPW SD in every
+      cell (gap widens with `var(π_j)`); AC wins MSE everywhere. Under
+      non-exchangeable raters AC inherits bias up to `+0.085` from
+      rater-specific observation rates while IPW stays at MC noise, so
+      IPW wins MSE by `11×` (mid `π`-var) to `29×` (high `π`-var). The
+      exception is `var(π_j) = 0` under non-exchangeability, where AC's
+      pair weighting becomes uniform and the two estimators coincide.
+      `corr_M` shifts variance but never flips the AC vs IPW ordering.
+      Implication: Section 5.1's "AC is inefficient" framing is
+      backwards in finite samples; the cleaner manuscript line is "AC
+      is inconsistent under non-exchangeable raters" with the
+      simulation evidence pointed at this experiment. See new manuscript
+      TODO below.
 - [x] `04-counts-sampling-misspec` — Counts-FIML under violations of
       Assumption (S). Rater-specific dropout aggregated into counts is
       realistic and out-of-model. Runner/report landed and showed large
@@ -77,6 +86,12 @@ point of running them outside `paper/`.
 - [ ] Sentence-level pass against `paper/STYLE.md`: no em-dashes, no
       semicolons, no LLM-isms, no antithesis. The current draft mostly
       complies but a final sweep is worth doing.
+- [ ] Rewrite Section 5.1 around AC inconsistency rather than AC
+      inefficiency (see `experiments/03-ac-vs-ipw-efficiency/`). The
+      finite-sample variance argument is backwards under exchangeable
+      MCAR; the bias argument under non-exchangeable raters carries the
+      contrast. Either drop the inefficiency line or scope it explicitly
+      to "asymptotic efficiency relative to FIML".
 
 ### Build infrastructure
 
