@@ -13,7 +13,7 @@ The repository ships three things:
 
 - A standalone C++23 static library (`include/misskappa/`, `src/`).
 - An R package wrapping it via Rcpp (`r-package/`).
-- A research manuscript using both (`paper/`, targeting Psychometrika).
+- Research manuscripts using both (under `papers/`, with the lead manuscript targeting Psychometrika).
 
 The original C++17 + Armadillo implementation that grew alongside the
 manuscript is preserved under `dev/legacy/` for reference.
@@ -32,8 +32,9 @@ Or via `just`:
 just test            # dev build + ctest
 just r-install       # build opt + install R package
 just r-check         # R CMD check + testthat
-just paper           # build the manuscript PDF
+just paper <slug>    # build the manuscript PDF for papers/<slug>/
 ```
 
-See `AGENTS.md` for the project contract and `paper/AGENTS.md` for the
-manuscript-specific direction.
+See `AGENTS.md` for the project contract and `papers/combined/AGENTS.md`
+for the manuscript-specific direction (with the three spinoffs under
+`papers/{ipw,fiml,quadratic}/`).

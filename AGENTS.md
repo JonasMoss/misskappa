@@ -9,11 +9,14 @@ and friends — with arbitrary numbers of raters, arbitrary pairwise loss matric
 and support for missing categorical ratings under MCAR and MAR. The primary
 audience is methods developers. The R package under `r-package/` is a thin
 Rcpp wrapper over the prebuilt static library, intended for empirical examples
-and the accompanying manuscript under `paper/`.
+and the accompanying manuscripts under `papers/`.
 
-The first paper (`paper/kappa-missing.tex`, targeting Psychometrika) studies
-the MCAR estimators (available-case and IPW) and shows that Gwet's earlier
-inferential method is inconsistent.
+The combined draft (`papers/combined/kappa-missing.tex`) is being split into
+three papers (see `papers/combined/dev/split-plan.md`):
+`papers/ipw/` (Psychometrika; IPW + AC/Gwet comparison),
+`papers/fiml/` (Psychometrika or Biometrika; FIML / semiparametric efficiency
+under MAR), and `papers/quadratic/` (Biometrics; closed-form quadratic =
+Lin's CCC on pairwise-available data).
 
 ## Non-negotiables
 
@@ -45,9 +48,12 @@ inferential method is inconsistent.
 - `tests/tools/` — maintainer-only fixture-generation scripts (R).
 - `r-package/` — Rcpp bindings; consumes the prebuilt `libmisskappa.a`,
   separate from and not part of the C++ build.
-- `paper/` — manuscript, bibliography, figures, tables, simulation scripts,
-  curated results. Each subdir documented in `paper/AGENTS.md`; the prose /
-  table / figure style guide is `paper/STYLE.md`.
+- `papers/` — research manuscripts. `papers/combined/` holds the
+  source-of-truth combined draft being split into three; `papers/ipw/`,
+  `papers/fiml/`, `papers/quadratic/` are the spinoffs. Each carries its
+  own `AGENTS.md`, `STYLE.md` (cloned from the combined draft), `justfile`,
+  bibliography, figures, tables, scripts, and results. The split decision
+  and section mapping live in `papers/combined/dev/split-plan.md`.
 - `docs/` — repo-level documentation assets, including shared artwork such as
   the project logo.
 - `dev/legacy/` — frozen reference: original R package, C++ implementation,
@@ -73,9 +79,10 @@ build (`-O3 -DNDEBUG -march=native`) and is the artifact the R package links.
 
 Repo-root `justfile` wraps the common loops: `just build`, `just test`
 (`dev` build + ctest), `just opt`, `just test-opt`, `just r-install`,
-`just r-check` (reinstall + R-level tests), `just paper` (delegates to
-`paper/justfile`), and `just regen-oracle` (regenerates `tests/fixtures/`).
-`just` with no recipe lists them.
+`just r-check` (reinstall + R-level tests), `just paper <slug>` (delegates
+to `papers/<slug>/justfile`, e.g. `just paper ipw pdf`), and
+`just regen-oracle` (regenerates `tests/fixtures/`). `just` with no recipe
+lists them.
 
 The R bindings link the prebuilt non-sanitized `opt` `libmisskappa.a`;
 `r-package/src/Makevars` makes the package objects depend on it, so a C++
@@ -128,8 +135,8 @@ or in anonymous namespaces inside the `.cpp` that owns them.
   not keep copied agent-skill snapshots under `dev/legacy/`.
 - Keep `dev/notes/todo.md` as the single active backlog. Fold finished planning
   docs into it or remove them; do not create parallel roadmaps.
-- Keep `paper/AGENTS.md` and `paper/dev/todo.md` current when the manuscript or
-  simulation scope changes.
+- Keep each `papers/<slug>/AGENTS.md` and `papers/<slug>/dev/todo.md` current
+  when the corresponding manuscript or simulation scope changes.
 - Commit every finished user request as a coherent completed change before
   handing back, unless the user explicitly asks not to commit. Keep work on the
   current branch unless explicitly asked to branch.

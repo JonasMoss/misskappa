@@ -4,7 +4,7 @@ Paper-specific TODO. Repo-level TODO is in `../../dev/notes/todo.md`.
 
 The 2025 rewrite refocused the manuscript on four estimators across two data
 forms: (raw, counts) × (FIML, IPW). The available-case, Gwet, and quadratic
-estimators are now a short comparison section. See `paper/AGENTS.md` for the
+estimators are now a short comparison section. See `papers/combined/AGENTS.md` for the
 declared scope.
 
 ## Open
@@ -27,7 +27,7 @@ Open questions about the current sim design before committing the paper to
 specific DGPs / claims. Each is one focused experiment folder per
 `experiments/AGENTS.md`. Findings may motivate manuscript changes, may
 soften / sharpen specific claims, or may end in the trash — that's the
-point of running them outside `paper/`.
+point of running them outside `papers/combined/`.
 
 - [x] `01-coverage-iif-louis` — Runner/report landed; B = 50, n up to
       8000 showed IPW Wald near nominal under MCAR (DGPs A, B), but FIML
@@ -83,7 +83,7 @@ point of running them outside `paper/`.
 - [ ] Decide whether the appendix proof of Proposition
       \ref{prop:ac-consistency} should also state and prove the
       corresponding Gwet limit explicitly (currently in a `\begin{rem}`).
-- [ ] Sentence-level pass against `paper/STYLE.md`: no em-dashes, no
+- [ ] Sentence-level pass against `papers/combined/STYLE.md`: no em-dashes, no
       semicolons, no LLM-isms, no antithesis. The current draft mostly
       complies but a final sweep is worth doing.
 - [ ] Rewrite Section 5.1 around AC inconsistency rather than AC
@@ -95,18 +95,18 @@ point of running them outside `paper/`.
 
 ### Build infrastructure
 
-- [ ] Wire `paper/justfile` recipes that are still TODO: confirm `archive`,
+- [ ] Wire `papers/combined/justfile` recipes that are still TODO: confirm `archive`,
       `tables`, `figures` are functional. `pdf` and `sim` are working.
-- [ ] Add `paper/scripts/build_tables.R` (stub for `just tables`) — currently
+- [ ] Add `papers/combined/scripts/build_tables.R` (stub for `just tables`) — currently
       the simulation script writes the tables directly.
-- [ ] Add `paper/tables/<slug>_stats.tex` macro file with `??` fallbacks for
+- [ ] Add `papers/combined/tables/<slug>_stats.tex` macro file with `??` fallbacks for
       any cited numbers in the prose (none currently, but if the worked
       example adds one, this becomes load-bearing).
 
 ## Done (2025 rewrite)
 
-- [x] Rewrite scope in `paper/AGENTS.md` to (raw, counts) × (FIML, IPW).
-- [x] Rewrite `paper/kappa-missing.tex` around four headline estimators.
+- [x] Rewrite scope in `papers/combined/AGENTS.md` to (raw, counts) × (FIML, IPW).
+- [x] Rewrite `papers/combined/kappa-missing.tex` around four headline estimators.
       Adds Section 3.2 (FIML, raw), Section 4 (counts + exchangeable raters),
       Section 5 (other estimators, including quadratic special case),
       symbol glossary. Fills the previously empty "Concluding remarks".
@@ -115,7 +115,7 @@ point of running them outside `paper/`.
 - [x] Extend `scripts/simulations_raw_three_estimators.R` with FIML
       (`em_options = list(max_iter = 50000, tol = 1e-7)` to handle harder
       DGPs).
-- [x] Counts-FIML model write-up: `paper/dev/notes/counts-fiml-model.md`
+- [x] Counts-FIML model write-up: `papers/combined/dev/notes/counts-fiml-model.md`
       (carried over from earlier work).
 - [x] Fix the truncated "We w" sentence in the Introduction.
 - [x] Fill Section 7 (R package) and Section 8 (Concluding remarks).

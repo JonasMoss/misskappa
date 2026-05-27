@@ -1,7 +1,9 @@
 # misskappa repo TODO
 
-Active repo-level backlog. Paper-specific TODO lives at `paper/dev/todo.md`.
-The port plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
+Active repo-level backlog. Paper-specific TODOs live at
+`papers/<slug>/dev/todo.md` (one per paper); the split decision and
+section mapping live at `papers/combined/dev/split-plan.md`. The port
+plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Currently in flight
 

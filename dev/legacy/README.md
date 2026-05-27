@@ -10,8 +10,8 @@ new tree can read the math out of them while porting:
 - `code-analysis/` — original analysis scripts (e.g. simulation runner).
 - `notes/` — derivation and design notes that fed into the manuscript.
 - `kappa-missing.lyx` — original LyX manuscript (the source of truth at
-  the time of the restart). Replaced by `paper/kappa-missing.tex` going
-  forward.
+  the time of the restart). Replaced by `papers/combined/kappa-missing.tex`
+  (which is itself being split into `papers/{ipw,fiml,quadratic}/`).
 - `kappa-missing.pdf` — last compiled PDF snapshot.
 - `Justfile` — the old repo-root Justfile.
 - `chunks/`, `pdf/`, `llm/`, `skills/`, `todo.md` — supporting material.

@@ -1,8 +1,11 @@
 # Port plan
 
 Roadmap for restructuring `misskappa` from an R-package-in-paper-repo into
-a standalone C++23 library with R bindings and a paper as subprojects.
+a standalone C++23 library with R bindings and papers as subprojects.
 Approved plan stub at `~/.claude/plans/ok-so-its-been-glowing-duckling.md`.
+The single-paper layout described below has since evolved into a multi-paper
+layout under `papers/<slug>/`; references to `paper/` below should be read
+as `papers/combined/`.
 
 ## Eight steps
 

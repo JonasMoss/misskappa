@@ -5,7 +5,7 @@
 # Empirical coverage of Wald confidence intervals for Conger's kappa
 # under the IPW influence-function variance and the FIML Louis observed-
 # information variance. Three DGPs (A / B / C) carried over from
-# paper/scripts/simulations_raw_three_estimators.R, three sample sizes,
+# papers/combined/scripts/simulations_raw_three_estimators.R, three sample sizes,
 # Conger x identity loss.
 #
 # Outputs (under results/):
@@ -31,6 +31,7 @@ if (has_flag("--help") || has_flag("-h")) {
   cat("Usage: Rscript run_experiment.R [options]\n",
       " --smoke         Fast smoke run (reps=5, single n=200). Default off.\n",
       " --reps N        Override replicate count.\n",
+      " --info-rcond X  Override FIML Louis relative eigenvalue cutoff.\n",
       " --seed-base K   Seed base (default 1).\n",
       " --help, -h      This help.\n", sep = "")
   quit("no", status = 0)
@@ -39,6 +40,7 @@ if (has_flag("--help") || has_flag("-h")) {
 smoke     <- has_flag("--smoke")
 seed_base <- get_val("--seed-base", 1L, as.integer)
 reps_user <- get_val("--reps", NA_integer_, as.integer)
+info_rcond <- get_val("--info-rcond", NA_real_, as.numeric)
 
 if (smoke) {
   ns   <- c(200L)
@@ -128,6 +130,7 @@ fit_one <- function(x, method) {
   call_args <- list(x = x, method = method, weight = "identity")
   if (method == "fiml") {
     call_args$em_options <- list(max_iter = 50000L, tol = 1e-7)
+    if (is.finite(info_rcond)) call_args$em_options$info_rcond <- info_rcond
   }
   res <- try(do.call(misskappa::kappa, call_args), silent = TRUE)
   if (inherits(res, "try-error")) return(c(est = NA_real_, se = NA_real_))
@@ -218,7 +221,7 @@ write.csv(replicates, file.path(results_dir, "replicates.csv"), row.names = FALS
 
 meta <- data.frame(
   key = c("seed_base", "reps", "ns", "methods", "smoke",
-          "C", "R", "n_truth", "weight", "kappa",
+          "C", "R", "n_truth", "weight", "kappa", "info_rcond",
           "R_version", "misskappa_version", "started_at", "elapsed_s"),
   value = c(
     as.character(seed_base),
@@ -231,6 +234,7 @@ meta <- data.frame(
     as.character(n_truth),
     "identity",
     "Conger",
+    if (is.finite(info_rcond)) as.character(info_rcond) else "default",
     as.character(getRversion()),
     as.character(utils::packageVersion("misskappa")),
     format(t0, "%Y-%m-%dT%H:%M:%S"),

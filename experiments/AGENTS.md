@@ -14,8 +14,8 @@ question changes, start a new folder.
 Experiments are advisory. They can motivate library work, paper
 content, or new tests, but they are not themselves parity gates and do
 not block releases. When an experiment is paper-worthy, it migrates into
-`paper/` (or a new paper folder if there are multiple) and the
-experiment folder stays as a reproducibility record.
+the appropriate `papers/<slug>/` folder and the experiment folder stays
+as a reproducibility record.
 
 Anything still in development that isn't yet a question to be answered
 belongs in `dev/notes/` instead.
@@ -105,7 +105,8 @@ Tables in reports are presentation objects, not data dumps.
 - Prefer one clear plot over several near-duplicates.
 
 For style of tables / figures / math / prose in *any* misskappa write-up,
-follow `paper/STYLE.md` to the extent it fits a report.
+follow `papers/combined/STYLE.md` (cloned into each `papers/<slug>/STYLE.md`)
+to the extent it fits a report.
 
 ## Style
 
