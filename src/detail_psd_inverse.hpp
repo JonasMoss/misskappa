@@ -1,0 +1,39 @@
+#ifndef MISSKAPPA_DETAIL_PSD_INVERSE_HPP
+#define MISSKAPPA_DETAIL_PSD_INVERSE_HPP
+
+#include "misskappa/types.hpp"
+
+#include <Eigen/Eigenvalues>
+#include <cmath>
+#include <limits>
+
+namespace misskappa::detail {
+
+inline RealMat pseudo_inverse_psd(RealMat m, double rcond) {
+  if (m.rows() == 0 || m.cols() == 0) return RealMat::Zero(m.rows(), m.cols());
+  m = 0.5 * (m + m.transpose());
+
+  Eigen::SelfAdjointEigenSolver<RealMat> es(m);
+  if (es.info() != Eigen::Success) {
+    return RealMat::Constant(m.rows(), m.cols(), std::numeric_limits<double>::quiet_NaN());
+  }
+
+  const RealVec& evals = es.eigenvalues();
+  const RealMat& evecs = es.eigenvectors();
+  const double lambda_max = evals.maxCoeff();
+  if (!(lambda_max > 0.0) || !std::isfinite(lambda_max)) {
+    return RealMat::Zero(m.rows(), m.cols());
+  }
+  const double rc = (std::isfinite(rcond) && rcond > 0.0) ? rcond : 0.0;
+  const double threshold = rc * lambda_max;
+
+  RealVec inv = RealVec::Zero(evals.size());
+  for (Eigen::Index k = 0; k < evals.size(); ++k) {
+    if (evals(k) > threshold) inv(k) = 1.0 / evals(k);
+  }
+  return evecs * inv.asDiagonal() * evecs.transpose();
+}
+
+}  // namespace misskappa::detail
+
+#endif  // MISSKAPPA_DETAIL_PSD_INVERSE_HPP

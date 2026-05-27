@@ -100,6 +100,26 @@ TEST_CASE("estimate_fiml: variance is symmetric and PSD") {
   CHECK(es.eigenvalues().minCoeff() > -1e-8);
 }
 
+TEST_CASE("estimate_fiml: info_rcond affects Louis variance, not estimates") {
+  IntMat x = twelve_subject_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+
+  EmOptions keep{};
+  keep.info_rcond = 0.0;
+  auto r_keep = ms::estimate_fiml(x, *W, keep);
+  REQUIRE(r_keep.has_value());
+
+  EmOptions drop{};
+  drop.info_rcond = 1.0;
+  auto r_drop = ms::estimate_fiml(x, *W, drop);
+  REQUIRE(r_drop.has_value());
+
+  CHECK((r_keep->estimates - r_drop->estimates).cwiseAbs().maxCoeff() < 1e-12);
+  CHECK(r_drop->vcov.norm() < r_keep->vcov.norm());
+}
+
 TEST_CASE("estimate_fiml: perfect agreement converges to kappa = 1") {
   IntMat x(5, 2);
   x << 0, 0,

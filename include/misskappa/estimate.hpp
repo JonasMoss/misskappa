@@ -12,6 +12,7 @@ struct EmOptions {
   double tol = 1e-8;
   double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
   double start_alpha = 0.1;  // smoothing on initial theta; small positive.
+  double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.
 };
 
 // --- Categorical raw-rating estimators -------------------------------------
