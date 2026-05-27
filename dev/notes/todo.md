@@ -16,14 +16,6 @@ The port plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Backlog
 
-- [ ] **Top priority: remove the O(n^2) raw-estimator chance kernels.**
-      `estimate_available`, `estimate_ipw`, and `estimate_gwet` currently
-      compute chance disagreement by looping over all subject pairs. This
-      makes simulation truth runs and moderate `n` experiments absurdly slow.
-      Replace the V-statistic path in `src/estimate_raw.cpp` with aggregated
-      category/rater totals, borrowing the counts-format algebra where
-      possible, while preserving the existing influence-function covariance.
-      Do this before any more full-grade raw simulations.
 - [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
       The Eigen API is already thin for the two consumers we have (in-tree
       C++ tests and R via Rcpp+RcppEigen). If we ever add a Python / Julia /
@@ -39,3 +31,12 @@ The port plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 - [ ] Add `.clang-format` and a `just fmt-cpp` recipe.
 - [ ] Re-evaluate whether counts-format input and continuous ratings should
       come back into the library after the paper is submitted.
+
+## Done
+
+- [x] **Remove the O(n^2) raw-estimator chance kernels.**
+      `estimate_available`, `estimate_ipw`, and `estimate_gwet` now compute
+      chance-disagreement V-statistic row sums, column sums, and totals from
+      weighted category/rater totals in `src/estimate_raw.cpp`, preserving the
+      existing influence-function covariance without looping over all subject
+      pairs.
