@@ -1,0 +1,3 @@
+# Keep the directory; ignore local scratch dumps.
+raw/
+*.rds

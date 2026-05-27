@@ -42,6 +42,8 @@ three papers (see `papers/combined/dev/split-plan.md`). Each
   homogeneity).
 - `10-louis-spectrum` — **Paper B** diagnostic for the rank-truncated
   Louis-information pseudo-inverse.
+- `12-clean-mar-dgp` — **Paper B** replacement candidates for the
+  inherited fake-MAR DGP C.
 
 ## Open
 
@@ -93,6 +95,20 @@ smoke run is finite-sample MLE bias (clears at full grade) or a
 structural concern that warrants a manuscript caveat.
 
 ## Done
+
+### `12-clean-mar-dgp`
+
+Runner + report under `experiments/12-clean-mar-dgp/`. Replaces the
+old latent-truth DGP C with genuinely MAR mechanisms. The baseline
+anchor-MAR design always observes rater 1 and lets raters 2--4 be
+observed according to rater 1's observed category; at
+`n ∈ {500, 2000, 8000}`, `B = 120`, AC/IPW/Gwet retain positive
+Conger bias around `+0.03` to `+0.04`, while FIML is near the full-data
+truth. A small candidate search shows more dramatic clean-MAR examples:
+sequential four-category MAR gives largest non-FIML bias `+0.144`
+versus FIML bias `-0.002` at `n = 4000`, `B = 80`. Recommendation:
+use the anchor-MAR design as the main-text replacement and keep the
+severe sequential designs as supplement/stress-test evidence.
 
 ### `09-joint-vcov-pilot`
 
