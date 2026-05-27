@@ -83,38 +83,77 @@ Result<Estimation> estimate_raw(
   // kernel_CN(i, i') = sum over j<k of M_ij M_{i'k} * loss(x_ij, x_{i'k})
   //                                                 * pi_j_inv(j) * pi_j_inv(k)
   // kernel_FN(i, i') = sum over all j, k same, but without the j<k restriction.
+  //
+  // The V-statistic influence functions only need row sums, column sums, and
+  // totals of these n x n kernels. Build those from weighted category/rater
+  // totals rather than materializing every subject pair.
+  RealMat subject_category_totals = RealMat::Zero(n, C);
+  RealVec subject_observed_totals = RealVec::Zero(n);
+  RealMat rater_category_totals = RealMat::Zero(R, C);
+  RealVec rater_observed_totals = RealVec::Zero(R);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < R; ++j) {
+      if (!mask(i, j)) continue;
+      const double w_j = pi_j_inv(j);
+      const int a = ratings(i, j);
+      subject_category_totals(i, a) += w_j;
+      subject_observed_totals(i) += w_j;
+      rater_category_totals(j, a) += w_j;
+      rater_observed_totals(j) += w_j;
+    }
+  }
+
   detail::KernelMoments kernel_CN(n);
   detail::KernelMoments kernel_CD(n);
   detail::KernelMoments kernel_FN(n);
   detail::KernelMoments kernel_FD(n);
+
+  const RealVec category_totals = subject_category_totals.colwise().sum().transpose();
+  const RealMat subject_L = subject_category_totals * L;
+  kernel_FN.row_sum = subject_L * category_totals;
+  kernel_FN.col_sum = (subject_category_totals * L.transpose()) * category_totals;
+  kernel_FN.total = kernel_FN.row_sum.sum();
+
+  const double total_observed = subject_observed_totals.sum();
+  kernel_FD.row_sum = subject_observed_totals * total_observed;
+  kernel_FD.col_sum = kernel_FD.row_sum;
+  kernel_FD.total = total_observed * total_observed;
+
+  RealMat suffix_category_totals = RealMat::Zero(R, C);
+  RealMat prefix_category_totals = RealMat::Zero(R, C);
+  RealVec suffix_observed_totals = RealVec::Zero(R);
+  RealVec prefix_observed_totals = RealVec::Zero(R);
+  RealVec category_running = RealVec::Zero(C);
+  double observed_running = 0.0;
+  for (int j = R - 1; j >= 0; --j) {
+    suffix_category_totals.row(j) = category_running.transpose();
+    suffix_observed_totals(j) = observed_running;
+    category_running += rater_category_totals.row(j).transpose();
+    observed_running += rater_observed_totals(j);
+  }
+  category_running.setZero();
+  observed_running = 0.0;
+  for (int j = 0; j < R; ++j) {
+    prefix_category_totals.row(j) = category_running.transpose();
+    prefix_observed_totals(j) = observed_running;
+    category_running += rater_category_totals.row(j).transpose();
+    observed_running += rater_observed_totals(j);
+  }
+
   for (int i = 0; i < n; ++i) {
-    for (int ip = 0; ip < n; ++ip) {
-      double h_cn = 0, h_cd = 0, h_fn = 0, h_fd = 0;
-      for (int j = 0; j < R; ++j) {
-        if (!mask(i, j)) continue;
-        const double w_j = pi_j_inv(j);
-        const int a = ratings(i, j);
-        for (int k = 0; k < R; ++k) {
-          if (!mask(ip, k)) continue;
-          const double w_jk = w_j * pi_j_inv(k);
-          const int b = ratings(ip, k);
-          const double l = L(a, b);
-          // Fleiss: all (j, k).
-          h_fn += l * w_jk;
-          h_fd += w_jk;
-          // Conger: j < k only.
-          if (j < k) {
-            h_cn += l * w_jk;
-            h_cd += w_jk;
-          }
-        }
-      }
-      kernel_CN.add(i, ip, h_cn);
-      kernel_CD.add(i, ip, h_cd);
-      kernel_FN.add(i, ip, h_fn);
-      kernel_FD.add(i, ip, h_fd);
+    for (int j = 0; j < R; ++j) {
+      if (!mask(i, j)) continue;
+      const double w_j = pi_j_inv(j);
+      const int a = ratings(i, j);
+      kernel_CN.row_sum(i) += w_j * L.row(a).dot(suffix_category_totals.row(j));
+      kernel_CD.row_sum(i) += w_j * suffix_observed_totals(j);
+      kernel_CN.col_sum(i) += w_j * prefix_category_totals.row(j).dot(L.col(a));
+      kernel_CD.col_sum(i) += w_j * prefix_observed_totals(j);
     }
   }
+  kernel_CN.total = kernel_CN.row_sum.sum();
+  kernel_CD.total = kernel_CD.row_sum.sum();
+
   const double psi_CN_hat = kernel_CN.mean(n);
   const double psi_CD_hat = kernel_CD.mean(n);
   const double psi_FN_hat = kernel_FN.mean(n);
