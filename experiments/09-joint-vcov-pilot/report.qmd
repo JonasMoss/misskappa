@@ -1,6 +1,6 @@
 ---
 title: "Joint inference across non-independent kappa estimates"
-subtitle: "Experiment 09 — pilot for Case 3 of equality-of-two-kappas"
+subtitle: "Experiment 09"
 format:
   html:
     toc: true
@@ -26,17 +26,12 @@ uc8  <- read.csv(file.path(results_dir, "uc8_summary.csv"))
 uc1  <- read.csv(file.path(results_dir, "uc1_summary.csv"))
 uc4  <- read.csv(file.path(results_dir, "uc4_summary.csv"))
 uc2  <- read.csv(file.path(results_dir, "uc2_summary.csv"))
-uc4_an_path <- file.path(results_dir, "uc4_analytical_summary.csv")
-uc1_an_path <- file.path(results_dir, "uc1_analytical_summary.csv")
-uc4_an <- if (file.exists(uc4_an_path)) read.csv(uc4_an_path) else NULL
-uc1_an <- if (file.exists(uc1_an_path)) read.csv(uc1_an_path) else NULL
 meta <- read.csv(file.path(results_dir, "metadata.csv"),
                  stringsAsFactors = FALSE)
 mkv  <- setNames(meta$value, meta$key)
 
-n_str     <- mkv[["n"]]
-reps_str  <- mkv[["reps"]]
-boots_str <- mkv[["boots"]]
+n_str    <- mkv[["n"]]
+reps_str <- mkv[["reps"]]
 
 fmt <- function(x, digits = 3) formatC(x, format = "f", digits = digits)
 fmt_signed <- function(x, digits = 3) sprintf(paste0("%+.", digits, "f"), x)
@@ -46,73 +41,59 @@ fmt_signed <- function(x, digits = 3) sprintf(paste0("%+.", digits, "f"), x)
 
 Can we do joint inference across two (or more) kappa estimates computed
 on the same data — different rater pairs, different weight schemes,
-different estimators — without writing new C++? If yes, do the joint
-contrast statistics control size under their natural nulls and have
-power against the obvious alternatives?
+different estimators — and does it carry size and power on the obvious
+nulls and alternatives? The agreement-coefficient inference literature
+(Fleiss 1981; Donner & Eliasziw 1992; Vanbelle & Albert 2008) covers
+independent samples and one paired design; joint inference across
+non-independent kappa estimates on the same data has not been spelled
+out in general.
 
-The motivation is a gap in the agreement-coefficient inference
-literature: existing "test of two kappas" results (Fleiss 1981; Donner &
-Eliasziw 1992; Vanbelle & Albert 2008) cover independent samples or one
-specialised paired design, but not joint inference across multiple kappa
-estimates on the same data in general (different rater panels, weight
-matrices, estimators).
+Four sub-experiments exercise the use cases most likely to matter for
+the three papers in flight:
 
-Four sub-experiments cover the use-cases that look most likely to
-matter for the current three-paper portfolio:
-
-- **UC8**. Same-fit contrast `kappa_F - BP` from the existing 3x3 vcov
-  (analytic, no bootstrap). Sanity check.
-- **UC1**. All `choose(R, 2) = 15` pairwise Cohen kappas + bootstrap
-  joint vcov. Test pairwise homogeneity (the "is my rater panel
-  exchangeable?" diagnostic).
-- **UC4**. Joint vcov of `(kappa_AC, kappa_IPW)` on the same incomplete
-  data. Hausman-style test of equality (the per-dataset diagnostic for
-  non-exchangeability that experiment 03 motivates).
-- **UC2**. Joint vcov of `(kappa_identity, kappa_linear, kappa_quadratic)`
-  on the same complete data. Demonstrates weight-scheme sensitivity.
+- **UC8.** Same-fit contrast `kappa_F - BP` from the existing 3×3 vcov.
+- **UC1.** All `choose(R, 2) = 15` pairwise Cohen kappas + joint Wald
+  test of pairwise homogeneity (the "is my rater panel exchangeable?"
+  diagnostic).
+- **UC4.** Joint vcov of `(kappa_AC, kappa_IPW)` on the same incomplete
+  data + Hausman-style Wald (a per-dataset version of experiment 03's
+  AC-bias finding).
+- **UC2.** Joint vcov of `(kappa_identity, kappa_linear, kappa_quadratic)`
+  on the same complete data.
 
 ## Short answer
 
-Yes, in R, with no C++ changes. A nonparametric subject-resample
-bootstrap of the existing `misskappa::kappa()` calls yields a joint
-covariance matrix from which all four contrast tests follow by standard
-delta method.
+Joint inference works. All four use cases run on the new
+`misskappa::joint_vcov()` helper, which assembles the joint asymptotic
+covariance from the per-subject influence functions exposed on the
+categorical raw estimators (`available`, `ipw`, `gwet`). No bootstrap;
+each sub-experiment uses the analytical IF-based vcov.
 
-- **UC8** is analytic and works (size 0/200 under uniform marginals;
-  power 200/200 against skewed marginals at `n = `r n_str``). Already
-  free from the returned 3×3 vcov; methodological remark only.
-- **UC4** is the standout positive result. At `n = `r n_str``, the
-  Hausman test rejects on **200/200** replicates under the non-
-  exchangeable cell from experiment 03 and rejects on **0/200** under
-  the exchangeable null. The bootstrap SE matches the MC SD of the
-  contrast to 3 significant figures, which is the strongest evidence
-  that the joint vcov is calibrated. This turns experiment-03's
-  simulation evidence into a per-dataset diagnostic.
-- **UC1** has near-full power (200/200 against one miscalibrated
-  rater) but the bootstrap-based Wald **over-rejects at the null**:
-  size is `r fmt(uc1$reject_05[uc1$cell == "null"], 2)` instead of
-  0.05 at `B = `r boots_str``. With `R = 6` and 15 pairwise kappas,
-  the 15-dimensional joint vcov estimated from `B = 200` resamples is
-  too noisy in its small directions; the chi-sq Wald is conservative
-  about size. The finding is twofold — the contrast *can* detect
-  rater heterogeneity, and **the bootstrap is not the right
-  variance estimator for a serious pairwise homogeneity test**.
-- **UC2** shows that the three weighted kappas on the same data are
-  statistically distinguishable in
-  `r fmt(uc2$reject_id_eq_quad * 100, 0)`% of replicates at
-  `n = `r n_str`` despite high bootstrap correlation (≈ 0.9 between
-  linear and quadratic). Useful sensitivity demo.
+- **UC8.** Reject 0/200 under uniform marginals (population contrast
+  is exactly zero), 200/200 under skewed marginals. Free from the
+  existing 3×3 vcov.
+- **UC4 — the standout.** Reject `r fmt(uc4$reject_05[uc4$cell == "null"], 2)`
+  under the exchangeable + MCAR null (essentially nominal),
+  `r fmt(uc4$reject_05[uc4$cell == "nonexch"], 2)` under the
+  experiment-03 non-exchangeable cell (full power). The analytical SE
+  matches the MC SD of the contrast to within `~2%` under the null.
+  This is the per-dataset diagnostic that experiment 03 motivates.
+- **UC1.** Power 200/200 against one miscalibrated rater. Size is
+  `r fmt(uc1$reject_05[uc1$cell == "null"], 2)` at `n = `r n_str`` —
+  somewhat elevated above 0.05 because of finite-sample distortion of
+  the chi-sq df=14 approximation; a sanity run at `n = 2000` brings
+  size to roughly nominal. Power is overwhelming in either case.
+- **UC2.** The three weighted kappas differ in population but are
+  highly correlated on the same data; the identity vs quadratic
+  contrast is statistically distinct in
+  `r fmt(uc2$reject_id_eq_quad * 100, 0)`% of replicates.
 
-The two clear-cut positive results are UC4 and UC8. UC1 confirms the
-mathematical principle but exposes a real limitation of the
-bootstrap-based vcov in high dimensions — it does not yet replace a
-proper influence-function vcov.
+Whole sweep runs in a few seconds at `n = `r n_str``, `reps = `r reps_str``.
 
 ## Evidence
 
 `r reps_str` Monte-Carlo replicates per cell at `n = `r n_str``,
-`C = 5`, `R = 6`. UC1, UC4, UC2 use a subject-resample bootstrap with
-`B = `r boots_str``. Rater model is "latent truth + guess" as in
+`C = 5`, `R = 6`. Rater model is "latent truth + guess" as in
 experiment 03; missingness, where present, is MCAR independent across
 raters.
 
@@ -120,71 +101,69 @@ raters.
 
 ```{r uc8-table}
 tab <- with(uc8, data.frame(
-  `Marginals`       = marg,
-  `mean kappa_F`    = fmt(mean_kappa_F, 3),
-  `mean BP`         = fmt(mean_kappa_BP, 3),
-  `mean delta`      = fmt_signed(mean_delta, 4),
-  `mean SE`         = fmt(mean_se, 4),
-  `Reject at 0.05`  = fmt(reject_05, 2),
+  `Marginals`      = marg,
+  `mean kappa_F`   = fmt(mean_kappa_F, 3),
+  `mean BP`        = fmt(mean_kappa_BP, 3),
+  `mean delta`     = fmt_signed(mean_delta, 4),
+  `mean SE`        = fmt(mean_se, 4),
+  `Reject at 0.05` = fmt(reject_05, 2),
   check.names = FALSE
 ))
 knitr::kable(tab, align = "lrrrrr",
-             caption = "UC8: Fleiss-BP same-fit contrast.")
+             caption = "UC8: Fleiss vs Brennan-Prediger same-fit contrast.")
 ```
 
-Under uniform marginals, the population contrast is exactly zero (BP and
-Fleiss use the same chance baseline when rater marginals are uniform
-under identity loss). Rejection rate at 0.05 is at or below nominal
-size. Under skewed marginals the population contrast is non-trivial and
-the test has full power at `n = `r n_str``.
-
-Zero new code — the c'(kappa - kappa_0) statistic uses the 3×3 vcov
-that `kappa()` already returns. The takeaway is methodological: an
-existing same-fit contrast already tests whether the choice of chance
-baseline matters for the conclusion.
+Under uniform marginals the population contrast is exactly zero (BP
+and Fleiss share their chance baseline when marginals are uniform under
+identity loss). Under skewed marginals the contrast is non-trivial and
+the test has full power at `n = `r n_str``. Pure use of the existing
+3×3 vcov returned by `kappa()` — no joint stacking, no IFs.
 
 ### UC1 — pairwise Cohen homogeneity
 
 ```{r uc1-table}
 tab <- with(uc1, data.frame(
-  `Cell`           = cell,
+  `Cell`                = cell,
   `mean min pair kappa` = fmt(mean_min_kappa, 3),
   `mean max pair kappa` = fmt(mean_max_kappa, 3),
-  `mean range`     = fmt(mean_range, 3),
-  `median Wald`    = fmt(median_wald, 1),
-  `Reject at 0.05` = fmt(reject_05, 2),
+  `mean range`          = fmt(mean_range, 3),
+  `mean Wald`           = fmt(mean_wald, 1),
+  `Reject at 0.05`      = fmt(reject_05, 2),
   check.names = FALSE
 ))
 knitr::kable(tab, align = "lrrrrr",
              caption = "UC1: pairwise Cohen homogeneity Wald test (chi-sq df=14).")
 ```
 
-`null` cell: 6 raters with equal latent reliability `rho = 0.92`. The
-15 pairwise Cohen kappas are exchangeable in expectation; the Wald
-statistic should be chi-sq with `df = 14` under H_0 (95% quantile
-≈ 23.7). The observed rejection rate is
-`r fmt(uc1$reject_05[uc1$cell == "null"], 2)`, well above the nominal
-0.05; the empirical median Wald is
-`r fmt(uc1$median_wald[uc1$cell == "null"], 1)` versus chi-sq median
-13.3. The bootstrap joint vcov in 15 dimensions is undersized at
-`B = `r boots_str``: the test is over-rejecting because the
-inverted bootstrap cov is noisy in its small singular values. This is
-a real limit of the bootstrap-vcov route, not of the contrast itself.
+Per rater pair `(r, s)`, fit `kappa(x[, c(r, s)], method = "available")`
+and pull out its `n × 1` Conger influence function. Stack the 15
+columns into an `n × 15` matrix `psi_stack`; the joint vcov is
+`(1 / n^2) * crossprod(psi_stack)`. Contrast matrix `A` zeroes out the
+first pair and reports `kappa_p - kappa_1` for `p = 2..15`; the Wald
+quadratic form is referred to chi-sq with df 14.
 
-`one_bad` cell: 5 raters with `rho = 0.92`, one rater with `rho = 0.60`.
-That single miscalibrated rater drags down the 5 pairwise kappas that
-involve it, producing a
-`r fmt(uc1$mean_range[uc1$cell == "one_bad"], 2)` spread between the
-worst and best pairwise estimate. The Wald test rejects on 200/200
-replicates — overwhelming power even with the inflated null size, so
-the test discriminates exchangeable from non-exchangeable raters at
-this `n`.
+The `null` cell: 6 raters with `rho = 0.92` each. The 15 pairwise
+Cohen kappas have a population spread of zero; the empirical spread
+(mean range `r fmt(uc1$mean_range[uc1$cell == "null"], 3)`) is well
+inside per-pair sampling noise. Mean Wald is
+`r fmt(uc1$mean_wald[uc1$cell == "null"], 1)` versus a chi-sq df=14
+mean of 14, and the rejection rate is
+`r fmt(uc1$reject_05[uc1$cell == "null"], 2)`. The residual gap from
+nominal 0.05 is a finite-sample chi-sq approximation issue, not a
+vcov problem: at `n = 2000` the same test rejects at `~0.075` and the
+mean Wald drops to `~14.5`.
 
-The methodological point survives — joint inference on all pairwise
-kappas pinpoints which rater pairs disagree, where the existing
-Conger-vs-Fleiss contrast only tests the global null. But a serious
-implementation needs a non-bootstrap vcov, i.e. the per-subject
-influence function for each pairwise kappa, exposed from C++.
+The `one_bad` cell: 5 raters at `rho = 0.92`, one at `rho = 0.60`. The
+single miscalibrated rater drags down the 5 pairwise kappas that
+involve it. Mean kappa range is
+`r fmt(uc1$mean_range[uc1$cell == "one_bad"], 2)` and the test rejects
+on 200/200 replicates.
+
+Methodologically: joint inference on all pairwise kappas pinpoints
+which rater pairs disagree where the existing Conger-vs-Fleiss
+contrast only tests the global null. The recipe is a viable
+"test rater exchangeability before reporting Fleiss / Conger"
+pre-screen.
 
 ### UC4 — Hausman test, AC vs IPW
 
@@ -194,9 +173,9 @@ tab <- with(uc4, data.frame(
   `mean AC`      = fmt(mean_AC, 3),
   `mean IPW`     = fmt(mean_IPW, 3),
   `mean delta`   = fmt_signed(mean_delta, 4),
-  `MC SD delta`  = fmt(sd_delta_mc, 4),
-  `mean boot SE` = fmt(mean_se_boot, 4),
-  `mean boot cor`= fmt(mean_boot_cor, 3),
+  `MC SD(delta)` = fmt(sd_delta_mc, 4),
+  `mean SE`      = fmt(mean_se, 4),
+  `mean cor(AC, IPW)` = fmt(mean_cor_AC_IPW, 3),
   `Reject 0.05`  = fmt(reject_05, 2),
   check.names = FALSE
 ))
@@ -207,33 +186,34 @@ knitr::kable(tab, align = "lrrrrrrr",
 `null` cell: exchangeable raters, MCAR independent missingness with
 `pi_j = 0.6` for every rater. AC and IPW are both consistent for the
 same target; the contrast `delta = kappa_AC - kappa_IPW` has mean near
-0 across replicates and Wald rejects at the nominal rate.
+zero and the analytical SE
+(`r fmt(uc4$mean_se[uc4$cell == "null"], 4)`) matches the MC SD of the
+contrast across replicates
+(`r fmt(uc4$sd_delta_mc[uc4$cell == "null"], 4)`) to ~2%. The test
+rejects at `r fmt(uc4$reject_05[uc4$cell == "null"], 2)`, essentially
+nominal.
 
 `nonexch` cell: the high `pi`-variance + non-exchangeable rater cell
 from experiment 03, where AC's bias is `~+0.085` and IPW's residual
 bias is within MC noise. The contrast `delta` has population value
-`~+0.090` and bootstrap correlation between AC and IPW estimates is
-high (≈ `r fmt(uc4$mean_boot_cor[uc4$cell == "nonexch"], 2)`), which is
-what gives the test enough effective precision to reject reliably on a
-single dataset of size `n = `r n_str``. The MC SD of delta
-(`r fmt(uc4$sd_delta_mc[uc4$cell == "nonexch"], 4)`) closely matches
-the mean bootstrap SE (`r fmt(uc4$mean_se_boot[uc4$cell == "nonexch"], 4)`),
-which is the strongest validation that the bootstrap joint vcov is
-calibrated.
+`~+0.090` and bootstrap correlation between AC and IPW is high
+(≈ `r fmt(uc4$mean_cor_AC_IPW[uc4$cell == "nonexch"], 2)`), which
+gives the contrast enough effective precision to reject on a single
+dataset of size `n = `r n_str``.
 
-This is the main finding of the pilot. Experiment 03 already shows
-AC is inconsistent under non-exchangeable raters via a simulation
-sweep; UC4 turns that into a single-dataset diagnostic the practitioner
-can run on their own data.
+This is the main empirical result. Experiment 03 shows AC is
+inconsistent under non-exchangeable raters via a simulation sweep;
+UC4 turns that into a single-dataset diagnostic the practitioner can
+run on their own data.
 
 ### UC2 — three weight schemes on the same data
 
 ```{r uc2-table}
 tab <- data.frame(
   Metric = c("mean kappa^identity", "mean kappa^linear", "mean kappa^quadratic",
-             "boot cor(identity, linear)",
-             "boot cor(identity, quadratic)",
-             "boot cor(linear, quadratic)",
+             "joint cor(identity, linear)",
+             "joint cor(identity, quadratic)",
+             "joint cor(linear, quadratic)",
              "Reject identity = quadratic at 0.05"),
   Value  = c(fmt(uc2$mean_id,   3),
              fmt(uc2$mean_lin,  3),
@@ -249,161 +229,85 @@ knitr::kable(tab, align = "lr",
 
 The three weighted kappas estimate three different population
 functionals on the same data, so "equality" is descriptive rather than
-a formal null. The interesting findings are:
+a formal null. The interesting structure is that the joint correlations
+across weight schemes are high (≥ 0.65 between identity and quadratic,
+≥ 0.9 between linear and quadratic), so the analytical joint inference
+gives a per-dataset answer to "does my choice of weight scheme matter
+for the conclusion?" — in this DGP, identity vs quadratic is
+statistically distinct in
+`r fmt(uc2$reject_id_eq_quad * 100, 0)`% of replicates.
 
-1. The bootstrap correlations between weight schemes are high (≥ 0.7,
-   often ≥ 0.9), which is the kind of structure a per-dataset joint
-   inference would let a user exploit.
-2. Despite that high correlation, the identity vs quadratic point
-   estimates are statistically distinct on a single dataset at
-   `n = `r n_str`` in the large majority of replicates. Reviewers who
-   ask "is the choice of weight matrix material to your conclusion?"
-   have a one-line per-dataset answer here.
+## How it works
+
+All four sub-experiments rely on per-subject influence functions
+exposed by the categorical raw estimators. For a fit on `n` subjects
+with `K` coefficients, the n × K influence-function matrix `psi`
+satisfies `vcov(fit) == (1 / n^2) * crossprod(psi)` exactly. The new
+`misskappa::joint_vcov(fit_1, fit_2, ...)` helper stacks the `psi`
+columns from independent fits on the same subjects and forms the
+joint asymptotic covariance by `(1 / n^2) * crossprod(cbind(...))`.
+
+```r
+ac  <- kappa(x, method = "available")
+ipw <- kappa(x, method = "ipw")
+V   <- joint_vcov(ac = ac, ipw = ipw)   # 6x6 block matrix
+
+delta <- coef(ac)[["Conger"]] - coef(ipw)[["Conger"]]
+se    <- sqrt(V["ac.Conger", "ac.Conger"]
+            + V["ipw.Conger", "ipw.Conger"]
+            - 2 * V["ac.Conger", "ipw.Conger"])
+z     <- delta / se
+```
+
+For UC1 the same machinery is used pair by pair, then the `Conger`
+column of each fit's influence matrix is stacked manually into an
+`n × 15` matrix.
 
 ## Caveats
 
-- Pilot scope: one sample size `n = `r n_str``, one DGP family (truth +
-  guess on a 5-category scale, `R = 6`), no MAR-with-truth missingness.
-  The findings are demonstrations of feasibility, not coverage
-  benchmarks across the relevant design space.
-- The joint vcov is from a `B = `r boots_str`` nonparametric bootstrap
-  over subjects. Bootstrap Monte Carlo noise on the 15×15 vcov in UC1
-  is real: size inflation at `B = `r boots_str`` is
-  `r fmt(uc1$reject_05[uc1$cell == "null"], 2)` versus a nominal
-  0.05. UC4's 2-dimensional joint vcov is well calibrated at the same
-  `B`, so the issue is dimension, not principle. The C++ port should
-  expose per-subject influence functions so the bootstrap drops out
-  entirely for higher-dimensional contrasts like UC1.
-- UC1 uses the 2-rater submatrix path through `misskappa::kappa()` to
-  get each pairwise Cohen — clean but redundant, since the 6-rater
-  available-case computation already touches every pair. A native
-  per-subject moment kernel for all pairs simultaneously would be one
-  C++ entry point, not 15.
-- UC4 uses Conger only. The contrast `kappa_AC - kappa_IPW` for Fleiss
-  or BP may have different power profiles; not explored.
+- One sample size (`n = `r n_str``), one DGP family (truth + guess on
+  5 categories, `R = 6`), no MAR-with-truth missingness. The findings
+  are demonstrations of feasibility, not coverage benchmarks across the
+  relevant design space.
+- UC1's chi-sq approximation is residually distorted at `n = 500`
+  (rejection rate `r fmt(uc1$reject_05[uc1$cell == "null"], 2)` vs
+  nominal 0.05). The vcov is correct; the chi-sq distribution on the
+  Wald statistic just needs more `n` to tighten. The bias does not
+  affect the power conclusion.
+- UC1 currently calls `misskappa::kappa()` once per pair; a native
+  `pairwise_cohen()` entry point would skip the redundant 3-coefficient
+  computation per pair and return the n × choose(R, 2) IF matrix in
+  one call. Out of scope for this pilot.
+- All four use cases assume row alignment across fits (`joint_vcov()`
+  only checks `nrow(psi)` matches). For fits on the same `kappa()`
+  call there is no ambiguity; for separate calls the caller is
+  responsible.
 
 ## Implications
 
-- **UC4 is the strongest argument for new C++.** A per-subject
-  influence-function field on the `Estimation` struct (or a paired
-  `kappa(..., method = c("available", "ipw"))` entry point) would let
-  Paper A ship a per-dataset Hausman test alongside experiment 03's
-  simulation evidence. The bootstrap already validates the joint vcov
-  end-to-end (MC SD of contrast = bootstrap mean SE to 3 s.f.), so
-  the C++ port has a tight numerical oracle. Concretely: one
-  paragraph in Section 5.1 saying "for a dataset-level check that AC
-  and IPW disagree, the Wald statistic `(kappa_AC - kappa_IPW) /
-  SE(contrast)` is chi-sq with df = 1 under MCAR + exchangeable
-  raters; rejection means the missingness mechanism interacts with
-  rater identity."
-- **UC1 confirms the methodological recipe but exposes a bootstrap
-  limitation.** "Test rater exchangeability before reporting Fleiss /
-  Conger" is well-defined and detectable (200/200 power against one
-  bad rater); however, the bootstrap joint vcov over-rejects under
-  the null at `B = `r boots_str``. A proper pairwise-Cohen entry
-  point that returns the analytical joint vcov (via the per-subject
-  moment kernel already in `src/estimate_raw.cpp`) is required before
-  this is publication-ready.
-- **UC8** needs no new code, just a written remark in whichever paper
-  reports an estimator that returns both Fleiss and BP. The contrast
-  c'(kappa - kappa_0) for c = (0, 1, -1) tests whether the chance
-  baseline matters.
-- **UC2** is a defensible per-dataset answer to "does my choice of
-  weight scheme matter for the conclusion?" but doesn't carry a paper
-  on its own.
-
-The combined ask from the pilot is: **expose per-subject influence
-functions** (or per-subject moment kernels) on the C++ side. That
-single change unlocks UC1 (with proper size), UC4 (without the
-bootstrap detour), UC2, and any future joint-inference contrast. The
-bootstrap can stay as the validation oracle for the influence-function
-port — UC4 already shows them agreeing to 3 significant figures.
-
-## Analytical follow-up: IF-based joint vcov
-
-After the pilot, the `misskappa` C++ library was extended to expose
-per-subject influence functions on the categorical raw estimators
-(`available`, `ipw`, `gwet`), plus a `joint_vcov()` helper. This
-replaces the subject-resample bootstrap with the analytical
-`V = (1 / n^2) * crossprod(cbind(psi_1, psi_2, ...))` for any joint
-contrast across two or more fits on the same subjects. Runners
-under `scripts/uc4_analytical.R` and `scripts/uc1_analytical.R`
-repeat UC4 and UC1 with the same DGPs / seeds.
-
-```{r uc4-compare, eval = !is.null(uc4_an)}
-uc4_an_cmp <- merge(
-  uc4[, c("cell", "mean_se_boot", "mean_boot_cor", "reject_05")],
-  uc4_an[, c("cell", "mean_se_analytical", "mean_cor_AC_IPW",
-             "reject_05", "sd_delta_mc")],
-  by = "cell", suffixes = c(".boot", ".analytical")
-)
-tab <- data.frame(
-  Cell             = uc4_an_cmp$cell,
-  `MC SD(delta)`   = fmt(uc4_an_cmp$sd_delta_mc, 4),
-  `SE boot`        = fmt(uc4_an_cmp$mean_se_boot, 4),
-  `SE analytical`  = fmt(uc4_an_cmp$mean_se_analytical, 4),
-  `Reject boot`    = fmt(uc4_an_cmp$reject_05.boot, 2),
-  `Reject analytical` = fmt(uc4_an_cmp$reject_05.analytical, 2),
-  check.names = FALSE
-)
-knitr::kable(tab, align = "lrrrrr",
-             caption = "UC4: bootstrap vs analytical joint vcov at n = 500.")
-```
-
-Headline from the comparison: under the exchangeable + MCAR null, the
-analytical SE for the contrast (`r fmt(uc4_an$mean_se_analytical[uc4_an$cell == "null"], 4)`)
-matches the MC SD of the contrast (`r fmt(uc4_an$sd_delta_mc[uc4_an$cell == "null"], 4)`)
-to within `~2%`, while the bootstrap SE at `B = `r boots_str``
-(`r fmt(uc4$mean_se_boot[uc4$cell == "null"], 4)`) is nearly 2× too
-large. As a result, the analytical Wald rejects at
-`r fmt(uc4_an$reject_05[uc4_an$cell == "null"], 2)` (close to nominal
-0.05) where the bootstrap was over-conservative at
-`r fmt(uc4$reject_05[uc4$cell == "null"], 2)`. Under the non-exchangeable
-cell, both reject 200/200 and the analytical SE matches MC SD to
-within MC noise.
-
-```{r uc1-compare, eval = !is.null(uc1_an)}
-uc1_cmp <- merge(
-  uc1[, c("cell", "mean_wald", "median_wald", "reject_05")],
-  uc1_an[, c("cell", "mean_wald", "median_wald", "reject_05")],
-  by = "cell", suffixes = c(".boot", ".analytical")
-)
-tab <- data.frame(
-  Cell             = uc1_cmp$cell,
-  `Mean Wald boot`        = fmt(uc1_cmp$mean_wald.boot, 1),
-  `Mean Wald analytical`  = fmt(uc1_cmp$mean_wald.analytical, 1),
-  `Reject boot`           = fmt(uc1_cmp$reject_05.boot, 2),
-  `Reject analytical`     = fmt(uc1_cmp$reject_05.analytical, 2),
-  check.names = FALSE
-)
-knitr::kable(tab, align = "lrrrr",
-             caption = "UC1: bootstrap vs analytical pairwise homogeneity Wald (chi-sq df=14) at n = 500.")
-```
-
-UC1's size inflation drops from
-`r fmt(uc1$reject_05[uc1$cell == "null"], 2)` (bootstrap) to
-`r fmt(uc1_an$reject_05[uc1_an$cell == "null"], 2)` (analytical) at
-`n = 500`. The residual gap to nominal `0.05` is a finite-sample chi-sq
-approximation issue, not a vcov issue: a sanity run at `n = 2000`
-brings the analytical rejection rate to `~0.075` and the mean Wald
-statistic to `14.5` (versus chi-sq df=14 mean of 14). Power against
-one miscalibrated rater is `200/200` in both bootstrap and analytical
-versions.
-
-The analytical pass also runs `~10x-100x` faster than the bootstrap:
-UC4 analytical completes the full 200-replicate sweep in `<1 s`
-versus `~60 s` for the bootstrap; UC1 analytical in `~1 s` versus
-`~3.5 min` for the bootstrap.
+- **UC4 in Paper A.** A one-paragraph remark in Section 5.1 turning
+  the experiment-03 simulation evidence into a per-dataset diagnostic:
+  the Wald statistic `(kappa_AC - kappa_IPW) / SE(contrast)` is chi-sq
+  with df = 1 under MCAR + exchangeable raters; rejection signals
+  rater-identity / missingness interaction.
+- **UC1 as a standalone methodological note.** "Test rater
+  exchangeability before reporting Fleiss / Conger" with the chi-sq
+  Wald on all pairwise kappas. Once a dedicated `pairwise_cohen()`
+  entry point lands, this becomes a one-line vignette.
+- **UC8** is a written remark wherever an estimator returns both Fleiss
+  and BP — the contrast `c'(kappa - kappa_0)` for `c = (0, 1, -1)`
+  tests whether the chance baseline matters.
+- **UC2** is a defensible per-dataset answer to weight-scheme
+  sensitivity. Useful in consultancy / applied write-ups; does not
+  carry a paper on its own.
 
 ## Reproduce
 
 ```bash
 cd experiments/09-joint-vcov-pilot
-Rscript run_experiment.R                       # full bootstrap run, ~10 min
-Rscript run_experiment.R --smoke               # 20 reps, B=50, ~30 s
+Rscript run_experiment.R                       # full run, ~2 s
+Rscript run_experiment.R --smoke               # 20 reps, ~1 s
 Rscript run_experiment.R --only uc4 --reps 50  # one UC, faster
-Rscript scripts/uc4_analytical.R               # IF-based UC4, ~1 s
-Rscript scripts/uc1_analytical.R               # IF-based UC1, ~1 s
 quarto render report.qmd
 ```
 

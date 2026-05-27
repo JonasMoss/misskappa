@@ -112,39 +112,34 @@ severe sequential designs as supplement/stress-test evidence.
 
 ### `09-joint-vcov-pilot`
 
-Runner + report under `experiments/09-joint-vcov-pilot/`. R-only
-pilot for joint inference across non-independent kappa estimates on
-the same data; uses subject-resample bootstrap of `misskappa::kappa()`
-fits to assemble joint vcov. `n = 500`, `B = 200`, `reps = 200`.
+Runner + report under `experiments/09-joint-vcov-pilot/`. Joint
+inference across non-independent kappa estimates on the same data,
+using the analytical IF-based `misskappa::joint_vcov()` helper that
+landed in the same commit cycle. `n = 500`, `reps = 200`. Whole sweep
+runs in ~2 s.
 
 Four sub-questions:
 
-- **UC8** (Fleiss-vs-BP same-fit contrast, analytic): well-calibrated.
-  Reject 0/200 under uniform marginals, 200/200 under skewed.
-  Methodological remark only; zero new code.
+- **UC8** (Fleiss-vs-BP same-fit contrast from the existing 3×3
+  vcov): reject 0/200 under uniform marginals (population contrast = 0),
+  200/200 under skewed. Methodological remark only.
 - **UC4** (Hausman test, AC vs IPW on same incomplete data): main
-  positive result. Reject 0/200 under exchangeable + MCAR null;
-  reject 200/200 under the experiment-03 non-exchangeable cell. MC
-  SD of contrast matches bootstrap mean SE to 3 s.f. — strong
-  evidence the joint vcov is calibrated. Per-dataset diagnostic for
-  AC bias under non-exchangeability; feeds **Paper A**.
+  positive result. Reject 0.045 under exchangeable + MCAR null
+  (~ nominal), 1.0 under the experiment-03 non-exchangeable cell.
+  Analytical SE matches MC SD of the contrast to ~2%. Per-dataset
+  diagnostic for AC bias under non-exchangeability; feeds **Paper A**.
 - **UC1** (all 15 pairwise Cohen kappas + joint Wald homogeneity
-  test): power 200/200 against one miscalibrated rater, but
-  bootstrap joint vcov in 15 dimensions **over-rejects** at
-  size 0.215 under the exchangeable null at `B = 200`. The
-  methodological recipe is sound; the bootstrap is not the right
-  variance estimator. Motivates exposing per-subject moment kernels
-  or influence functions from C++ for `choose(R, 2)` pairwise
-  estimators jointly.
+  test, chi-sq df=14): power 200/200 against one miscalibrated rater;
+  size 0.16 at `n = 500` (chi-sq approximation residual; drops to
+  ~0.075 at `n = 2000`).
 - **UC2** (three weighted kappas on same data): identity vs
-  quadratic statistically distinct in 88% of replicates at `n = 500`
-  despite bootstrap correlation ≈ 0.94 between linear and quadratic.
-  Useful sensitivity demo.
+  quadratic statistically distinct in 87% of replicates at `n = 500`
+  despite joint correlation ≈ 0.94 between linear and quadratic.
+  Useful weight-sensitivity demo.
 
-Combined ask: expose per-subject influence functions on the
-`Estimation` struct so the joint vcov is analytical, not bootstrap.
-That single change unlocks UC1 (with proper size), UC4 (without the
-bootstrap detour), UC2, and any future joint-contrast use case.
+Pilot motivated the influence-function exposure that now ships in
+`misskappa::influence()` and `misskappa::joint_vcov()` for the
+categorical raw estimators.
 
 ### `10-louis-spectrum`
 

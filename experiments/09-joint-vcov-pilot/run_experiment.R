@@ -2,22 +2,24 @@
 #
 # 09-joint-vcov-pilot
 #
-# Pilot for joint inference across non-independent kappa estimates on the
-# same data ("Case 3" of the equality-of-two-kappas question — see plan
-# file mutable-rolling-wombat). Pure R; no C++ changes. The joint vcov
-# is assembled from a nonparametric bootstrap over subjects.
+# Joint inference across non-independent kappa estimates on the same
+# data ("Case 3" of the equality-of-two-kappas question). All four
+# sub-experiments use the analytical `misskappa::joint_vcov()` helper,
+# which assembles the joint asymptotic covariance from the per-subject
+# influence functions exposed by the categorical raw estimators
+# (`available`, `ipw`, `gwet`). No bootstrap.
 #
-# Four sub-questions:
-#   UC8 - Fleiss vs Brennan-Prediger contrast on the same fit
-#         (analytic; uses existing 3x3 vcov directly).
-#   UC1 - All pairwise Cohen kappas + joint vcov; Wald test of pairwise
-#         homogeneity. Size under exchangeable raters, power against
-#         one miscalibrated rater.
-#   UC4 - Joint vcov of (available-case, IPW) + Hausman-style Wald test
-#         of equality. Size under MCAR + exchangeable, power under MCAR
-#         + non-exchangeable (the experiment-03 DGP).
-#   UC2 - Joint vcov of (identity, linear, quadratic) weighted kappas;
-#         report joint CIs and bootstrap correlations.
+# Sub-experiments:
+#   UC8 - Fleiss vs BP same-fit contrast on a single available-case fit.
+#         Uses the existing 3x3 vcov; included for completeness.
+#   UC1 - All choose(R, 2) pairwise Cohen kappas + their joint Wald
+#         test of homogeneity. Size under exchangeable raters, power
+#         under one miscalibrated rater.
+#   UC4 - Hausman test of kappa_AC = kappa_IPW on the same incomplete
+#         data. Size under exchangeable + MCAR, power under the
+#         experiment-03 non-exchangeable cell.
+#   UC2 - Joint inference across three weighted kappas (identity,
+#         linear, quadratic) on the same complete data.
 #
 # Outputs (under results/):
 #   uc8_replicates.csv   per-replicate Fleiss/BP estimates + contrast z
@@ -26,9 +28,10 @@
 #   uc1_summary.csv      cell-level size / power at 0.05
 #   uc4_replicates.csv   per-replicate AC + IPW + Wald z for contrast
 #   uc4_summary.csv      cell-level size / power at 0.05
-#   uc2_replicates.csv   per-replicate (identity, linear, quadratic) kappas
-#                        with joint vcov entries
-#   uc2_summary.csv      cell-level: mean/SD of each estimate, mean cor matrix
+#   uc2_replicates.csv   per-replicate (identity, linear, quadratic)
+#                        kappas with joint vcov entries
+#   uc2_summary.csv      cell-level: means, SDs, correlations across
+#                        the three weight schemes
 #   metadata.csv         run metadata
 
 suppressPackageStartupMessages({
@@ -46,9 +49,8 @@ get_val  <- function(name, default, parser = as.character) {
 
 if (has_flag("--help") || has_flag("-h")) {
   cat("Usage: Rscript run_experiment.R [options]\n",
-      " --smoke         Fast smoke run (reps=20, boots=50).\n",
+      " --smoke         Fast smoke run (reps=20).\n",
       " --reps N        MC replicates per cell (default 200).\n",
-      " --boots B       Bootstrap reps for joint vcov (default 200).\n",
       " --n N           Subjects per replicate (default 500).\n",
       " --seed-base K   Seed base (default 1).\n",
       " --only UC       Run only one UC: uc8|uc1|uc4|uc2 (default all).\n",
@@ -59,15 +61,12 @@ if (has_flag("--help") || has_flag("-h")) {
 smoke      <- has_flag("--smoke")
 seed_base  <- get_val("--seed-base", 1L, as.integer)
 reps_user  <- get_val("--reps", NA_integer_, as.integer)
-boots_user <- get_val("--boots", NA_integer_, as.integer)
 n_user     <- get_val("--n", NA_integer_, as.integer)
 only_user  <- get_val("--only", NA_character_, as.character)
 
 reps  <- if (smoke) 20L else 200L
-boots <- if (smoke) 50L else 200L
 n     <- 500L
 if (!is.na(reps_user))  reps  <- reps_user
-if (!is.na(boots_user)) boots <- boots_user
 if (!is.na(n_user))     n     <- n_user
 
 ucs <- if (is.na(only_user)) c("uc8", "uc1", "uc4", "uc2") else only_user
@@ -99,9 +98,10 @@ apply_mcar_independent <- function(x, pi_vec) {
   x
 }
 
-# Robust quadratic form: handles a possibly-rank-deficient covariance via
-# Moore-Penrose pseudoinverse. Returns (stat, df) for the chi-sq test.
-wald_quadform <- function(theta, V, A = diag(length(theta)), rcond_tol = 1e-8) {
+# Wald quadratic form with SVD-based pseudoinverse so small singular
+# values don't blow up the test statistic. Returns (stat, df).
+wald_quadform <- function(theta, V, A = diag(length(theta)),
+                          rcond_tol = 1e-8) {
   d <- A %*% theta
   M <- A %*% V %*% t(A)
   sv <- svd(M)
@@ -113,32 +113,14 @@ wald_quadform <- function(theta, V, A = diag(length(theta)), rcond_tol = 1e-8) {
   list(stat = stat, df = sum(keep))
 }
 
-# Bootstrap helper. fit_fn(x) returns a numeric vector (one element per
-# scalar moment we want a joint vcov for). Returns the boot * K matrix.
-bootstrap_fits <- function(x, fit_fn, B, seed_offset) {
-  n <- nrow(x)
-  ref <- fit_fn(x)
-  K <- length(ref)
-  out <- matrix(NA_real_, nrow = B, ncol = K)
-  for (b in seq_len(B)) {
-    set.seed(seed_base + 7919L * seed_offset + b)
-    idx <- sample.int(n, n, replace = TRUE)
-    val <- try(fit_fn(x[idx, , drop = FALSE]), silent = TRUE)
-    if (!inherits(val, "try-error") && length(val) == K) out[b, ] <- val
-  }
-  attr(out, "point") <- ref
-  out
-}
-
-# Tag a chunk of timing output.
 tic <- function(tag) cat(sprintf("[%s] %s\n", format(Sys.time(), "%H:%M:%S"), tag))
 
 # ===================== UC8: Fleiss vs BP free contrast ===================
 #
-# Same fit, two coefficients with known covariance. Population contrast
-# delta = kappa_F - BP is zero iff the chance baselines coincide, which
-# happens iff rater marginals are exactly uniform (under identity loss).
-# Under skewed marginals delta != 0 and the contrast has power.
+# Same fit, two coefficients with known covariance. delta = kappa_F - BP
+# is zero in population iff the rater marginals are uniform (under
+# identity loss); under skewed marginals the contrast is non-zero and
+# the test has power.
 
 run_uc8 <- function() {
   tic("UC8 start")
@@ -170,70 +152,53 @@ run_uc8 <- function() {
         marg = marg_name, b = b,
         kappa_F = est[["Fleiss"]], kappa_BP = est[["Brennan-Prediger"]],
         delta = delta, se = se, z = z,
-        rej_05 = if (is.na(z)) NA else abs(z) > z975
+        reject_05 = if (is.na(z)) NA else abs(z) > z975
       )
     }
   }
   rep_df <- do.call(rbind, per_rep)
-  write.csv(rep_df, file.path(results_dir, "uc8_replicates.csv"), row.names = FALSE)
+  write.csv(rep_df, file.path(results_dir, "uc8_replicates.csv"),
+            row.names = FALSE)
 
   summ <- do.call(rbind, by(rep_df, rep_df$marg, function(d) {
     data.frame(
-      marg       = unique(d$marg),
-      reps       = nrow(d),
-      mean_kappa_F = mean(d$kappa_F),
+      marg          = unique(d$marg),
+      reps          = nrow(d),
+      mean_kappa_F  = mean(d$kappa_F),
       mean_kappa_BP = mean(d$kappa_BP),
-      mean_delta = mean(d$delta),
-      sd_delta   = sd(d$delta),
-      mean_se    = mean(d$se),
-      reject_05  = mean(d$rej_05, na.rm = TRUE)
+      mean_delta    = mean(d$delta),
+      sd_delta      = sd(d$delta),
+      mean_se       = mean(d$se),
+      reject_05     = mean(d$reject_05, na.rm = TRUE)
     )
   }))
   rownames(summ) <- NULL
-  write.csv(summ, file.path(results_dir, "uc8_summary.csv"), row.names = FALSE)
+  write.csv(summ, file.path(results_dir, "uc8_summary.csv"),
+            row.names = FALSE)
   tic("UC8 done")
 }
 
 # ===================== UC1: pairwise Cohen joint vcov ====================
 #
-# All choose(R,2) pairwise Cohen kappas + joint vcov via bootstrap.
-# Wald test of pairwise homogeneity uses contrasts kappa_p - kappa_1 for
-# p = 2..K.
-
-pairwise_kappas <- function(x) {
-  R <- ncol(x)
-  pairs <- combn(R, 2)
-  out <- numeric(ncol(pairs))
-  for (p in seq_len(ncol(pairs))) {
-    r <- pairs[1, p]; s <- pairs[2, p]
-    xrs <- x[, c(r, s), drop = FALSE]
-    keep <- rowSums(!is.na(xrs)) == 2L
-    if (sum(keep) < 5L) { out[p] <- NA_real_; next }
-    fit <- try(
-      misskappa::kappa(xrs[keep, , drop = FALSE],
-                       method = "available", weight = "identity"),
-      silent = TRUE
-    )
-    if (inherits(fit, "try-error")) { out[p] <- NA_real_; next }
-    out[p] <- as.numeric(coef(fit)[["Conger"]])
-  }
-  out
-}
+# All choose(R, 2) pairwise Cohen kappas with analytical joint vcov
+# from the per-subject Conger influence functions on each 2-rater
+# submatrix. Wald test of pairwise homogeneity uses contrasts
+# kappa_p - kappa_1 for p = 2..K (chi-sq df=14).
 
 run_uc1 <- function() {
   tic("UC1 start")
   R <- 6L
-  p_truth <- c(0.05, 0.10, 0.20, 0.30, 0.35)
+  p_truth   <- c(0.05, 0.10, 0.20, 0.30, 0.35)
   guess_mat <- matrix(rep(p_truth, each = R), nrow = R, byrow = TRUE)
-  cells <- list(
-    null    = rep(0.92, R),                          # all raters equal
-    one_bad = c(0.92, 0.92, 0.92, 0.92, 0.92, 0.60)  # rater 6 miscalibrated
-  )
-  n_pairs <- choose(R, 2)
-  pair_names <- apply(combn(R, 2), 2,
-                      function(rs) sprintf("k_%d_%d", rs[1], rs[2]))
 
-  # Contrast matrix: zero out kappa_1; rows give kappa_p - kappa_1.
+  cells <- list(
+    null    = rep(0.92, R),
+    one_bad = c(0.92, 0.92, 0.92, 0.92, 0.92, 0.60)
+  )
+  pairs <- combn(R, 2)
+  n_pairs <- ncol(pairs)
+  pair_names <- apply(pairs, 2,
+                      function(rs) sprintf("k_%d_%d", rs[1], rs[2]))
   A <- cbind(rep(-1, n_pairs - 1L), diag(n_pairs - 1L))
 
   per_rep <- list()
@@ -243,35 +208,47 @@ run_uc1 <- function() {
     for (b in seq_len(reps)) {
       set.seed(seed_base + 202000L * cell_idx + b)
       x <- simulate_truth_guess(n, R, rho_vec, p_truth, guess_mat)
-      boot <- bootstrap_fits(x, pairwise_kappas, boots, seed_offset = b)
-      pt <- attr(boot, "point")
-      ok <- apply(is.finite(boot), 2, all) & is.finite(pt)
-      if (!all(ok)) {
-        # If any pair lost all bootstrap fits or fails at point, skip.
-        next
+
+      # Fit each pair; collect Conger point estimate and IF column.
+      point <- numeric(n_pairs)
+      psi_cols <- vector("list", n_pairs)
+      failed <- FALSE
+      for (p_idx in seq_len(n_pairs)) {
+        r <- pairs[1, p_idx]; s <- pairs[2, p_idx]
+        fit <- try(misskappa::kappa(x[, c(r, s)], method = "available",
+                                    weight = "identity"),
+                   silent = TRUE)
+        if (inherits(fit, "try-error")) { failed <- TRUE; break }
+        point[p_idx] <- as.numeric(coef(fit)[["Conger"]])
+        psi_cols[[p_idx]] <- stats::influence(fit)[, "Conger"]
       }
-      V <- cov(boot)
-      w <- wald_quadform(pt, V, A)
+      if (failed || !all(is.finite(point))) next
+
+      psi_stack <- do.call(cbind, psi_cols)
+      V <- crossprod(psi_stack) / (as.numeric(n) * as.numeric(n))
+      w <- wald_quadform(point, V, A)
       p_chi <- pchisq(w$stat, df = w$df, lower.tail = FALSE)
-      row <- as.data.frame(t(setNames(pt, pair_names)))
-      row$cell <- cell_name
-      row$b <- b
+
+      row <- as.data.frame(t(setNames(point, pair_names)))
+      row$cell      <- cell_name
+      row$b         <- b
       row$wald_stat <- w$stat
-      row$wald_df <- w$df
-      row$p_chi <- p_chi
+      row$wald_df   <- w$df
+      row$p_chi     <- p_chi
       row$reject_05 <- p_chi < 0.05
       per_rep[[length(per_rep) + 1L]] <- row
     }
   }
   rep_df <- do.call(rbind, per_rep)
-  write.csv(rep_df, file.path(results_dir, "uc1_replicates.csv"), row.names = FALSE)
+  write.csv(rep_df, file.path(results_dir, "uc1_replicates.csv"),
+            row.names = FALSE)
 
   summ <- do.call(rbind, by(rep_df, rep_df$cell, function(d) {
     pair_cols <- grep("^k_", colnames(d), value = TRUE)
     means <- sapply(pair_cols, function(cn) mean(d[[cn]], na.rm = TRUE))
     data.frame(
-      cell = unique(d$cell),
-      reps = nrow(d),
+      cell           = unique(d$cell),
+      reps           = nrow(d),
       mean_min_kappa = min(means),
       mean_max_kappa = max(means),
       mean_range     = max(means) - min(means),
@@ -281,36 +258,23 @@ run_uc1 <- function() {
     )
   }))
   rownames(summ) <- NULL
-  write.csv(summ, file.path(results_dir, "uc1_summary.csv"), row.names = FALSE)
+  write.csv(summ, file.path(results_dir, "uc1_summary.csv"),
+            row.names = FALSE)
   tic("UC1 done")
 }
 
 # ===================== UC4: Hausman AC vs IPW ============================
 #
-# Joint vcov of (kappa_AC, kappa_IPW) on the same incomplete data via
-# bootstrap. Single contrast c = (1, -1) gives the Hausman-style Wald.
-
-ac_ipw_kappas <- function(x) {
-  ac <- try(misskappa::kappa(x, method = "available", weight = "identity"),
-            silent = TRUE)
-  ipw <- try(misskappa::kappa(x, method = "ipw", weight = "identity"),
-             silent = TRUE)
-  if (inherits(ac, "try-error") || inherits(ipw, "try-error")) {
-    return(c(NA_real_, NA_real_))
-  }
-  c(as.numeric(coef(ac)[["Conger"]]),
-    as.numeric(coef(ipw)[["Conger"]]))
-}
+# joint_vcov(ac, ipw) returns a 6x6 block matrix; the Conger contrast
+# c = (1, 0, 0, -1, 0, 0) gives a chi-sq df=1 Wald test of
+# kappa_AC = kappa_IPW.
 
 run_uc4 <- function() {
   tic("UC4 start")
   R <- 6L
-  p_truth <- c(0.05, 0.10, 0.20, 0.30, 0.35)
+  p_truth   <- c(0.05, 0.10, 0.20, 0.30, 0.35)
   guess_mat <- matrix(rep(p_truth, each = R), nrow = R, byrow = TRUE)
 
-  # Cell 1 (size): exchangeable raters + uniform pi.
-  # Cell 2 (power): non-exchangeable raters + varying pi (the experiment-03
-  # cell that drives AC bias of ~0.085).
   cells <- list(
     null    = list(rho = rep(0.92, R),
                    pi  = rep(0.6, R)),
@@ -327,26 +291,38 @@ run_uc4 <- function() {
       set.seed(seed_base + 303000L * cell_idx + b)
       x_star <- simulate_truth_guess(n, R, cfg$rho, p_truth, guess_mat)
       x      <- apply_mcar_independent(x_star, cfg$pi)
-      boot   <- bootstrap_fits(x, ac_ipw_kappas, boots, seed_offset = b)
-      pt <- attr(boot, "point")
-      ok <- apply(is.finite(boot), 2, all) & is.finite(pt)
-      if (!all(ok)) next
-      V <- cov(boot)
-      delta <- pt[1] - pt[2]
-      v <- V[1, 1] + V[2, 2] - 2 * V[1, 2]
+
+      ac  <- try(misskappa::kappa(x, method = "available",
+                                  weight = "identity"),
+                 silent = TRUE)
+      ipw <- try(misskappa::kappa(x, method = "ipw",
+                                  weight = "identity"),
+                 silent = TRUE)
+      if (inherits(ac, "try-error") || inherits(ipw, "try-error")) next
+
+      V <- misskappa::joint_vcov(ac = ac, ipw = ipw)
+      delta <- as.numeric(coef(ac)[["Conger"]] - coef(ipw)[["Conger"]])
+      v <- V["ac.Conger", "ac.Conger"] +
+           V["ipw.Conger", "ipw.Conger"] -
+           2 * V["ac.Conger", "ipw.Conger"]
       se <- sqrt(max(v, 0))
-      z <- if (se > 0) delta / se else NA_real_
+      z  <- if (se > 0) delta / se else NA_real_
+
       per_rep[[length(per_rep) + 1L]] <- data.frame(
         cell = cell_name, b = b,
-        kappa_AC = pt[1], kappa_IPW = pt[2],
+        kappa_AC = as.numeric(coef(ac)[["Conger"]]),
+        kappa_IPW = as.numeric(coef(ipw)[["Conger"]]),
         delta = delta, se = se, z = z,
-        boot_var_AC  = V[1, 1], boot_var_IPW = V[2, 2], boot_cov = V[1, 2],
+        var_AC  = V["ac.Conger", "ac.Conger"],
+        var_IPW = V["ipw.Conger", "ipw.Conger"],
+        cov_AC_IPW = V["ac.Conger", "ipw.Conger"],
         reject_05 = if (is.na(z)) NA else abs(z) > z975
       )
     }
   }
   rep_df <- do.call(rbind, per_rep)
-  write.csv(rep_df, file.path(results_dir, "uc4_replicates.csv"), row.names = FALSE)
+  write.csv(rep_df, file.path(results_dir, "uc4_replicates.csv"),
+            row.names = FALSE)
 
   summ <- do.call(rbind, by(rep_df, rep_df$cell, function(d) {
     data.frame(
@@ -356,83 +332,90 @@ run_uc4 <- function() {
       mean_IPW    = mean(d$kappa_IPW),
       mean_delta  = mean(d$delta),
       sd_delta_mc = sd(d$delta),
-      mean_se_boot = mean(d$se, na.rm = TRUE),
-      mean_boot_cor = mean(d$boot_cov / sqrt(pmax(d$boot_var_AC * d$boot_var_IPW, 0)),
-                          na.rm = TRUE),
+      mean_se     = mean(d$se, na.rm = TRUE),
+      mean_cor_AC_IPW = mean(d$cov_AC_IPW /
+                               sqrt(pmax(d$var_AC * d$var_IPW, 0)),
+                             na.rm = TRUE),
       reject_05   = mean(d$reject_05, na.rm = TRUE)
     )
   }))
   rownames(summ) <- NULL
-  write.csv(summ, file.path(results_dir, "uc4_summary.csv"), row.names = FALSE)
+  write.csv(summ, file.path(results_dir, "uc4_summary.csv"),
+            row.names = FALSE)
   tic("UC4 done")
 }
 
 # ===================== UC2: weight-scheme sensitivity ====================
 #
-# Three weighted kappas on the same complete data. The three estimands
-# differ in population, so there is no natural null. Report joint
-# distribution and bootstrap correlations between schemes.
-
-three_weight_kappas <- function(x) {
-  k_id <- try(misskappa::kappa(x, method = "available", weight = "identity"),
-              silent = TRUE)
-  k_li <- try(misskappa::kappa(x, method = "available", weight = "linear"),
-              silent = TRUE)
-  k_qu <- try(misskappa::kappa(x, method = "available", weight = "quadratic"),
-              silent = TRUE)
-  if (inherits(k_id, "try-error") ||
-      inherits(k_li, "try-error") ||
-      inherits(k_qu, "try-error")) return(rep(NA_real_, 3L))
-  c(as.numeric(coef(k_id)[["Conger"]]),
-    as.numeric(coef(k_li)[["Conger"]]),
-    as.numeric(coef(k_qu)[["Conger"]]))
-}
+# Three weighted kappas on the same complete data. joint_vcov() returns
+# the 9x9 block matrix over (Conger, Fleiss, BP) x (identity, linear,
+# quadratic); we report the 3x3 Conger sub-block plus a one-df Wald
+# test of identity == quadratic.
 
 run_uc2 <- function() {
   tic("UC2 start")
   R <- 6L
-  # Ordinal-style skewed marginals so weighted schemes diverge.
-  p_truth <- c(0.05, 0.10, 0.20, 0.30, 0.35)
-  rho_vec <- rep(0.85, R)
+  p_truth   <- c(0.05, 0.10, 0.20, 0.30, 0.35)
+  rho_vec   <- rep(0.85, R)
   guess_mat <- matrix(rep(p_truth, each = R), nrow = R, byrow = TRUE)
+
+  z975 <- qnorm(0.975)
   per_rep <- list()
   for (b in seq_len(reps)) {
     set.seed(seed_base + 404000L + b)
     x <- simulate_truth_guess(n, R, rho_vec, p_truth, guess_mat)
-    boot <- bootstrap_fits(x, three_weight_kappas, boots, seed_offset = b)
-    pt <- attr(boot, "point")
-    ok <- apply(is.finite(boot), 2, all) & is.finite(pt)
-    if (!all(ok)) next
-    V <- cov(boot)
-    cor_il <- V[1, 2] / sqrt(V[1, 1] * V[2, 2])
-    cor_iq <- V[1, 3] / sqrt(V[1, 1] * V[3, 3])
-    cor_lq <- V[2, 3] / sqrt(V[2, 2] * V[3, 3])
+
+    k_id <- try(misskappa::kappa(x, method = "available",
+                                 weight = "identity"), silent = TRUE)
+    k_li <- try(misskappa::kappa(x, method = "available",
+                                 weight = "linear"), silent = TRUE)
+    k_qu <- try(misskappa::kappa(x, method = "available",
+                                 weight = "quadratic"), silent = TRUE)
+    if (inherits(k_id, "try-error") ||
+        inherits(k_li, "try-error") ||
+        inherits(k_qu, "try-error")) next
+
+    V <- misskappa::joint_vcov(id = k_id, lin = k_li, quad = k_qu)
+    keys <- c("id.Conger", "lin.Conger", "quad.Conger")
+    V_C <- V[keys, keys]
+    pt <- c(coef(k_id)[["Conger"]], coef(k_li)[["Conger"]],
+            coef(k_qu)[["Conger"]])
+    cor_il <- V_C[1, 2] / sqrt(V_C[1, 1] * V_C[2, 2])
+    cor_iq <- V_C[1, 3] / sqrt(V_C[1, 1] * V_C[3, 3])
+    cor_lq <- V_C[2, 3] / sqrt(V_C[2, 2] * V_C[3, 3])
+    delta_iq <- pt[1] - pt[3]
+    var_iq <- V_C[1, 1] + V_C[3, 3] - 2 * V_C[1, 3]
+    se_iq <- sqrt(max(var_iq, 0))
+    z_iq <- if (se_iq > 0) delta_iq / se_iq else NA_real_
+
     per_rep[[length(per_rep) + 1L]] <- data.frame(
       b = b,
       kappa_id = pt[1], kappa_lin = pt[2], kappa_quad = pt[3],
-      se_id = sqrt(V[1, 1]), se_lin = sqrt(V[2, 2]), se_quad = sqrt(V[3, 3]),
-      cor_id_lin = cor_il, cor_id_quad = cor_iq, cor_lin_quad = cor_lq,
-      delta_id_quad = pt[1] - pt[3],
-      se_id_quad    = sqrt(max(V[1, 1] + V[3, 3] - 2 * V[1, 3], 0))
+      se_id = sqrt(V_C[1, 1]), se_lin = sqrt(V_C[2, 2]),
+      se_quad = sqrt(V_C[3, 3]),
+      cor_id_lin   = cor_il,
+      cor_id_quad  = cor_iq,
+      cor_lin_quad = cor_lq,
+      delta_id_quad = delta_iq,
+      se_id_quad    = se_iq,
+      reject_id_eq_quad = if (is.na(z_iq)) NA else abs(z_iq) > z975
     )
   }
   rep_df <- do.call(rbind, per_rep)
-  write.csv(rep_df, file.path(results_dir, "uc2_replicates.csv"), row.names = FALSE)
+  write.csv(rep_df, file.path(results_dir, "uc2_replicates.csv"),
+            row.names = FALSE)
   summ <- data.frame(
-    reps         = nrow(rep_df),
-    mean_id      = mean(rep_df$kappa_id),
-    mean_lin     = mean(rep_df$kappa_lin),
-    mean_quad    = mean(rep_df$kappa_quad),
-    mean_cor_id_lin = mean(rep_df$cor_id_lin),
-    mean_cor_id_quad = mean(rep_df$cor_id_quad),
+    reps              = nrow(rep_df),
+    mean_id           = mean(rep_df$kappa_id),
+    mean_lin          = mean(rep_df$kappa_lin),
+    mean_quad         = mean(rep_df$kappa_quad),
+    mean_cor_id_lin   = mean(rep_df$cor_id_lin),
+    mean_cor_id_quad  = mean(rep_df$cor_id_quad),
     mean_cor_lin_quad = mean(rep_df$cor_lin_quad),
-    # Wald rate at 0.05 for identity vs quadratic (descriptive only - the
-    # two have different population targets, so this is "are they distinct
-    # enough that no single weight scheme is a good summary?").
-    reject_id_eq_quad = mean(abs(rep_df$delta_id_quad / rep_df$se_id_quad) >
-                             qnorm(0.975), na.rm = TRUE)
+    reject_id_eq_quad = mean(rep_df$reject_id_eq_quad, na.rm = TRUE)
   )
-  write.csv(summ, file.path(results_dir, "uc2_summary.csv"), row.names = FALSE)
+  write.csv(summ, file.path(results_dir, "uc2_summary.csv"),
+            row.names = FALSE)
   tic("UC2 done")
 }
 
@@ -444,12 +427,11 @@ if ("uc2" %in% ucs) run_uc2()
 
 # ---- Metadata -----------------------------------------------------------
 meta <- data.frame(
-  key = c("seed_base", "reps", "boots", "n", "C", "ucs",
+  key = c("seed_base", "reps", "n", "C", "ucs",
           "R_version", "misskappa_version", "started_at", "elapsed_s"),
   value = c(
     as.character(seed_base),
     as.character(reps),
-    as.character(boots),
     as.character(n),
     as.character(C),
     paste(ucs, collapse = ","),
@@ -461,4 +443,5 @@ meta <- data.frame(
 )
 write.csv(meta, file.path(results_dir, "metadata.csv"), row.names = FALSE)
 
-cat(sprintf("Wrote %s/{metadata,uc*_replicates,uc*_summary}.csv\n", results_dir))
+cat(sprintf("Wrote %s/{metadata,uc*_replicates,uc*_summary}.csv\n",
+            results_dir))
