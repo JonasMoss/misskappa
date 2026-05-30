@@ -1,5 +1,5 @@
-#LyX 2.3 created this file. For more info see http://www.lyx.org/
-\lyxformat 544
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
 \begin_document
 \begin_header
 \save_transient_properties true
@@ -38,11 +38,11 @@ eqs-within-sections
 figs-within-sections
 natbibapa
 \end_modules
-\maintain_unincluded_children false
+\maintain_unincluded_children no
 \language english
 \language_package default
-\inputencoding auto
-\fontencoding global
+\inputencoding auto-legacy
+\fontencoding auto
 \font_roman "default" "default"
 \font_sans "default" "default"
 \font_typewriter "default" "default"
@@ -50,7 +50,9 @@ natbibapa
 \font_default_family default
 \use_non_tex_fonts false
 \font_sc false
-\font_osf false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
 \font_sf_scale 100 100
 \font_tt_scale 100 100
 \use_microtype false
@@ -63,7 +65,7 @@ natbibapa
 \paperfontsize default
 \spacing single
 \use_hyperref false
-\papersize a4paper
+\papersize a4
 \use_geometry false
 \use_package amsmath 1
 \use_package amssymb 1
@@ -84,7 +86,9 @@ natbibapa
 \suppress_date false
 \justification true
 \use_refstyle 1
+\use_formatted_ref 0
 \use_minted 0
+\use_lineno 0
 \index Index
 \shortcut idx
 \color #008000
@@ -100,11 +104,16 @@ natbibapa
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
+\tablestyle default
 \tracking_changes false
 \output_changes false
+\change_bars false
+\postpone_fragile_content false
 \html_math_output 0
 \html_css_as_file 0
 \html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
 \end_header
 
 \begin_body
@@ -153,34 +162,41 @@ The measure of agreement called
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- was invented to handle the paradox of kappa, but does it rest on solid
- foundations? Gwet's motivation for the 
+ was invented to handle the paradox of kappa,
+ but does it rest on solid foundations?
+ Gwet's motivation for the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- is based on guessing models, and we argue the recently developed knowledge
- coefficient match the motivation far better, with the details narrowing
- it down to the Brennan–Prediger coefficient.
+ is based on guessing models,
+ and we argue the knowledge coefficient match the motivation far better,
+ with the details narrowing it down to the Brennan–Prediger coefficient.
  We argue that the weighted variant of 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
-, called 
+,
+ called 
 \begin_inset Formula $\textsc{AC}_{2}$
 \end_inset
 
-, is inappropriately defined, and provide an alternative.
- In addition, Gwet's estimator of 
+,
+ is inappropriately defined,
+ and provide an alternative.
+ In addition,
+ Gwet's estimator of 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
- is based on an approximation, and will be asymptotically biased.
+ is based on an approximation,
+ and will be asymptotically biased.
  But we provide an exact formula for 
 \begin_inset Formula $\ac$
 \end_inset
 
-, whose plugin estimator is consistent for Gwet's original definition.
- Finally, we will generalize the 
+,
+ whose plugin estimator is consistent for Gwet's original definition,
+ and generalize the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
@@ -188,12 +204,55 @@ The measure of agreement called
 \begin_inset Formula $\text{AC}_{2}$
 \end_inset
 
- to different classes of guessing models than the rather restrictive class
- considered by Gwet.
+ to different classes of guessing models than the rather restrictive class considered by Gwet.
+ We do emphasize that these corrections are secondary to the major point of this note,
+ namely that the motivation for 
+\begin_inset Formula $\textsc{AC}_{1}$
+\end_inset
+
+ is faulty.
 \end_layout
 
 \begin_layout Section
 Introduction
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Formula $\ac$
+\end_inset
+
+ is a popular agreement coefficient frequently employed both practical settings and in simulations.
+ The motivation for using it is virtually always the same;
+ it is presented as a well-motivated 
+\begin_inset Quotes eld
+\end_inset
+
+paradox-resistant
+\begin_inset Quotes erd
+\end_inset
+
+ kappa.
+ Our main goal with this paper is to that 
+\begin_inset Formula $\ac$
+\end_inset
+
+ is not properly motivated.
+ It has,
+ in fact,
+ serious problems in ideation,
+ serious assumptions being swept under the rug,
+ application (using an approximation that is not correct),
+ and estimation.
+ None of these problems occur for classical agreement coefficients,
+ and we argue that,
+ when Gwet's arguments are cleaned up,
+ the knowledge coefficients match the setting far better,
+ with the Brennan–Prediger coefficient being appropriate under the assumption of uniform guessing.
+\end_layout
+
+\begin_layout Section
+Chance-corrected measures of agreement
 \end_layout
 
 \begin_layout Standard
@@ -205,7 +264,8 @@ literal "false"
 
 \end_inset
 
-, along with its cousin Krippendorff's alpha 
+,
+ along with its cousin Krippendorff's alpha 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Krippendorff2004-gy"
@@ -213,7 +273,8 @@ literal "false"
 
 \end_inset
 
-, Cohen's kappa 
+,
+ Cohen's kappa 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Cohen1960-mp"
@@ -229,7 +290,8 @@ literal "false"
 
 \end_inset
 
-), and the Brennan–Prediger coefficient 
+),
+ and the Brennan–Prediger coefficient 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Brennan1981-kf"
@@ -238,7 +300,8 @@ literal "false"
 \end_inset
 
 .
- These are chance-corrected measures of agreement, defined as
+ These are chance-corrected measures of agreement,
+ defined as
 \begin_inset Formula 
 \[
 \kappa=\frac{p_{a}-p_{ca}}{1-p_{ca}},
@@ -255,20 +318,11 @@ where
 \end_inset
 
  is a measure of chance agreement.
- (In case 
-\begin_inset Formula $p_{ca}=1$
-\end_inset
-
-, define 
-\begin_inset Formula $\kappa=0$
-\end_inset
-
-).
- 
 \end_layout
 
 \begin_layout Standard
-In the setting of two raters, if the ratings 
+In the setting of two raters,
+ if the ratings 
 \begin_inset Formula $X_{1},X_{2}$
 \end_inset
 
@@ -276,13 +330,14 @@ In the setting of two raters, if the ratings
 \begin_inset Formula $F$
 \end_inset
 
-, the probability of agreement equals 
+,
+ the probability of agreement equals 
 \begin_inset Formula $p_{a}(F)=P_{X\sim F}(X_{1}=X_{2})$
 \end_inset
 
 .
- The chance agreement can be defined in several competing ways, but all
- of the classical measures can be formulated as
+ The chance agreement can be defined in several competing ways,
+ but all classical measures can be formulated as
 \begin_inset Formula 
 \[
 p_{ca}=p_{a}(G)=P_{X\sim G}(X_{1}=X_{2}),
@@ -303,7 +358,7 @@ where
 \end_inset
 
 .
- The Fleiss type chance agreement is defined as 
+ The Fleiss-type chance agreement is defined as 
 \begin_inset Formula $p_{F}=P_{X\sim\overline{F}\times\overline{F}}(X_{1}=X_{2})$
 \end_inset
 
@@ -324,16 +379,19 @@ with
 \end_inset
 
 .
- On the other hand, the Cohen type chance agreement is 
+ On the other hand,
+ the Cohen-type chance agreement is 
 \begin_inset Formula $p_{C}=P_{X\sim F_{1}\times F_{2}}(X_{1}=X_{2})$
 \end_inset
 
 .
- Finally, the Brennan–Prediger type chance agreement is 
+ Finally,
+ the Brennan–Prediger type chance agreement is 
 \begin_inset Formula $p_{BP}=C^{-1}$
 \end_inset
 
-, where 
+,
+ where 
 \begin_inset Formula $C$
 \end_inset
 
@@ -342,8 +400,7 @@ with
 \begin_inset Formula $C^{-1}$
 \end_inset
 
- equals the probability of agreement between two raters sampling independently
- from a uniform distribution of 
+ equals the probability of agreement between two raters sampling independently from a uniform distribution of 
 \begin_inset Formula $C$
 \end_inset
 
@@ -352,9 +409,10 @@ with
 \end_layout
 
 \begin_layout Standard
-The definitions of chance agreement lead to the three classical measures
- of agreement, Fleiss' kappa, Cohen's kappa, and the Brennan–Prediger coefficien
-t.
+The definitions of chance agreement lead to the three classical measures of agreement,
+ Fleiss' kappa,
+ Cohen's kappa,
+ and the Brennan–Prediger coefficient.
 \begin_inset Formula 
 \[
 \kappa_{F}=\frac{p_{a}-p_{F}}{1-p_{F}},\quad\kappa_{C}=\frac{p_{a}-p_{C}}{1-p_{C}},\quad\kappa_{BP}=\frac{p_{a}-C^{-1}}{1-C^{-1}}.
@@ -366,13 +424,35 @@ t.
 \end_layout
 
 \begin_layout Standard
-These coefficients have natural multirater counterparts, see e.g.
- Moss (2023) for details, and the results in this paper are valid for the
- multirater versions as well as the two-rater variants.
+These coefficients have natural multi-rater counterparts,
+ see e.g.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Moss2024-cc"
+literal "false"
+
+\end_inset
+
+ for details,
+ and the results in this paper generalize straight to these.
  The intuitive definition of Cohen's kappa leads to it having many proponents,
- but also many detractors, preferring Fleiss' kappa instead.
- According to some authors, however, they both suffer from the purported
- paradox of kappa 
+ but some prefer Fleiss' kappa.
+ 
+\end_layout
+
+\begin_layout Subsection
+Paradox of kappa
+\end_layout
+
+\begin_layout Standard
+According to some authors,
+ however,
+ they all suffer from the purported 
+\emph on
+paradox of kappa
+\emph default
+ 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Feinstein1990-zb"
@@ -381,13 +461,23 @@ literal "false"
 \end_inset
 
 .
- To explain this paradox, consider the rating data in Table 
+ To explain this 
+\begin_inset Quotes eld
+\end_inset
+
+paradox
+\begin_inset Quotes erd
+\end_inset
+
+,
+ consider the rating data in Table 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "tab:gwet-example"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
@@ -405,11 +495,14 @@ noprefix "false"
 \begin_inset Formula $(0.9440-0.9456)/(1-0.9456)=-0.0288$
 \end_inset
 
-; it is negative despite a high percent agreement.
- Intuitively, the raters agree less than would be expected due to chance
- alone, hence the resulting Fleiss kappa should be negative.
- Still, many authors regard this feature of Fleiss' kappa (and Cohen's kappa)
- as undesirable, even paradoxical.
+.
+ It is negative despite a high percent agreement.
+ Intuitively,
+ the raters agree less than would be expected due to chance alone,
+ hence the resulting Fleiss kappa should be negative.
+ Still,
+ many authors regard this feature of Fleiss' kappa (and Cohen's kappa) as undesirable,
+ even paradoxical.
  
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -423,7 +516,8 @@ literal "false"
 \begin_inset Quotes eld
 \end_inset
 
-In this example, raters 
+In this example,
+ raters 
 \begin_inset Formula $A$
 \end_inset
 
@@ -435,11 +529,93 @@ In this example, raters
 \begin_inset Quotes erd
 \end_inset
 
+ There is substantial disagreement about whether this 
+\begin_inset Quotes eld
+\end_inset
 
+paradox
+\begin_inset Quotes erd
+\end_inset
+
+ is a problem,
+ as 
+\begin_inset Quotes eld
+\end_inset
+
+paradox
+\begin_inset Quotes erd
+\end_inset
+
+ is merely one that goes counter to some people's intuition.
+ It is not even universally viewed as absurd,
+ i.e.,
+ as a 
+\begin_inset Quotes eld
+\end_inset
+
+veridical paradox
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "classification of"
+key "Quine1966-fv"
+literal "false"
+
+\end_inset
+
+.
+ Instead,
+ its claim to fame merely comes from the fact that it's surprising for 
+\emph on
+some
+\emph default
+ researchers.
+ [["The 'paradox of kappa' fails to meet even the loosest definition of paradox.
+ In Quine's (1962) taxonomy,
+ it does not rise to the level of veridical paradox—
+a result that seems absurd but is true—
+since the behavior is immediately predictable from the definition of the statistic.
+ The terminology reflects a failure of statistical intuition,
+ not a genuine puzzle."]]
+\end_layout
+
+\begin_layout Standard
+That different researchers have different intuitions about what constitutes 
+\begin_inset Quotes eld
+\end_inset
+
+agreement
+\begin_inset Quotes erd
+\end_inset
+
+ should not be surprising.
+ Experimental philosophy has spent two decades documenting such variation across far simpler concepts 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Knobe2017-qf,Machery2017-po"
+literal "false"
+
+\end_inset
+
+,
+ yet the 
+\begin_inset Quotes eld
+\end_inset
+
+paradox
+\begin_inset Quotes erd
+\end_inset
+
+ framing persists.
 \end_layout
 
 \begin_layout Standard
 \begin_inset Float table
+placement document
+alignment document
 wide false
 sideways false
 status open
@@ -454,7 +630,8 @@ name "tab:gwet-example"
 
 \end_inset
 
-Contingency table of 125 ratings, sourced from 
+Contingency table of 125 ratings,
+ sourced from 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Gwet2008-qk"
@@ -641,7 +818,7 @@ cmidrule[0.5pt]{1-6}
 
 \end_inset
 
-+ 
++
 \end_layout
 
 \end_inset
@@ -887,13 +1064,24 @@ bottomrule
 \end_layout
 
 \begin_layout Standard
-The simplest solution to the paradox of kappa, when dealing with nominal
- data, is the Brennan–Prediger coefficient.
- Indeed, 
+The simplest solution to the 
+\begin_inset Quotes eld
+\end_inset
+
+paradox of kappa
+\begin_inset Quotes erd
+\end_inset
+
+,
+ when dealing with nominal data,
+ is the Brennan–Prediger coefficient.
+ Indeed,
+ 
 \begin_inset Formula $\kappa_{BP}=(p_{a}-0.5)/0.5=0.872$
 \end_inset
 
-, which is 
+,
+ which is 
 \begin_inset Quotes eld
 \end_inset
 
@@ -910,14 +1098,12 @@ literal "false"
 \end_inset
 
 .
- But the Brennan–Prediger lies in its motivation: Why are we justified in
- defining chance agreement as 
+ But why are we justified in defining chance agreement as 
 \begin_inset Formula $C^{-1}$
 \end_inset
 
-? That the Brennan–Prediger coefficient is an upper bound to the chance-correcte
-d agreement under the assumption that the chance agreement is on the form
- 
+?
+ One reason could be that the Brennan–Prediger coefficient is an upper bound to the chance-corrected agreement under the assumption that the chance agreement is on the form 
 \begin_inset Formula $P_{X\sim G\times G}(X_{1}=X_{2})$
 \end_inset
 
@@ -929,7 +1115,9 @@ literal "false"
 
 \end_inset
 
- is interested, but is hardly a compelling argument to use it.
+.
+ This interesting,
+ but hardly a compelling argument to use it.
  
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -938,13 +1126,12 @@ literal "false"
 
 \end_inset
 
- provides more motivation, but we don't find it very compelling.
+ provides more motivation,
+ but we don't find it compelling.
 \end_layout
 
 \begin_layout Standard
-We will see below that there is a principled reason to use the Brennan–Prediger
- coefficient if we are justified in making certain assumptions about the
- process that generated the agreement data.
+We will see below that there is a principled reason to use the Brennan–Prediger coefficient if we are justified in making certain assumptions about the judgement process that generated the agreement data.
  
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -957,27 +1144,34 @@ literal "false"
 \begin_inset Formula $\ac$
 \end_inset
 
-, as a solution to the paradox of kappa, in the context of such a judgment
- process, which we detail below.
+,
+ as a solution to the paradox of kappa,
+ in the context of such a judgment process,
+ which we detail below.
  
 \end_layout
 
 \begin_layout Section
-Judgment processes
-\end_layout
-
-\begin_layout Subsection
-Examples of judgment processes
+Guessing models
 \end_layout
 
 \begin_layout Standard
-Several authors have proposed explicit processes that could generate agreement
- data with associated agreement coefficient; processes of this type are
- frequently called 
+Several authors have proposed explicit processes that could generate agreement data with associated agreement coefficient;
+ processes of this type are frequently called 
 \emph on
 judgment process
 \emph default
 .
+ To my knowledge,
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Maxwell1977-lf"
+literal "false"
+
+\end_inset
+
+ presented the first explicit judgment process.
  Relevant references include 
 \begin_inset CommandInset citation
 LatexCommand citet
@@ -986,7 +1180,8 @@ literal "false"
 
 \end_inset
 
-, 
+,
+ 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Klauer1996-jd"
@@ -994,15 +1189,8 @@ literal "false"
 
 \end_inset
 
-, 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Maxwell1977-lf"
-literal "false"
-
-\end_inset
-
-, 
+,
+ 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Van_Oest2019-pm"
@@ -1010,7 +1198,8 @@ literal "false"
 
 \end_inset
 
-, 
+,
+ 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Perreault1989-mg"
@@ -1018,7 +1207,8 @@ literal "false"
 
 \end_inset
 
-, and 
+,
+ and 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Gwet2008-qk"
@@ -1026,256 +1216,46 @@ literal "false"
 
 \end_inset
 
- see Moss (2023) for an overview.
- We go through three models below, starting what is, to my knowledge, the
- first explicit proposal for a judgment process.
- 
-\end_layout
-
-\begin_layout Subsubsection
-The first Maxwell model
-\end_layout
-
-\begin_layout Standard
+;
+ see 
 \begin_inset CommandInset citation
 LatexCommand citet
-key "Maxwell1977-lf"
+key "Moss2023-kv"
 literal "false"
 
 \end_inset
 
- described two judgment processes.
- His first judgment processes is defined in the setting of two raters and
- binary ratings.
- From his Table II one can derive the the joint model for two ratings 
-\begin_inset Formula $x_{1},x_{2}$
-\end_inset
-
- by two raters as
-\begin_inset Formula 
-\begin{equation}
-p(x_{1},x_{2})=\alpha p(x_{1})1[x_{1}=x_{2}]+(1-\alpha)p(x_{1})p(x_{2}),\label{eq:maxwell joint}
-\end{equation}
-
-\end_inset
-
-where 
-\begin_inset Formula $p$
-\end_inset
-
- is the marginal distribution of the data.
- To interpret this model, let 
-\begin_inset Formula $S$
-\end_inset
-
- be a binary variable with success probability 
-\begin_inset Formula $\alpha$
-\end_inset
-
-.
- Both raters either know the correct classification of an item or make a
- guess.
- If they make a guess, the they select randomly from the marginal distribution
- of the data.
- Maxwell shows that 
-\begin_inset Formula $\alpha=\Cor(X_{1},X_{2})$
-\end_inset
-
-, which turns out to coincide with Fleiss' and Cohen's kappa (on the population
- level) in this case.
-\end_layout
-
-\begin_layout Subsubsection
-Uniform guessing distribution models and the Perreault–Leigh model
-\end_layout
-
-\begin_layout Standard
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Perreault1989-mg"
-literal "false"
-
-\end_inset
-
- discussed an explicit model for the rating process.
- In their terminology, they used 
-\begin_inset Formula $R=2$
-\end_inset
-
- raters, a equal and deterministic 
-\emph on
-skill-difficulty parameters
-\emph default
- 
-\begin_inset Formula $s$
-\end_inset
-
- for both raters, uniform guessing distributions, and an arbitrary true
- distribution 
-\begin_inset Formula $t(x)$
-\end_inset
-
-.
- The resulting univariate model is
-\begin_inset Formula 
-\begin{equation}
-p(x)=st(x)+(1-s)C^{-1}.\label{eq:Perreault--Leigh model}
-\end{equation}
-
-\end_inset
-
-From this model they derived that 
-\begin_inset Formula $s=\sqrt{(p_{a}-1/C)/(1-1/C)}$
-\end_inset
-
-, the square root of the Brennan–Prediger coefficient.
+ for an overview.
  
 \end_layout
 
 \begin_layout Standard
-The bivariate distribution of the Perreualt–Leigh model is
-\begin_inset Formula 
-\begin{eqnarray}
-p(x_{1},x_{2}\mid s) & = & s^{2}t(x_{1})1[x_{1}=x_{2}]+(1-s)^{2}C^{-2}+s(1-s)C^{-1}[t(x_{1})+t(x_{2})].\label{eq:Perreault-Leigh}
-\end{eqnarray}
-
-\end_inset
-
-The Perreault–Leigh model is strongly related to model used by 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Gwet2008-qk"
-literal "false"
-
-\end_inset
-
- in his motivation of the 
-\begin_inset Formula $\ac$
-\end_inset
-
-.
- The only modification is that he allows for different skill-difficulty
- parameters for both raters.
-\end_layout
-
-\begin_layout Standard
-The Perreault–Leigh model can easily be generalized to multiple raters,
- but also to skill-difficulty parameters 
-\begin_inset Formula $s$
-\end_inset
-
- that are random and distinct for each rater.
- Provided the guessing distributions are equal, define the uniform guessing
- model as
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-p(x_{1},x_{2})=E(S_{1}S_{1})+(1-E(S_{1}S_{2}))^{2}C^{-2}+E[S_{1}(1-S_{2})]C^{-1}[t(x_{1})+t(x_{2})].
-\]
-
-\end_inset
-
-As we shall see, this is the natural setting of the 
-\begin_inset Formula $\ac$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Subsubsection
-Marginal guessing distribution models
-\end_layout
-
-\begin_layout Standard
-Suppose we have two raters who both guess according to the marginal distribution.
- Their probability of knowing the correct classification is random and equal
- to 
-\begin_inset Formula $S_{1}$
-\end_inset
-
- and 
-\begin_inset Formula $S_{2}$
-\end_inset
-
-, which may be dependent (as in the Maxwell model) or independent (as in
- the Perreault–Leigh model).
- Such models have been proposed by 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Van_Oest2019-pm"
-literal "false"
-
-\end_inset
-
- and 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Grove1981-wb"
-literal "false"
-
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Standard
-If 
-\begin_inset Formula $f$
-\end_inset
-
- is the marginal distribution of the ratings, the marginal guessing distribution
- model can be written as
-\begin_inset Formula 
-\begin{equation}
-p(x_{1},x_{2})=\nu t(x_{1})1[x_{1}=x_{2}]+(1-\nu)ff^{T},\label{eq:marginal guessing distribution}
-\end{equation}
-
-\end_inset
-
-where 
-\begin_inset Formula $\nu=E(S_{1}S_{2})$
-\end_inset
-
-.
- This model easier to work with than the uniform guessing model for two
- reasons.
- First, it is not hard to verify that in fact 
-\begin_inset Formula $f=t$
-\end_inset
-
-, giving us a simple estimator of both 
-\begin_inset Formula $t$
-\end_inset
-
- and 
-\begin_inset Formula $f$
-\end_inset
-
- in the marginal distribution (Moss, 2023).
- Second, we do not need to estimate the individual skill-difficulty parameters
- as it can be described solely in terms of 
-\begin_inset Formula $\nu$
-\end_inset
-
-.
- This is particularly handy when designing tests for the model.
-\end_layout
-
-\begin_layout Subsection
-Guessing models
-\end_layout
-
-\begin_layout Standard
-All the preceding examples, and many more, are special cases of a class
- of models we call 
+We are interested in the judgment processed called 
 \emph on
 guessing models
 \emph default
+,
+ introduced by 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Moss2023-kv"
+literal "false"
+
+\end_inset
+
 .
- The joint distribution of a guessing model for two raters is
+ Here we model judgments using the idea that all items have a correct classification,
+ but have potentially different difficulties.
+ For instance one might use Gwet's example where some items are textbook cases and other essentially guesswork.
+ When an item is easy to rate,
+ the rater will provide the correct classification.
+ When item is hard to rate,
+ the raters will guess the rating from their potentially idiosyncratic guessing distribution.
+ 
+\end_layout
+
+\begin_layout Standard
+The joint distribution of a guessing model for two raters (can be generalized to multiple raters) is
 \begin_inset Formula 
 \begin{equation}
 p(x\mid s,x^{\star})=\left[S_{1}1[x_{1}=x^{\star}]+(1-S_{1})f(x_{1})\right]\left[S_{2}1[x_{1}=x^{\star}]+(1-S_{2})g(x_{2})\right].\label{eq:full guessing model}
@@ -1294,29 +1274,27 @@ where
 \end_layout
 
 \begin_layout Itemize
-\begin_inset Formula $S=\{S_{1},S_{2},\ldots,S_{r}\}$
+\begin_inset Formula $S_{1},S_{2}$
 \end_inset
 
  are the 
 \emph on
 skill-difficulty parameters
 \emph default
-, the probabilities that the 
+,
+ the probabilities that the 
 \begin_inset Formula $r$
 \end_inset
 
 th rater knows the correct classification of an item.
- These skill-difficulty parameters can be either deterministic or random.
- 
 \end_layout
 
 \begin_layout Itemize
 \begin_inset Formula $x^{\star}$
 \end_inset
 
- is the true classification the item.
- The true classifications are independent of the skill-difficulty parameters
- 
+ is the true classification the item,
+ independent of the skill-difficulty parameters 
 \begin_inset Formula $S$
 \end_inset
 
@@ -1329,7 +1307,8 @@ th rater knows the correct classification of an item.
 \begin_inset Formula $t(x^{\star})$
 \end_inset
 
-, the 
+,
+ the 
 \emph on
 true rating distribution
 \emph default
@@ -1340,15 +1319,12 @@ true rating distribution
 \begin_inset Formula $f(x),g(x)$
 \end_inset
 
- are the 
+ are the idiosyncratic 
 \emph on
 guessing distributions
 \emph default
-, the distributions the ratings are drawn from when the 
-\begin_inset Formula $r$
-\end_inset
-
-th rater does not know the true classification of the item.
+,
+ the raters draw from them at random when they do not know the true rating.
 \end_layout
 
 \begin_layout Standard
@@ -1373,818 +1349,127 @@ p(x_{1},x_{2}) & = & E(S_{1}S_{2})t(x_{1})1[x_{1}=x_{2}]+E[(1-S_{1})(1-S_{2})]f(
 
 \end_inset
 
-Observe that 
+Here 
 \begin_inset Formula $E(S_{1}S_{2})$
 \end_inset
 
- has can be interpreted as the probability that both raters know the correct
- classification of item.
- We use the notation and 
+ is the probability that both raters know the correct classification of item.
+ Defining 
 \begin_inset Formula $\nu=E(S_{1}S_{2})$
 \end_inset
 
- and refer to 
+,
+ we call 
 \begin_inset Formula $\nu$
 \end_inset
 
- as the 
+ the 
 \emph on
 knowledge coefficient
 \emph default
  of the guessing model.
- It is straight-forward to verify that all the models listed in the examples
- above are guessing models.
+ A crucial motivating fact about 
+\begin_inset Formula $\nu$
+\end_inset
+
+ is that it equals chance-corrected agreement coefficients under some restrictions on the guessing distributions.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+Uniform guessing model.
+
+\series default
+ In this model we assume the guessing distributions to be uniform.
+ Define the uniform guessing model as
+\begin_inset Formula 
+\begin{equation}
+p(x_{1},x_{2})=E(S_{1}S_{1})+(1-E(S_{1}S_{2}))^{2}C^{-2}+E[S_{1}(1-S_{2})]C^{-1}[t(x_{1})+t(x_{2})].\label{eq:uniform guessing model}
+\end{equation}
+
+\end_inset
+
+As we shall see,
+ this is the natural setting of the 
+\begin_inset Formula $\ac$
+\end_inset
+
+.
+ The knowledge coefficient 
+\begin_inset Formula $\nu=E[S_{1}S_{2}]$
+\end_inset
+
+ equals the Brennan–Prediger coefficient.
  
 \end_layout
 
 \begin_layout Standard
-The main result concerning knowledge coefficients is Theorem 2 of Moss (2023).
- Under suitable assumptions, 
-\begin_inset Formula $\nu$
+
+\series bold
+Marginal guessing distribution.
+ 
+\series default
+Now we assume both raters guess according to the marginal distribution of the data.
+ Such models have been proposed by 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Van_Oest2019-pm"
+literal "false"
+
 \end_inset
 
- equals classical agreement coefficients or variants of them.
- In particular, 
-\begin_inset Formula $\nu$
-\end_inset
-
- equals the Brennan–Prediger coefficient under the uniform guessing distribution
- model, and the weighted Fleiss' kappa or Cohen's kappa under the marginal
- guessing distribution model.
- Theorem 2 is summarized in Table 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
+ and 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Grove1981-wb"
+literal "false"
 
 \end_inset
 
 .
+ 
 \end_layout
 
 \begin_layout Standard
-\begin_inset Float table
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\noindent
-\align center
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-\begin_inset CommandInset label
-LatexCommand label
-name "tab:coefficients"
-
-\end_inset
-
-Coefficients covered in this paper
-\end_layout
-
-\end_inset
-
-
-\begin_inset Tabular
-<lyxtabular version="3" rows="19" columns="3">
-<features tabularvalignment="middle">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-toprule
-\end_layout
-
-\end_inset
-
-
-\series bold
-Assumptions
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\series bold
-Name
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\series bold
-Definition
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\series bold
-Provided that all guessing distributions are equal
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-cmidrule[0.5pt]{2-3}
-\end_layout
-
-\end_inset
-
-Guessing 
-\begin_inset Formula $=$
-\end_inset
-
- Uniform
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Brennan–Prediger coefficient
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\kappa_{BP}=\frac{p_{a}-1/C}{1-1/C}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Guessing 
-\begin_inset Formula $=$
-\end_inset
-
- Marginal
-\begin_inset Formula $^{*}$
-\end_inset
-
- or
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Weighted Fleiss' kappa
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\kappa_{F}=\frac{p_{wa}-p_{wf}}{1-p_{wf}}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Guessing 
-\begin_inset Formula $=$
-\end_inset
-
- True
-\begin_inset Formula $^{*}$
-\end_inset
-
- or
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Weighted Cohen's kappa
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\kappa_{C}=\frac{p_{wa}-p_{wc}}{1-p_{wc}}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-True 
-\begin_inset Formula $=$
-\end_inset
-
- Marginal
-\begin_inset Formula $^{*}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\emph on
-Cohen–Fleiss coefficient
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\kappa_{CF}=\frac{p_{wa}-p_{wc}}{1-p_{wf}}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\series bold
-Provided 
-\begin_inset Formula $E[s_{r_{1}}s_{r_{2}}]=E[s_{r_{1}}]E[s_{r_{2}}]$
-\end_inset
-
- for all 
-\begin_inset Formula $r_{1},r_{2}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-cmidrule[0.5pt]{2-3}
-\end_layout
-
-\end_inset
-
-True 
-\begin_inset Formula $=$
-\end_inset
-
- Marginal
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\emph on
-Cohen–Fleiss coefficient
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\kappa_{CF}=\frac{p_{wa}-p_{wc}}{1-p_{wf}}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-True 
-\begin_inset Formula $=$
-\end_inset
-
- Uniform
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\emph on
-Cohen–Brennan–Prediger coefficient
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\kappa_{CBP}=\frac{p_{wa}-p_{wc}}{1-\boldsymbol{1}^{T}W\boldsymbol{1}/C^{2}}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-bottomrule
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-</lyxtabular>
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-vspace{1mm}
-\end_layout
-
+If 
+\begin_inset Formula $f$
 \end_inset
-
-
-\end_layout
 
-\begin_layout Plain Layout
+ is the marginal distribution of the ratings,
+ the marginal guessing distribution model can be written as
+\begin_inset Formula 
+\begin{equation}
+p(x_{1},x_{2})=\nu t(x_{1})1[x_{1}=x_{2}]+(1-\nu)ff^{T},\label{eq:marginal guessing distribution}
+\end{equation}
 
-\size footnotesize
-\emph on
-Note
-\emph default
-: New coefficients in italics.
-\end_layout
-
-\begin_layout Plain Layout
-
-\size footnotesize
-\begin_inset Formula $^{*}$
 \end_inset
 
-These three conditions are equivalent, see (i) of Theorem 2 of Moss (2023).
-\end_layout
-
+where 
+\begin_inset Formula $\nu=E(S_{1}S_{2})$
 \end_inset
-
-
-\end_layout
 
-\begin_layout Standard
-In a guessing model, we can naturally decompose the probability of chance
- agreement into two parts.
- Knowledgeable agreement, or 
+.
+ In this case 
 \begin_inset Formula $\nu$
 \end_inset
 
-, and agreement where at least one rater guesses, or 
+ equals,
+ perhaps surprisingly,
+ both Cohen's kappa or Fleiss' kappa.
+\end_layout
+
+\begin_layout Standard
+In a guessing model,
+ we can naturally decompose the probability of chance agreement into two parts.
+ Knowledgeable agreement,
+ or 
+\begin_inset Formula $\nu$
+\end_inset
+
+,
+ and agreement where at least one rater guesses,
+ or 
 \begin_inset Formula $p_{g}$
 \end_inset
 
@@ -2200,31 +1485,25 @@ p_{a}=\nu+p_{g}\label{eq:agreement decomposition}
 \end_layout
 
 \begin_layout Standard
-For example, in the Perreault–Leigh model 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:Perreault-Leigh"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-, simple calculations demonstrate that the probability of agreement can
- be written as 
+For example,
+ in the uniform guessing model,
+ simple calculations demonstrate that the probability of agreement can be written as 
 \begin_inset Formula $p_{a}=\nu+C^{-1}(1-\nu)$
 \end_inset
 
-, thus the probability of agreement due to guessing is 
+,
+ thus the probability of agreement due to guessing is 
 \begin_inset Formula $C^{-1}(1-\nu)$
 \end_inset
 
 .
- Of course, 
+ Of course,
+ 
 \begin_inset Formula $p_{g}=\nu-p_{a}$
 \end_inset
 
-, which is useful if we want to calculate 
+,
+ which is useful if we want to calculate 
 \begin_inset Formula $p_{g}$
 \end_inset
 
@@ -2245,11 +1524,20 @@ Guessing models and the paradox of kappa
 \end_layout
 
 \begin_layout Standard
-As we have seen, the knowledge coefficient for the marginal guessing distributio
-n model equals both Cohen's kappa and Fleiss' kappa, which implies that
- the paradox of kappa also holds for some guessing models.
- On the other hand, the Brennan–Prediger coefficient is also a knowledge
- coefficient, and this one does not suffer from the paradox of kappa 
+As we have seen,
+ the knowledge coefficient for the marginal guessing distribution model equals both Cohen's kappa and Fleiss' kappa,
+ which implies that the 
+\begin_inset Quotes eld
+\end_inset
+
+paradox of kappa
+\begin_inset Quotes erd
+\end_inset
+
+ also holds for some guessing models.
+ On the other hand,
+ the Brennan–Prediger coefficient is also a knowledge coefficient,
+ and this one does not suffer from the paradox of kappa 
 \begin_inset CommandInset citation
 LatexCommand citep
 after "p. 82"
@@ -2263,8 +1551,7 @@ literal "false"
 \end_layout
 
 \begin_layout Standard
-Let's investigate why the marginal guessing distribution model produces
- a 
+Let's investigate why the marginal guessing distribution model produces a 
 \begin_inset Quotes eld
 \end_inset
 
@@ -2272,14 +1559,14 @@ paradoxical
 \begin_inset Quotes erd
 \end_inset
 
- coefficient and the Brennan–Prediger model does not, starting with the
- marginal guessing distribution model.
+ coefficient and the Brennan–Prediger model does not,
+ starting with the marginal guessing distribution model.
  Letting 
 \begin_inset Formula $t=[0.97,3]$
 \end_inset
 
- be the true distribution, we can write out the ratings distribution in
- matrix form as a function of 
+ be the true distribution,
+ we can write out the ratings distribution in matrix form as a function of 
 \begin_inset Formula $\nu$
 \end_inset
 
@@ -2301,8 +1588,10 @@ The agreement of this matrix is
 \begin_inset Formula $0.9418+0.0582\nu$
 \end_inset
 
-, implying that the smallest theoretically possible agreement, with the
- marginals fixed, is the pretty large 
+,
+ implying that the smallest theoretically possible agreement,
+ with the marginals fixed,
+ is the pretty large 
 \begin_inset Formula $0.9418$
 \end_inset
 
@@ -2310,18 +1599,20 @@ The agreement of this matrix is
 \end_layout
 
 \begin_layout Standard
-In the Perreault–Leigh model, using equation 
+In the uniform guessing model,
+ using equation 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "eq:Perreault-Leigh"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
-, we can write the rating distribution as a function of the skill-difficulty
- parameter 
+,
+ we can write the rating distribution as a function of the skill-difficulty parameter 
 \begin_inset Formula $s$
 \end_inset
 
@@ -2346,7 +1637,8 @@ The agreement is minimized when
 \begin_inset Formula $s=0$
 \end_inset
 
-, where it equals 
+,
+ where it equals 
 \begin_inset Formula $1/2$
 \end_inset
 
@@ -2359,441 +1651,27 @@ The agreement is minimized when
 \end_layout
 
 \begin_layout Standard
-Which guessing model, and implied knowledge coefficient, is right to choose?
- This is not always possible to deduce from the data itself, as any symmetric
- matrix is compatible with both models when dealing with 
+Which guessing model,
+ and implied knowledge coefficient,
+ is right to choose?
+ This is not always possible to deduce from the data itself,
+ as any symmetric matrix is compatible with both models when dealing with 
 \begin_inset Formula $2\times2$
 \end_inset
 
- data, as discussed below.
- But when dealing with larger tables, it is possible to construct tests
- for guessing model assumptions.
- Construction such tests could prove important, as knowledge coefficients
- (and the 
+ data,
+ as discussed below.
+ But when dealing with larger tables,
+ it is possible to construct tests for guessing model assumptions.
+ Construction such tests could prove important,
+ as knowledge coefficients (and the 
 \begin_inset Formula $\ac$
 \end_inset
 
 ) should not be used unless we are confident in their validity.
 \end_layout
 
-\begin_layout Subsection
-\begin_inset CommandInset label
-LatexCommand label
-name "subsec:On-model-assumptions"
-
-\end_inset
-
-On model assumptions
-\end_layout
-
-\begin_layout Standard
-For us, the most important consequence of Theorem 2 is that 
-\begin_inset Formula $\nu=\kappa_{BP}$
-\end_inset
-
- when every rater's guessing distribution is uniform.
- This is true for both random and deterministic skill-difficulty parameters
- and for all true rating distributions.
- The
-\emph on
- only
-\emph default
- crucial assumption is the uniformity of the guessing distribution.
- This assumption has compelling arguments.
- 
-\begin_inset CommandInset citation
-LatexCommand citet
-after "p. 130"
-key "Gwet2014-iu"
-literal "false"
-
-\end_inset
-
- states 
-\end_layout
-
-\begin_layout Quote
-Some authors (e.g.
- 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Grove1981-wb"
-literal "false"
-
-\end_inset
-
- among others) have suggested that under the assumption of random rating,
- it may be inappropriate to assign equal probability [
-\begin_inset Formula $C^{-1}$
-\end_inset
-
-] to all categories.
- Some of these authors even recommended using the observed marginal probabilitie
-s.
- I do not recommend this.
- My view on this issue is that if a rater believes that one category is
- more likely than the others to be the correct one, then that category must
- be selected and the rating process should not even be considered random
- at all.
-\end_layout
-
-\begin_layout Standard
-A reasonable counter-argument would be that raters are reasonably aware
- of the true distribution, and are likely to guess according to it.
- 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Van_Oest2019-pm"
-literal "false"
-
-\end_inset
-
- states
-\end_layout
-
-\begin_layout Quote
-Raters are motivated to do the coding well and they use the notion that
- an item’s correct category is more likely a large category, with large
- [marginal probability], than a small one.
- Raters may already have some initial ideas about the category proportions
- or they may remember previous outcomes during the coding process and use
- availability heuristics 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "Tversky1974-yv"
-literal "false"
-
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Standard
-None of these authors consider the possibility of testing these assumptions
- though.
- Constructing general tests for guessing models is beyond the scope of this
- paper, but, as it turns out, the Perreault–Leigh and marginal guessing
- models are easy to construct tests for.
- Let 
-\begin_inset Formula $\hat{F}$
-\end_inset
-
- be the standard empirical estimator of the probability matrix (i.e., the
- agreement matrix divided by 
-\begin_inset Formula $n$
-\end_inset
-
-, the number of items).
- The idea is to use the 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
- test 
-\begin_inset CommandInset citation
-LatexCommand citep
-after "Chapter 13"
-key "Devore2012-rh"
-literal "false"
-
-\end_inset
-
- to test the null-hypothesis that 
-\begin_inset Formula $\hat{F}$
-\end_inset
-
- is generated from a Perreault–Leigh model or marginal guessing distribution
- model.
- To do this, let 
-\begin_inset Formula $\hat{G}$
-\end_inset
-
- be an estimator of the model-implied probability matrix.
- We can estimate this in an ad-hoc manner or using a minimum chi square
- estimator 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "Berkson1980-um"
-literal "false"
-
-\end_inset
-
-, see the appendix for details.
- 
-\end_layout
-
-\begin_layout Standard
-The resulting test statistic is
-\begin_inset Formula 
-\begin{equation}
-T=n\sum_{i=1}^{C}\sum_{j=1}^{C}\frac{\left(\hat{F}_{ij}-\hat{G}_{ij}\right)^{2}}{\hat{G}_{ij}},\label{eq:chisq}
-\end{equation}
-
-\end_inset
-
-which is approximately 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
--distributed with 
-\begin_inset Formula $C^{2}-C-2$
-\end_inset
-
- degrees of freedom.
-\end_layout
-
-\begin_layout Standard
-The distribution of the resulting test statistic when the true distribution
- is 
-\begin_inset Formula $[0.2,0.1,0.1,0.3,0.1]$
-\end_inset
-
-, 
-\begin_inset Formula $s=0.7$
-\end_inset
-
-, and 
-\begin_inset Formula $n=100$
-\end_inset
-
- is shown in Figure 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:perreault-leigh-figure"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- along with the density of the 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
--distribution with 
-\begin_inset Formula $C^{2}-C-2$
-\end_inset
-
-.
- The fit is not amazing, but is decent enough for our purposes.
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\noindent
-\align center
-\begin_inset Graphics
-	filename figures/chisq.pdf
-	scale 50
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-\begin_inset CommandInset label
-LatexCommand label
-name "fig:perreault-leigh-figure"
-
-\end_inset
-
-Simulated distribution of the 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
--statistic for the Perreault–Leigh model and marginal guessing distribution
- model using 
-\begin_inset Formula $N=10,000$
-\end_inset
-
- simulations, 
-\begin_inset Formula $n=100$
-\end_inset
-
-, 
-\begin_inset Formula $s=0.7$
-\end_inset
-
- and true distribution 
-\begin_inset Formula $[0.2,0.1,0.1,0.3,0.1]$
-\end_inset
-
-.
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Consider the following data, taken from the two first raters of 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Zapf2016-eu"
-literal "false"
-
-\end_inset
-
-,
-\begin_inset Formula 
-\begin{equation}
-\left[\begin{array}{ccccc}
-13 & 0 & 1 & 0 & 0\\
-0 & 0 & 1 & 0 & 0\\
-0 & 0 & 5 & 0 & 0\\
-0 & 1 & 0 & 3 & 7\\
-0 & 0 & 0 & 3 & 16
-\end{array}\right].\label{eq:zapf-matrix}
-\end{equation}
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-The test disconfirm both models, being 
-\begin_inset Formula $(\chi^{2}=5.78,p=8.6\cdot10^{-6})$
-\end_inset
-
- for the Perreault–Leigh model and 
-\begin_inset Formula $(7.15,p=1.0\cdot10^{-7})$
-\end_inset
-
- for the van Oest model.
- We would need more general tests to confidently disconfirm every guessing
- model with uniform guessing distributions, but the results at least suggests
- that the uniform guessing distribution assumption does not hold in some
- data.
- We believe it would be worthwhile to develop tests for guessing models
- before reporting statistics that only make sense when they are close to
- being true.
- If we had such tests, the Brennan–Prediger coefficient would be better
- justified if they turned out not to disconfirm the model.
- As would the 
-\begin_inset Formula $\text{AC}_{1}$
-\end_inset
-
-, if the researcher believes in its raison d'être.
-\end_layout
-
-\begin_layout Standard
-There are limits to how useful these tests could be.
- Consider the data in Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:gwet-example"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- from 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Gwet2008-qk"
-literal "false"
-
-\end_inset
-
-.
- This data is compatible with both the Perreault–Leigh and the marginal
- guessing distribution model, with 
-\begin_inset Formula $p$
-\end_inset
-
--values of 
-\begin_inset Formula $0.56$
-\end_inset
-
- and 
-\begin_inset Formula $0.86$
-\end_inset
-
-.
- But it's not hard to see that 
-\emph on
-every
-\emph default
- symmetric 
-\begin_inset Formula $2\times2$
-\end_inset
-
- matrix can be generated by these models.
- Hence we can't expect 
-\emph on
-p
-\emph default
--values to help us decide between them, as the 
-\emph on
-p
-\emph default
--values only have a chance of being significant if the data matrix is sufficient
-ly asymmetric.
- Indeed, we can write agreement probability matrix 
-\begin_inset Formula $F$
-\end_inset
-
- for the Perreault–Leigh model as
-\begin_inset Formula 
-\begin{equation}
-F=s^{2}D+(1-s)^{2}C^{-2}11^{T}+s(1-s)C^{-1}[f1^{T}+1f^{T}],\label{eq:decomposition}
-\end{equation}
-
-\end_inset
-
-where 
-\begin_inset Formula $D$
-\end_inset
-
- is the diagonal matrix with the true distribution on its diagonal.
- There are three parameters in the model and three free parameters in 
-\begin_inset Formula $F$
-\end_inset
-
- (since it sums) to 
-\begin_inset Formula $F$
-\end_inset
-
-.
- The same reasoning holds for the marginal guessing distribution model as
- well.
-\end_layout
-
-\begin_layout Standard
-While the uniform guessing distribution might be disconfirmed by the data,
- simulations by Moss (2023) suggest that the Brennan–Prediger coefficient
- might approximate the knowledge coefficient reasonably well even when the
- true guessing distribution is far from the uniform guessing distribution.
- This feature of the Brennan–Prediger makes it, at the very least, a reasonable
- choice for an agreement coefficient even if tests show disconfirm the uniform
- guessing distribution itself.
-\end_layout
-
 \begin_layout Section
-The 
-\begin_inset Formula $\ac$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Subsection
 Defining the 
 \begin_inset Formula $\ac$
 \end_inset
@@ -2802,16 +1680,16 @@ Defining the
 \end_layout
 
 \begin_layout Standard
-In the beginning of Section 4 of his paper 
+In the beginning of Section 4 of her paper 
 \begin_inset Quotes eld
 \end_inset
 
-Computing inter-rater reliability and its variance in the presence of high
- agreement
+Computing inter-rater reliability and its variance in the presence of high agreement
 \begin_inset Quotes erd
 \end_inset
 
-, 
+,
+ 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Gwet2008-qk"
@@ -2836,9 +1714,9 @@ literal "false"
 
 \begin_layout Quote
 Before I introduce an improved alternative inter-rater reliability coefficient,
- it is necessary to develop a clear picture of the goal one normally attempts
- to achieve by correcting inter-rater reliability for chance agreement.
- My premises are the following: 
+ it is necessary to develop a clear picture of the goal one normally attempts to achieve by correcting inter-rater reliability for chance agreement.
+ My premises are the following:
+ 
 \end_layout
 
 \begin_deeper
@@ -2858,19 +1736,22 @@ I will consider that a rater
 \begin_inset Formula $A$
 \end_inset
 
- classifies an individual into one of two categories either randomly, when
- he or she does not know where it belongs, or with certainty, when he or
- she is certain about its ‘true’ membership.
+ classifies an individual into one of two categories either randomly,
+ when he or she does not know where it belongs,
+ or with certainty,
+ when he or she is certain about its ‘true’ membership.
  Rater 
 \begin_inset Formula $A$
 \end_inset
 
- performs a random rating not all the time, but with a probability 
+ performs a random rating not all the time,
+ but with a probability 
 \begin_inset Formula $\theta_{A}$
 \end_inset
 
 .
- That is, 
+ That is,
+ 
 \begin_inset Formula $\theta_{A}$
 \end_inset
 
@@ -2879,16 +1760,14 @@ I will consider that a rater
 \end_inset
 
  to perform a random rating.
- The participants not classified randomly are supposed to have been classified
- into the correct category.
+ The participants not classified randomly are supposed to have been classified into the correct category.
  [...]
 \end_layout
 
 \begin_layout Standard
-Point (2) and the paragraph below it places us squarely in the domain of
- guessing models with fixed skill-difficulty parameters for each rater.
- Point (1) provides a definition of chance agreement, which coincides with
- the probability of agreement due to guessing 
+Point (2) and the paragraph below it places us squarely in the domain of guessing models with fixed skill-difficulty parameters for each rater.
+ Point (1) provides a definition of chance agreement,
+ which coincides with the probability of agreement due to guessing 
 \begin_inset Formula $p_{g}=p_{a}-\nu$
 \end_inset
 
@@ -2899,6 +1778,7 @@ reference "eq:agreement decomposition"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
@@ -2906,11 +1786,13 @@ noprefix "false"
 \end_layout
 
 \begin_layout Standard
-Using this notion of chance agreement, but without reference 
+Using this notion of chance agreement,
+ but without reference 
 \begin_inset Formula $\nu$
 \end_inset
 
-, Gwet defines the 
+,
+ Gwet defines the 
 \begin_inset Formula $\ac$
 \end_inset
 
@@ -2927,7 +1809,8 @@ According to the equation
 \begin_inset Formula $p_{g}=p_{a}-\nu$
 \end_inset
 
-, we can write
+,
+ we can write
 \begin_inset Formula 
 \begin{equation}
 \gamma=\frac{\nu}{1-p_{a}+\nu}.\label{eq:ac1-formulation}
@@ -2935,13 +1818,15 @@ According to the equation
 
 \end_inset
 
-This formulation is handy, as it allows us Table 
+This formulation is handy,
+ as it allows us Table 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "tab:coefficients"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
@@ -2958,7 +1843,8 @@ noprefix "false"
 \begin_inset Formula $p_{c}$
 \end_inset
 
-, then 
+,
+ then 
 \begin_inset Formula 
 \begin{equation}
 \gamma=\frac{\nu}{1-p_{a}+\nu}=\frac{p_{a}-p_{c}}{1+(p_{c}-2)p_{a}}.\label{eq:ac1-pa-pc}
@@ -2970,7 +1856,8 @@ noprefix "false"
 \end_layout
 
 \begin_layout Standard
-For the remainder of his paper, 
+For the remainder of her paper,
+ 
 \begin_inset CommandInset citation
 LatexCommand citet
 key "Gwet2008-qk"
@@ -2978,19 +1865,18 @@ literal "false"
 
 \end_inset
 
- makes the assumption the assumption that he guessing distributions are
- uniform.
+ makes the assumption that the guessing distributions are uniform.
  
 \begin_inset Foot
 status open
 
 \begin_layout Plain Layout
-In the context of two raters, he writes that 
+In the context of two raters,
+ she writes that 
 \begin_inset Quotes eld
 \end_inset
 
-[...] random rating would normally lead to the classification of an individual
- into either category with the same probability 1/2.
+[...] random rating would normally lead to the classification of an individual into either category with the same probability 1/2.
 \begin_inset Quotes erd
 \end_inset
 
@@ -3004,20 +1890,19 @@ In the context of two raters, he writes that
 \begin_inset Formula $\nu=\kappa_{BP}=(p_{a}-C^{-1})/(1-C^{-1})$
 \end_inset
 
-, we can use 
+,
+ we can use 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "eq:ac1-pa-pc"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
  to rewrite
-\end_layout
-
-\begin_layout Standard
 \begin_inset Formula 
 \begin{equation}
 \gamma=\frac{C\kappa_{BP}}{(C-1)+\kappa_{BP}}=\frac{Cp_{a}-1}{C+p_{a}-2}.\label{eq:ac1-multirater-perrault-leigh}
@@ -3033,8 +1918,9 @@ literal "false"
 
 \end_inset
 
- to the case of more than two categories, multiple raters, and random skill-diff
-iculty parameters in the uniform guessing model.
+ to the case of more than two categories,
+ multiple raters,
+ and random skill-difficulty parameters in the uniform guessing model.
  Estimating 
 \begin_inset Formula $\gamma$
 \end_inset
@@ -3043,19 +1929,8 @@ iculty parameters in the uniform guessing model.
 \begin_inset Formula $p_{a}$
 \end_inset
 
-, which is quite simple.
- An application of the delta rule makes inference possible as well.
- See section 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "sec:Inference-and-estimation"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- for details.
+,
+ which is quite simple.
 \end_layout
 
 \begin_layout Standard
@@ -3082,10 +1957,13 @@ reference "eq:ac1-2"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
- under any guessing model, as made clear by the context, but will use 
+ under any guessing model,
+ as made clear by the context,
+ but will use 
 \begin_inset Formula $\ac$
 \end_inset
 
@@ -3096,6 +1974,7 @@ reference "eq:ac1-multirater-perrault-leigh"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
@@ -3128,8 +2007,11 @@ where
 \begin_inset Formula $p_{f}$
 \end_inset
 
- is the Fleiss-type probability of chance agreement.
- 
+ is the Fleiss-type probability of chance agreement and 
+\begin_inset Formula $C$
+\end_inset
+
+ is the number of categories.
 \end_layout
 
 \begin_layout Standard
@@ -3145,22 +2027,26 @@ which is likely to be close to
 \begin_inset Formula $\ac$
 \end_inset
 
-, with equality when 
+,
+ with equality when 
 \begin_inset Formula $p_{f}=p_{a}$
 \end_inset
 
 .
- For example, consider the agreement data in Table 
+ For example,
+ consider the agreement data in Table 
 \begin_inset CommandInset ref
 LatexCommand eqref
 reference "tab:gwet-example"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
-, where 
+,
+ where 
 \begin_inset Formula $\hat{\gamma}^{\star}=0.684$
 \end_inset
 
@@ -3173,7 +2059,8 @@ noprefix "false"
 \end_layout
 
 \begin_layout Standard
-Originally, 
+Originally,
+ 
 \begin_inset CommandInset citation
 LatexCommand citet
 after "eq. 22"
@@ -3197,10 +2084,12 @@ reference "eq:ac1-2"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
-, not the 
+,
+ not the 
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
@@ -3216,6 +2105,7 @@ reference "eq:ac1-2"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
@@ -3223,7 +2113,8 @@ noprefix "false"
 \begin_inset Formula $\textsc{AC}_{1}$
 \end_inset
 
-, 
+,
+ 
 \emph on
 not
 \emph default
@@ -3232,12 +2123,13 @@ not
 \end_inset
 
 .
- We see few reasons for using this approximation, even though the population
- bias is quite small when 
+ We see few reasons for using this approximation,
+ even though the population bias is quite small when 
 \begin_inset Formula $C=2$
 \end_inset
 
-, at least when 
+,
+ at least when 
 \begin_inset Formula $p_{f}$
 \end_inset
 
@@ -3249,88 +2141,24 @@ not
  
 \end_layout
 
-\begin_layout Standard
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Gwet2014-iu"
-literal "false"
-
-\end_inset
-
- proposed a weighted variant of the redefined 
+\begin_layout Section
+Why not 
 \begin_inset Formula $\ac$
 \end_inset
 
-, christened the 
-\begin_inset Formula $\textsc{AC}_{2}$
-\end_inset
+?
+\end_layout
 
-: 
-\begin_inset Formula 
-\[
-\frac{p_{wa}-p_{wg}^{\star}}{1-p_{wg}^{\star}},\quad\textrm{where }p_{wg}^{\star}=\frac{1-p_{f}}{C-1}\frac{\sum_{x,y}w(x,y)}{C}.
-\]
+\begin_layout Itemize
+highlight where AC1 diverges conceptually and theoretically from its intended motivation
+\end_layout
 
-\end_inset
+\begin_layout Itemize
+present one or two clear theoretical examples highlighting these shortcomings
+\end_layout
 
-The motivation behind 
-\begin_inset Formula $p_{g}^{\star}(w)$
-\end_inset
-
- is hard to follow, possibly because it is based directly on the approximation
- 
-\begin_inset Formula $p_{g}^{\star}$
-\end_inset
-
- instead of the correct 
-\begin_inset Formula $p_{g}$
-\end_inset
-
-.
- We believe the most natural weighted generalization of the 
-\begin_inset Formula $\ac$
-\end_inset
-
- is to define 
-\begin_inset Formula $p_{wg}=p_{wa}-\nu$
-\end_inset
-
-, and go with
-\begin_inset Formula 
-\begin{eqnarray}
-\gamma_{w} & = & \frac{p_{wa}-p_{wg}}{1-p_{wg}}=\frac{\nu}{1-p_{wa}+\nu},\label{eq:AC2}
-\end{eqnarray}
-
-\end_inset
-
-This definition hinges on the correctness of the definition 
-\begin_inset Formula $p_{wa}=\nu+p_{wg}$
-\end_inset
-
-.
- This definition seems correct to us, considering that the knowledge coefficient
- 
-\begin_inset Formula $\nu$
-\end_inset
-
- only counts 100% agreement, and is invariant with respect to the weighting
- function.
- Inference and estimation of the new 
-\begin_inset Formula $\gamma_{w}$
-\end_inset
-
- would be quite simple to develop for the assumptions listed in in the coefficie
-nt table (Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-), but is beyond the scope of this paper.
+\begin_layout Itemize
+explicitly argue why Brennan–Prediger is theoretically preferable
 \end_layout
 
 \begin_layout Subsection
@@ -3341,32 +2169,20 @@ The case against the
 
 \end_layout
 
-\begin_layout Standard
-We provided a rough motivation for the 
+\begin_layout Paragraph*
+Mismatch between derivation of 
 \begin_inset Formula $\ac$
 \end_inset
 
-, and in the next section we sketch how to estimate and do inference on
- it.
- You are obviously free to use the 
-\begin_inset Formula $\ac$
-\end_inset
-
- if you want to, and the methodology in the next section will help you in
- this regard.
- However, we suggest you don't.
- We propose the following: If you have strong reasons to believe a guessing
- model is actually true, use the knowledge coefficient if you're confident
- your audience will understand it.
- If not, use one of the classical agreement coefficients.
+ and its motivation
 \end_layout
 
 \begin_layout Paragraph*
+The term 
 \begin_inset Formula $p_{g}$
 \end_inset
 
- should not be regarded as a probability of chance agreement.
- 
+ should not be regarded as a probability of chance agreement
 \end_layout
 
 \begin_layout Standard
@@ -3395,7 +2211,8 @@ Recall that a probability of chance agreement is defined as
 \begin_inset Formula $p_{g}=P_{G}(X_{1}=X_{2})$
 \end_inset
 
-? Observe that chance agreement is bounded below by 
+?
+ Observe that chance agreement is bounded below by 
 \begin_inset Formula $C^{-1}$
 \end_inset
 
@@ -3403,9 +2220,11 @@ Recall that a probability of chance agreement is defined as
 \begin_inset Formula $G=G'\times G'$
 \end_inset
 
-, i.e., when agreement is measure on two observations sampled independently
- from the same distribution.
- But in the Perreault–Leigh model, we have that 
+,
+ i.e.,
+ when agreement is measure on two observations sampled independently from the same distribution.
+ But in the Perreault–Leigh model,
+ we have that 
 \begin_inset Formula $p_{g}=C^{-1}(1-\nu),$
 \end_inset
 
@@ -3431,8 +2250,8 @@ a chance agreement for any
 \end_inset
 
 .
- To make it into a chance agreement, we would have to consider different
- 
+ To make it into a chance agreement,
+ we would have to consider different 
 \begin_inset Formula $G$
 \end_inset
 
@@ -3445,12 +2264,14 @@ s.
 \begin_inset Formula $X_{2}$
 \end_inset
 
-, such as the Perreault–Leigh model and the marginal guessing distribution
- model.
+,
+ such as the Perreault–Leigh model and the marginal guessing distribution model.
  Most guessing distributions are not symmetric though.
- The uniform guessing model, for instance, is consistent with asymmetric
- agreement data if the skill-difficulty parameters vary between raters.
- We believe this hardly matters though, as 
+ The uniform guessing model,
+ for instance,
+ is consistent with asymmetric agreement data if the skill-difficulty parameters vary between raters.
+ We believe this hardly matters though,
+ as 
 \begin_inset Formula $p_{g}$
 \end_inset
 
@@ -3466,6 +2287,7 @@ all
 \end_layout
 
 \begin_layout Paragraph*
+The knowledge coefficient 
 \begin_inset Formula $\nu$
 \end_inset
 
@@ -3481,26 +2303,27 @@ corrected for
 \end_layout
 
 \begin_layout Standard
-The knowledge coefficient is already defined as the probability of knowledgeable
- agreement, and there appears to be no need to correct it further.
- The most direct evidence for this can be found in the coefficient table
- (Table 
+The knowledge coefficient is already defined as the probability of knowledgeable agreement,
+ and there appears to be no need to correct it further.
+ The most direct evidence for this can be found in the coefficient table (Table 
 \begin_inset CommandInset ref
 LatexCommand eqref
 reference "tab:coefficients"
 plural "false"
 caps "false"
 noprefix "false"
+nolink "false"
 
 \end_inset
 
-), which makes it clear that 
+),
+ which makes it clear that 
 \begin_inset Formula $\nu$
 \end_inset
 
- equals well-known chance-corrected measures of agreement under various
- conditions.
- However, the definition of 
+ equals well-known chance-corrected measures of agreement under various conditions.
+ However,
+ the definition of 
 \begin_inset Formula $\nu$
 \end_inset
 
@@ -3509,8 +2332,7 @@ noprefix "false"
 \end_inset
 
  should be compelling enough in itself.
- The multitude of researching deriving agreement coefficients using this
- definition or similar definitions 
+ The multitude of researching deriving agreement coefficients using this definition or similar definitions 
 \begin_inset CommandInset citation
 LatexCommand citep
 before "e.g."
@@ -3523,26 +2345,34 @@ literal "false"
  
 \end_layout
 
+\begin_layout Subsection
+The case against 
+\begin_inset Formula $\ac$
+\end_inset
+
+ and knowledge coefficients
+\end_layout
+
 \begin_layout Paragraph*
 The uniform guessing distribution model might be incorrect
 \end_layout
 
 \begin_layout Standard
-Consider the case where you know the guessing distribution is true, but
- the assumption of uniform guessing distributions is false.
- This scenario can semi-plausibly be generated by requesting the raters
- to select randomly from the base rate, or perhaps always choose the item
- with the largest probability of being correct according to the base rates.
+Consider the case where you know the guessing distribution is true,
+ but the assumption of uniform guessing distributions is false.
+ This scenario can semi-plausibly be generated by requesting the raters to select randomly from the base rate,
+ or perhaps always choose the item with the largest probability of being correct according to the base rates.
  Then the 
 \begin_inset Formula $\ac$
 \end_inset
 
- will not be correct, and we would have to use a generalized variant such
- as 
+ will not be correct,
+ and we would have to use a generalized variant such as 
 \begin_inset Formula $\nu_{CF}/(1-p_{a}+\nu_{CF})$
 \end_inset
 
-, or perhaps estimate 
+,
+ or perhaps estimate 
 \begin_inset Formula $\nu$
 \end_inset
 
@@ -3562,11 +2392,10 @@ Both
 \begin_inset Formula $\ac$
 \end_inset
 
- are motivated by guessing models, and arguably only makes sense in the
- context of guessing models.
- Not every judgment processes can be represented as a guessing model; this
- follows from the fact that every guessing model (with two raters) can be
- represented in matrix form as
+ are motivated by guessing models,
+ and arguably only makes sense in the context of guessing models.
+ Not every judgment processes can be represented as a guessing model;
+ this follows from the fact that every guessing model (with two raters) can be represented in matrix form as
 \begin_inset Formula 
 \[
 F=E[S_{1}S_{2}]D+E[(1-S_{1})(1-S_{2})]fg^{T}+E(S_{1}(1-S_{2}))tg^{T}+E(S_{2}(1-S_{1}))ft^{T},
@@ -3592,7 +2421,8 @@ where
 \begin_inset Formula $C^{2}-1$
 \end_inset
 
- free parameters, but the right-hand side only has 
+ free parameters,
+ but the right-hand side only has 
 \begin_inset Formula $4C-1$
 \end_inset
 
@@ -3617,7 +2447,8 @@ The three distribution vectors
 \begin_inset Formula $E[S_{1}],E[S_{2}]$
 \end_inset
 
-, and 
+,
+ and 
 \begin_inset Formula $E[S_{1}S_{2}]$
 \end_inset
 
@@ -3636,17 +2467,17 @@ The three distribution vectors
 \end_inset
 
  and above can be represented as a guessing model.
- But even if it could be represented by a guessing model we can't know it
- accurately represents the judgment process.
- That would require us to make assumptions than can be neither confirmed
- nor disconfirmed from the data alone.
+ But even if it could be represented by a guessing model we can't know it accurately represents the judgment process.
+ That would require us to make assumptions than can be neither confirmed nor disconfirmed from the data alone.
 \end_layout
 
 \begin_layout Standard
-If the guessing model itself is false, we will be talking about parameters
- that do not correspond to something existing in the real world.
- This would, perhaps, be alright if the guessing model is approximately
- true, but not otherwise.
+If the guessing model itself is false,
+ we will be talking about parameters that do not correspond to something existing in the real world.
+ This would,
+ perhaps,
+ be alright if the guessing model is approximately true,
+ but not otherwise.
  
 \end_layout
 
@@ -3655,14 +2486,15 @@ Chance-corrected measures of agreement always make sense
 \end_layout
 
 \begin_layout Standard
-Cohen's kappa and Fleiss' kappa do not suffer are well-motivated outside
- the context of guessing models, and have strong connections to the 
+Cohen's kappa and Fleiss' kappa do not suffer are well-motivated outside the context of guessing models,
+ and have strong connections to the 
 \begin_inset Formula $R^{2}$
 \end_inset
 
-, making interpretation easy.
- For instance, Fleiss' kappa can be defined in terms of the probability
- of disagreement and the 
+,
+ making interpretation easy.
+ For instance,
+ Fleiss' kappa can be defined in terms of the probability of disagreement and the 
 \begin_inset Quotes eld
 \end_inset
 
@@ -3686,8 +2518,7 @@ The numerator
 \begin_inset Quotes eld
 \end_inset
 
-How close is the rating of judge 1 to the rating of judge 2 when they rate
- the same item?
+How close is the rating of judge 1 to the rating of judge 2 when they rate the same item?
 \begin_inset Quotes erd
 \end_inset
 
@@ -3696,17 +2527,16 @@ How close is the rating of judge 1 to the rating of judge 2 when they rate
 \end_inset
 
 -distance.
- Likewise, the denominator answers the question 
+ Likewise,
+ the denominator answers the question 
 \begin_inset Quotes eld
 \end_inset
 
-How close is the rating of judge 1 to the rating of judge 2 when they rate
- distinct items?
+How close is the rating of judge 1 to the rating of judge 2 when they rate distinct items?
 \begin_inset Quotes erd
 \end_inset
 
- The numerator serves as a reasonable baseline for evaluating the predictive
- power of judge 2s rating.
+ The numerator serves as a reasonable baseline for evaluating the predictive power of judge 2s rating.
  
 \end_layout
 
@@ -3715,7 +2545,8 @@ Compared to the population value of
 \begin_inset Formula $R^{2}$
 \end_inset
 
-, defined as
+,
+ defined as
 \begin_inset Formula 
 \[
 R^{2}=1-\frac{\min_{\alpha,\beta}E([Y-\alpha-\beta X]^{2})}{\min_{\mu}E([Y-\mu]^{2})},
@@ -3724,20 +2555,25 @@ R^{2}=1-\frac{\min_{\alpha,\beta}E([Y-\alpha-\beta X]^{2})}{\min_{\mu}E([Y-\mu]^
 \end_inset
 
 we have a good deal of similarity.
- There are three main differences: We don't minimize over anything in 
+ There are three main differences:
+ We don't minimize over anything in 
 \begin_inset Formula $\kappa$
 \end_inset
 
-, we normalize by the chance agreement instead of the variance (
+,
+ we normalize by the chance agreement instead of the variance (
 \begin_inset Formula $\Var Y=E([Y-\mu]^{2})$
 \end_inset
 
-), and we use the nominal distance instead of the quadratic distance.
+),
+ and we use the nominal distance instead of the quadratic distance.
  The structure of the 
 \begin_inset Formula $R^{2}$
 \end_inset
 
- makes it easy to generalize to, e.g., different loss functions 
+ makes it easy to generalize to,
+ e.g.,
+ different loss functions 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Korn1991-lw"
@@ -3757,3521 +2593,51 @@ literal "false"
  does this in the context of agreement.
 \end_layout
 
-\begin_layout Subsection
-Estimation and inference 
-\begin_inset CommandInset label
-LatexCommand label
-name "sec:Inference-and-estimation"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Consider the generalized 
+\begin_layout Section
+Remarks on the exact 
 \begin_inset Formula $\ac$
 \end_inset
 
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:ac1-2"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-, 
-\begin_inset Formula $\gamma=\frac{\nu}{1-p_{a}+\nu}$
-\end_inset
-
-.
- To estimate this, you may choose your assumptions from Table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:coefficients"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-, estimate the associated 
-\begin_inset Formula $\nu$
-\end_inset
-
- using 
-\begin_inset Formula $\hat{\nu}$
-\end_inset
-
-, estimate 
-\begin_inset Formula $p_{a}$
-\end_inset
-
- using 
-\begin_inset Formula $\hat{p}_{a}$
-\end_inset
-
-, then employ the plugin estimator
-\begin_inset Formula 
-\begin{equation}
-\hat{\gamma}=\frac{\hat{\nu}}{1-\hat{p_{a}}+\hat{\nu}}.\label{eq:ac1_estimator}
-\end{equation}
-
-\end_inset
-
-If none of the assumptions in the coefficient table hold, it is also possible
- to attempt maximum likelihood estimation, as done by, e.g., 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Aickin1990-nj"
-literal "false"
-
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-When the guessing distributions are uniform, the expression for 
-\begin_inset Formula $\gamma$
-\end_inset
-
- is particularly simple 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:ac1-multirater-perrault-leigh"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-,
-\begin_inset Formula 
-\[
-\gamma_{BP}=\frac{Cp_{a}-1}{C+p_{a}-2}.
-\]
-
-\end_inset
-
-The derivative with respect to 
-\begin_inset Formula $p_{a}$
-\end_inset
-
- is 
-\begin_inset Formula $(C-1)^{2}/(C+p_{a}-2)^{2}$
-\end_inset
-
-, hence an application of the delta method implies that the asymptotic variance
- of 
-\begin_inset Formula $\gamma_{BP}$
-\end_inset
-
- is
-\begin_inset Formula 
-\begin{equation}
-\sigma_{\gamma_{BP}}^{2}=\sigma_{A}^{2}\frac{(C-1)^{2}}{(C+p_{a}-2)^{2}},\label{eq:AC1 plugin var}
-\end{equation}
-
-\end_inset
-
-where 
-\begin_inset Formula $\sigma_{A}^{2}$
-\end_inset
-
- is the asymptotic variance of the chance agreement, which is easily estimable
- using the theory of 
-\begin_inset Formula $U$
-\end_inset
-
- statistics.
-\end_layout
-
-\begin_layout Standard
-The asymptotic variance of the 
+ and the weighted 
 \begin_inset Formula $\ac$
 \end_inset
 
- under different conditions is somewhat harder to state and derive.
- We must employ the multivariate delta method to do inference on 
-\begin_inset Formula $\hat{\gamma}$
-\end_inset
 
-.
- Ignoring the Cohen–Fleiss kappa and Cohen–Brennan–Prediger coefficients
-\begin_inset Foot
-status open
-
-\begin_layout Plain Layout
-Ignoring these are justified, as the Cohen–Brennan–Prediger was found to
- be highly non-robust and the Cohen–Fleiss coefficient very similar to Cohen's
- kappa and Fleiss' kappa by Moss (2023).
-\end_layout
-
-\end_inset
-
-, we can use expression 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:ac1-pa-pc"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- and find its gradient.
-\begin_inset Formula 
-\[
-\nabla\gamma=\frac{1}{(1+p_{a}(p_{c}-2))^{2}}\left[\begin{array}{c}
-(p_{c}-1)^{2}\\
--(p_{a}-1)^{2}
-\end{array}\right].
-\]
-
-\end_inset
-
-Let 
-\begin_inset Formula $\Sigma$
-\end_inset
-
- be the covariance matrix of 
-\begin_inset Formula $(\hat{p}_{a},\hat{p}_{c})$
-\end_inset
-
-.
- The delta method tells us that
-\begin_inset Formula 
-\begin{equation}
-\sqrt{n}(\hat{\gamma}-\gamma)\stackrel{d}{\to}N(0,\nabla\gamma{}^{T}\Sigma\nabla\gamma).\label{eq:asymptotic expression}
-\end{equation}
-
-\end_inset
-
-The asymptotic covariances of 
-\begin_inset Formula $(\hat{p}_{A},\hat{p}_{F},\hat{p}_{C})$
-\end_inset
-
- are known (see e.g., Moss, 2023, Lemma 2), hence estimation of 
-\begin_inset Formula $\nabla\gamma{}^{T}\Sigma\nabla\gamma$
-\end_inset
-
- is easy.
-\end_layout
-
-\begin_layout Subsubsection*
-Uniform guessing distribution vs marginal guessing distribution
-\end_layout
-
-\begin_layout Standard
-Using the machinery just developed we can compare estimates and confidence
- intervals for the classical 
-\begin_inset Formula $\ac$
-\end_inset
-
- (using the uniform guessing distribution model) and 
-\begin_inset Formula $\gamma$
-\end_inset
-
- using the marginal guessing distribution model.
-\end_layout
-
-\begin_layout Subsubsection*
-Comparison to Gwet's method
-\end_layout
-
-\begin_layout Standard
-Assume the uniform guessing distribution model.
- We will compare the coverage of the normal theory confidence interval derived
- from equation 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:AC1 plugin var"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-, using the 
-\begin_inset Formula $t$
-\end_inset
-
--distribution with 
-\begin_inset Formula $n-1$
-\end_inset
-
- degrees of freedom, to the confidence interval described by 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "Gwet2008-qk"
-literal "false"
-
-\end_inset
-
-.
- The true distribution of ratings is fixed at 
-\begin_inset Formula $(0.1,0.05,0.65,0.1,0.2)$
-\end_inset
-
-, but we let the skill-difficulty parameters vary.
- If there are more than two skill-difficulty parameters there are more than
- two raters.
- In Table 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "tab:coverage ac-1"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- we see that the methods have comparable coverage when 
-\begin_inset Formula $n$
-\end_inset
-
- is small, but with the coverage of Gwet's method becoming steadily worse
- as 
-\begin_inset Formula $n$
-\end_inset
-
- increases.
- This is hardly surprising considering the population value of Gwet's approximat
-ion 
-\begin_inset Formula $\gamma^{\star}$
-\end_inset
-
- 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:AC1 approximation"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- does not equal the true 
-\begin_inset Formula $\ac$
-\end_inset
-
-.
- However, the biases are quite small, between 
-\begin_inset Formula $0.01$
-\end_inset
-
- and 
-\begin_inset Formula $0.03$
-\end_inset
-
- in these simulations.
- Biases of this magnitude evidently matter only when the sample size is
- large.
- 
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float table
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\noindent
-\align center
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-\begin_inset CommandInset label
-LatexCommand label
-name "tab:coverage ac-1"
-
-\end_inset
-
-Simulated coverages for the 
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\begin_inset Tabular
-<lyxtabular version="3" rows="15" columns="13">
-<features tabularvalignment="middle">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<column alignment="right" valignment="top">
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-toprule
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Skill-difficulty (
-\begin_inset Formula $s$
-\end_inset
-
-)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $\textsc{AC}_{1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Approx.
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Type
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Sample size (
-\begin_inset Formula $n$
-\end_inset
-
-)
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" bottomline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-midrule
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $10$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $20$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $30$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $50$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $100$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $500$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multicolumn="1" alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $1000$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-cmidrule[0.5pt]{5-11}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $(0.5,0.6,0.7)$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.41$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.38$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-AST
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.96
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.96
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Gwet
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.90
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.87
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.56
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.26
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-vspace{0.2cm}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $(0.9,0.9,0.9,0.9)$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.84$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.82$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-AST
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.96
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.96
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Gwet
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.91
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.60
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.33
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-vspace{0.2cm}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $(0.7,0.7,0.8,0.9,0.9)$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.72$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.69$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-AST
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Gwet
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.90
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.83
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.33
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.07
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-vspace{0.2cm}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $(0.9,0.8)$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.76$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.74$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-AST
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.96
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Gwet
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-\begin_inset Formula $\texttt{NA}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.74
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.50
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-vspace{0.2cm}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $(0.1,0.2,0.3)$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.05$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.04$
-\end_inset
-
-
 \end_layout
 
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-AST
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.95
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.96
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Gwet
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.91
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.89
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-vspace{0.2cm}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $(0.1,0.9,0.5,0.3)$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.21$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="3" alignment="center" valignment="middle" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $0.19$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-AST
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.87
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.91
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.94
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.93
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" bottomline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell multirow="4" alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Gwet
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.92
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.91
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.91
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.89
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.88
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.58
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="right" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-0.33
+\begin_layout Itemize
+present your exact,
+ consistent estimator clearly and briefly
 \end_layout
 
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-bottomrule
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
+\begin_layout Itemize
+discuss briefly its advantage over existing approximation
 \end_layout
 
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-</lyxtabular>
-
-\end_inset
-
-
+\begin_layout Itemize
+concise but explicit:
+ state briefly why AC2 fails theoretically
 \end_layout
-
-\end_inset
-
 
+\begin_layout Itemize
+clearly state your improved weighted definition,
+ without extensive inference details
 \end_layout
 
 \begin_layout Section
-Concluding remarks
+What does paradox-resistant even mean?
+\end_layout
+
+\begin_layout Section
+Discussion
+\end_layout
+
+\begin_layout Paragraph*
+Avoiding the 
+\begin_inset Formula $\ac$
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -7284,24 +2650,41 @@ There are many alternatives to the
 \begin_inset Formula $\ac$
 \end_inset
 
-, we have argued that knowledge coefficients should be preferred in its
- stead.
- The Brennan–Prediger coefficient is especially attractive.
- It closely matches Gwet's rationale behind the 
+,
+ we have argued that knowledge coefficients should be preferred in its stead.
+ The Brennan–Prediger coefficient is especially attractive,
+ as it closely matches Gwet's rationale behind the 
 \begin_inset Formula $\ac$
 \end_inset
 
-, it is paradox-resistant, and it is more robust than the other easily estimable
- knowledge coefficients discussed in Moss (2023).
+,
+ is 
+\begin_inset Quotes eld
+\end_inset
+
+paradox-resistant
+\begin_inset Quotes erd
+\end_inset
+
+,
+ and is more robust than the other easily estimable knowledge coefficients discussed in Moss (2023).
 \end_layout
 
 \begin_layout Standard
 Another option is to use classical measures of chance-corrected agreement.
  The paradox of kappa is arguably not a paradox at all.
- For why would you expect two raters agreeing less than expected by chance
- to have a positive agreement measure? Just reporting Fleiss' kappa or Cohen's
- kappa is reasonable: Both have a clear interpretation, and they do not
- depend on guessing models for their justification.
+ For why would you expect two raters agreeing less than expected by chance to have a positive agreement measure?
+ Just reporting Fleiss' kappa or Cohen's kappa is reasonable,
+ as both have a clear interpretation,
+ and they do not depend on guessing models for their justification.
+\end_layout
+
+\begin_layout Paragraph*
+On inference and generalized 
+\begin_inset Formula $\ac$
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -7310,9 +2693,8 @@ We have not considered inference for the new weighted definition of
 \end_inset
 
  when the guessing models are equal.
- This would involve an application of the delta method of slightly higher
- complexity than the other problems, as we would require the covariance
- between 
+ This would involve an application of the delta method of slightly higher complexity than the other problems,
+ as we would require the covariance between 
 \begin_inset Formula $\hat{p}_{a}$
 \end_inset
 
@@ -7325,35 +2707,17 @@ We have not considered inference for the new weighted definition of
 \begin_inset Formula $U$
 \end_inset
 
--statistics, but is not readily available in the literature to my knowledge.
+-statistics,
+ but is not readily available in the literature to my knowledge.
  Weighted inference under the marginal guessing distribution is easier,
- however, as the knowledge coefficient is invariant with respect to weight
- changes.
+ however,
+ as the knowledge coefficient is invariant with respect to weight changes.
  
 \end_layout
 
 \begin_layout Standard
-In section 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "subsec:On-model-assumptions"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- we provided tests for the validity of the marginal guessing distribution
- model and the Perreault–Leigh model.
- But these only hold for two raters, and we have not considered more general
- models than these, such as the fully uniform guessing distribution model.
- It would be nice to have powerful tests for all model assumptions in the
- coefficient table available.
- 
-\end_layout
-
-\begin_layout Standard
-If we restrict ourselves to guessing models, direct estimation of 
+If we restrict ourselves to guessing models,
+ direct estimation of 
 \begin_inset Formula $\nu$
 \end_inset
 
@@ -7378,11 +2742,9 @@ literal "false"
 \begin_inset Formula $\nu$
 \end_inset
 
- under quite restrictive assumptions (see Moss (2023) for a description
- of their models in the language of guessing models), but these assumptions
- could be loosened.
- The nature of guessing models make pairwise maximum likelihood estimation
- 
+ under quite restrictive assumptions (see Moss (2023) for a description of their models in the language of guessing models),
+ but these assumptions could be loosened.
+ The nature of guessing models make pairwise maximum likelihood estimation 
 \begin_inset CommandInset citation
 LatexCommand citep
 key "Varin2011-nv"
@@ -7395,48 +2757,6 @@ literal "false"
 \end_layout
 
 \begin_layout Standard
-As we saw in Section 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "subsec:On-model-assumptions"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- there exists data that is not plausibly generated by the marginal guessing
- distribution model or the uniform guessing distribution model.
- If we want to use quantities such as the knowledge coefficient or the 
-\begin_inset Formula $\ac$
-\end_inset
-
- in these cases, we might have to go beyond guessing models.
- One possibility is to go in the parametric direction, making explicit models
- for the judgment process that does not separate judgments into a knowledgeable
- part and a guessing part.
- Another option is to adopt the notion of credences 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "Pettigrew2019-li"
-literal "false"
-
-\end_inset
-
- from philosophy, but there are reasons to believe this would be untenable
- unless the raters are asked for (and trained to) provide classification
- probabilities, i.e., probabilistic prediction 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "Gneiting2014-bc"
-literal "false"
-
-\end_inset
-
-, instead of doing direct classifications.
-\end_layout
-
-\begin_layout Standard
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 btprint "btPrintCited"
@@ -7446,169 +2766,6 @@ options "apacite"
 \end_inset
 
 
-\end_layout
-
-\begin_layout Section*
-Appendix
-\end_layout
-
-\begin_layout Subsection*
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
- tests 
-\begin_inset CommandInset label
-LatexCommand label
-name "subsec:tests"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-For the Perreault–Leigh model we rewrite 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:Perreault-Leigh"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- to
-\begin_inset Formula 
-\[
-F=s^{2}\diag(t)+(1-s)11^{T}C^{-2}+s(1-s)(t1^{T}+1^{T}t),
-\]
-
-\end_inset
-
-where 
-\begin_inset Formula $t$
-\end_inset
-
- is the true distribution.
- We estimate all 
-\begin_inset Formula $C$
-\end_inset
-
- parameters simultaneously with 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
--minimization 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "Berkson1980-um"
-literal "false"
-
-\end_inset
-
- using the 
-\begin_inset Formula $\mathtt{constrOptim}$
-\end_inset
-
- function in 
-\begin_inset Formula $\mathtt{R}$
-\end_inset
-
-.
- This approach can be extended to the case of uniform guessing models with
- deterministic 
-\begin_inset Formula $s$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Standard
-For the marginal guessing distribution model we use formula 
-\begin_inset CommandInset ref
-LatexCommand eqref
-reference "eq:marginal guessing distribution"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- and optimize the 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
- statistic with respect to 
-\begin_inset Formula $\nu$
-\end_inset
-
- using the 
-\begin_inset Formula $\mathtt{R}$
-\end_inset
-
- function 
-\begin_inset Formula $\mathtt{optim}$
-\end_inset
-
-.
- We fed it the original, estimated 
-\begin_inset Formula $\hat{f}$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Standard
-The appropriate degree of freedom in a 
-\begin_inset Formula $\chi^{2}$
-\end_inset
-
- test for a square contingency table varies according to problem and estimation
- method, but is often equal to 
-\begin_inset Formula $C^{2}-p-1$
-\end_inset
-
-, where 
-\begin_inset Formula $C$
-\end_inset
-
- is the number of rows in the contingency table and 
-\begin_inset Formula $p$
-\end_inset
-
- is the number of estimated parameters 
-\begin_inset CommandInset citation
-LatexCommand citep
-after "Chapter 13"
-key "Devore2012-rh"
-literal "false"
-
-\end_inset
-
-.
- In our case 
-\begin_inset Formula $p=C$
-\end_inset
-
-, as we estimate 
-\begin_inset Formula $1$
-\end_inset
-
- skill parameter or 
-\begin_inset Formula $1$
-\end_inset
-
- knowledge coefficient and 
-\begin_inset Formula $C-1$
-\end_inset
-
- parameters in the marginal distribution.
- Still, 
-\begin_inset Formula $C^{2}-C-2$
-\end_inset
-
- worked best.
- We verified the appropriate degrees of freedom using simulations.
 \end_layout
 
 \end_body
