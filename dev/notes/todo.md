@@ -5,7 +5,7 @@ Active repo-level backlog. Paper-specific TODOs live at
 section mapping live at `papers/split-plan.md`. The port
 plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
-## Currently in flight
+## Roadmap status
 
 - [x] Step 1: skeleton + legacy move into `dev/legacy/`.
 - [x] Step 2: port loss layer (`common.cpp` -> `src/loss.cpp` on Eigen + Result).
@@ -16,7 +16,18 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 - [x] Step 7: R package wiring (Rcpp glue + S3 + sim list).
 - [ ] Step 8: paper conversion (LyX -> .tex) + scripts wiring.
 
-## Backlog
+## Active backlog
+
+- [ ] **Step 6: inference consolidation.**
+      Consolidate the R-facing inference surface around `misskappa_estimate`,
+      joint influence-function covariance, Wald intervals/tests, and the
+      estimator families that do not yet expose per-subject influence
+      functions.
+- [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
+      Continue the manuscript split/wiring work under the paper-local todo
+      files once the current manuscript tree noise is settled.
+
+## Deferred
 
 - [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
       The Eigen API is already thin for the two consumers we have (in-tree
@@ -27,8 +38,10 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       results into caller buffers, with the Eigen versions becoming
       one-liners over `Eigen::Map`. Until then, not worth the surface
       doubling.
-- [ ] Re-evaluate whether counts-format input and continuous ratings should
-      come back into the library after the paper is submitted.
+- [ ] **Re-evaluate counts-format and continuous-rating scope after submission.**
+      Counts-format and continuous-rating estimators are currently present in
+      the library and R package. Revisit their public-surface priority after
+      the paper submission path is settled.
 
 ## Done
 
