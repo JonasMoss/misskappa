@@ -41,8 +41,10 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
   JSON fixtures written by `tests/tools/regen_oracle.R` (which calls installed
   irrCAC) and assert agreement to a documented tolerance. CI does not invoke R.
 - **Legacy is reference, not foundation.** The original C++17 + Armadillo
-  implementation lives under `dev/legacy/misskappa/` for math reference. Do not
-  build it, do not edit it. The new tree is rewritten on Eigen + `Result<T>`.
+  implementation was deleted on 2026-06-02; it lives on in git history (last
+  at `6b30f98`, retrievable with `git checkout 6b30f98 -- dev/legacy/misskappa`)
+  and is the source of the oracle values the unit tests are frozen against. The
+  new tree is rewritten on Eigen + `Result<T>`.
 
 ## Where things live
 
@@ -64,8 +66,6 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
 - `docs/` — repo-level documentation assets, including shared artwork such as
   the project logo. Generated docs output is under `docs/site/` and is ignored;
   do not commit generated HTML.
-- `dev/legacy/` — frozen reference: original R package, C++ implementation,
-  analysis scripts, LyX manuscript, supporting notes. Unbuilt, do not edit.
 - `dev/notes/` — repo-level development notes (port plan, validation plan, todo).
 - `external/` (ignored) — optional upstream source mirrors for reading.
 - `resources/` (ignored) — local data and scratch.
@@ -163,7 +163,7 @@ or in anonymous namespaces inside the `.cpp` that owns them.
   headers under `src/detail_*.hpp` include with relative paths.
 - Comments only when the why is non-obvious. Headers carry the contract.
 - Agent instructions live in `AGENTS.md` files and installed Codex skills; do
-  not keep copied agent-skill snapshots under `dev/legacy/`.
+  not keep copied agent-skill snapshots in the tree.
 - Keep `dev/notes/todo.md` as the single active backlog. Fold finished planning
   docs into it or remove them; do not create parallel roadmaps.
 - Keep each `papers/<slug>/AGENTS.md` and `papers/<slug>/dev/todo.md` current
@@ -197,15 +197,13 @@ clobbering each other's pending work:
 
 ## Working with the legacy reference
 
-`dev/legacy/misskappa/` contains the original Armadillo + Rcpp implementation.
-When porting an estimator:
-
-1. Read the math out of the legacy source (`kappanp.cpp`, `emdiscrete.{h,cpp}`,
-   `kappaml.cpp`, `common.cpp`).
-2. Rewrite on Eigen + `Result<T>` in the new tree.
-3. Add a parity test under `r-package/tests/testthat/test-parity-legacy.R` that
-   loads both packages and asserts numerical agreement.
-4. Add the irrCAC fixture comparison under `tests/golden/`.
+The original Armadillo + Rcpp `misskappa` (the source of the unit-test oracle
+values) was deleted from the tree on 2026-06-02 but remains in git history. To
+consult it when porting or debugging an estimator, retrieve it with
+`git checkout 6b30f98 -- dev/legacy/misskappa` (then `git rm --cached` /
+`rm -rf` when done) and read the math out of `kappanp.cpp`, `emdiscrete.{h,cpp}`,
+`kappaml.cpp`, `common.cpp`. Rewrite on Eigen + `Result<T>` in the new tree and
+back the result with an irrCAC fixture under `tests/golden/`.
 
 Do not copy code mechanically — the legacy code uses exceptions, `Rcpp::stop`,
 and `arma::` types throughout. The port is a rewrite that preserves the
