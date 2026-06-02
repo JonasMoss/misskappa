@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/logo.png" alt="misskappa" width="360">
-</p>
+<img src="docs/logo.png" alt="misskappa" align="right" width="300">
 
 # misskappa
 
