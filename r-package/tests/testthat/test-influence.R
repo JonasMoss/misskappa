@@ -42,6 +42,28 @@ test_that("vcov = (1 / n^2) crossprod(psi) to floating-point noise", {
   }
 })
 
+test_that("influence() returns per-subject IFs for counts, continuous, and g-wise fits", {
+  counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
+  storage.mode(counts) <- "integer"
+  fit_counts <- kappa_counts(counts, method = "available")
+  psi_counts <- stats::influence(fit_counts)
+  expect_equal(dim(psi_counts), c(4L, 2L))
+  expect_equal(unname(crossprod(psi_counts) / 16), unname(vcov(fit_counts)),
+               tolerance = 1e-10)
+
+  xc <- matrix(stats::rnorm(40), nrow = 10)
+  fit_cont <- kappa_continuous(xc, method = "available", weight = "quadratic")
+  psi_cont <- stats::influence(fit_cont)
+  expect_equal(dim(psi_cont), c(10L, 2L))
+  expect_equal(unname(crossprod(psi_cont) / 100), unname(vcov(fit_cont)),
+               tolerance = 1e-10)
+
+  xg <- matrix(c(1, 1, 2, 1, 1, 2, 2, 3, 3), nrow = 3, byrow = TRUE)
+  fit_gwise <- kappa_gwise(xg, distance = "nominal")
+  psi_gwise <- stats::influence(fit_gwise)
+  expect_equal(dim(psi_gwise), c(3L, 2L))
+})
+
 test_that("influence() returns NULL for estimators that do not expose IFs", {
   x <- matrix(
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),
@@ -53,16 +75,14 @@ test_that("influence() returns NULL for estimators that do not expose IFs", {
   fit_fiml <- kappa(x, method = "fiml", weight = "identity")
   expect_null(stats::influence(fit_fiml))
 
-  # Counts, continuous, and quadratic also do not expose IFs (yet).
+  # Quadratic moment estimators do not expose per-subject IFs through the
+  # shared R surface yet.
   counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
   storage.mode(counts) <- "integer"
-  fit_counts <- kappa_counts(counts, method = "available")
-  expect_null(stats::influence(fit_counts))
+  fit_counts_fiml <- kappa_counts(counts, method = "fiml", r_total = 10)
+  expect_null(stats::influence(fit_counts_fiml))
 
   xc <- matrix(stats::rnorm(40), nrow = 10)
-  fit_cont <- kappa_continuous(xc, method = "available", weight = "quadratic")
-  expect_null(stats::influence(fit_cont))
-
   fit_quad <- kappa_quadratic(xc, values = c(1, 2, 3, 4, 5)[seq_len(min(ncol(xc), 5))])
   expect_null(stats::influence(fit_quad))
 })

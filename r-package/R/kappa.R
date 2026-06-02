@@ -87,8 +87,8 @@ vcov.misskappa_estimate <- function(object, ...) object$vcov
 #' Returns the `n x K` matrix of per-subject influence functions for the
 #' coefficient estimates, where `n` is the number of subjects and `K` is
 #' the number of coefficients. Estimators that do not expose influence
-#' functions (FIML, quadratic, continuous, counts as of this version)
-#' return `NULL`.
+#' functions (FIML, FIML-counts, quadratic, quadratic-counts as of this
+#' version) return `NULL`.
 #'
 #' When non-null, the influence-function matrix satisfies
 #' `vcov(object) == (1 / n^2) * crossprod(influence(object))` up to

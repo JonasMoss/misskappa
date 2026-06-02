@@ -159,6 +159,12 @@ TEST_CASE("Counts available-case: variance is symmetric and PSD") {
   Eigen::SelfAdjointEigenSolver<RealMat> es(V);
   REQUIRE(es.info() == Eigen::Success);
   CHECK(es.eigenvalues().minCoeff() > -1e-10);
+
+  REQUIRE(r->psi.rows() == x.rows());
+  REQUIRE(r->psi.cols() == 2);
+  const RealMat psi_vcov =
+      (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((psi_vcov - V).cwiseAbs().maxCoeff() < 1e-12);
 }
 
 TEST_CASE("Counts: dimension mismatch -> dimension_mismatch") {

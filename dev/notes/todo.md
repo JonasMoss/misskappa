@@ -45,6 +45,11 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Expose influence functions for counts and continuous estimators.**
+      Counts-format available-case and continuous MCAR estimators now return
+      per-subject IF matrices through the shared `misskappa_estimate` surface,
+      so `joint_vcov()` and `wald_test()` can combine them with other
+      same-subject fits.
 - [x] **Add Wald tests for misskappa estimates.**
       `wald_test()` now tests single-fit and cross-fit linear hypotheses
       against `misskappa_estimate` objects. Single-fit tests use `vcov()`;
