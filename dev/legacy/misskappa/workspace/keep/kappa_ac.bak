@@ -1,0 +1,184 @@
+#include <RcppArmadillo.h>
+
+// [[Rcpp::depends(RcppArmadillo)]]
+
+// Sentinel for R's NA_INTEGER
+constexpr int kNaInteger = -2147483648;
+
+// [[Rcpp::export]]
+Rcpp::List compute_ac_components2(const arma::imat& x, int disagreement_type) {
+  int n = x.n_rows;
+  int R = x.n_cols;
+
+  if (R < 2) {
+    Rcpp::stop("Data must have at least 2 raters.");
+  }
+
+  arma::vec A(n, arma::fill::zeros);
+  arma::vec B(n, arma::fill::zeros);
+  arma::mat hC(n, n, arma::fill::zeros);
+  arma::mat hD(n, n, arma::fill::zeros);
+
+  // Create a mask for non-missing values
+  arma::umat M = (x != kNaInteger);
+
+  auto get_disagreement = [&](int v1, int v2) {
+    switch (disagreement_type) {
+    case 1: // nominal
+      return (v1 == v2) ? 0.0 : 1.0;
+    case 2: // absolute
+      return static_cast<double>(std::abs(v1 - v2));
+    case 3: // quadratic
+      return std::pow(static_cast<double>(v1 - v2), 2.0);
+    default:
+      Rcpp::stop("Unknown disagreement type.");
+    }
+    return 0.0; // Should not be reached
+  };
+
+  // Calculate A_i and B_i
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < R - 1; ++j) {
+      for (int k = j + 1; k < R; ++k) {
+        if (M(i, j) && M(i, k)) {
+          A(i) += get_disagreement(x(i, j), x(i, k));
+          B(i) += 1.0;
+        }
+      }
+    }
+  }
+
+  // Calculate hC_ii' and hD_ii'
+  for (int i = 0; i < n; ++i) {
+    for (int iprime = 0; iprime < n; ++iprime) {
+      for (int j = 0; j < R - 1; ++j) {
+        for (int k = j + 1; k < R; ++k) {
+          if (M(i, j) && M(iprime, k)) {
+            hC(i, iprime) += get_disagreement(x(i, j), x(iprime, k));
+            hD(i, iprime) += 1.0;
+          }
+        }
+      }
+    }
+  }
+
+  return Rcpp::List::create(
+    Rcpp::_["A"] = A,
+    Rcpp::_["B"] = B,
+    Rcpp::_["hC"] = hC,
+    Rcpp::_["hD"] = hD
+  );
+}
+
+
+// Custom comparator for arma::ivec to be used as a map key
+struct VecCompare {
+  bool operator()(const arma::ivec& a, const arma::ivec& b) const {
+    return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
+  }
+};
+
+// [[Rcpp::export]]
+Rcpp::List compute_ac_components(const arma::imat& x, int disagreement_type) {
+  int n = x.n_rows;
+  int R = x.n_cols;
+
+  if (R < 2) {
+    Rcpp::stop("Data must have at least 2 raters.");
+  }
+
+  // 1. Binning: Find unique rows and their counts/indices
+  std::map<arma::ivec, int, VecCompare> unique_row_indices;
+  arma::uvec inverse_indices(n);
+  arma::uvec counts;
+  int u_idx = 0;
+
+  for (int i = 0; i < n; ++i) {
+    arma::ivec current_row = x.row(i).t();
+    auto it = unique_row_indices.find(current_row);
+    if (it == unique_row_indices.end()) {
+      unique_row_indices[current_row] = u_idx;
+      inverse_indices(i) = u_idx;
+      counts.resize(u_idx + 1);
+      counts(u_idx) = 1;
+      u_idx++;
+    } else {
+      inverse_indices(i) = it->second;
+      counts(it->second)++;
+    }
+  }
+
+  int U = unique_row_indices.size();
+  arma::imat x_unique(U, R);
+  for(auto const& [row_vec, idx] : unique_row_indices){
+    x_unique.row(idx) = row_vec.t();
+  }
+
+  // 2. Compute components on unique rows
+  auto get_disagreement = [&](int v1, int v2) {
+    switch (disagreement_type) {
+    case 1: return (v1 == v2) ? 0.0 : 1.0;
+    case 2: return static_cast<double>(std::abs(v1 - v2));
+    case 3: return std::pow(static_cast<double>(v1 - v2), 2.0);
+    default: Rcpp::stop("Unknown disagreement type.");
+    }
+    return 0.0;
+  };
+
+  arma::vec A_unique(U, arma::fill::zeros);
+  arma::vec B_unique(U, arma::fill::zeros);
+  arma::mat hC_unique(U, U, arma::fill::zeros);
+  arma::mat hD_unique(U, U, arma::fill::zeros);
+
+  arma::umat M_unique = (x_unique != kNaInteger);
+
+  // Compute A_u and B_u for each unique row u
+  for (int u = 0; u < U; ++u) {
+    for (int j = 0; j < R - 1; ++j) {
+      for (int k = j + 1; k < R; ++k) {
+        if (M_unique(u, j) && M_unique(u, k)) {
+          A_unique(u) += get_disagreement(x_unique(u, j), x_unique(u, k));
+          B_unique(u) += 1.0;
+        }
+      }
+    }
+  }
+
+  // Compute hC_uv and hD_uv for each pair of unique rows (u, v)
+  for (int u = 0; u < U; ++u) {
+    for (int v = 0; v < U; ++v) {
+      for (int j = 0; j < R - 1; ++j) {
+        for (int k = j + 1; k < R; ++k) {
+          if (M_unique(u, j) && M_unique(v, k)) {
+            hC_unique(u, v) += get_disagreement(x_unique(u, j), x_unique(v, k));
+            hD_unique(u, v) += 1.0;
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Expand results back to n and n x n
+  arma::vec A(n);
+  arma::vec B(n);
+  arma::mat hC(n, n);
+  arma::mat hD(n, n);
+
+  for (int i = 0; i < n; ++i) {
+    int u = inverse_indices(i);
+    A(i) = A_unique(u);
+    B(i) = B_unique(u);
+    for (int iprime = 0; iprime < n; ++iprime) {
+      int v = inverse_indices(iprime);
+      hC(i, iprime) = hC_unique(u, v);
+      hD(i, iprime) = hD_unique(u, v);
+    }
+  }
+
+  return Rcpp::List::create(
+    Rcpp::_["A"] = A,
+    Rcpp::_["B"] = B,
+    Rcpp::_["hC"] = hC,
+    Rcpp::_["hD"] = hD
+  );
+}

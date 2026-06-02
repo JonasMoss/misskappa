@@ -1,0 +1,182 @@
+// [[Rcpp::depends(RcppArmadillo)]]
+#include <RcppArmadillo.h>
+#include <set>
+#include <unordered_map>
+
+struct VecHash {
+  std::size_t operator()(const arma::ivec& v) const noexcept {
+    std::size_t seed = v.n_elem;
+    for (arma::uword i = 0; i < v.n_elem; ++i) {
+      seed ^= v(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+
+struct VecEq {
+  bool operator()(const arma::ivec& a, const arma::ivec& b) const noexcept {
+    return arma::all(a == b);
+  }
+};
+
+constexpr int NA_INT = -2147483648;
+
+inline double loss(int a, int b) {
+  return a == b ? 0.0 : 1.0;
+}
+
+// [[Rcpp::export]]
+Rcpp::List calculate_kappas_binned_cpp(const arma::imat& ratings, bool use_ipw = true) {
+  const int n = ratings.n_rows;
+  const int R = ratings.n_cols;
+  if (R < 2) Rcpp::stop("ratings matrix must have at least 2 columns (raters).");
+
+  // 1. Binning
+  std::unordered_map<arma::ivec, int, VecHash, VecEq> row_map;
+  std::vector<arma::ivec> uniq_rows;
+  arma::uvec counts;
+  arma::uvec inv_idx(n);
+  for (int i = 0; i < n; ++i) {
+    arma::ivec key = ratings.row(i).t();
+    auto it = row_map.find(key);
+    if (it == row_map.end()) {
+      int id = uniq_rows.size();
+      row_map[key] = id;
+      uniq_rows.push_back(key);
+      counts.resize(id + 1); counts(id) = 1;
+      inv_idx(i) = id;
+    } else {
+      inv_idx(i) = it->second; counts(it->second)++;
+    }
+  }
+  const int U = uniq_rows.size();
+  arma::imat xU(U, R);
+  for(int u = 0; u < U; ++u) xU.row(u) = uniq_rows[u].t();
+
+  // 2. Setup
+  const arma::umat M = (ratings != NA_INT);
+  const arma::umat MU = (xU != NA_INT);
+
+  std::set<int> cat_set;
+  for (int u=0; u<U; ++u) for (int j=0; j<R; ++j) if(MU(u,j)) cat_set.insert(xU(u,j));
+  const int C = cat_set.size();
+  if (C == 0) Rcpp::stop("All ratings are missing.");
+
+  // --- CORRECTED WEIGHTING LOGIC ---
+  arma::vec pi_j(R, arma::fill::ones);
+  arma::mat pi_jk_inv(R, R, arma::fill::ones);
+
+  if (use_ipw) {
+    pi_j = arma::conv_to<arma::vec>::from(arma::sum(M, 0)) / n;
+    if (arma::any(pi_j == 0)) Rcpp::stop("One or more raters has no ratings.");
+
+    arma::mat pi_jk = arma::conv_to<arma::mat>::from(M.t() * M) / n;
+
+    // Invert pi_jk matrix, handling potential zeros
+    for(int j=0; j<R; ++j) for(int k=0; k<R; ++k) {
+      if (pi_jk(j, k) > 1e-9) {
+        pi_jk_inv(j,k) = 1.0 / pi_jk(j, k);
+      } else {
+        pi_jk_inv(j,k) = 0.0;
+      }
+    }
+  }
+  arma::vec pi_j_inv = 1.0 / pi_j;
+  // --- END WEIGHTING CORRECTION ---
+
+  arma::vec h_dN_u(U, arma::fill::zeros), h_dD_u(U, arma::fill::zeros);
+  for (int u = 0; u < U; ++u) {
+    for (int j = 0; j < R - 1; ++j) for (int k = j + 1; k < R; ++k) if (MU(u, j) && MU(u, k)) {
+      // Use pi_jk for observed disagreement
+      double w = use_ipw ? pi_jk_inv(j, k) : 1.0;
+      h_dN_u(u) += loss(xU(u, j), xU(u, k)) * w;
+      h_dD_u(u) += w;
+    }
+  }
+  const double psi_dN_sum = arma::dot(counts, h_dN_u);
+  const double psi_dD_sum = arma::dot(counts, h_dD_u);
+
+  arma::mat kernel_CN_uv(U, U), kernel_CD_uv(U, U), kernel_FN_uv(U, U), kernel_FD_uv(U, U);
+  for (int u=0; u<U; ++u) for (int v=0; v<U; ++v) {
+    double h_cn=0, h_cd=0, h_fn=0, h_fd=0;
+    for (int j=0; j<R-1; ++j) for (int k=j+1; k<R; ++k) if(MU(u,j) && MU(v,k)) {
+      double w = pi_j_inv(j) * pi_j_inv(k);
+      h_cn += loss(xU(u,j), xU(v,k)) * w; h_cd += w;
+    }
+    for (int j=0; j<R; ++j) for (int k=0; k<R; ++k) if(MU(u,j) && MU(v,k)) {
+      double w = pi_j_inv(j) * pi_j_inv(k);
+      h_fn += loss(xU(u,j), xU(v,k)) * w; h_fd += w;
+    }
+    kernel_CN_uv(u,v)=h_cn; kernel_CD_uv(u,v)=h_cd;
+    kernel_FN_uv(u,v)=h_fn; kernel_FD_uv(u,v)=h_fd;
+  }
+  const double psi_CN_sum = arma::as_scalar(counts.t() * kernel_CN_uv * counts);
+  const double psi_CD_sum = arma::as_scalar(counts.t() * kernel_CD_uv * counts);
+  const double psi_FN_sum = arma::as_scalar(counts.t() * kernel_FN_uv * counts);
+  const double psi_FD_sum = arma::as_scalar(counts.t() * kernel_FD_uv * counts);
+
+  // Final point estimates
+  const double d_hat = (psi_dD_sum > 0) ? psi_dN_sum / psi_dD_sum : 0.0;
+  const double d_C_hat = (psi_CD_sum > 0) ? psi_CN_sum / psi_CD_sum : 0.0;
+  const double d_F_hat = (psi_FD_sum > 0) ? psi_FN_sum / psi_FD_sum : 0.0;
+  const double d_BP = (double)(C - 1) / C;
+
+  // 4. Calculate Influence Functions using binned data
+  const double psi_dN_hat = psi_dN_sum / n;
+  const double psi_dD_hat = psi_dD_sum / n;
+  const double psi_CN_hat = psi_CN_sum / (n * n);
+  const double psi_CD_hat = psi_CD_sum / (n * n);
+  const double psi_FN_hat = psi_FN_sum / (n * n);
+  const double psi_FD_hat = psi_FD_sum / (n * n);
+
+  arma::vec phi_dN = h_dN_u.elem(inv_idx) - psi_dN_hat;
+  arma::vec phi_dD = h_dD_u.elem(inv_idx) - psi_dD_hat;
+
+  arma::vec counts_d = arma::conv_to<arma::vec>::from(counts);
+  arma::vec h_CN1_u = (kernel_CN_uv * counts_d) / n, h_CN2_u = (kernel_CN_uv.t() * counts_d) / n;
+  arma::vec h_CD1_u = (kernel_CD_uv * counts_d) / n, h_CD2_u = (kernel_CD_uv.t() * counts_d) / n;
+  arma::vec h_FN1_u = (kernel_FN_uv * counts_d) / n, h_FN2_u = (kernel_FN_uv.t() * counts_d) / n;
+  arma::vec h_FD1_u = (kernel_FD_uv * counts_d) / n, h_FD2_u = (kernel_FD_uv.t() * counts_d) / n;
+
+  arma::vec phi_CN = (h_CN1_u.elem(inv_idx)-psi_CN_hat) + (h_CN2_u.elem(inv_idx)-psi_CN_hat);
+  arma::vec phi_CD = (h_CD1_u.elem(inv_idx)-psi_CD_hat) + (h_CD2_u.elem(inv_idx)-psi_CD_hat);
+  arma::vec phi_FN = (h_FN1_u.elem(inv_idx)-psi_FN_hat) + (h_FN2_u.elem(inv_idx)-psi_FN_hat);
+  arma::vec phi_FD = (h_FD1_u.elem(inv_idx)-psi_FD_hat) + (h_FD2_u.elem(inv_idx)-psi_FD_hat);
+
+  arma::mat phi_matrix(n, 6);
+  phi_matrix.col(0) = phi_dN;
+  phi_matrix.col(1) = phi_dD;
+  phi_matrix.col(2) = phi_CN;
+  phi_matrix.col(3) = phi_CD;
+  phi_matrix.col(4) = phi_FN;
+  phi_matrix.col(5) = phi_FD;
+
+  arma::mat Gamma_hat = (1.0 / n) * phi_matrix.t() * phi_matrix;
+
+  // 5. Delta Method
+  arma::mat J_d(3, 6, arma::fill::zeros);
+  if (psi_dD_hat > 0) { J_d(0, 0)=1/psi_dD_hat; J_d(0, 1)=-psi_dN_hat/(psi_dD_hat*psi_dD_hat); }
+  if (psi_CD_hat > 0) { J_d(1, 2)=1/psi_CD_hat; J_d(1, 3)=-psi_CN_hat/(psi_CD_hat*psi_CD_hat); }
+  if (psi_FD_hat > 0) { J_d(2, 4)=1/psi_FD_hat; J_d(2, 5)=-psi_FN_hat/(psi_FD_hat*psi_FD_hat); }
+  arma::mat Sigma_hat = J_d * Gamma_hat * J_d.t();
+
+  arma::mat J_kappa(3, 3, arma::fill::zeros);
+  if (d_C_hat > 0) { J_kappa(0, 0)=-1/d_C_hat; J_kappa(0, 1)=d_hat/(d_C_hat*d_C_hat); }
+  if (d_F_hat > 0) { J_kappa(1, 0)=-1/d_F_hat; J_kappa(1, 2)=d_hat/(d_F_hat*d_F_hat); }
+  if (d_BP > 0)    { J_kappa(2, 0)=-1/d_BP; }
+  arma::mat kappa_cov_matrix = (J_kappa * Sigma_hat * J_kappa.t()) / n;
+
+  // 6. Structure and Return Final Output
+  arma::vec kappa_estimates(3);
+  kappa_estimates(0) = (d_C_hat > 0) ? 1.0 - d_hat / d_C_hat : 0.0;
+  kappa_estimates(1) = (d_F_hat > 0) ? 1.0 - d_hat / d_F_hat : 0.0;
+  kappa_estimates(2) = (d_BP > 0) ? 1.0 - d_hat / d_BP : 0.0;
+  arma::vec disagreement_estimates = {d_hat, d_C_hat, d_F_hat};
+
+  return Rcpp::List::create(
+    Rcpp::_["kappa_estimates"] = kappa_estimates,
+    Rcpp::_["kappa_cov_matrix"] = kappa_cov_matrix,
+    Rcpp::_["disagreement_estimates"] = disagreement_estimates,
+    Rcpp::_["disagreement_cov_matrix"] = Sigma_hat / n
+  );
+}
