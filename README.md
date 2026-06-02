@@ -35,6 +35,6 @@ just r-check         # R CMD check + testthat
 just paper <slug>    # build the manuscript PDF for papers/<slug>/
 ```
 
-See `AGENTS.md` for the project contract and `papers/combined/AGENTS.md`
-for the manuscript-specific direction (with the three spinoffs under
-`papers/{ipw,fiml,quadratic}/`).
+See `AGENTS.md` for the project contract and each paper's own
+`papers/<slug>/AGENTS.md` for manuscript-specific direction (the three
+spinoffs are under `papers/{ipw,fiml,quadratic}/`).
