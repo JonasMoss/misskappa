@@ -135,3 +135,49 @@ test_that("Hausman contrast kappa_AC - kappa_IPW agrees between joint_vcov and d
 
   expect_equal(v_contrast, v_direct, tolerance = 1e-10)
 })
+
+test_that("wald_test() tests single-fit and joint linear contrasts", {
+  set.seed(6)
+  n <- 350L
+  R <- 4L
+  C <- 5L
+  x <- matrix(sample.int(C, n * R, replace = TRUE), n, R)
+  x[matrix(stats::runif(n * R) < 0.25, n, R)] <- NA
+  storage.mode(x) <- "integer"
+
+  ac <- kappa(x, method = "available")
+  single <- wald_test(ac, contrast = "Conger", value = 0)
+  expect_s3_class(single, "htest")
+  expect_named(single$statistic, "X-squared")
+  expect_equal(unname(single$estimate), unname(coef(ac)["Conger"]))
+  expect_equal(unname(single$parameter), 1)
+  expect_true(is.finite(single$p.value))
+
+  ipw <- kappa(x, method = "ipw")
+  joint <- wald_test(
+    ac = ac,
+    ipw = ipw,
+    contrast = c("ac.Conger" = 1, "ipw.Conger" = -1)
+  )
+  V <- joint_vcov(ac = ac, ipw = ipw)
+  c_vec <- c(1, 0, 0, -1, 0, 0)
+  delta <- coef(ac)["Conger"] - coef(ipw)["Conger"]
+  stat <- as.numeric(delta * delta / crossprod(c_vec, V %*% c_vec))
+
+  expect_equal(unname(joint$statistic), stat, tolerance = 1e-10)
+  expect_equal(unname(joint$parameter), 1)
+  expect_true(is.finite(joint$p.value))
+})
+
+test_that("wald_test() validates contrasts and influence-function support", {
+  x <- matrix(sample.int(4L, 200, replace = TRUE), 50, 4)
+  storage.mode(x) <- "integer"
+  fit <- kappa(x, method = "available")
+
+  expect_error(wald_test(fit, contrast = "Nope"), "Unknown coefficient")
+  expect_error(wald_test(fit, contrast = c(1, 0)), "length")
+
+  fit_fiml <- kappa(x, method = "fiml")
+  expect_error(wald_test(fit, fit_fiml, contrast = c("fit1.Conger" = 1)),
+               "do not expose influence")
+})
