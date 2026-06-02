@@ -414,8 +414,8 @@ kappa_continuous <- function(x,
 #' @param g Arity of the multirater distance. Defaults to all raters
 #'   (`ncol(x)`). Must be between 2 and `ncol(x)`.
 #' @param max_chance_tuples Maximum number of direct `n^g` item tuples to
-#'   evaluate before stopping. This first implementation is direct; optimized
-#'   categorical paths are future work.
+#'   evaluate before stopping for continuous distances, or finite category
+#'   tuples for categorical distances.
 #'
 #' @return A `misskappa_estimate` object with `Cohen` and `Fleiss`
 #'   coefficients and a 2x2 influence-function covariance matrix.

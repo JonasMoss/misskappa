@@ -32,8 +32,8 @@ struct QuadraticOptions {
 struct GwiseOptions {
   // If g <= 0, use all raters (g = R).
   int g = 0;
-  // First implementation is direct over n^g item tuples. Reject oversized
-  // jobs until categorical binning / specialized continuous paths are added.
+  // Chance-tuple cap. Categorical g-wise estimators enumerate finite category
+  // support; continuous g-wise estimators enumerate direct n^g item tuples.
   std::int64_t max_chance_tuples = 5000000;
 };
 

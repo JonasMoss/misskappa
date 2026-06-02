@@ -86,7 +86,7 @@ void visit_item_tuples(int n, int g, Visitor& visitor) {
 
 Estimation finish_estimation(
     RealVec&& d_values, double C_hat, double F_hat, int g,
-    RealVec&& mu_C_sum, RealVec&& mu_F_sum, std::int64_t n_g_minus_1) {
+    RealVec&& mu_C_projection, RealVec&& mu_F_projection) {
   const int n = static_cast<int>(d_values.size());
   const double D_hat = d_values.mean();
 
@@ -100,10 +100,8 @@ Estimation finish_estimation(
 
   RealMat phi(n, 3);
   phi.col(0) = d_values.array() - D_hat;
-  phi.col(1) = mu_C_sum.array() / static_cast<double>(n_g_minus_1)
-               - static_cast<double>(g) * C_hat;
-  phi.col(2) = mu_F_sum.array() / static_cast<double>(n_g_minus_1)
-               - static_cast<double>(g) * F_hat;
+  phi.col(1) = mu_C_projection.array() - static_cast<double>(g) * C_hat;
+  phi.col(2) = mu_F_projection.array() - static_cast<double>(g) * F_hat;
 
   RealMat Gamma_hat = (phi.transpose() * phi) / static_cast<double>(n);
 
@@ -120,6 +118,59 @@ Estimation finish_estimation(
   RealMat vcov = (J * Gamma_hat * J.transpose()) / static_cast<double>(n);
   RealMat psi = build_psi_from_phi(phi, J);
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+}
+
+RealMat categorical_margins(IntMatView ratings, int C) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  RealMat probs = RealMat::Zero(R, C);
+  for (int i = 0; i < n; ++i) {
+    for (int r = 0; r < R; ++r) {
+      probs(r, ratings(i, r)) += 1.0;
+    }
+  }
+  probs /= static_cast<double>(n);
+  return probs;
+}
+
+template <typename ProbAtPos>
+double categorical_expectation(
+    loss::GwiseCategoricalDistance distance, int g, ProbAtPos&& prob_at_pos) {
+  std::vector<int> values(static_cast<std::size_t>(g), 0);
+  double acc = 0.0;
+  auto visitor = [&](const std::vector<int>& cats) {
+    double prob = 1.0;
+    for (int pos = 0; pos < g; ++pos) {
+      const int cat = cats[static_cast<std::size_t>(pos)];
+      values[static_cast<std::size_t>(pos)] = cat;
+      prob *= prob_at_pos(pos, cat);
+    }
+    acc += prob * distance.compute(values.data(), g, distance.C);
+  };
+  visit_item_tuples(distance.C, g, visitor);
+  return acc;
+}
+
+template <typename ProbAtPos>
+double categorical_expectation_fixed(
+    loss::GwiseCategoricalDistance distance, int g, int fixed_pos,
+    int fixed_value, ProbAtPos&& prob_at_pos) {
+  std::vector<int> values(static_cast<std::size_t>(g), 0);
+  values[static_cast<std::size_t>(fixed_pos)] = fixed_value;
+  double acc = 0.0;
+  auto visitor = [&](const std::vector<int>& cats) {
+    int cursor = 0;
+    double prob = 1.0;
+    for (int pos = 0; pos < g; ++pos) {
+      if (pos == fixed_pos) continue;
+      const int cat = cats[static_cast<std::size_t>(cursor++)];
+      values[static_cast<std::size_t>(pos)] = cat;
+      prob *= prob_at_pos(pos, cat);
+    }
+    acc += prob * distance.compute(values.data(), g, distance.C);
+  };
+  visit_item_tuples(distance.C, g - 1, visitor);
+  return acc;
 }
 
 }  // namespace
@@ -142,16 +193,15 @@ Result<Estimation> estimate_gwise(
     }
   }
 
-  std::int64_t n_g = 0;
-  std::int64_t n_g_minus_1 = 0;
-  if (!checked_power(n, g, opts.max_chance_tuples, n_g)
-      || !checked_power(n, g - 1, opts.max_chance_tuples, n_g_minus_1)) {
+  std::int64_t category_tuples = 0;
+  std::int64_t category_projection_tuples = 0;
+  if (!checked_power(distance.C, g, opts.max_chance_tuples, category_tuples)
+      || !checked_power(distance.C, g - 1, opts.max_chance_tuples, category_projection_tuples)) {
     return std::unexpected(Error::not_supported);
   }
 
   const auto c_raters = combinations(R, g);
-  const auto f_raters = rater_tuples(R, g);
-  if (c_raters.empty() || f_raters.empty()) return std::unexpected(Error::invalid_argument);
+  if (c_raters.empty()) return std::unexpected(Error::invalid_argument);
 
   std::vector<int> values(static_cast<std::size_t>(g), 0);
   RealVec d_values = RealVec::Zero(n);
@@ -164,49 +214,47 @@ Result<Estimation> estimate_gwise(
     d_values(i) = acc / static_cast<double>(c_raters.size());
   }
 
-  RealVec mu_C_sum = RealVec::Zero(n);
-  RealVec mu_F_sum = RealVec::Zero(n);
-  double C_total = 0.0;
-  double F_total = 0.0;
+  const RealMat probs = categorical_margins(ratings, distance.C);
+  const RealVec pooled = probs.colwise().mean().transpose();
 
-  auto eval_C = [&](const std::vector<int>& items) {
-    double acc = 0.0;
-    for (const auto& raters : c_raters) {
-      for (int pos = 0; pos < g; ++pos) {
-        values[static_cast<std::size_t>(pos)] = ratings(items[pos], raters[pos]);
-      }
-      acc += distance.compute(values.data(), g, distance.C);
-    }
-    return acc / static_cast<double>(c_raters.size());
-  };
+  double C_hat = 0.0;
+  for (const auto& raters : c_raters) {
+    C_hat += categorical_expectation(
+        distance, g, [&](int pos, int cat) { return probs(raters[pos], cat); });
+  }
+  C_hat /= static_cast<double>(c_raters.size());
 
-  auto eval_F = [&](const std::vector<int>& items) {
-    double acc = 0.0;
-    for (const auto& raters : f_raters) {
-      for (int pos = 0; pos < g; ++pos) {
-        values[static_cast<std::size_t>(pos)] = ratings(items[pos], raters[pos]);
-      }
-      acc += distance.compute(values.data(), g, distance.C);
-    }
-    return acc / static_cast<double>(f_raters.size());
-  };
+  const double F_hat = categorical_expectation(
+      distance, g, [&](int /*pos*/, int cat) { return pooled(cat); });
 
-  auto visitor = [&](const std::vector<int>& items) {
-    const double c = eval_C(items);
-    const double f = eval_F(items);
-    C_total += c;
-    F_total += f;
+  RealVec mu_C_projection = RealVec::Zero(n);
+  RealVec mu_F_projection = RealVec::Zero(n);
+  for (int i = 0; i < n; ++i) {
+    double c_projection = 0.0;
+    double f_projection = 0.0;
     for (int pos = 0; pos < g; ++pos) {
-      mu_C_sum(items[pos]) += c;
-      mu_F_sum(items[pos]) += f;
-    }
-  };
-  visit_item_tuples(n, g, visitor);
+      double c_at_pos = 0.0;
+      for (const auto& raters : c_raters) {
+        c_at_pos += categorical_expectation_fixed(
+            distance, g, pos, ratings(i, raters[pos]),
+            [&](int other_pos, int cat) { return probs(raters[other_pos], cat); });
+      }
+      c_projection += c_at_pos / static_cast<double>(c_raters.size());
 
-  const double C_hat = C_total / static_cast<double>(n_g);
-  const double F_hat = F_total / static_cast<double>(n_g);
+      double f_at_pos = 0.0;
+      for (int r = 0; r < R; ++r) {
+        f_at_pos += categorical_expectation_fixed(
+            distance, g, pos, ratings(i, r),
+            [&](int /*other_pos*/, int cat) { return pooled(cat); });
+      }
+      f_projection += f_at_pos / static_cast<double>(R);
+    }
+    mu_C_projection(i) = c_projection;
+    mu_F_projection(i) = f_projection;
+  }
+
   return finish_estimation(std::move(d_values), C_hat, F_hat, g,
-                           std::move(mu_C_sum), std::move(mu_F_sum), n_g_minus_1);
+                           std::move(mu_C_projection), std::move(mu_F_projection));
 }
 
 Result<Estimation> estimate_gwise_continuous(
@@ -287,8 +335,10 @@ Result<Estimation> estimate_gwise_continuous(
 
   const double C_hat = C_total / static_cast<double>(n_g);
   const double F_hat = F_total / static_cast<double>(n_g);
+  RealVec mu_C_projection = mu_C_sum / static_cast<double>(n_g_minus_1);
+  RealVec mu_F_projection = mu_F_sum / static_cast<double>(n_g_minus_1);
   return finish_estimation(std::move(d_values), C_hat, F_hat, g,
-                           std::move(mu_C_sum), std::move(mu_F_sum), n_g_minus_1);
+                           std::move(mu_C_projection), std::move(mu_F_projection));
 }
 
 }  // namespace misskappa
