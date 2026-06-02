@@ -2,7 +2,7 @@
 
 Active repo-level backlog. Paper-specific TODOs live at
 `papers/<slug>/dev/todo.md` (one per paper); the split decision and
-section mapping live at `papers/combined/dev/split-plan.md`. The port
+section mapping live at `papers/split-plan.md`. The port
 plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Currently in flight
@@ -18,15 +18,6 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Backlog
 
-- [ ] **Add closed rectangular g-wise / Frechet agreement.**
-      Implement a new estimator family for complete subjects-by-raters
-      rectangular designs, separate from the current pairwise loss pipeline.
-      Start with built-in Frechet nominal (mode disagreement), absolute
-      (median absolute deviation), quadratic (mean squared deviation), and
-      Hubert disagreement kernels; return Cohen-type and Fleiss-type
-      chance-corrected coefficients with influence-function vcov. Do not add
-      missing-rater support until the non-rectangular estimand and inference
-      assumptions are settled.
 - [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
       The Eigen API is already thin for the two consumers we have (in-tree
       C++ tests and R via Rcpp+RcppEigen). If we ever add a Python / Julia /
@@ -45,6 +36,14 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Add closed rectangular g-wise / Frechet agreement.**
+      `estimate_gwise` and `kappa_gwise()` now cover complete
+      subjects-by-raters designs with Frechet nominal, Frechet absolute,
+      Frechet quadratic, and Hubert disagreement kernels. They return
+      Cohen-type and Fleiss-type chance-corrected coefficients with
+      influence-function vcov. Categorical chance terms use exact finite
+      support enumeration; continuous distances remain direct over item
+      tuples. Missing-rater support remains intentionally out of scope.
 - [x] **Remove the O(n^2) raw-estimator chance kernels.**
       `estimate_available`, `estimate_ipw`, and `estimate_gwet` now compute
       chance-disagreement V-statistic row sums, column sums, and totals from

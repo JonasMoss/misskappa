@@ -104,6 +104,22 @@ TEST_CASE("G-wise estimator rejects missing and oversized direct jobs") {
   CHECK(oversized.error() == ms::Error::not_supported);
 }
 
+TEST_CASE("G-wise categorical chance uses finite support instead of n^g item tuples") {
+  IntMat x(200, 3);
+  for (int i = 0; i < static_cast<int>(x.rows()); ++i) {
+    x(i, 0) = i % 2;
+    x(i, 1) = (i / 2) % 2;
+    x(i, 2) = (i + 1) % 2;
+  }
+  auto distance = ms::loss::frechet_nominal_distance(2);
+  REQUIRE(distance.has_value());
+
+  auto r = ms::estimate_gwise(x, *distance, ms::GwiseOptions{3, 100});
+  REQUIRE(r.has_value());
+  CHECK(std::isfinite(r->estimates(0)));
+  CHECK(std::isfinite(r->estimates(1)));
+}
+
 TEST_CASE("G-wise covariance is symmetric and PSD") {
   RealMat x = frechet_fixture_real();
   auto distance = ms::loss::frechet_quadratic_distance();
