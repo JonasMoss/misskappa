@@ -1,0 +1,18 @@
+# Completed (accepted) papers — sources + the compiled submission PDFs are
+# kept; these are regenerable build artifacts. R/editor cruft is handled by
+# the repo-root .gitignore.
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.brf
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)

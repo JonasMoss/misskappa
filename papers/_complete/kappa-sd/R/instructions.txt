@@ -1,0 +1,9 @@
+- agreeable.zip contains the agreeable package, which is used in most of the files.
+- agreer.zip contains the agreer package, which is used in some of the files.
+- You need to install the package to use it. You can do this using devtools and Rstudio.
+- agreeable / agreer may or may not be on CRAN when you read this. If it is, do not download it from CRAN instead,
+  as their interface have changed.
+- You may need to call `library("agreeable")` or `library("agreer")` and / or source some of the files when
+  running them.
+- None of the scripts take very long time to run. It will all run in ~ 3 hours max, with
+  the CI simulations taking the longest.
