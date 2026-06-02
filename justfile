@@ -9,13 +9,23 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
   @just --list
 
-# C++ build + tests (dev preset: asan + ubsan).
+# C++ build + tests (dev preset: debug, no sanitizers).
 build:
   @cmake --preset dev
   @cmake --build --preset dev
 
 test: build
   @ctest --preset dev
+
+fmt-cpp:
+  @formatter="$(command -v clang-format || command -v clang-format-18 || command -v clang-format-17 || true)"; \
+    if [[ -z "$formatter" ]]; then \
+      echo "clang-format not found; install clang-format or clang-format-18."; \
+      exit 127; \
+    fi; \
+    rg --files include src tests/unit r-package/src \
+      | rg '\.(c|cc|cpp|cxx|h|hpp)$' \
+      | xargs "$formatter" -i
 
 # Release build (no sanitizers). This is what the R package links against.
 opt:

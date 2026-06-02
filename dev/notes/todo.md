@@ -29,12 +29,16 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       doubling.
 - [ ] Decide whether to enable the `asan` preset by default once Fedora's
       libasan / libubsan runtime packages are installed locally.
-- [ ] Add `.clang-format` and a `just fmt-cpp` recipe.
 - [ ] Re-evaluate whether counts-format input and continuous ratings should
       come back into the library after the paper is submitted.
 
 ## Done
 
+- [x] **Add `.clang-format` and a `just fmt-cpp` recipe.**
+      The formatter config follows the active C++ style with two-space
+      indentation and a 100-column limit. The recipe formats active C++
+      surfaces only (`include/`, `src/`, `tests/unit/`, `r-package/src/`),
+      leaving legacy and vendored third-party code untouched.
 - [x] **Wire CI.**
       `.github/workflows/ci.yml` now runs a C++ dev build/test job and an
       R package check job on Ubuntu 24.04. The R job builds the opt static
