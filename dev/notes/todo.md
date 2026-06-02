@@ -12,17 +12,12 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 - [x] Step 3: available-case estimator + variance.
 - [x] Step 4: IPW + Gwet estimators.
 - [x] Step 5: FIML / EM.
-- [ ] Step 6: inference consolidation.
+- [x] Step 6: inference consolidation.
 - [x] Step 7: R package wiring (Rcpp glue + S3 + sim list).
 - [ ] Step 8: paper conversion (LyX -> .tex) + scripts wiring.
 
 ## Active backlog
 
-- [ ] **Step 6: inference consolidation.**
-      Consolidate the R-facing inference surface around `misskappa_estimate`,
-      joint influence-function covariance, Wald intervals/tests, and the
-      estimator families that do not yet expose per-subject influence
-      functions.
 - [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Continue the manuscript split/wiring work under the paper-local todo
       files once the current manuscript tree noise is settled.
@@ -45,6 +40,12 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Settle the inference-surface policy.**
+      `misskappa_estimate` now has a consistent R-facing inference contract:
+      all estimators with subject-level influence rows expose them through
+      `influence()` for `joint_vcov()` and multi-fit `wald_test()`, while
+      closed-form quadratic estimators intentionally return `NULL` because
+      their covariance is built at the reduced moment-summary level.
 - [x] **Expose influence functions for FIML estimators.**
       Raw FIML and counts-format FIML now return per-subject influence
       functions from the same reduced observed-score / Louis-information

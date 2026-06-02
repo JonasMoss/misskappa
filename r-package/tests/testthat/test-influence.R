@@ -119,11 +119,19 @@ test_that("influence() returns NULL for estimators that do not expose IFs", {
   )
   storage.mode(x) <- "integer"
 
-  # Quadratic moment estimators do not expose per-subject IFs through the
-  # shared R surface yet.
+  # Closed-form quadratic estimators are summary-moment estimators and do not
+  # expose subject-level IF rows through the shared R surface.
   xc <- matrix(stats::rnorm(40), nrow = 10)
-  fit_quad <- kappa_quadratic(xc, values = c(1, 2, 3, 4, 5)[seq_len(min(ncol(xc), 5))])
-  expect_null(stats::influence(fit_quad))
+  values <- c(1, 2, 3, 4, 5)[seq_len(min(ncol(xc), 5))]
+  for (vtype in c("empirical", "normal", "elliptical")) {
+    fit_quad <- kappa_quadratic(xc, values = values, vcov = vtype)
+    expect_null(stats::influence(fit_quad), info = vtype)
+  }
+
+  counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
+  storage.mode(counts) <- "integer"
+  fit_quad_counts <- kappa_quadratic_counts(counts, values = 1:3, r_total = 10)
+  expect_null(stats::influence(fit_quad_counts))
 })
 
 test_that("joint_vcov() assembles a block matrix and recovers per-fit vcov on the diagonal blocks", {
