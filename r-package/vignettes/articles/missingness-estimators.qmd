@@ -1,0 +1,50 @@
+---
+title: "Missingness And Estimators"
+---
+
+The package distinguishes missing completely at random (MCAR) estimators from
+missing at random (MAR) likelihood estimators. In raw rater matrices, `NA`
+means the rating was not observed. In the C++ API, categorical missingness is
+encoded by `misskappa::na_code`.
+
+The available-case estimator uses the observed rater pairs directly:
+
+`\[
+\widehat D_o =
+\frac{\sum_i \sum_{r<s} R_{ir}R_{is}
+  \ell_{X_{ir},X_{is}}}
+{\sum_i \sum_{r<s} R_{ir}R_{is}},
+\]`
+
+where `\(R_{ir}=1\)` when the rating is observed. This targets the
+pairwise-observed estimand unless missingness is MCAR.
+
+The IPW estimator reweights observed pairs by estimated observation
+probabilities. In schematic form,
+
+`\[
+\widehat D_o^{\mathrm{IPW}} =
+\frac{1}{n}\sum_i \sum_{r<s}
+\frac{R_{ir}R_{is}}{\widehat\pi_r\widehat\pi_s}
+\ell_{X_{ir},X_{is}},
+\]`
+
+with corresponding weighted marginal estimates for chance disagreement. This
+is the MCAR correction used for the raw categorical estimator.
+
+The FIML estimator fits a categorical full-data distribution under MAR by EM.
+For observed pattern `\(o_i\)`, the likelihood contribution is
+
+`\[
+L_i(\theta) =
+\sum_{x_{\mathrm{mis}}}
+p_\theta(x_{\mathrm{obs},i}, x_{\mathrm{mis}}),
+\]`
+
+and agreement coefficients are computed from the fitted full-data
+distribution. The implementation returns Wald covariance estimates through
+Louis' observed information when available.
+
+Gwet's estimator is retained for comparison with the agreement-coefficient
+literature. It uses its own chance-disagreement convention and should be
+interpreted as a comparator rather than the default missing-data target.

@@ -1,0 +1,38 @@
+url: https://jonasmoss.github.io/misskappa/
+destination: ../docs/site
+
+template:
+  bootstrap: 5
+  math-rendering: mathjax
+
+navbar:
+  structure:
+    left: [intro, reference, articles, cpp]
+    right: [github]
+  components:
+    cpp:
+      text: C++ API
+      href: cpp/
+
+reference:
+  - title: Estimators
+    contents:
+      - kappa
+      - kappa_quadratic
+      - kappa_quadratic_counts
+      - influence.misskappa_estimate
+      - joint_vcov
+  - title: Simulation helpers
+    contents:
+      - sim
+  - title: Datasets
+    contents:
+      - starts_with("dat.")
+
+articles:
+  - title: Mathematical Guides
+    navbar: Mathematical Guides
+    contents:
+      - articles/agreement-coefficients
+      - articles/missingness-estimators
+      - articles/validation

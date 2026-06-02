@@ -3,3 +3,5 @@
 ^README\.md$
 ^\.gitignore$
 ^data_raw$
+^_pkgdown\.yml$
+^vignettes/articles$

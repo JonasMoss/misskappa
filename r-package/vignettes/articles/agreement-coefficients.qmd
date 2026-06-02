@@ -1,0 +1,44 @@
+---
+title: "Agreement Coefficients And Loss Matrices"
+---
+
+Agreement coefficients in `misskappa` are written in terms of pairwise
+disagreement. For two raters with categorical ratings in
+`\(\{1,\ldots,C\}\)`, let `\(L\)` be a loss matrix with
+`\(\ell_{cc}=0\)` and `\(0 \le \ell_{cd} \le 1\)`. The generic coefficient is
+
+`\[
+\kappa = 1 - \frac{D_o}{D_e},
+\]`
+
+where `\(D_o\)` is observed disagreement and `\(D_e\)` is the disagreement
+expected under a chance model. Different named coefficients mostly differ in
+how they estimate these two quantities when there are more than two raters.
+
+For a subject `\(i\)` and raters `\(r,s\)`, complete-data pairwise
+disagreement is
+
+`\[
+d_{irs} = \ell_{X_{ir}, X_{is}}.
+\]`
+
+The Conger-style observed component averages over identified rater pairs. The
+Fleiss-style component averages over pooled marginal category frequencies.
+Brennan-Prediger uses a uniform chance distribution over categories.
+
+The C++ side accepts agreement weights `\(W\)` because that is the convention
+used by `irrCAC`; internally the estimators work with `\(L = 1 - W\)`.
+The R side exposes the same choice as `weight`, with `"identity"` for nominal
+agreement and `"linear"` or `"quadratic"` for ordered or scored categories.
+
+The closed-form quadratic estimators use the special case
+
+`\[
+\ell_{cd} =
+\frac{(v_c - v_d)^2}{(\max_j v_j - \min_j v_j)^2},
+\]`
+
+where `\(v\)` is the supplied category-score vector. This loss lets the
+coefficient be expressed through means and covariance matrices, which is why
+`kappa_quadratic()` has a separate implementation from the general
+U-statistic estimator.

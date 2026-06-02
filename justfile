@@ -55,6 +55,21 @@ r-check: opt irrcacsmoke-install
 regen-oracle:
   @Rscript tests/tools/regen_oracle.R
 
+# Build pkgdown site. Requires the R packages pkgdown and quarto; builds the
+# opt library first because pkgdown installs/loads the R package.
+docs-r: opt
+  @cd r-package && Rscript -e 'pkgdown::build_site()'
+
+# Build C++ API reference into the pkgdown output tree. Requires doxygen.
+docs-cpp:
+  @doxygen docs/Doxyfile
+
+# Build the combined local documentation site under docs/site/.
+docs: docs-r docs-cpp
+
+docs-clean:
+  @rm -rf docs/site docs/doxygen
+
 # Delegate to a paper-local justfile. Slug is one of: combined, ipw, fiml, quadratic.
 # Example: just paper ipw pdf
 paper slug *args:

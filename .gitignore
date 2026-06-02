@@ -31,6 +31,10 @@ r-package/src/*.so
 r-package/src/*.dll
 r-package/src/symbols.rds
 
+# Generated documentation
+docs/site/
+docs/doxygen/
+
 # Editor / OS
 *~
 \#*\#
