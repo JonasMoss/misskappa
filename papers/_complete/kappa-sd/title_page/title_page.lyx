@@ -1,0 +1,207 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage{kappa-sd-with-name}
+
+\titletag{Submission}
+\makeatletter
+\titlerunning{\@title}
+\makeatother
+\authorrunning{Jonas Moss}
+
+\usepackage{booktabs}
+\renewcommand{\sqrt}[1]{{(#1)^{1/2}}}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\sd}{sd}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\Cor}{Cor}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\diag}{diag} 
+\DeclareMathOperator{\se}{se} 
+\DeclareMathOperator{\argmax}{argmax}
+\DeclareMathOperator{\artanh}{artanh}
+\DeclareMathOperator{\supp}{supp}
+
+\usepackage{enumitem}
+\setlist[enumerate]{label = (\roman*)}
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+natbibapa
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine natbib
+\cite_engine_type authoryear
+\biblio_style apacite
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Measures of agreement with multiple raters: Fréchet variances and inference
+\end_layout
+
+\begin_layout Author
+Jonas Moss 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+orcid{0000-0002-6876-6964}
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+Department of Data Science and Analytics
+\begin_inset Newline newline
+\end_inset
+
+BI Norwegian Business School
+\emph on
+
+\begin_inset Newline newline
+\end_inset
+
+jonas.moss@bi.no
+\end_layout
+
+\begin_layout Abstract
+Most measures of agreement are chance-corrected.
+ They differ in three dimensions: their definition of chance agreement,
+ their choice of disagreement function, and how they handle multiple raters.
+ Chance agreement is usually defined in a pairwise manner, following either
+ Cohen's kappa or Fleiss's kappa.
+ The disagreement function is usually a nominal, quadratic, or absolute
+ value function.
+ But how to handle multiple raters is contentious, with the main contenders
+ being Fleiss's kappa, Conger's kappa, and Hubert's kappa, the variant of
+ Fleiss's kappa where agreement is said to occur only if every rater agrees.
+ More generally, multi-rater agreement coefficients can be defined in a
+ 
+\begin_inset Formula $g$
+\end_inset
+
+-wise way, where the disagreement weighting function uses 
+\begin_inset Formula $g$
+\end_inset
+
+ raters instead of two.
+ This paper contains two main contributions.
+ (a) We propose using Fréchet variances to handle the case of multiple raters.
+ The Fréchet variances are intuitive disagreement measures and turn out
+ to generalize the nominal, quadratic, and absolute value functions to the
+ case of more than two raters.
+ (b) We derive the limit theory of $g$-wise weighted agreement coefficients,
+ with chance agreement of the Cohen-type or Fleiss-type, for the case where
+ every item is rated by the same number of raters.
+ Trying out three confidence interval constructions, we end up recommending
+ calculating confidence intervals using the arcsine transform or the Fisher
+ transform.
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Keywords
+\series default
+: agreement, interrater reliability, AC1, Cohen kappa
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Running title:
+\series default
+ Inference for measures of agreement with multiple raters
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Data availability:
+\series default
+ Data sharing not applicable – no new data generated
+\end_layout
+
+\end_body
+\end_document

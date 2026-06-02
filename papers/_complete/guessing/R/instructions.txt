@@ -1,0 +1,11 @@
+1. The file `kappa-sd.pdf` is a submitted manuscript refered to in the paper.
+2. agreeable.zip An R package. Must be installed to run the other R scripts.
+3. R scripts:
+	-- functions.R			        Used by the other files.
+	-- confidence_intervals.R	  Simulate confidence intervals.
+	-- sensitivity.R		        Simulate sensitivites.
+	-- zapf_example.R           Calculations for the Zapf example.
+4. CSV files:
+	-- ci_marginals.csv		Simulation results for marginal CIs.
+	-- ci_uniforms.csv		Simulation results for uniform CIs.
+	-- sensitivities.csv		Sensitivity analysis of Section 4.
