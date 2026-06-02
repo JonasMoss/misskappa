@@ -20,8 +20,14 @@ reference:
       - kappa
       - kappa_quadratic
       - kappa_quadratic_counts
+      - kappa_counts
+      - kappa_continuous
+      - kappa_gwise
+  - title: Inference
+    contents:
       - influence.misskappa_estimate
       - joint_vcov
+      - wald_test
   - title: Simulation helpers
     contents:
       - sim
