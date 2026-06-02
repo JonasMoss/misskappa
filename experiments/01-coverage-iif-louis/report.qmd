@@ -153,7 +153,7 @@ lines should be near 5%.
   `experiments/10-louis-spectrum/`, which decomposes the Louis variance
   by information eigen-direction.
 - DGPs A / B / C are inherited from
-  `papers/combined/scripts/simulations_raw_three_estimators.R`; they use a
+  `dev/legacy/combined/scripts/simulations_raw_three_estimators.R`; they use a
   constrained latent-truth-plus-guess rater model. Coverage under a
   Dawid-Skene rater model is exercised in
   `experiments/02-rater-model-sensitivity`.
