@@ -87,8 +87,7 @@ vcov.misskappa_estimate <- function(object, ...) object$vcov
 #' Returns the `n x K` matrix of per-subject influence functions for the
 #' coefficient estimates, where `n` is the number of subjects and `K` is
 #' the number of coefficients. Estimators that do not expose influence
-#' functions (quadratic and quadratic-counts as of this version) return
-#' `NULL`.
+#' functions (the closed-form quadratic estimators) return `NULL`.
 #'
 #' When non-null, the influence-function matrix satisfies
 #' `vcov(object) == (1 / n^2) * crossprod(influence(object))` up to
@@ -154,14 +153,18 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
 #'   marks missing entries.
 #' @param values Length-C numeric vector of category scores. The quadratic
 #'   loss is `(values[i] - values[j])^2 / (max - min)^2`.
-#' @param vcov Variance estimator. `"empirical"` uses the row-wise
-#'   influence-function covariance. `"normal"` and `"elliptical"` use the
-#'   corresponding symmetric model-based covariance for the moment summaries.
+#' @param vcov Variance estimator. `"empirical"` estimates the covariance
+#'   of the reduced quadratic moment summaries from their row-wise estimating
+#'   equations. `"normal"` and `"elliptical"` use the corresponding symmetric
+#'   model-based covariance for the moment summaries. The closed-form
+#'   quadratic estimators report `vcov()` but intentionally do not expose
+#'   subject-level `influence()` rows.
 #' @param relative_kurtosis Relative Mardia kurtosis used when
 #'   `vcov = "elliptical"`; the normal value is 1.
 #'
 #' @return A `misskappa_estimate` object with `Conger`, `Fleiss`,
-#'   `Brennan-Prediger` coefficients and the 3x3 vcov.
+#'   `Brennan-Prediger` coefficients and the 3x3 vcov. `influence()` returns
+#'   `NULL` for this estimator by design.
 #'
 #' @export
 kappa_quadratic <- function(x, values,
@@ -215,7 +218,8 @@ kappa_quadratic <- function(x, values,
 #' @param r_total Total number of raters per subject.
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
-#'   `Brennan-Prediger` coefficients and the 2x2 vcov.
+#'   `Brennan-Prediger` coefficients and the 2x2 vcov. `influence()` returns
+#'   `NULL` for this estimator by design.
 #'
 #' @export
 kappa_quadratic_counts <- function(x, values, r_total) {
