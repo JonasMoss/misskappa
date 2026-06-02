@@ -1,0 +1,40 @@
+PROJECT_NAME           = "misskappa"
+PROJECT_BRIEF          = "C++23 agreement coefficients with missing data"
+OUTPUT_DIRECTORY       = docs/site/cpp
+HTML_OUTPUT            = .
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+
+INPUT                  = include/misskappa
+FILE_PATTERNS          = *.hpp
+RECURSIVE              = YES
+STRIP_FROM_PATH        = .
+
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+
+FULL_PATH_NAMES        = YES
+SHORT_NAMES            = NO
+CASE_SENSE_NAMES       = YES
+
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+
+JAVADOC_AUTOBRIEF      = YES
+OPTIMIZE_OUTPUT_FOR_C  = NO
+TYPEDEF_HIDES_STRUCT   = NO
+
+USE_MATHJAX            = YES
+MATHJAX_FORMAT         = HTML-CSS
+
+HTML_DYNAMIC_MENUS     = YES
+HTML_DYNAMIC_SECTIONS  = YES
+DISABLE_INDEX          = NO
+GENERATE_TREEVIEW      = YES
+
+PREDEFINED             = EIGEN_NO_EXCEPTIONS

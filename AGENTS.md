@@ -62,7 +62,8 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
   cross-paper todos in `papers/todo.md`. The combined draft they were
   split from was deleted on 2026-06-02 (recoverable from git history).
 - `docs/` — repo-level documentation assets, including shared artwork such as
-  the project logo.
+  the project logo. Generated docs output is under `docs/site/` and is ignored;
+  do not commit generated HTML.
 - `dev/legacy/` — frozen reference: original R package, C++ implementation,
   analysis scripts, LyX manuscript, supporting notes. Unbuilt, do not edit.
 - `dev/notes/` — repo-level development notes (port plan, validation plan, todo).
@@ -88,12 +89,34 @@ Repo-root `justfile` wraps the common loops: `just build`, `just test`
 (`dev` build + ctest), `just opt`, `just test-opt`, `just r-install`,
 `just r-check` (reinstall + R-level tests), `just paper <slug>` (delegates
 to `papers/<slug>/justfile`, e.g. `just paper ipw pdf`), and
-`just regen-oracle` (regenerates `tests/fixtures/`). `just` with no recipe
-lists them.
+`just regen-oracle` (regenerates `tests/fixtures/`). Documentation recipes are
+`just docs-r` (pkgdown), `just docs-cpp` (Doxygen), `just docs` (combined
+local site), and `just docs-clean`. `just` with no recipe lists them.
 
 The R bindings link the prebuilt non-sanitized `opt` `libmisskappa.a`;
 `r-package/src/Makevars` makes the package objects depend on it, so a C++
 header change correctly forces the R glue to recompile against the new ABI.
+
+## Documentation
+
+The documentation site is generated, not hand-edited. `pkgdown` is the front
+door for the R package under `r-package/`, Quarto articles under
+`r-package/vignettes/articles/` carry the mathematical exposition, and Doxygen
+generates the C++ API reference from `include/misskappa/` into `/cpp/` inside
+the built site.
+
+- Put long-form math, estimator definitions, missingness assumptions, and
+  validation narratives in Quarto/pkgdown articles.
+- Keep Doxygen/header comments focused on C++ API contracts: inputs, output
+  order, dimensions, error conditions, and short formulas only.
+- Do not commit generated documentation output under `docs/site/` or
+  `docs/doxygen/`. Build locally with `just docs`; GitHub Actions publishes
+  generated artifacts.
+- GitHub Pages deployment is gated by the repository variable
+  `ENABLE_PAGES_DEPLOY=true`. Private-repository Pages requires a GitHub plan
+  that supports it; otherwise the workflow still builds docs without deploying.
+- When docs tooling changes, update `justfile`, `.github/workflows/docs.yml`,
+  `r-package/_pkgdown.yml`, and this section together as needed.
 
 ## R package direction
 
