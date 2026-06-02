@@ -11,6 +11,7 @@ export(kappa_gwise)
 export(kappa_quadratic)
 export(kappa_quadratic_counts)
 export(sim)
+export(wald_test)
 
 S3method(print, misskappa_estimate)
 S3method(coef, misskappa_estimate)

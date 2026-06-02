@@ -45,6 +45,11 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Add Wald tests for misskappa estimates.**
+      `wald_test()` now tests single-fit and cross-fit linear hypotheses
+      against `misskappa_estimate` objects. Single-fit tests use `vcov()`;
+      multi-fit tests use `joint_vcov()` and therefore require aligned
+      per-subject influence functions.
 - [x] **Keep ASan opt-in.**
       The default `dev` preset stays a portable debug build without
       sanitizers. The `asan` preset remains available for targeted local runs
