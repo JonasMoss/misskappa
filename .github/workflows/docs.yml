@@ -45,7 +45,8 @@ jobs:
             libharfbuzz-dev \
             libjpeg-dev \
             libpng-dev \
-            libtiff-dev
+            libtiff-dev \
+            pandoc
 
       - name: Install R documentation dependencies
         shell: Rscript {0}
