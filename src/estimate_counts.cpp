@@ -125,9 +125,11 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
   if (d_BP > zero_tol) {
     J_kappa(1, 0) = -1.0 / d_BP;
   }
-  RealMat kappa_cov = (J_kappa * Sigma_hat * J_kappa.transpose()) / static_cast<double>(n);
+  const RealMat J_combined = J_kappa * J_d;
+  RealMat kappa_cov = (J_combined * Gamma_hat * J_combined.transpose()) / static_cast<double>(n);
+  RealMat psi_kappa = build_psi_from_phi(phi_matrix, J_combined);
 
-  return Estimation{std::move(estimates), std::move(kappa_cov), {}};
+  return Estimation{std::move(estimates), std::move(kappa_cov), std::move(psi_kappa)};
 }
 
 }  // namespace misskappa

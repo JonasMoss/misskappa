@@ -12,9 +12,9 @@
 #' standard nonparametric IF-based joint asymptotic covariance.
 #'
 #' All inputs must expose influence functions (currently the categorical
-#' raw estimators and closed rectangular g-wise estimators). Fits from
-#' estimators that do not yet expose IFs (FIML, quadratic, continuous,
-#' counts) are not supported.
+#' raw, counts-format available-case, continuous MCAR, and closed rectangular
+#' g-wise estimators). Fits from estimators that do not yet expose IFs
+#' (FIML, FIML-counts, quadratic, quadratic-counts) are not supported.
 #'
 #' Row alignment is the caller's responsibility: the helper only checks
 #' that the number of subjects matches across inputs and stacks `psi`
