@@ -42,6 +42,32 @@ test_that("vcov = (1 / n^2) crossprod(psi) to floating-point noise", {
   }
 })
 
+test_that("influence() returns per-subject IFs for FIML fits", {
+  x <- matrix(
+    c(
+      1, 1, 1,
+      2, 2, NA,
+      3, 3, 3,
+      1, 1, 2,
+      NA, 3, 2,
+      3, 2, 3,
+      1, 2, 1,
+      2, 2, 3,
+      3, 3, 3,
+      1, 1, 1,
+      2, 1, 2,
+      3, 3, 2
+    ),
+    nrow = 12, byrow = TRUE
+  )
+  storage.mode(x) <- "integer"
+  fit <- kappa(x, method = "fiml", weight = "quadratic")
+  psi <- stats::influence(fit)
+  expect_equal(dim(psi), c(12L, 3L))
+  expect_equal(unname(crossprod(psi) / 144), unname(vcov(fit)),
+               tolerance = 1e-10)
+})
+
 test_that("influence() returns per-subject IFs for counts, continuous, and g-wise fits", {
   counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
   storage.mode(counts) <- "integer"
@@ -64,6 +90,28 @@ test_that("influence() returns per-subject IFs for counts, continuous, and g-wis
   expect_equal(dim(psi_gwise), c(3L, 2L))
 })
 
+test_that("influence() returns per-subject IFs for FIML counts fits", {
+  counts <- matrix(
+    c(
+      3, 1, 0,
+      0, 2, 1,
+      2, 0, 1,
+      1, 2, 0,
+      0, 0, 3,
+      2, 1, 0,
+      3, 0, 0,
+      0, 1, 2
+    ),
+    nrow = 8, byrow = TRUE
+  )
+  storage.mode(counts) <- "integer"
+  fit <- kappa_counts(counts, method = "fiml", r_total = 4)
+  psi <- stats::influence(fit)
+  expect_equal(dim(psi), c(8L, 2L))
+  expect_equal(unname(crossprod(psi) / 64), unname(vcov(fit)),
+               tolerance = 1e-10)
+})
+
 test_that("influence() returns NULL for estimators that do not expose IFs", {
   x <- matrix(
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),
@@ -71,17 +119,8 @@ test_that("influence() returns NULL for estimators that do not expose IFs", {
   )
   storage.mode(x) <- "integer"
 
-  # FIML uses EM + Louis info; no IF exposed in this version.
-  fit_fiml <- kappa(x, method = "fiml", weight = "identity")
-  expect_null(stats::influence(fit_fiml))
-
   # Quadratic moment estimators do not expose per-subject IFs through the
   # shared R surface yet.
-  counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
-  storage.mode(counts) <- "integer"
-  fit_counts_fiml <- kappa_counts(counts, method = "fiml", r_total = 10)
-  expect_null(stats::influence(fit_counts_fiml))
-
   xc <- matrix(stats::rnorm(40), nrow = 10)
   fit_quad <- kappa_quadratic(xc, values = c(1, 2, 3, 4, 5)[seq_len(min(ncol(xc), 5))])
   expect_null(stats::influence(fit_quad))
@@ -125,10 +164,38 @@ test_that("joint_vcov() errors on mismatched n or non-IF fits", {
   fit2 <- kappa(x2, method = "available")
   expect_error(joint_vcov(fit1, fit2), "same number of subjects")
 
-  fit_fiml <- kappa(x1, method = "fiml")
-  expect_error(joint_vcov(fit1, fit_fiml), "do not expose influence")
+  fit_quad <- kappa_quadratic(x1, values = 1:4)
+  expect_error(joint_vcov(fit1, fit_quad), "do not expose influence")
 
   expect_error(joint_vcov(fit1), "at least two")
+})
+
+test_that("joint_vcov() supports FIML fits", {
+  x <- matrix(
+    c(
+      1, 1, 1,
+      2, 2, NA,
+      3, 3, 3,
+      1, 1, 2,
+      NA, 3, 2,
+      3, 2, 3,
+      1, 2, 1,
+      2, 2, 3,
+      3, 3, 3,
+      1, 1, 1,
+      2, 1, 2,
+      3, 3, 2
+    ),
+    nrow = 12, byrow = TRUE
+  )
+  storage.mode(x) <- "integer"
+  ac <- kappa(x, method = "available", weight = "quadratic")
+  fiml <- kappa(x, method = "fiml", weight = "quadratic")
+  V <- joint_vcov(ac = ac, fiml = fiml)
+
+  expect_equal(dim(V), c(6L, 6L))
+  expect_equal(unname(V[1:3, 1:3]), unname(vcov(ac)), tolerance = 1e-10)
+  expect_equal(unname(V[4:6, 4:6]), unname(vcov(fiml)), tolerance = 1e-10)
 })
 
 test_that("Hausman contrast kappa_AC - kappa_IPW agrees between joint_vcov and direct computation", {
@@ -197,7 +264,7 @@ test_that("wald_test() validates contrasts and influence-function support", {
   expect_error(wald_test(fit, contrast = "Nope"), "Unknown coefficient")
   expect_error(wald_test(fit, contrast = c(1, 0)), "length")
 
-  fit_fiml <- kappa(x, method = "fiml")
-  expect_error(wald_test(fit, fit_fiml, contrast = c("fit1.Conger" = 1)),
+  fit_quad <- kappa_quadratic(x, values = 1:4)
+  expect_error(wald_test(fit, fit_quad, contrast = c("fit1.Conger" = 1)),
                "do not expose influence")
 })

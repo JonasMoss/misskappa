@@ -138,17 +138,26 @@ struct EmInputCounts {
   std::vector<std::uint32_t> completion_indices;   // index into active_ranks
   std::vector<double> mvhg_coeffs;                 // length sum(group_n_completions)
   std::vector<std::uint64_t> active_ranks;         // active idx -> global composition rank
+  std::vector<std::uint32_t> subject_groups;
 };
 
 struct EmRunResultCounts {
   Eigen::VectorXd theta_hat;
   RealMat vcov;
   std::vector<std::uint64_t> pattern_ranks;  // global ranks of surviving patterns
+  std::vector<std::uint64_t> pruned_active_indices;
   int c = 0;
   int r_total = 0;
   int iterations = 0;
   bool converged = false;
   std::size_t n_subjects = 0;
+};
+
+struct LouisReducedInfoCounts {
+  RealMat info_star;
+  RealMat jacobian;
+  RealMat group_scores;
+  Eigen::Index ref = 0;
 };
 
 Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
@@ -175,12 +184,15 @@ Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
   // Bucket subjects by unique observed row.
   std::map<std::vector<int>, std::uint32_t> by_row;
   std::vector<std::vector<int>> pattern_order;
+  std::vector<std::vector<int>> subject_rows;
   pattern_order.reserve(static_cast<std::size_t>(counts.rows()));
+  subject_rows.reserve(static_cast<std::size_t>(counts.rows()));
   for (Eigen::Index i = 0; i < counts.rows(); ++i) {
     std::vector<int> row(static_cast<std::size_t>(in.c));
     for (int k = 0; k < in.c; ++k) {
       row[static_cast<std::size_t>(k)] = counts(i, k);
     }
+    subject_rows.push_back(row);
     auto it = by_row.find(row);
     if (it == by_row.end()) {
       by_row.emplace(row, std::uint32_t{1});
@@ -256,8 +268,10 @@ Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
   in.group_n_completions.reserve(pattern_order.size());
   in.completion_indices.reserve(total_completion_count);
   in.mvhg_coeffs.reserve(total_completion_count);
+  std::map<std::vector<int>, std::uint32_t> row_to_group;
   std::uint32_t cum_offset = 0;
   for (std::size_t g = 0; g < pattern_order.size(); ++g) {
+    row_to_group.emplace(pattern_order[g], static_cast<std::uint32_t>(g));
     const std::uint32_t subj_count = by_row.at(pattern_order[g]);
     in.group_n_subjects.push_back(subj_count);
     in.group_offsets.push_back(cum_offset);
@@ -269,6 +283,10 @@ Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
       in.mvhg_coeffs.push_back(g_coeffs[k]);
     }
     cum_offset += static_cast<std::uint32_t>(g_ranks.size());
+  }
+  in.subject_groups.reserve(subject_rows.size());
+  for (const auto& row : subject_rows) {
+    in.subject_groups.push_back(row_to_group.at(row));
   }
 
   return in;
@@ -351,18 +369,38 @@ EmIterStatus run_em_iterations(
 // Louis observed information on the (n_final - 1)-dim reference-removed
 // parametrisation (drops the largest-mass entry to enforce the sum-to-1
 // constraint), then expands back to the full n_final dim via the Jacobian.
-RealMat em_variance(
+RealMat constraint_jacobian(Eigen::Index n_final, Eigen::Index ref) {
+  if (n_final <= 1) return RealMat::Zero(n_final, 0);
+
+  RealMat J = RealMat::Zero(n_final, n_final - 1);
+  Eigen::Index w = 0;
+  for (Eigen::Index i = 0; i < n_final; ++i) {
+    if (i == ref) continue;
+    J(i, w++) = 1.0;
+  }
+  for (Eigen::Index j = 0; j < n_final - 1; ++j) J(ref, j) = -1.0;
+  return J;
+}
+
+LouisReducedInfoCounts build_louis_reduced_info(
     const Eigen::VectorXd& theta_pruned,
     const std::vector<std::uint64_t>& pruned_active_indices,
-    const EmInputCounts& in,
-    const EmOptions& opts) {
+    const EmInputCounts& in) {
+  LouisReducedInfoCounts out;
   const Eigen::Index n_final = theta_pruned.size();
-  if (n_final <= 1) return RealMat::Zero(n_final, n_final);
+  if (n_final <= 1) {
+    out.info_star = RealMat::Zero(0, 0);
+    out.jacobian = RealMat::Zero(n_final, 0);
+    out.group_scores = RealMat::Zero(
+        static_cast<Eigen::Index>(in.group_n_subjects.size()), 0);
+    return out;
+  }
 
   Eigen::Index ref = 0;
   for (Eigen::Index i = 1; i < n_final; ++i) {
     if (theta_pruned(i) > theta_pruned(ref)) ref = i;
   }
+  out.ref = ref;
   std::vector<Eigen::Index> active_to_pruned(in.n_active, Eigen::Index{-1});
   for (Eigen::Index i = 0; i < n_final; ++i) {
     active_to_pruned[static_cast<std::size_t>(
@@ -370,6 +408,8 @@ RealMat em_variance(
   }
 
   RealMat info_star = RealMat::Zero(n_final - 1, n_final - 1);
+  RealMat group_scores = RealMat::Zero(
+      static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
@@ -402,29 +442,32 @@ RealMat em_variance(
       }
     }
     if (ref_score != 0.0) s_reduced.array() -= ref_score;
+    group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
     info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
                           * s_reduced * s_reduced.transpose();
   }
 
-  RealMat var_star = detail::pseudo_inverse_psd(info_star, opts.info_rcond);
-
-  RealMat J = RealMat::Zero(n_final, n_final - 1);
-  Eigen::Index w = 0;
-  for (Eigen::Index i = 0; i < n_final; ++i) {
-    if (i == ref) continue;
-    J(i, w++) = 1.0;
-  }
-  for (Eigen::Index j = 0; j < n_final - 1; ++j) J(ref, j) = -1.0;
-
-  return J * var_star * J.transpose();
+  out.info_star = 0.5 * (info_star + info_star.transpose());
+  out.jacobian = constraint_jacobian(n_final, ref);
+  out.group_scores = std::move(group_scores);
+  return out;
 }
 
-Result<EmRunResultCounts> run_em(
-    IntMatView counts, int r_total, EmOptions opts) {
-  auto in_res = preprocess_counts(counts, r_total);
-  if (!in_res) return std::unexpected(in_res.error());
-  const EmInputCounts& in = *in_res;
+RealMat em_variance(
+    const Eigen::VectorXd& theta_pruned,
+    const std::vector<std::uint64_t>& pruned_active_indices,
+    const EmInputCounts& in,
+    const EmOptions& opts) {
+  const LouisReducedInfoCounts info =
+      build_louis_reduced_info(theta_pruned, pruned_active_indices, in);
+  if (theta_pruned.size() <= 1) return RealMat::Zero(theta_pruned.size(), theta_pruned.size());
 
+  const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+  return info.jacobian * var_star * info.jacobian.transpose();
+}
+
+Result<EmRunResultCounts> run_em_preprocessed(
+    const EmInputCounts& in, EmOptions opts) {
   EmRunResultCounts out;
   out.c = in.c;
   out.r_total = in.r_total;
@@ -460,6 +503,7 @@ Result<EmRunResultCounts> run_em(
   tp /= s;
 
   out.theta_hat = std::move(tp);
+  out.pruned_active_indices = pruned_active;
   // Map active-space indices back to global composition ranks for the
   // theta -> kappa step.
   out.pattern_ranks.reserve(pruned_active.size());
@@ -472,7 +516,9 @@ Result<EmRunResultCounts> run_em(
 
 // --- theta_hat -> (Fleiss, BP) coefficients + delta-method vcov --------------
 
-Estimation map_to_kappa(const EmRunResultCounts& em, RealMatView weights) {
+Estimation map_to_kappa(
+    const EmRunResultCounts& em, RealMatView weights,
+    const EmInputCounts& in, const EmOptions& opts) {
   const int C = static_cast<int>(weights.rows());
   const int R = em.r_total;
   const Eigen::Index n_final = em.theta_hat.size();
@@ -525,7 +571,22 @@ Estimation map_to_kappa(const EmRunResultCounts& em, RealMatView weights) {
   }
 
   RealMat vcov = jacobian * em.vcov * jacobian.transpose();
-  return Estimation{std::move(estimates), std::move(vcov), {}};
+  RealMat psi = RealMat::Zero(static_cast<Eigen::Index>(em.n_subjects), 2);
+  const LouisReducedInfoCounts info =
+      build_louis_reduced_info(em.theta_hat, em.pruned_active_indices, in);
+  if (info.info_star.rows() > 0) {
+    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+    const RealMat jacobian_reduced = jacobian * info.jacobian;
+    const RealMat group_psi =
+        static_cast<double>(em.n_subjects) * info.group_scores
+        * var_star * jacobian_reduced.transpose();
+    for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(em.n_subjects); ++i) {
+      psi.row(i) = group_psi.row(
+          static_cast<Eigen::Index>(in.subject_groups[static_cast<std::size_t>(i)]));
+    }
+  }
+
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
 }
 
 }  // namespace
@@ -539,11 +600,14 @@ Result<Estimation> estimate_fiml_counts(
     return std::unexpected(Error::dimension_mismatch);
   }
 
-  auto em = run_em(counts, r_total, opts);
+  auto in_res = preprocess_counts(counts, r_total);
+  if (!in_res) return std::unexpected(in_res.error());
+
+  auto em = run_em_preprocessed(*in_res, opts);
   if (!em) return std::unexpected(em.error());
   if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
 
-  return map_to_kappa(*em, weights);
+  return map_to_kappa(*em, weights, *in_res, opts);
 }
 
 }  // namespace misskappa

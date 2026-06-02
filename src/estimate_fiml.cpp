@@ -42,6 +42,7 @@ struct EmInput {
   std::vector<std::uint32_t> group_offsets;
   std::vector<std::uint32_t> group_n_completions;
   std::vector<std::uint64_t> completion_indices;
+  std::vector<std::uint32_t> subject_groups;
 };
 
 struct EmRunResult {
@@ -58,6 +59,7 @@ struct EmRunResult {
 struct LouisReducedInfo {
   RealMat info_star;
   RealMat jacobian;
+  RealMat group_scores;
   Eigen::Index ref = 0;
 };
 
@@ -116,7 +118,9 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
   // Bucket subjects by observed pattern (as a string key for stable ordering).
   std::map<std::string, std::pair<std::vector<int>, std::uint32_t>> by_key;
   std::vector<std::string> pattern_order;
+  std::vector<std::string> subject_keys;
   pattern_order.reserve(static_cast<std::size_t>(ratings.rows()));
+  subject_keys.reserve(static_cast<std::size_t>(ratings.rows()));
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
     std::string key;
     std::vector<int> row(static_cast<std::size_t>(in.R));
@@ -125,10 +129,11 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
       key += std::to_string(ratings(i, j));
       key += ',';
     }
+    subject_keys.push_back(key);
     auto it = by_key.find(key);
     if (it == by_key.end()) {
       by_key.emplace(key, std::make_pair(std::move(row), std::uint32_t{1}));
-      pattern_order.push_back(std::move(key));
+      pattern_order.push_back(key);
     } else {
       it->second.second += 1;
     }
@@ -136,7 +141,11 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
 
   // For each unique observed pattern, enumerate compatible completions.
   std::uint32_t cum_offset = 0;
-  for (const auto& key : pattern_order) {
+  std::unordered_map<std::string, std::uint32_t> key_to_group;
+  key_to_group.reserve(pattern_order.size());
+  for (std::size_t g = 0; g < pattern_order.size(); ++g) {
+    const auto& key = pattern_order[g];
+    key_to_group.emplace(key, static_cast<std::uint32_t>(g));
     const auto& entry = by_key.at(key);
     const std::vector<int>& observed = entry.first;
     const std::uint32_t count = entry.second;
@@ -162,6 +171,10 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
       in.completion_indices.push_back(rank_tuple(comp, c));
     }
     cum_offset += static_cast<std::uint32_t>(completions.size());
+  }
+  in.subject_groups.reserve(subject_keys.size());
+  for (const auto& key : subject_keys) {
+    in.subject_groups.push_back(key_to_group.at(key));
   }
 
   // Total pattern space: c^R.
@@ -264,6 +277,8 @@ LouisReducedInfo build_louis_reduced_info(
   if (n_final <= 1) {
     out.info_star = RealMat::Zero(0, 0);
     out.jacobian = RealMat::Zero(n_final, 0);
+    out.group_scores = RealMat::Zero(
+        static_cast<Eigen::Index>(in.group_n_subjects.size()), 0);
     return out;
   }
 
@@ -281,6 +296,8 @@ LouisReducedInfo build_louis_reduced_info(
   }
 
   RealMat info_star = RealMat::Zero(n_final - 1, n_final - 1);
+  RealMat group_scores = RealMat::Zero(
+      static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
@@ -316,6 +333,7 @@ LouisReducedInfo build_louis_reduced_info(
       }
     }
     if (ref_score != 0.0) s_reduced.array() -= ref_score;
+    group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
 
     info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
                           * s_reduced * s_reduced.transpose();
@@ -324,6 +342,7 @@ LouisReducedInfo build_louis_reduced_info(
   // Symmetrise for numerical safety before eigendecomposition.
   out.info_star = 0.5 * (info_star + info_star.transpose());
   out.jacobian = constraint_jacobian(n_final, ref);
+  out.group_scores = std::move(group_scores);
   return out;
 }
 
@@ -508,7 +527,21 @@ Result<Estimation> estimate_fiml(
   }
 
   RealMat vcov = jacobian * em->vcov * jacobian.transpose();
-  return Estimation{std::move(estimates), std::move(vcov), {}};
+  RealMat psi = RealMat::Zero(n, 3);
+  const LouisReducedInfo info =
+      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
+  if (info.info_star.rows() > 0) {
+    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+    const RealMat jacobian_reduced = jacobian * info.jacobian;
+    const RealMat group_psi =
+        static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
+    for (Eigen::Index i = 0; i < n; ++i) {
+      psi.row(i) = group_psi.row(
+          static_cast<Eigen::Index>(in_res->subject_groups[static_cast<std::size_t>(i)]));
+    }
+  }
+
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
 }
 
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(

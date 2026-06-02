@@ -100,6 +100,21 @@ TEST_CASE("estimate_fiml: variance is symmetric and PSD") {
   CHECK(es.eigenvalues().minCoeff() > -1e-8);
 }
 
+TEST_CASE("estimate_fiml: influence functions reconstruct Louis vcov") {
+  IntMat x = twelve_subject_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(r.has_value());
+
+  REQUIRE(r->psi.rows() == x.rows());
+  REQUIRE(r->psi.cols() == 3);
+  const RealMat psi_vcov =
+      (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
 TEST_CASE("estimate_fiml: info_rcond affects Louis variance, not estimates") {
   IntMat x = twelve_subject_3rater_3cat();
   RealVec v(3);
