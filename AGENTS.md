@@ -110,8 +110,9 @@ the built site.
 - Keep Doxygen/header comments focused on C++ API contracts: inputs, output
   order, dimensions, error conditions, and short formulas only.
 - Do not commit generated documentation output under `docs/site/` or
-  `docs/doxygen/`. Build locally with `just docs`; GitHub Actions publishes
-  generated artifacts.
+  `docs/doxygen/`. R `.Rd` files under `r-package/man/` are also generated
+  during docs builds and ignored for now. Build locally with `just docs`;
+  GitHub Actions publishes generated artifacts.
 - GitHub Pages deployment is gated by the repository variable
   `ENABLE_PAGES_DEPLOY=true`. Private-repository Pages requires a GitHub plan
   that supports it; otherwise the workflow still builds docs without deploying.

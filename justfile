@@ -58,7 +58,7 @@ regen-oracle:
 # Build pkgdown site. Requires the R packages pkgdown and quarto; builds the
 # opt library first because pkgdown installs/loads the R package.
 docs-r: opt
-  @cd r-package && Rscript -e 'pkgdown::build_site()'
+  @cd r-package && Rscript -e 'roxygen2::roxygenise(); pkgdown::build_site()'
 
 # Build C++ API reference into the pkgdown output tree. Requires doxygen.
 docs-cpp:
