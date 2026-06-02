@@ -27,13 +27,16 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       results into caller buffers, with the Eigen versions becoming
       one-liners over `Eigen::Map`. Until then, not worth the surface
       doubling.
-- [ ] Decide whether to enable the `asan` preset by default once Fedora's
-      libasan / libubsan runtime packages are installed locally.
 - [ ] Re-evaluate whether counts-format input and continuous ratings should
       come back into the library after the paper is submitted.
 
 ## Done
 
+- [x] **Keep ASan opt-in.**
+      The default `dev` preset stays a portable debug build without
+      sanitizers. The `asan` preset remains available for targeted local runs
+      once the required libasan / libubsan runtimes are installed; making it
+      the default would make ordinary build/test loops too host-dependent.
 - [x] **Add `.clang-format` and a `just fmt-cpp` recipe.**
       The formatter config follows the active C++ style with two-space
       indentation and a 100-column limit. The recipe formats active C++
