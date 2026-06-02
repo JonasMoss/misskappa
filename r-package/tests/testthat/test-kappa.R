@@ -207,3 +207,31 @@ test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {
   fit <- kappa_continuous(x, method = "available", weight = "quadratic")
   expect_equal(unname(fit$estimates["Conger"]), 1.0, tolerance = 1e-9)
 })
+
+test_that("kappa_gwise() estimates Frechet and Hubert complete-data coefficients", {
+  x <- matrix(c(
+    1, 1, 2, 1, 1,
+    1, 2, 3, 2, 2,
+    2, 1, 1, 1, 1,
+    2, 3, 4, 4, 5
+  ), nrow = 4, byrow = TRUE)
+
+  fit_nom <- kappa_gwise(x, distance = "nominal")
+  expect_s3_class(fit_nom, "misskappa_estimate")
+  expect_named(fit_nom$estimates, c("Cohen", "Fleiss"))
+  expect_equal(unname(fit_nom$estimates["Cohen"]), 0.23353293413173815,
+               tolerance = 1e-9)
+  expect_equal(unname(fit_nom$estimates["Fleiss"]), 0.21735788407113500,
+               tolerance = 1e-9)
+  expect_equal(dim(stats::influence(fit_nom)), c(4L, 2L))
+
+  fit_abs <- kappa_gwise(x, distance = "absolute")
+  expect_equal(unname(fit_abs$estimates["Cohen"]), 0.45877378435517835,
+               tolerance = 1e-9)
+  expect_equal(unname(fit_abs$estimates["Fleiss"]), 0.44821878125323300,
+               tolerance = 1e-9)
+
+  fit_hubert <- kappa_gwise(matrix(c(1, 1, 1, 2, 2, 2), nrow = 2, byrow = TRUE),
+                            distance = "hubert")
+  expect_equal(unname(fit_hubert$estimates), c(1, 1), tolerance = 1e-9)
+})

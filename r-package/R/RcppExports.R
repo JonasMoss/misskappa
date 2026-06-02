@@ -28,3 +28,11 @@ rcpp_kappa_fiml_counts <- function(x, weight_type, values, r_total, em_options) 
 rcpp_fiml_louis_spectrum <- function(x, weight_type, values, em_options) {
   .Call(`_misskappa_rcpp_fiml_louis_spectrum`, x, weight_type, values, em_options)
 }
+
+rcpp_kappa_gwise_categorical <- function(x, distance_type, g, max_chance_tuples) {
+  .Call(`_misskappa_rcpp_kappa_gwise_categorical`, x, distance_type, g, max_chance_tuples)
+}
+
+rcpp_kappa_gwise_continuous <- function(x, distance_type, g, max_chance_tuples) {
+  .Call(`_misskappa_rcpp_kappa_gwise_continuous`, x, distance_type, g, max_chance_tuples)
+}

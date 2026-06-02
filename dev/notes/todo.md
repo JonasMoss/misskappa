@@ -18,6 +18,15 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Backlog
 
+- [ ] **Add closed rectangular g-wise / Frechet agreement.**
+      Implement a new estimator family for complete subjects-by-raters
+      rectangular designs, separate from the current pairwise loss pipeline.
+      Start with built-in Frechet nominal (mode disagreement), absolute
+      (median absolute deviation), quadratic (mean squared deviation), and
+      Hubert disagreement kernels; return Cohen-type and Fleiss-type
+      chance-corrected coefficients with influence-function vcov. Do not add
+      missing-rater support until the non-rectangular estimand and inference
+      assumptions are settled.
 - [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
       The Eigen API is already thin for the two consumers we have (in-tree
       C++ tests and R via Rcpp+RcppEigen). If we ever add a Python / Julia /

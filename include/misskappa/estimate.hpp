@@ -5,6 +5,8 @@
 #include "misskappa/result.hpp"
 #include "misskappa/types.hpp"
 
+#include <cstdint>
+
 namespace misskappa {
 
 struct EmOptions {
@@ -25,6 +27,14 @@ struct QuadraticOptions {
   QuadraticVcov vcov = QuadraticVcov::empirical;
   // Relative Mardia kurtosis beta. beta = 1 gives the normal covariance.
   double relative_kurtosis = 1.0;
+};
+
+struct GwiseOptions {
+  // If g <= 0, use all raters (g = R).
+  int g = 0;
+  // First implementation is direct over n^g item tuples. Reject oversized
+  // jobs until categorical binning / specialized continuous paths are added.
+  std::int64_t max_chance_tuples = 5000000;
 };
 
 // --- Categorical raw-rating estimators -------------------------------------
@@ -103,6 +113,24 @@ Result<Estimation> estimate_fiml_counts(
 Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
+
+// --- Closed rectangular g-wise estimators -----------------------------------
+//
+// Complete-data estimator for symmetric g-wise disagreement kernels. This is
+// the Frechet / Hubert-style multirater-distance family: observed
+// disagreement averages a g-argument distance over within-item rater
+// combinations; chance disagreement uses Cohen-type (distinct rater
+// combinations) and Fleiss-type (all ordered rater tuples) V-statistics.
+//
+// Missing ratings are intentionally not supported here. Categorical entries
+// must be non-negative codes in [0, C-1], where C is carried by `distance`.
+// Continuous entries must be finite. Estimates returned: (Cohen, Fleiss).
+Result<Estimation> estimate_gwise(
+    IntMatView ratings, loss::GwiseCategoricalDistance distance,
+    GwiseOptions opts = {});
+Result<Estimation> estimate_gwise_continuous(
+    RealMatView ratings, loss::GwiseContinuousDistance distance,
+    GwiseOptions opts = {});
 
 }  // namespace misskappa
 
