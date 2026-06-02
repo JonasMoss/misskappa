@@ -8,12 +8,12 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 ## Currently in flight
 
 - [x] Step 1: skeleton + legacy move into `dev/legacy/`.
-- [ ] Step 2: port loss layer (`common.cpp` -> `src/loss.cpp` on Eigen + Result).
-- [ ] Step 3: available-case estimator + variance.
-- [ ] Step 4: IPW + Gwet estimators.
-- [ ] Step 5: FIML / EM.
+- [x] Step 2: port loss layer (`common.cpp` -> `src/loss.cpp` on Eigen + Result).
+- [x] Step 3: available-case estimator + variance.
+- [x] Step 4: IPW + Gwet estimators.
+- [x] Step 5: FIML / EM.
 - [ ] Step 6: inference consolidation.
-- [ ] Step 7: R package wiring (Rcpp glue + S3 + sim list).
+- [x] Step 7: R package wiring (Rcpp glue + S3 + sim list).
 - [ ] Step 8: paper conversion (LyX -> .tex) + scripts wiring.
 
 ## Backlog
@@ -27,7 +27,6 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       results into caller buffers, with the Eigen versions becoming
       one-liners over `Eigen::Map`. Until then, not worth the surface
       doubling.
-- [ ] Wire CI (compile-only job under multiple compilers; R CMD check job).
 - [ ] Decide whether to enable the `asan` preset by default once Fedora's
       libasan / libubsan runtime packages are installed locally.
 - [ ] Add `.clang-format` and a `just fmt-cpp` recipe.
@@ -36,6 +35,11 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Wire CI.**
+      `.github/workflows/ci.yml` now runs a C++ dev build/test job and an
+      R package check job on Ubuntu 24.04. The R job builds the opt static
+      library, installs the local `dev/irrcacsmoke` oracle, and runs
+      `R CMD check --no-manual` against `r-package/`.
 - [x] **Add closed rectangular g-wise / Frechet agreement.**
       `estimate_gwise` and `kappa_gwise()` now cover complete
       subjects-by-raters designs with Frechet nominal, Frechet absolute,
