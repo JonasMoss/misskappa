@@ -11,8 +11,9 @@ audience is methods developers. The R package under `r-package/` is a thin
 Rcpp wrapper over the prebuilt static library, intended for empirical examples
 and the accompanying manuscripts under `papers/`.
 
-The combined draft (`papers/combined/kappa-missing.tex`) is being split into
-three papers (see `papers/combined/dev/split-plan.md`):
+The combined draft was split into three papers (see
+`papers/split-plan.md`) and then deleted on 2026-06-02 once fully
+migrated (recoverable from git history):
 `papers/ipw/` (Psychometrika; IPW + AC/Gwet comparison),
 `papers/fiml/` (Psychometrika or Biometrika; FIML / semiparametric efficiency
 under MAR), and `papers/quadratic/` (Biometrics; closed-form quadratic =
@@ -53,12 +54,13 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
 - `tests/tools/` — maintainer-only fixture-generation scripts (R).
 - `r-package/` — Rcpp bindings; consumes the prebuilt `libmisskappa.a`,
   separate from and not part of the C++ build.
-- `papers/` — research manuscripts. `papers/combined/` holds the
-  source-of-truth combined draft being split into three; `papers/ipw/`,
-  `papers/fiml/`, `papers/quadratic/` are the spinoffs. Each carries its
-  own `AGENTS.md`, `STYLE.md` (cloned from the combined draft), `justfile`,
-  bibliography, figures, tables, scripts, and results. The split decision
-  and section mapping live in `papers/combined/dev/split-plan.md`.
+- `papers/` — research manuscripts. `papers/ipw/`, `papers/fiml/`,
+  `papers/quadratic/` are the three spinoffs (plus the independent
+  `papers/ac1-paper/`). Each carries its own `AGENTS.md`, `STYLE.md`,
+  `justfile`, bibliography, figures, tables, scripts, and results. The
+  cross-paper plan and section mapping live in `papers/split-plan.md`;
+  cross-paper todos in `papers/todo.md`. The combined draft they were
+  split from was deleted on 2026-06-02 (recoverable from git history).
 - `docs/` — repo-level documentation assets, including shared artwork such as
   the project logo.
 - `dev/legacy/` — frozen reference: original R package, C++ implementation,

@@ -9,10 +9,13 @@ new tree can read the math out of them while porting:
 - `misskappa/` — original R package (C++17 + Armadillo + Rcpp + exceptions).
 - `code-analysis/` — original analysis scripts (e.g. simulation runner).
 - `notes/` — derivation and design notes that fed into the manuscript.
-- `kappa-missing.lyx` — original LyX manuscript (the source of truth at
-  the time of the restart). Replaced by `papers/combined/kappa-missing.tex`
-  (which is itself being split into `papers/{ipw,fiml,quadratic}/`).
-- `kappa-missing.pdf` — last compiled PDF snapshot.
+- `notes/kappa-missing.lyx` — original LyX manuscript (the source of
+  truth at the time of the restart). Superseded first by a combined
+  `kappa-missing.tex` rewrite (2026-05-26) and then by the three active
+  papers under `papers/{ipw,fiml,quadratic}/`. The intermediate combined
+  draft was deleted on 2026-06-02 once fully migrated (recoverable from
+  git history); the cross-paper plan it produced lives on at
+  `papers/split-plan.md`.
 - `Justfile` — the old repo-root Justfile.
 - `chunks/`, `pdf/`, `llm/`, `skills/`, `todo.md` — supporting material.
 
