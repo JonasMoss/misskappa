@@ -51,7 +51,7 @@ jobs:
       - name: Install R documentation dependencies
         shell: Rscript {0}
         run: |
-          install.packages(c("Rcpp", "RcppEigen", "pkgdown", "quarto"))
+          install.packages(c("Rcpp", "RcppEigen", "pkgdown", "quarto", "roxygen2"))
 
       - name: Build opt library
         run: |
@@ -61,6 +61,7 @@ jobs:
       - name: Build R documentation
         working-directory: r-package
         run: |
+          roxygen2::roxygenise()
           pkgdown::build_site()
         shell: Rscript {0}
 

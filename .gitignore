@@ -30,6 +30,7 @@ r-package/src/*.o
 r-package/src/*.so
 r-package/src/*.dll
 r-package/src/symbols.rds
+r-package/man/
 
 # Generated documentation
 docs/site/
