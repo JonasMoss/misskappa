@@ -1,6 +1,7 @@
 useDynLib(misskappa, .registration = TRUE)
 
 importFrom(Rcpp, sourceCpp)
+importFrom(stats, influence)
 
 export(joint_vcov)
 export(kappa)

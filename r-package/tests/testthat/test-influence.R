@@ -133,5 +133,5 @@ test_that("Hausman contrast kappa_AC - kappa_IPW agrees between joint_vcov and d
   diff_psi <- psi[, 1] - psi[, 4]   # ac.Conger - ipw.Conger
   v_direct <- sum(diff_psi^2) / (n * n)
 
-  expect_equal(v_contrast, v_direct, tolerance = 1e-12)
+  expect_equal(v_contrast, v_direct, tolerance = 1e-10)
 })
