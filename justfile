@@ -29,7 +29,10 @@ test-opt: opt
 r-install: opt
   @R CMD INSTALL --preclean r-package
 
-r-check: opt
+irrcacsmoke-install:
+  @R CMD INSTALL --preclean dev/irrcacsmoke
+
+r-check: opt irrcacsmoke-install
   @cleanup() { rm -f misskappa_*.tar.gz; }; \
     cleanup; \
     trap cleanup EXIT; \
