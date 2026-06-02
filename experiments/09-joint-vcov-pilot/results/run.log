@@ -1,0 +1,9 @@
+[08:50:53] UC8 start
+[08:50:53] UC8 done
+[08:50:53] UC1 start
+[08:54:27] UC1 done
+[08:54:28] UC4 start
+[08:55:27] UC4 done
+[08:55:27] UC2 start
+[08:56:05] UC2 done
+Wrote results/{metadata,uc*_replicates,uc*_summary}.csv

@@ -49,7 +49,7 @@ fmt_signed <- function(x, digits = 4) {
 Under what conditions on the missingness probabilities `pi_j` and rater
 exchangeability does IPW's MSE actually beat AC's? The paper's framing
 treats AC as an inefficient estimator; the smoke run of
-`papers/combined/scripts/simulations_raw_three_estimators.R` has IPW SD `> AC SD`
+`dev/legacy/combined/scripts/simulations_raw_three_estimators.R` has IPW SD `> AC SD`
 in the cell where AC is also consistent, which suggests the framing is
 backwards in finite samples.
 
