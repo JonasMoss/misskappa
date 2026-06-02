@@ -13,19 +13,28 @@
 ![missing data: handled](https://img.shields.io/badge/missing%20data-handled%20%F0%9F%98%8E-success)
 ![Kappa](https://img.shields.io/badge/Kappa-%F0%9F%98%8F-9146FF?logo=twitch&logoColor=white)
 
-A C++23 library for agreement coefficients (Cohen / Fleiss / Brennan-Prediger)
-with arbitrary numbers of raters, arbitrary pairwise loss matrices, and
-missing-data support under MCAR (available-case, IPW) and MAR (FIML / EM).
-Gwet's estimator is retained for comparison.
+A C++23 library for weighted agreement coefficients with any number of raters,
+arbitrary pairwise loss matrices, and support for missing ratings.
 
-The repository ships three things:
+## Coefficients
 
-- A standalone C++23 static library (`include/misskappa/`, `src/`).
-- An R package wrapping it via Rcpp (`r-package/`).
-- Research manuscripts using both (under `papers/`, with the lead manuscript targeting Psychometrika).
+- **Cohen's kappa** — [Cohen 1960](https://doi.org/10.1177/001316446002000104), [1968](https://doi.org/10.1037/h0026256)
+- **Fleiss' kappa** — [Fleiss 1971](https://doi.org/10.1037/h0031619)
+- **Conger's kappa** — [Conger 1980](https://doi.org/10.1037/0033-2909.88.2.322)
+- **Brennan–Prediger** — [Brennan & Prediger 1981](https://doi.org/10.1177/001316448104100307)
 
-The original C++17 + Armadillo implementation that grew alongside the
-manuscript is preserved under `dev/legacy/` for reference.
+## Missing data
+
+Incomplete categorical ratings are handled under two mechanisms:
+
+- **MCAR** — available-case analysis and inverse-probability weighting
+- **MAR** — full-information maximum likelihood and EM
+
+## Contents
+
+- **C++23 library** — `include/misskappa/` and `src/`
+- **R package** — `r-package/`, wrapping the library via Rcpp
+- **Manuscripts** — `papers/`, with the lead manuscript targeting Psychometrika
 
 ## Quick build
 
@@ -44,16 +53,15 @@ just r-check         # R CMD check + testthat
 just paper <slug>    # build the manuscript PDF for papers/<slug>/
 ```
 
-See `AGENTS.md` for the project contract and each paper's own
-`papers/<slug>/AGENTS.md` for manuscript-specific direction (the three
-spinoffs are under `papers/{ipw,fiml,quadratic}/`).
+See `AGENTS.md` for the project contract and each paper's `AGENTS.md` for
+manuscript-specific direction.
 
 ## License
 
 This repository is dual-licensed:
 
-- **Code** — the C++ library (`include/`, `src/`), the R package (`r-package/`),
-  and the build tooling are released under the **MIT License** (see `LICENSE`).
-- **Papers** — the manuscripts, figures, and text under `papers/` are released
-  under **CC BY 4.0** (see `papers/LICENSE`), in line with Plan S / the
-  Norwegian rights-retention strategy.
+- **Code** under the MIT License — see `LICENSE`. Covers the C++ library, the
+  R package, and the build tooling.
+- **Papers** under CC BY 4.0 — see `papers/LICENSE`. Covers the manuscripts,
+  figures, and text in `papers/`, in line with Plan S and the Norwegian
+  rights-retention strategy.
