@@ -39,6 +39,26 @@ Result<ContinuousLoss> quadratic_loss(double min_val, double max_val);
 Result<ContinuousLoss> radical_loss(double min_val, double max_val);
 Result<ContinuousLoss> ratio_loss(double min_val, double max_val);
 
+// Symmetric g-wise disagreement kernels for complete rectangular designs.
+// These are deliberately small POD wrappers around plain function pointers.
+// Categorical kernels expect category codes in [0, C-1]. Continuous kernels
+// expect finite real values. The estimator supplies exactly `g` values.
+struct GwiseCategoricalDistance {
+  int C;
+  double (*compute)(const int* values, int g, int C);
+};
+
+struct GwiseContinuousDistance {
+  double (*compute)(const double* values, int g);
+};
+
+Result<GwiseCategoricalDistance> frechet_nominal_distance(int C);
+Result<GwiseCategoricalDistance> hubert_categorical_distance(int C);
+
+Result<GwiseContinuousDistance> frechet_absolute_distance();
+Result<GwiseContinuousDistance> frechet_quadratic_distance();
+Result<GwiseContinuousDistance> hubert_continuous_distance();
+
 }  // namespace misskappa::loss
 
 #endif  // MISSKAPPA_LOSS_HPP

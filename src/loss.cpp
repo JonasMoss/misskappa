@@ -1,7 +1,9 @@
 #include "misskappa/loss.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <vector>
 
 namespace misskappa::loss {
 
@@ -189,6 +191,77 @@ Result<ContinuousLoss> ratio_loss(double min_val, double max_val) {
   const double den_term = (max_val - min_val) / (max_val + min_val);
   if (std::pow(den_term, 2) < zero_tol) return identity_loss();
   return ContinuousLoss{min_val, max_val, &continuous_kernels::ratio};
+}
+
+namespace gwise_kernels {
+
+double frechet_nominal(const int* values, int g, int C) {
+  std::vector<int> counts(static_cast<std::size_t>(C), 0);
+  int mode_count = 0;
+  for (int i = 0; i < g; ++i) {
+    const int count = ++counts[static_cast<std::size_t>(values[i])];
+    if (count > mode_count) mode_count = count;
+  }
+  return static_cast<double>(g - mode_count) / static_cast<double>(g);
+}
+
+double hubert_categorical(const int* values, int g, int /*C*/) {
+  for (int i = 1; i < g; ++i) {
+    if (values[i] != values[0]) return 1.0;
+  }
+  return 0.0;
+}
+
+double frechet_absolute(const double* values, int g) {
+  std::vector<double> work(values, values + g);
+  std::sort(work.begin(), work.end());
+  const double median = (g % 2 == 1)
+                            ? work[static_cast<std::size_t>(g / 2)]
+                            : 0.5 * (work[static_cast<std::size_t>(g / 2 - 1)]
+                                     + work[static_cast<std::size_t>(g / 2)]);
+  double acc = 0.0;
+  for (int i = 0; i < g; ++i) acc += std::abs(values[i] - median);
+  return acc / static_cast<double>(g);
+}
+
+double frechet_quadratic(const double* values, int g) {
+  double mean = 0.0;
+  for (int i = 0; i < g; ++i) mean += values[i];
+  mean /= static_cast<double>(g);
+  double acc = 0.0;
+  for (int i = 0; i < g; ++i) acc += std::pow(values[i] - mean, 2);
+  return acc / static_cast<double>(g);
+}
+
+double hubert_continuous(const double* values, int g) {
+  for (int i = 1; i < g; ++i) {
+    if (std::abs(values[i] - values[0]) >= zero_tol) return 1.0;
+  }
+  return 0.0;
+}
+
+}  // namespace gwise_kernels
+
+Result<GwiseCategoricalDistance> frechet_nominal_distance(int C) {
+  if (C <= 0) return std::unexpected(Error::invalid_argument);
+  return GwiseCategoricalDistance{C, &gwise_kernels::frechet_nominal};
+}
+
+Result<GwiseCategoricalDistance> hubert_categorical_distance(int C) {
+  if (C <= 0) return std::unexpected(Error::invalid_argument);
+  return GwiseCategoricalDistance{C, &gwise_kernels::hubert_categorical};
+}
+
+Result<GwiseContinuousDistance> frechet_absolute_distance() {
+  return GwiseContinuousDistance{&gwise_kernels::frechet_absolute};
+}
+
+Result<GwiseContinuousDistance> frechet_quadratic_distance() {
+  return GwiseContinuousDistance{&gwise_kernels::frechet_quadratic};
+}
+
+Result<GwiseContinuousDistance> hubert_continuous_distance() {
+  return GwiseContinuousDistance{&gwise_kernels::hubert_continuous};
 }
 
 }  // namespace misskappa::loss

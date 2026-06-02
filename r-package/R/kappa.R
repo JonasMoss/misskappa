@@ -396,3 +396,92 @@ kappa_continuous <- function(x,
     class = "misskappa_estimate"
   )
 }
+
+#' G-wise agreement coefficients for complete rectangular ratings
+#'
+#' @description
+#' Estimates closed-data g-wise Cohen-type and Fleiss-type agreement
+#' coefficients using multirater disagreement kernels. This is the
+#' Frechet / Hubert family for complete rectangular designs: every subject
+#' must have the same set of observed raters, and missing values are not
+#' supported.
+#'
+#' @param x A complete subjects-by-raters matrix or data frame.
+#' @param distance Multirater disagreement kernel. `"nominal"` uses Frechet
+#'   mode disagreement for categorical ratings; `"absolute"` uses median
+#'   absolute deviation; `"quadratic"` uses mean squared deviation; `"hubert"`
+#'   uses all-raters-equal disagreement.
+#' @param g Arity of the multirater distance. Defaults to all raters
+#'   (`ncol(x)`). Must be between 2 and `ncol(x)`.
+#' @param max_chance_tuples Maximum number of direct `n^g` item tuples to
+#'   evaluate before stopping. This first implementation is direct; optimized
+#'   categorical paths are future work.
+#'
+#' @return A `misskappa_estimate` object with `Cohen` and `Fleiss`
+#'   coefficients and a 2x2 influence-function covariance matrix.
+#'
+#' @export
+kappa_gwise <- function(x,
+                        distance = c("nominal", "absolute", "quadratic", "hubert"),
+                        g = NULL,
+                        max_chance_tuples = 5000000L) {
+  distance <- match.arg(distance)
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  if (is.null(g)) g <- ncol(x_mat)
+  if (!is.numeric(g) || length(g) != 1L || !is.finite(g) ||
+      g < 2 || g > ncol(x_mat)) {
+    stop("'g' must be an integer between 2 and ncol(x).")
+  }
+  if (!is.numeric(max_chance_tuples) || length(max_chance_tuples) != 1L ||
+      !is.finite(max_chance_tuples) || max_chance_tuples < 1 ||
+      max_chance_tuples > .Machine$integer.max) {
+    stop("'max_chance_tuples' must be a positive integer.")
+  }
+
+  if (distance %in% c("nominal", "hubert")) {
+    if (any(!is.finite(x_mat))) {
+      stop("'x' must be complete and finite for g-wise categorical distances.")
+    }
+    cats <- sort(unique(c(x_mat)))
+    x_indexed <- matrix(match(x_mat, cats) - 1L, nrow = nrow(x_mat), ncol = ncol(x_mat))
+    storage.mode(x_indexed) <- "integer"
+    out <- rcpp_kappa_gwise_categorical(
+      x = x_indexed,
+      distance_type = distance,
+      g = as.integer(g),
+      max_chance_tuples = as.integer(max_chance_tuples)
+    )
+  } else {
+    storage.mode(x_mat) <- "double"
+    out <- rcpp_kappa_gwise_continuous(
+      x = x_mat,
+      distance_type = distance,
+      g = as.integer(g),
+      max_chance_tuples = as.integer(max_chance_tuples)
+    )
+  }
+
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- c("Cohen", "Fleiss")
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      psi = psi_mat,
+      method = "gwise",
+      weight = distance,
+      distance = distance,
+      g = as.integer(g)
+    ),
+    class = "misskappa_estimate"
+  )
+}

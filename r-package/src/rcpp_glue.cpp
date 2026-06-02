@@ -398,3 +398,65 @@ Rcpp::List rcpp_kappa_continuous(
   }
   return estimation_to_list(unwrap(std::move(r)));
 }
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_gwise_categorical(
+    const Rcpp::IntegerMatrix& x,
+    std::string distance_type,
+    int g,
+    int max_chance_tuples) {
+  int C = 0;
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) {
+      const int v = x(i, j);
+      if (v == NA_INTEGER || v < 0) Rcpp::stop("G-wise categorical ratings must be complete non-negative codes.");
+      ratings(i, j) = v;
+      if (v + 1 > C) C = v + 1;
+    }
+  }
+
+  misskappa::loss::GwiseCategoricalDistance distance;
+  if (distance_type == "nominal") {
+    distance = unwrap(misskappa::loss::frechet_nominal_distance(C));
+  } else if (distance_type == "hubert") {
+    distance = unwrap(misskappa::loss::hubert_categorical_distance(C));
+  } else {
+    Rcpp::stop("Unknown categorical g-wise distance: " + distance_type);
+  }
+
+  misskappa::GwiseOptions opts;
+  opts.g = g;
+  opts.max_chance_tuples = max_chance_tuples;
+  auto r = misskappa::estimate_gwise(ratings, distance, opts);
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_gwise_continuous(
+    const Rcpp::NumericMatrix& x,
+    std::string distance_type,
+    int g,
+    int max_chance_tuples) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+
+  misskappa::loss::GwiseContinuousDistance distance;
+  if (distance_type == "absolute") {
+    distance = unwrap(misskappa::loss::frechet_absolute_distance());
+  } else if (distance_type == "quadratic") {
+    distance = unwrap(misskappa::loss::frechet_quadratic_distance());
+  } else if (distance_type == "hubert") {
+    distance = unwrap(misskappa::loss::hubert_continuous_distance());
+  } else {
+    Rcpp::stop("Unknown continuous g-wise distance: " + distance_type);
+  }
+
+  misskappa::GwiseOptions opts;
+  opts.g = g;
+  opts.max_chance_tuples = max_chance_tuples;
+  auto r = misskappa::estimate_gwise_continuous(ratings, distance, opts);
+  return estimation_to_list(unwrap(std::move(r)));
+}
