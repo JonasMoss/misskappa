@@ -18,17 +18,18 @@ functions return named numeric vectors (`estimate`, `variance`, `se`,
 - CI should not install oracle packages from CRAN; checked JSON fixtures can
   be added later if C++ golden tests need the same oracle.
 
-## Secondary: dev/legacy/misskappa
+## Secondary: legacy misskappa (deleted, in git history)
 
-The frozen legacy package is the secondary oracle while the port is in
-flight, because it is the version we already trust empirically.
-
-- `r-package/tests/testthat/test-parity-legacy.R` loads both the new and
-  the legacy package and asserts numerical agreement on a curated set of
-  inputs (matches `tests/fixtures/` where possible).
-- The legacy package is unbuilt by default; this test installs it locally
-  on first invocation and caches the install. It is skipped when the
-  legacy install fails (e.g., on systems without Armadillo).
+The original Armadillo + Rcpp `misskappa` generated the oracle values the
+C++ unit tests are frozen against (search `// Frozen against
+dev/legacy/misskappa` / `// Ported from dev/legacy/misskappa` in `src/`
+and `tests/unit/`). It was deleted from the working tree on 2026-06-02;
+the last commit that contains `dev/legacy/misskappa/` is
+`6b30f98a906446a6e0ba08dddd41deb54391a1ec`. To rebuild it or regenerate a
+fixture, `git checkout 6b30f98 -- dev/legacy/misskappa` and install it
+(C++17 + Armadillo + Rcpp). A live parity test was planned but never
+landed; current parity is enforced only by the frozen literals in the
+unit tests.
 
 ## Unit-level
 
