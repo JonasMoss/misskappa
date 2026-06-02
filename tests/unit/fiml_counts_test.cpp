@@ -130,6 +130,19 @@ TEST_CASE("FIML-counts: variance is symmetric and PSD") {
   CHECK(es.eigenvalues().minCoeff() > -1e-8);
 }
 
+TEST_CASE("FIML-counts: influence functions reconstruct Louis vcov") {
+  IntMat y = partial_counts_fixture();
+  auto W = ms::loss::identity_weights(3);
+  auto r = ms::estimate_fiml_counts(y, *W, /*r_total=*/4, EmOptions{});
+  REQUIRE(r.has_value());
+
+  REQUIRE(r->psi.rows() == y.rows());
+  REQUIRE(r->psi.cols() == 2);
+  const RealMat psi_vcov =
+      (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(y.rows()), 2);
+  CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
 TEST_CASE("FIML-counts: info_rcond affects Louis variance, not estimates") {
   IntMat y = partial_counts_fixture();
   auto W = ms::loss::identity_weights(3);

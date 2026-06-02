@@ -45,6 +45,12 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Expose influence functions for FIML estimators.**
+      Raw FIML and counts-format FIML now return per-subject influence
+      functions from the same reduced observed-score / Louis-information
+      path used for their vcov. C++ and R tests assert that
+      `crossprod(psi) / n^2` reconstructs the reported covariance, and
+      `joint_vcov()` / multi-fit `wald_test()` can include FIML fits.
 - [x] **Expose influence functions for counts and continuous estimators.**
       Counts-format available-case and continuous MCAR estimators now return
       per-subject IF matrices through the shared `misskappa_estimate` surface,
