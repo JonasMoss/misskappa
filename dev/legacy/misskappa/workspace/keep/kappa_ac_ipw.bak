@@ -1,0 +1,159 @@
+// conger_kappa_ipw_cpp.cpp
+//   IPW pairwise-available-case Conger κ with influence-function SE
+//
+// [[Rcpp::depends(RcppArmadillo)]]
+#include <RcppArmadillo.h>
+#include <unordered_map>
+#include <algorithm>
+
+// ---------- constants & helpers ------------------------------------------------
+constexpr int kNaInteger = -2147483648;      // R's NA_INTEGER
+
+struct ArmaIVecHash {
+  std::size_t operator()(const arma::ivec& v) const {
+    std::size_t seed = v.n_elem;
+    for (arma::uword i = 0; i < v.n_elem; ++i)
+      seed ^= v(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
+  }
+};
+struct ArmaIVecEqual {
+  bool operator()(const arma::ivec& a, const arma::ivec& b) const {
+    return (a.n_elem == b.n_elem) && arma::all(a == b);
+  }
+};
+
+// ---------- main routine -------------------------------------------------------
+// [[Rcpp::export]]
+Rcpp::List conger_kappa_ipw_cpp(const arma::imat& x,
+                                int  disagreement_type   = 1,
+                                double conf_level        = 0.95,
+                                double eps               = 0.0)
+{
+  const int n = x.n_rows;
+  const int R = x.n_cols;
+  if (R < 2) Rcpp::stop("Data must have at least 2 raters.");
+
+  // ---- 0. bin identical rows (same as your previous fn) -----------------------
+  std::unordered_map<arma::ivec,int,ArmaIVecHash,ArmaIVecEqual> row_map;
+  arma::uvec inverse_indices(n);
+  std::vector<arma::ivec> uniq_rows;
+  arma::uvec counts;
+
+  for (int i = 0; i < n; ++i) {
+    arma::ivec key = x.row(i).t();
+    auto it = row_map.find(key);
+    if (it == row_map.end()) {
+      int idx = uniq_rows.size();
+      row_map[key] = idx;
+      uniq_rows.push_back(key);
+      inverse_indices(i) = idx;
+      counts.resize(idx + 1);
+      counts(idx) = 1;
+    } else {
+      inverse_indices(i) = it->second;
+      counts(it->second)++;
+    }
+  }
+  const int U = uniq_rows.size();
+  arma::imat xU(U, R);
+  for (int u = 0; u < U; ++u) xU.row(u) = uniq_rows[u].t();
+  arma::umat MU = (xU != kNaInteger);
+
+  // ---- 1. empirical response probs, with winsorisation ------------------------
+  arma::vec pi_j(R, arma::fill::zeros);
+  arma::mat pi_jk(R, R, arma::fill::zeros);
+
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < R; ++j) {
+      if (x(i,j) == kNaInteger) continue;
+      pi_j(j) += 1.0;
+      for (int k = j + 1; k < R; ++k)
+        if (x(i,k) != kNaInteger) pi_jk(j,k) += 1.0;
+    }
+  }
+  pi_j  /= n;
+  pi_jk /= n;
+  pi_jk = pi_jk + pi_jk.t();      // symmetrise upper->lower
+  // winsorise
+  for (int j = 0; j < R; ++j)       pi_j(j)  = std::max(pi_j(j) , eps);
+  for (int j = 0; j < R-1; ++j)
+    for (int k = j+1; k < R; ++k) {
+      double v = std::max(pi_jk(j,k), eps);
+      pi_jk(j,k) = pi_jk(k,j) = v;
+    }
+
+    // disagreement helper
+    auto disc = [&](int v1, int v2){
+      switch(disagreement_type){
+      case 1: return (v1 == v2) ? 0.0 : 1.0;
+      case 2: return double(std::abs(v1 - v2));
+      case 3: return std::pow(double(v1 - v2), 2.0);
+      default: Rcpp::stop("Unknown disagreement_type"); return 0.0;
+      }
+    };
+
+    // ---- 2. tallies on unique rows ---------------------------------------------
+    arma::vec A_u(U, arma::fill::zeros), B_u(U, arma::fill::zeros);
+    for (int u = 0; u < U; ++u){
+      for (int j = 0; j < R-1; ++j) if (MU(u,j))
+        for (int k = j+1; k < R; ++k) if (MU(u,k)){
+          double w = 1.0 / pi_jk(j,k);
+          B_u(u) += w;
+          A_u(u) += w * disc(xU(u,j), xU(u,k));
+        }
+    }
+
+    arma::mat C_uu(U,U, arma::fill::zeros), D_uu(U,U, arma::fill::zeros);
+    for (int u = 0; u < U; ++u)
+      for (int v = 0; v < U; ++v)
+        for (int j = 0; j < R-1; ++j) if (MU(u,j))
+          for (int k = j+1; k < R; ++k) if (MU(v,k)){
+            double w = 1.0 / (pi_j(j) * pi_j(k));
+            D_uu(u,v) += w;
+            C_uu(u,v) += w * disc(xU(u,j), xU(v,k));
+          }
+
+          // ---- 3. point estimates -----------------------------------------------------
+          const double Abar = arma::dot(counts, A_u)            / n;
+          const double Bbar = arma::dot(counts, B_u)            / n;
+          const double d_hat = Abar / Bbar;
+
+          const double Cbar = arma::as_scalar(counts.t() * C_uu * counts) / (double(n)*n);
+          const double Dbar = arma::as_scalar(counts.t() * D_uu * counts) / (double(n)*n);
+          const double dC_hat = Cbar / Dbar;
+
+          const double kappa_hat = 1.0 - d_hat / dC_hat;
+
+          // ---- 4. influence-function values ------------------------------------------
+          arma::vec IF_k(n);
+
+          for (int i = 0; i < n; ++i){
+            int u = inverse_indices(i);
+
+            double IF_d  = (A_u(u) - d_hat * B_u(u)) / Bbar;
+
+            double gC_i = arma::dot(C_uu.row(u), counts) / n;
+            double gD_i = arma::dot(D_uu.row(u), counts) / n;
+            double IF_dC = (gC_i - dC_hat * gD_i) / Dbar;
+
+            IF_k(i) = -IF_d / dC_hat + d_hat * IF_dC / (dC_hat * dC_hat);
+          }
+
+          const double var_k = arma::dot(IF_k, IF_k) / (double(n) * n);
+          const double se_k  = std::sqrt(var_k);
+
+          // ---- 5. CI ------------------------------------------------------------------
+          double alpha = 1.0 - conf_level;
+          double zcrit = R::qnorm(1.0 - alpha / 2.0, 0.0, 1.0, 1, 0);
+          double ci_lo = kappa_hat - zcrit * se_k;
+          double ci_hi = kappa_hat + zcrit * se_k;
+
+          return Rcpp::List::create(
+            Rcpp::_["kappa"]   = kappa_hat,
+            Rcpp::_["se"]      = se_k,
+            Rcpp::_["ci"]      = Rcpp::NumericVector::create(ci_lo, ci_hi),
+            Rcpp::_["if_vals"] = IF_k,
+            Rcpp::_["eps"]     = eps
+          );
+}

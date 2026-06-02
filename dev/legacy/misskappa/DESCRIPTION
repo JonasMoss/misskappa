@@ -1,0 +1,31 @@
+Type: Package
+Package: misskappa
+Title: Inference for agreement coefficients with incomplete data
+Version: 1.0.0
+Author: Jonas Moss [aut, cre] (ORCID: 0000-0002-6876-6964)
+Maintainer: Jonas Moss <jonas.moss.statistics@gmail.com>
+Authors@R: 
+    person("Jonas", "Moss", , "jonas.moss.statistics@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-6876-6964"))
+Description: Provides consistent and efficient estimation and inference for weighted kappa coefficients 
+    (Fleiss, Conger, and Brennan–Prediger) under missing data. The methods apply to both 
+    rating-level data and count-level data, and support various weighting schemes. Estimation 
+    is based on maximum likelihood and the delta method.
+License: CC BY 4.0
+URL: https://jonasmoss.github.io/misskappa/
+LazyData: true
+Depends:
+    R (>= 3.5.0)
+Imports: 
+    Rcpp
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo
+NeedsCompilation: yes
+Suggests: 
+    testthat (>= 3.0.0),
+    irrCAC
