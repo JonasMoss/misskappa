@@ -11,6 +11,7 @@ Description: Estimation and inference for weighted agreement coefficients
     raters and arbitrary pairwise loss functions. Supports incomplete
     categorical ratings under MCAR (available-case, IPW) and MAR (FIML / EM).
     Wraps the standalone C++23 'misskappa' library.
+URL: https://jonasmoss.github.io/misskappa
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
