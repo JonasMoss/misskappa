@@ -1,45 +1,33 @@
-#' Coefficient alpha with missing categorical item responses
-#'
-#' @description
-#' Estimates coefficient alpha for scored categorical item batteries. Missing
-#' entries can be handled by pairwise covariance moments under MCAR
-#' (`"available"`) or by saturated categorical FIML / EM under MAR (`"fiml"`).
-#'
-#' @param x A subjects-by-items matrix of integer category codes; `NA`s
-#'   indicate missing entries.
-#' @param method One of `"available"` or `"fiml"`.
-#' @param values Optional numeric vector of category scores. Defaults to the
-#'   sorted unique observed categories.
-#' @param em_options Named list of options for `method = "fiml"`:
-#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
-#'   `info_rcond` is the relative eigenvalue cutoff used when inverting
-#'   Louis' observed information. Pass any subset.
-#'
-#' @return An object of class `misskappa_estimate` carrying one coefficient
-#'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
-#'   `coef`, `vcov`, `confint`, `as.data.frame`.
-#'
-#' @export
-alpha <- function(x,
-                  method = c("available", "fiml"),
-                  values = NULL,
-                  em_options = list()) {
-  method <- match.arg(method)
-
+# Build a numeric item-score matrix for alpha(). With values = NULL, the input
+# is already the score matrix. With values supplied, observed categories are
+# sorted and mapped to the supplied scores, preserving the old alpha() scoring
+# convention.
+.alpha_score_matrix <- function(x, values = NULL) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
   }
-  x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
-  storage.mode(x_mat) <- "integer"
+  X <- as.matrix(x)
+  if (!is.numeric(X)) stop("'x' must be numeric.")
+  storage.mode(X) <- "double"
+  if (ncol(X) < 2L) stop("coefficient alpha requires at least two items.")
 
-  out <- rcpp_alpha_raw(
-    x = x_mat,
-    method = method,
-    values = values,
-    em_options = em_options
-  )
+  if (!is.null(values)) {
+    if (!is.numeric(values)) stop("'values' must be numeric.")
+    observed <- is.finite(X)
+    if (!any(observed)) stop("all item responses are missing.")
+    categories <- sort(unique(c(X[observed])))
+    if (length(values) != length(categories)) {
+      stop("Length of 'values' must equal the number of unique observed categories.")
+    }
+    scored <- matrix(NA_real_, nrow = nrow(X), ncol = ncol(X),
+                     dimnames = dimnames(X))
+    scored[observed] <- values[match(X[observed], categories)]
+    X <- scored
+  }
+  X
+}
 
+.alpha_from_cpp <- function(out, method) {
   estimates <- as.numeric(out$estimates)
   names(estimates) <- "alpha"
   vcov_mat <- out$vcov
@@ -52,11 +40,101 @@ alpha <- function(x,
       estimates = estimates,
       vcov = vcov_mat,
       psi = psi_mat,
-      method = paste0("alpha-", method),
+      method = method,
       weight = "score"
     ),
     class = "misskappa_estimate"
   )
+}
+
+#' Coefficient alpha for numeric item scores with missing data
+#'
+#' @description
+#' Estimates coefficient alpha for a subjects-by-items matrix of numeric item
+#' scores. Missing entries can be handled by pairwise covariance moments under
+#' MCAR (`"available"`) or by saturated normal FIML / EM under ignorable
+#' missingness (`"fiml"`).
+#'
+#' For ordinal or otherwise categorical responses, either pass the scored
+#' numeric matrix directly or pass integer category codes with `values`; the
+#' observed categories are sorted and mapped to `values` before estimation.
+#' Use [alpha_cat_fiml()] for saturated multinomial FIML on finite categorical
+#' response patterns.
+#'
+#' @param x A subjects-by-items numeric matrix or data frame; `NA` and other
+#'   non-finite values indicate missing entries.
+#' @param method One of `"available"` or `"fiml"`. `"available"` uses
+#'   pairwise-available covariance moments and an influence-function sandwich
+#'   SE. `"fiml"` uses saturated normal FIML via [alpha_continuous()].
+#' @param values Optional numeric vector of scores for observed categories.
+#'   When supplied, its length must equal the number of unique finite entries
+#'   in `x`.
+#' @param se_type For `method = "fiml"`, standard-error flavour passed to
+#'   [alpha_continuous()]: `"sandwich"` or `"normal"`.
+#' @param em_options For `method = "fiml"`, named list tuning the normal EM
+#'   fit: `tol`, `max_iter`, and `fd_h`. Pass any subset.
+#'
+#' @return An object of class `misskappa_estimate` carrying one coefficient
+#'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
+#'   `coef`, `vcov`, `confint`, `as.data.frame`, and, when available,
+#'   `influence`.
+#'
+#' @export
+alpha <- function(x,
+                  method = c("available", "fiml"),
+                  values = NULL,
+                  se_type = c("sandwich", "normal"),
+                  em_options = list()) {
+  method <- match.arg(method)
+  se_type <- match.arg(se_type)
+  X <- .alpha_score_matrix(x, values)
+
+  if (method == "available") {
+    out <- rcpp_alpha_available_continuous(X)
+    return(.alpha_from_cpp(out, method = "alpha-available"))
+  }
+
+  alpha_continuous(X, se_type = se_type, em_options = em_options)
+}
+
+#' Saturated categorical FIML coefficient alpha
+#'
+#' @description
+#' Estimates coefficient alpha for scored categorical item batteries by fitting
+#' the saturated multinomial full-response distribution with EM, then mapping
+#' that distribution to the implied scored covariance matrix. This is the
+#' finite-category MAR estimator; for pairwise-available alpha on scored item
+#' data, use [alpha()].
+#'
+#' @param x A subjects-by-items matrix of integer category codes; `NA`s
+#'   indicate missing entries.
+#' @param values Optional numeric vector of category scores. Defaults to the
+#'   sorted unique observed categories.
+#' @param em_options Named list of options for the categorical EM fit:
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
+#'   `info_rcond` is the relative eigenvalue cutoff used when inverting
+#'   Louis' observed information. Pass any subset.
+#'
+#' @return An object of class `misskappa_estimate` carrying one coefficient
+#'   named `alpha` and its asymptotic covariance matrix.
+#'
+#' @export
+alpha_cat_fiml <- function(x, values = NULL, em_options = list()) {
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  storage.mode(x_mat) <- "integer"
+
+  out <- rcpp_alpha_raw(
+    x = x_mat,
+    method = "fiml",
+    values = values,
+    em_options = em_options
+  )
+
+  .alpha_from_cpp(out, method = "alpha-cat-fiml")
 }
 
 #' Weighted agreement coefficients with missing data

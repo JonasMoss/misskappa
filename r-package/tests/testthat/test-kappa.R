@@ -14,7 +14,26 @@ test_that("kappa() routes the four methods and returns the S3 shape", {
   }
 })
 
-test_that("alpha() routes available and FIML and returns the S3 shape", {
+test_that("alpha() routes numeric available and normal FIML paths", {
+  set.seed(11)
+  n <- 120L
+  p <- 4L
+  L <- chol(0.25 + 0.75 * diag(p))
+  x <- matrix(rnorm(n * p), n, p) %*% L
+
+  fit_av <- alpha(x, method = "available")
+  fit_ml <- alpha(x, method = "fiml")
+
+  expect_s3_class(fit_av, "misskappa_estimate")
+  expect_s3_class(fit_ml, "misskappa_estimate")
+  expect_named(fit_av$estimates, "alpha")
+  expect_equal(dim(fit_av$vcov), c(1L, 1L))
+  expect_equal(dim(stats::influence(fit_av)), c(n, 1L))
+  expect_equal(unname(fit_ml$estimates), unname(fit_av$estimates),
+               tolerance = 1e-8)
+})
+
+test_that("alpha_cat_fiml() exposes saturated categorical FIML", {
   x <- matrix(c(
     1, 1, 2,
     2, 2, 2,
@@ -24,7 +43,7 @@ test_that("alpha() routes available and FIML and returns the S3 shape", {
     3, 3, 2
   ), nrow = 6, byrow = TRUE)
   fit_av <- alpha(x, method = "available")
-  fit_ml <- alpha(x, method = "fiml")
+  fit_ml <- alpha_cat_fiml(x)
 
   expect_s3_class(fit_av, "misskappa_estimate")
   expect_s3_class(fit_ml, "misskappa_estimate")
