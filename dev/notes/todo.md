@@ -34,9 +34,12 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       notes about item scoring/reversal and the fixed-category support used.
       Starter categorical smoke/calibration runners now live in
       `experiments/15-alpha-categorical-smoke/` and
-      `experiments/16-alpha-calibration-sweep/`; the full-grade
-      replication budget, normal-FIML comparison, applied `psych::bfi`
-      example, and alpha-specific Louis spectrum diagnostic remain open.
+      `experiments/16-alpha-calibration-sweep/`. Experiment 16 has a
+      capped `B = 200` calibration pass: `5^6, n = 4000` was too slow
+      for an ordinary run, and `5^6` FIML retains downward bias through
+      `n = 1000`. The normal-FIML comparison, applied `psych::bfi`
+      example, alpha-specific Louis spectrum diagnostic, and explicit
+      high-dimensional FIML guardrails remain open.
 - [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Continue the manuscript split/wiring work under the paper-local todo
       files once the current manuscript tree noise is settled.

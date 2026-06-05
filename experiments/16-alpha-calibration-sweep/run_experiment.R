@@ -17,6 +17,7 @@ usage <- function(status = 0L) {
     "  --smoke                Cheap check: tiny3x4 only, n=120, reps=4.\n",
     "  --reps N               Replicates per cell. Default: 40.\n",
     "  --n-grid LIST          Comma-separated n grid. Default: 250,1000.\n",
+    "  --paper-n-grid LIST    Optional n grid for paper5x6 only. Default: --n-grid.\n",
     "  --profiles LIST        Profiles: tiny3x4,ordinal4x5,paper5x6. Default: all.\n",
     "  --mechanisms LIST      Mechanisms: complete,mcar,mar. Default: all three.\n",
     "  --seed-base N          Base seed. Default: 161600.\n",
@@ -24,7 +25,7 @@ usage <- function(status = 0L) {
     "  --progress             Print one line per design cell.\n\n",
     "Examples:\n",
     "  Rscript run_experiment.R --smoke\n",
-    "  Rscript run_experiment.R --reps 200 --n-grid 250,1000,4000\n"
+    "  Rscript run_experiment.R --reps 200 --n-grid 250,1000,4000 --paper-n-grid 250,1000\n"
   ))
   quit(save = "no", status = status)
 }
@@ -49,13 +50,17 @@ parse_args <- function(argv) {
     smoke = FALSE,
     reps = 40L,
     n_grid = c(250L, 1000L),
+    paper_n_grid = NULL,
     profiles = c("tiny3x4", "ordinal4x5", "paper5x6"),
     mechanisms = c("complete", "mcar", "mar"),
     seed_base = 161600L,
     out_dir = file.path(script_dir, "results"),
     progress = FALSE
   )
-  explicit <- list(reps = FALSE, n_grid = FALSE, profiles = FALSE, mechanisms = FALSE)
+  explicit <- list(
+    reps = FALSE, n_grid = FALSE, paper_n_grid = FALSE,
+    profiles = FALSE, mechanisms = FALSE
+  )
 
   i <- 1L
   while (i <= length(argv)) {
@@ -72,7 +77,7 @@ parse_args <- function(argv) {
       next
     }
 
-    needs_value <- c("--reps", "--n-grid", "--profiles", "--mechanisms",
+    needs_value <- c("--reps", "--n-grid", "--paper-n-grid", "--profiles", "--mechanisms",
                      "--seed-base", "--out-dir")
     if (arg %in% needs_value) {
       if (i == length(argv)) stop(arg, " needs a value.", call. = FALSE)
@@ -84,6 +89,10 @@ parse_args <- function(argv) {
       if (arg == "--n-grid") {
         opts$n_grid <- parse_csv_int(val, arg)
         explicit$n_grid <- TRUE
+      }
+      if (arg == "--paper-n-grid") {
+        opts$paper_n_grid <- parse_csv_int(val, arg)
+        explicit$paper_n_grid <- TRUE
       }
       if (arg == "--profiles") {
         opts$profiles <- parse_csv_chr(val)
@@ -104,6 +113,7 @@ parse_args <- function(argv) {
   if (opts$smoke) {
     if (!explicit$reps) opts$reps <- 4L
     if (!explicit$n_grid) opts$n_grid <- 120L
+    if (!explicit$paper_n_grid) opts$paper_n_grid <- NULL
     if (!explicit$profiles) opts$profiles <- "tiny3x4"
     if (!explicit$mechanisms) opts$mechanisms <- c("complete", "mcar", "mar")
   }
@@ -118,6 +128,10 @@ parse_args <- function(argv) {
   if (is.na(opts$reps) || opts$reps < 1L) stop("--reps must be >= 1.", call. = FALSE)
   if (any(is.na(opts$n_grid)) || any(opts$n_grid < 20L)) {
     stop("--n-grid must contain integers >= 20.", call. = FALSE)
+  }
+  if (!is.null(opts$paper_n_grid) &&
+      (any(is.na(opts$paper_n_grid)) || any(opts$paper_n_grid < 20L))) {
+    stop("--paper-n-grid must contain integers >= 20.", call. = FALSE)
   }
   if (is.na(opts$seed_base)) stop("--seed-base must be an integer.", call. = FALSE)
   opts
@@ -447,10 +461,20 @@ summarize_replicates <- function(df) {
 
 replicate_rows <- list()
 cell <- 0L
-total_cells <- length(profiles) * length(opts$mechanisms) * length(opts$n_grid)
+n_grid_for_profile <- function(profile) {
+  if (identical(profile$profile, "paper5x6") && !is.null(opts$paper_n_grid)) {
+    opts$paper_n_grid
+  } else {
+    opts$n_grid
+  }
+}
+
+total_cells <- sum(vapply(profiles, function(profile) {
+  length(opts$mechanisms) * length(n_grid_for_profile(profile))
+}, integer(1)))
 for (profile in profiles) {
   for (mechanism in opts$mechanisms) {
-    for (n in opts$n_grid) {
+    for (n in n_grid_for_profile(profile)) {
       cell <- cell + 1L
       log_progress(
         "cell %d/%d: %s %s n=%d reps=%d",
@@ -480,9 +504,9 @@ script_path <- if (length(script_arg) == 0L) {
 
 metadata <- data.frame(
   key = c(
-    "generated_at", "script", "smoke", "reps", "n_grid", "profiles",
-    "mechanisms", "seed_base", "em_max_iter", "em_tol", "em_prune_tol",
-    "em_start_alpha", "em_info_rcond", "truth_method",
+    "generated_at", "script", "smoke", "reps", "n_grid", "paper_n_grid",
+    "profiles", "mechanisms", "seed_base", "em_max_iter", "em_tol",
+    "em_prune_tol", "em_start_alpha", "em_info_rcond", "truth_method",
     "misskappa_version", "r_version"
   ),
   value = c(
@@ -491,6 +515,7 @@ metadata <- data.frame(
     as.character(opts$smoke),
     as.character(opts$reps),
     paste(opts$n_grid, collapse = ","),
+    if (is.null(opts$paper_n_grid)) "" else paste(opts$paper_n_grid, collapse = ","),
     paste(opts$profiles, collapse = ","),
     paste(opts$mechanisms, collapse = ","),
     as.character(opts$seed_base),
