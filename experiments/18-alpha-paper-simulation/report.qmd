@@ -1,0 +1,159 @@
+---
+title: "Experiment 18: Alpha Missing Paper Simulation"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+res_dir <- "results"
+if (!dir.exists(res_dir)) {
+  res_dir <- file.path("experiments", "18-alpha-paper-simulation", "results")
+}
+needed <- c("truth.csv", "summary.csv", "metadata.csv")
+missing <- needed[!file.exists(file.path(res_dir, needed))]
+if (length(missing)) {
+  stop(
+    "Missing results: ", paste(missing, collapse = ", "),
+    ". Run: Rscript experiments/18-alpha-paper-simulation/run_experiment.R --smoke"
+  )
+}
+truth <- read.csv(file.path(res_dir, "truth.csv"), stringsAsFactors = FALSE)
+summary <- read.csv(file.path(res_dir, "summary.csv"), stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(res_dir, "metadata.csv"), stringsAsFactors = FALSE)
+
+fmt <- function(x, digits = 4) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+```
+
+## Question
+
+For the standalone alpha-missing paper, do the paper-backed continuous item
+models and clean MCAR/MAR mechanisms produce the expected qualitative split:
+pairwise alpha is acceptable under MCAR but vulnerable under MAR, while
+normal-FIML is the MAR workhorse?
+
+This first pass exercises the continuous arm. Pairwise coverage is intentionally
+blank because the package does not yet expose the overlapping-subsample
+pairwise SE.
+
+## Short Answer
+
+```{r short-answer}
+smoke <- metadata$value[metadata$key == "smoke"]
+reps <- metadata$value[metadata$key == "reps"]
+```
+
+This is a `r ifelse(identical(smoke, "TRUE"), "smoke", "configured")` run with
+`r reps` replications per cell. It is mainly an API and design check. The
+important thing to inspect is whether the MCAR rows keep pairwise and FIML
+centered on the same truth, while observed-anchor MAR starts separating the
+pairwise/listwise estimates from FIML.
+
+## Truths
+
+```{r truths}
+truth_tab <- truth[, c("dgp", "family", "p", "truth_alpha",
+                       "min_loading", "max_loading",
+                       "min_residual_var", "max_residual_var")]
+truth_tab$truth_alpha <- fmt(truth_tab$truth_alpha)
+truth_tab$min_loading <- fmt(truth_tab$min_loading)
+truth_tab$max_loading <- fmt(truth_tab$max_loading)
+truth_tab$min_residual_var <- fmt(truth_tab$min_residual_var)
+truth_tab$max_residual_var <- fmt(truth_tab$max_residual_var)
+knitr::kable(
+  truth_tab,
+  col.names = c("DGP", "Family", "Items", "Alpha",
+                "Min Loading", "Max Loading",
+                "Min Residual Var", "Max Residual Var")
+)
+```
+
+## Evidence
+
+```{r evidence-table}
+display <- summary[, c("dgp", "mechanism", "n", "method", "n_valid",
+                       "truth", "bias", "sd_estimate", "mean_se",
+                       "coverage95", "mean_observed_fraction",
+                       "median_elapsed_ms")]
+display$truth <- fmt(display$truth)
+display$bias <- fmt(display$bias)
+display$sd_estimate <- fmt(display$sd_estimate)
+display$mean_se <- fmt(display$mean_se)
+display$coverage95 <- fmt(display$coverage95, 3)
+display$mean_observed_fraction <- fmt(display$mean_observed_fraction, 3)
+display$median_elapsed_ms <- fmt(display$median_elapsed_ms, 1)
+knitr::kable(
+  display,
+  col.names = c("DGP", "Mechanism", "n", "Method", "Valid",
+                "Truth", "Bias", "MC SD", "Mean SE", "Coverage",
+                "Obs Frac", "Median Time (ms)")
+)
+```
+
+```{r bias-plot, fig.width=7, fig.height=4}
+old_par <- par(no.readonly = TRUE)
+on.exit(par(old_par), add = TRUE)
+plot_df <- summary[summary$method %in% c("pairwise", "fiml_sandwich", "listwise"), ]
+plot_df$cell <- paste(plot_df$dgp, plot_df$mechanism, sep = "\n")
+cols <- c(pairwise = "#000000", fiml_sandwich = "#009E73", listwise = "#D55E00")
+methods <- intersect(names(cols), unique(plot_df$method))
+x <- seq_along(unique(plot_df$cell))
+cells <- unique(plot_df$cell)
+ylim <- range(plot_df$bias, na.rm = TRUE)
+plot(x, rep(NA_real_, length(x)), ylim = ylim, xaxt = "n",
+     xlab = "", ylab = "Bias", main = "Bias by DGP and mechanism")
+abline(h = 0, col = "gray70", lty = 2)
+offsets <- seq(-0.18, 0.18, length.out = length(methods))
+for (m_idx in seq_along(methods)) {
+  m <- methods[m_idx]
+  g <- plot_df[plot_df$method == m, ]
+  points(match(g$cell, cells) + offsets[m_idx], g$bias,
+         pch = 16, col = cols[m])
+}
+axis(1, at = x, labels = cells, las = 2, cex.axis = 0.75)
+legend("topright", legend = methods, pch = 16, col = cols[methods], bty = "n")
+```
+
+## Caveats
+
+- This is the continuous arm only. The ordinal/categorical arm remains the next
+  addition, capped to six five-category items.
+- Pairwise coverage is pending the package port of the pairwise overlapping
+  subsample SE. Until then, pairwise rows report point-estimate behavior and
+  Monte Carlo SD only.
+- `fiml_normal` is the normal-theory SE; `fiml_sandwich` is the default robust
+  SE and the main continuous-MAR method.
+- Smoke results are not paper evidence. Use them to catch implementation and
+  design problems before the `B = 500` or larger pass.
+
+## Reproduce
+
+Smoke:
+
+```sh
+Rscript experiments/18-alpha-paper-simulation/run_experiment.R --smoke --progress
+quarto render experiments/18-alpha-paper-simulation/report.qmd
+```
+
+Main continuous pass:
+
+```sh
+Rscript experiments/18-alpha-paper-simulation/run_experiment.R \
+  --reps 500 \
+  --n-grid 200,500,1000 \
+  --dgps tau6_essential,congeneric6_zy,congeneric8_gradient,twofactor8 \
+  --mechanisms mcar15,mcar30,mar_zy_light,mar_anchor15,mar_anchor30 \
+  --methods pairwise,fiml_sandwich,fiml_normal,listwise \
+  --progress
+```
+
+```{r metadata}
+knitr::kable(metadata, col.names = c("Key", "Value"))
+```
