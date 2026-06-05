@@ -44,6 +44,8 @@ history) was split into three papers (see `papers/split-plan.md`). Each
   Louis-information pseudo-inverse.
 - `12-clean-mar-dgp` — **Paper B** replacement candidates for the
   inherited fake-MAR DGP C.
+- `15-alpha-categorical-smoke` — standalone alpha-missing paper
+  smoke/feasibility check for the categorical alpha package path.
 
 ## Open
 
@@ -95,6 +97,16 @@ smoke run is finite-sample MLE bias (clears at full grade) or a
 structural concern that warrants a manuscript caveat.
 
 ## Done
+
+### `15-alpha-categorical-smoke`
+
+Runner + report under `experiments/15-alpha-categorical-smoke/`. First
+mechanical alpha diagnostic for the standalone alpha-missing paper:
+complete-data FIML-vs-available equality, small MCAR/MAR categorical
+item batteries compared against the paired complete-data alpha, and
+starter `C^R` timing rows for saturated categorical EM. This is a smoke
+check only; the full bias, SE calibration, coverage, and Louis sweep
+remains open.
 
 ### `12-clean-mar-dgp`
 

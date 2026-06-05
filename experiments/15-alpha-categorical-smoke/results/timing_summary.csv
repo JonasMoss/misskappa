@@ -1,0 +1,4 @@
+"profile","profile_label","C","R","patterns","n","method","mechanism","reps","successes","failures","mean_elapsed_ms","median_elapsed_ms","max_elapsed_ms","mean_observed_fraction","min_pair_count_min"
+"tiny3x4","C = 3, R = 4",3,4,81,120,"fiml","mar",1,1,0,1,1,1,0.714583333333333,48
+"ordinal4x5","C = 4, R = 5",4,5,1024,120,"fiml","mar",1,1,0,4,4,4,0.696666666666667,42
+"paper5x6","C = 5, R = 6",5,6,15625,120,"fiml","mar",1,1,0,28,28,28,0.679166666666667,41
