@@ -112,9 +112,14 @@ run at `n ∈ {250, 1000, 4000}`, while `C^R = 15625` is capped at
 slow for an ordinary run. It records bias, MC SD, mean SE, Wald
 coverage, timing, observed support, and IF-vcov reconstruction.
 Mechanical checks pass, but sparse `5^6` FIML cells retain downward
-bias through `n = 1000`; high-dimensional FIML needs explicit
-feasibility guardrails and either larger scheduled benchmarks or
-approximate/sparse variants before manuscript claims.
+bias through `n = 1000`. Follow-up implementation checks found that
+an independent saturated R EM solve matches the package estimate to
+roughly `1e-5`, and the quadrature truth matches large complete-data
+Monte Carlo, so this should be treated as finite-sample
+high-dimensional categorical-FIML bias rather than an implementation
+blocker. High-dimensional FIML needs explicit feasibility guardrails,
+and debiasing, smoothed/penalized EM, bootstrap/jackknife correction,
+or approximate sparse variants can be left as optional future work.
 
 ### `15-alpha-categorical-smoke`
 

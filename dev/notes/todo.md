@@ -37,9 +37,15 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       `experiments/16-alpha-calibration-sweep/`. Experiment 16 has a
       capped `B = 200` calibration pass: `5^6, n = 4000` was too slow
       for an ordinary run, and `5^6` FIML retains downward bias through
-      `n = 1000`. The normal-FIML comparison, applied `psych::bfi`
-      example, alpha-specific Louis spectrum diagnostic, and explicit
-      high-dimensional FIML guardrails remain open.
+      `n = 1000`. Independent saturated-EM checks agree with the package
+      estimate, and the quadrature alpha truth agrees with large complete-data
+      Monte Carlo, so treat the residual high-dimensional categorical-FIML
+      bias as a finite-sample fact rather than an implementation blocker.
+      Manuscript notes can state this matter-of-factly and leave debiasing,
+      penalized/smoothed EM, bootstrap/jackknife corrections, or approximate
+      sparse variants as optional follow-up. The normal-FIML comparison,
+      applied `psych::bfi` example, alpha-specific Louis spectrum diagnostic,
+      and explicit high-dimensional FIML guardrails remain open.
 - [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Continue the manuscript split/wiring work under the paper-local todo
       files once the current manuscript tree noise is settled.
