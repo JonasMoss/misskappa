@@ -5,6 +5,7 @@ importFrom(stats, influence)
 
 export(joint_vcov)
 export(alpha)
+export(alpha_continuous)
 export(kappa)
 export(kappa_continuous)
 export(kappa_counts)

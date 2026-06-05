@@ -1,0 +1,83 @@
+---
+title: "Validation of normal-FIML coefficient alpha (`alpha_continuous`)"
+format: html
+execute:
+  echo: false
+  warning: false
+---
+
+```{r setup}
+res_dir <- "results"
+val_path <- file.path(res_dir, "validation.csv")
+if (!file.exists(val_path)) {
+  stop("No results. Run `Rscript run_experiment.R` first.")
+}
+validation <- read.csv(val_path, stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(res_dir, "metadata.csv"), stringsAsFactors = FALSE)
+```
+
+## Question
+
+Does `misskappa::alpha_continuous()` -- Cronbach's alpha from a saturated
+multivariate-normal covariance fitted by FIML/EM, with a delta-method standard
+error -- agree with the established implementations of the same estimand?
+
+The fit is checked against **lavaan**'s saturated `h1` estimator and
+**magmaan**'s `estimate_saturated_em_moments()`; the alpha point and the
+**sandwich** SE against **coefficientalpha** (`varphi = 0`, normal-theory ML);
+and the SE scale against a nonparametric **case bootstrap**. The bootstrap is a
+qualitative sanity check in the checked-in smoke run; the deterministic oracle
+comparisons are the main reproducibility checks. The `nonnormal/mcar` cell is
+the discriminator.
+
+## Moments
+
+Maximum absolute difference between the `alpha_continuous` EM covariance and the
+two oracles, per cell:
+
+```{r moments}
+knitr::kable(
+  validation[, c("dist", "mech", "max_cov_err_lavaan", "max_cov_err_magmaan")],
+  digits = 9,
+  col.names = c("dist", "mech", "vs lavaan", "vs magmaan"))
+```
+
+The covariance matches lavaan to roughly `1e-8` (a tolerance gap; lavaan runs at
+`tol = 1e-12`) and magmaan to roughly `1e-6`.
+
+## Standard errors
+
+```{r ses}
+knitr::kable(
+  validation[, c("dist", "mech", "alpha", "se_sandwich", "se_normal",
+                 "se_ca", "se_boot")],
+  digits = 5,
+  col.names = c("dist", "mech", "alpha", "SE sandwich", "SE normal",
+                "SE coef.alpha", "SE bootstrap"))
+```
+
+Reading the table:
+
+- Under **normal complete/MCAR** data, the sandwich and normal-theory SEs are
+  close; under **normal/MAR** they need not be identical in finite samples, but
+  both are on the same empirical scale as the smoke-run bootstrap.
+- The **sandwich** SE reproduces `coefficientalpha(varphi = 0)` to
+  near-numerical precision in this run -- an independent confirmation through a
+  different code path (`rsem`).
+- In the **`nonnormal/mcar`** cell the normal-theory delta SE undershoots the
+  sandwich and bootstrap scale, while the sandwich SE stays close to
+  `coefficientalpha`. This is the expected behaviour and the reason the package
+  defaults to `se_type = "sandwich"`; the
+  normal-theory SE (van Zyl, Neudecker & Nel, 2000) is exposed via
+  `se_type = "normal"` for the multivariate-normal regime.
+
+The provenance table records whether this is the cheap smoke run (`n = 300`,
+`boot = 100`) or a heavier validation run. Use the smoke bootstrap only to catch
+gross scale failures; paper-facing coverage and SE claims should come from the
+larger Monte Carlo experiments.
+
+## Provenance
+
+```{r meta}
+knitr::kable(metadata, col.names = c("key", "value"))
+```
