@@ -206,6 +206,17 @@ Rcpp::List rcpp_alpha_raw(
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_alpha_available_continuous(const Rcpp::NumericMatrix& x) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+
+  auto r = misskappa::estimate_alpha_available_continuous(ratings);
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_fiml_counts(
     const Rcpp::IntegerMatrix& x,
     std::string weight_type,

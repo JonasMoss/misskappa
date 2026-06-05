@@ -2,10 +2,11 @@
 # saturated normal FIML / EM covariance and a delta-method standard error.
 #
 # This is the {continuous, missing} cell of the alpha-under-missingness grid:
-# the categorical multinomial-EM route lives in alpha() / rcpp_alpha_raw(). The
-# fit here is pure R (a covariance-level routine, not an agreement-coefficient
-# kernel), validated against magmaan's estimate_saturated_em_moments() and
-# lavaan's saturated h1 estimator for the moments, and against
+# the categorical multinomial-EM route lives in alpha_cat_fiml() /
+# rcpp_alpha_raw(). The fit here is pure R (a covariance-level routine, not an
+# agreement-coefficient kernel), validated against magmaan's
+# estimate_saturated_em_moments() and lavaan's saturated h1 estimator for the
+# moments, and against
 # coefficientalpha (varphi = 0) and a case bootstrap for the standard error.
 #
 # Conventions kept deliberately aligned with magmaan so the two implementations
@@ -169,12 +170,11 @@
 #' contraction of the alpha gradient with the asymptotic covariance of the
 #' fitted moments.
 #'
-#' This is the continuous-item companion to [alpha()], which handles scored
-#' categorical batteries through a multinomial EM. The fit and its sandwich
-#' covariance reproduce magmaan's `estimate_saturated_em_moments()` and
-#' lavaan's saturated estimator; at `se_type = "sandwich"` the interval
-#' matches `coefficientalpha::alpha(varphi = 0)` and a nonparametric case
-#' bootstrap.
+#' This is the normal-FIML path also used by `alpha(method = "fiml")`. The fit
+#' and its sandwich covariance reproduce magmaan's
+#' `estimate_saturated_em_moments()` and lavaan's saturated estimator; at
+#' `se_type = "sandwich"` the interval matches
+#' `coefficientalpha::alpha(varphi = 0)` and a nonparametric case bootstrap.
 #'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped.
@@ -211,7 +211,7 @@
 #' L <- chol(0.3 + 0.7 * diag(p))
 #' x <- matrix(rnorm(n * p), n, p) %*% L
 #' x[matrix(runif(n * p) < 0.15, n, p)] <- NA
-#' fit <- alpha_continuous(x)
+#' fit <- alpha(x, method = "fiml")
 #' coef(fit)
 #' confint(fit)
 #'

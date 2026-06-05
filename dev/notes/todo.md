@@ -85,14 +85,17 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
-- [x] **Prototype coefficient alpha for scored categorical items.**
-      `estimate_alpha_available()` now computes the MCAR pairwise-covariance
-      alpha baseline with per-subject influence rows, and
-      `estimate_alpha_fiml()` reuses the raw categorical EM / Louis machinery
-      to fit the saturated full-response distribution and map theta to alpha.
-      The R package exposes `alpha(method = c("available", "fiml"))`.
-      Counts input, mixed item scales, feasibility benchmarking, approximate
-      EM, and experiments remain separate follow-ups.
+- [x] **Prototype coefficient alpha estimators.**
+      `estimate_alpha_available()` computes the scored-categorical
+      pairwise-covariance alpha baseline with per-subject influence rows, and
+      `estimate_alpha_available_continuous()` exposes the same MCAR sandwich
+      path for numeric item scores. `estimate_alpha_fiml()` reuses the raw
+      categorical EM / Louis machinery to fit the saturated full-response
+      distribution and map theta to alpha. The R package exposes numeric alpha
+      through `alpha(method = c("available", "fiml"))` and the finite-category
+      multinomial EM path through `alpha_cat_fiml()`. Counts input,
+      feasibility benchmarking, approximate EM, and experiments remain separate
+      follow-ups.
 - [x] **Settle the inference-surface policy.**
       `misskappa_estimate` now has a consistent R-facing inference contract:
       all estimators with subject-level influence rows expose them through

@@ -17,6 +17,21 @@ struct PairwiseCovariance {
   RealMat p2;
 };
 
+struct CategoricalAlphaData {
+  IntMatView ratings;
+  const RealVec& values;
+
+  bool observed(int i, int j) const { return ratings(i, j) != na_code; }
+  double value(int i, int j) const { return values(ratings(i, j)); }
+};
+
+struct ContinuousAlphaData {
+  RealMatView ratings;
+
+  bool observed(int i, int j) const { return std::isfinite(ratings(i, j)); }
+  double value(int i, int j) const { return ratings(i, j); }
+};
+
 Result<void> validate_alpha_inputs(IntMatView ratings, const RealVec& values) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
@@ -38,9 +53,22 @@ Result<void> validate_alpha_inputs(IntMatView ratings, const RealVec& values) {
   return {};
 }
 
-Result<PairwiseCovariance> pairwise_covariance(IntMatView ratings, const RealVec& values) {
+Result<void> validate_alpha_continuous_inputs(RealMatView ratings) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
+  if (n < 1 || R < 2) return std::unexpected(Error::invalid_argument);
+  bool any_observed = false;
+  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
+    for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
+      if (std::isfinite(ratings(i, j))) any_observed = true;
+    }
+  }
+  if (!any_observed) return std::unexpected(Error::invalid_argument);
+  return {};
+}
+
+template <typename Data>
+Result<PairwiseCovariance> pairwise_covariance(const Data& data, int n, int R) {
   PairwiseCovariance out;
   out.sigma = RealMat::Zero(R, R);
   out.mean_j = RealMat::Zero(R, R);
@@ -53,11 +81,9 @@ Result<PairwiseCovariance> pairwise_covariance(IntMatView ratings, const RealVec
       double sum_j = 0.0;
       double sum_k = 0.0;
       for (int i = 0; i < n; ++i) {
-        const int xj = ratings(i, j);
-        const int xk = ratings(i, k);
-        if (xj == na_code || xk == na_code) continue;
-        sum_j += values(xj);
-        sum_k += values(xk);
+        if (!data.observed(i, j) || !data.observed(i, k)) continue;
+        sum_j += data.value(i, j);
+        sum_k += data.value(i, k);
         ++count;
       }
       if (count <= 0) return std::unexpected(Error::invalid_argument);
@@ -65,10 +91,8 @@ Result<PairwiseCovariance> pairwise_covariance(IntMatView ratings, const RealVec
       const double muk = sum_k / static_cast<double>(count);
       double ss = 0.0;
       for (int i = 0; i < n; ++i) {
-        const int xj = ratings(i, j);
-        const int xk = ratings(i, k);
-        if (xj == na_code || xk == na_code) continue;
-        ss += (values(xj) - muj) * (values(xk) - muk);
+        if (!data.observed(i, j) || !data.observed(i, k)) continue;
+        ss += (data.value(i, j) - muj) * (data.value(i, k) - muk);
       }
       const double s = ss / static_cast<double>(count);
       const double p = static_cast<double>(count) / static_cast<double>(n);
@@ -100,15 +124,9 @@ RealMat alpha_gradient(double t1, double t2, int R) {
   return g;
 }
 
-}  // namespace
-
-Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& values) {
-  auto valid = validate_alpha_inputs(ratings, values);
-  if (!valid) return std::unexpected(valid.error());
-
-  const int n = static_cast<int>(ratings.rows());
-  const int R = static_cast<int>(ratings.cols());
-  auto cov = pairwise_covariance(ratings, values);
+template <typename Data>
+Result<Estimation> estimate_alpha_available_impl(const Data& data, int n, int R) {
+  auto cov = pairwise_covariance(data, n, R);
   if (!cov) return std::unexpected(cov.error());
 
   const double t1 = cov->sigma.sum();
@@ -121,11 +139,9 @@ Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& v
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < R; ++j) {
       for (int k = j; k < R; ++k) {
-        const int xj = ratings(i, j);
-        const int xk = ratings(i, k);
-        if (xj == na_code || xk == na_code) continue;
+        if (!data.observed(i, j) || !data.observed(i, k)) continue;
         const double centered_product =
-            (values(xj) - cov->mean_j(j, k)) * (values(xk) - cov->mean_k(j, k));
+            (data.value(i, j) - cov->mean_j(j, k)) * (data.value(i, k) - cov->mean_k(j, k));
         const double term =
             (centered_product - cov->sigma(j, k)) / cov->p2(j, k);
         phi(i, 0) += (j == k) ? term : 2.0 * term;
@@ -139,6 +155,26 @@ Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& v
   RealMat psi = build_psi_from_phi(phi, J);
 
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+}
+
+}  // namespace
+
+Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& values) {
+  auto valid = validate_alpha_inputs(ratings, values);
+  if (!valid) return std::unexpected(valid.error());
+
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  return estimate_alpha_available_impl(CategoricalAlphaData{ratings, values}, n, R);
+}
+
+Result<Estimation> estimate_alpha_available_continuous(RealMatView ratings) {
+  auto valid = validate_alpha_continuous_inputs(ratings);
+  if (!valid) return std::unexpected(valid.error());
+
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  return estimate_alpha_available_impl(ContinuousAlphaData{ratings}, n, R);
 }
 
 }  // namespace misskappa

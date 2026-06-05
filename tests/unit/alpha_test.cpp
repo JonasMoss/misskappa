@@ -3,6 +3,7 @@
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
+#include <limits>
 
 using misskappa::EmOptions;
 using misskappa::IntMat;
@@ -42,6 +43,26 @@ RealVec three_scores() {
   return v;
 }
 
+RealMat continuous_items() {
+  RealMat x(7, 3);
+  x << 1.0, 1.2, 1.1,
+       2.0, 2.1, 2.0,
+       3.0, 2.8, 3.2,
+       2.0, 2.2, 2.4,
+       1.0, 1.5, 1.2,
+       3.0, 2.9, 2.7,
+       2.0, 2.0, 2.1;
+  return x;
+}
+
+RealMat missing_continuous_items() {
+  RealMat x = continuous_items();
+  x(1, 1) = std::numeric_limits<double>::quiet_NaN();
+  x(3, 0) = std::numeric_limits<double>::quiet_NaN();
+  x(5, 2) = std::numeric_limits<double>::quiet_NaN();
+  return x;
+}
+
 double complete_alpha_by_covariance(const IntMat& x, const RealVec& values) {
   const int n = static_cast<int>(x.rows());
   const int R = static_cast<int>(x.cols());
@@ -53,6 +74,21 @@ double complete_alpha_by_covariance(const IntMat& x, const RealVec& values) {
   RealMat sigma = RealMat::Zero(R, R);
   for (int i = 0; i < n; ++i) {
     const RealVec centered = y.row(i).transpose() - mu;
+    sigma.noalias() += centered * centered.transpose();
+  }
+  sigma /= static_cast<double>(n);
+  const double t1 = sigma.sum();
+  const double t2 = sigma.diagonal().sum();
+  return (static_cast<double>(R) / static_cast<double>(R - 1)) * (1.0 - t2 / t1);
+}
+
+double complete_alpha_by_covariance(const RealMat& x) {
+  const int n = static_cast<int>(x.rows());
+  const int R = static_cast<int>(x.cols());
+  RealVec mu = x.colwise().mean().transpose();
+  RealMat sigma = RealMat::Zero(R, R);
+  for (int i = 0; i < n; ++i) {
+    const RealVec centered = x.row(i).transpose() - mu;
     sigma.noalias() += centered * centered.transpose();
   }
   sigma /= static_cast<double>(n);
@@ -82,6 +118,46 @@ TEST_CASE("estimate_alpha_available: complete data matches covariance alpha") {
   CHECK(r->vcov.cols() == 1);
   CHECK(r->vcov(0, 0) >= -1e-12);
   check_influence_reconstructs_vcov(*r, static_cast<int>(x.rows()));
+}
+
+TEST_CASE("estimate_alpha_available_continuous: complete data matches covariance alpha") {
+  const RealMat x = continuous_items();
+  auto r = ms::estimate_alpha_available_continuous(x);
+  REQUIRE(r.has_value());
+
+  CHECK(std::abs(r->estimates(0) - complete_alpha_by_covariance(x)) < 1e-12);
+  CHECK(r->vcov.rows() == 1);
+  CHECK(r->vcov.cols() == 1);
+  CHECK(r->vcov(0, 0) >= -1e-12);
+  check_influence_reconstructs_vcov(*r, static_cast<int>(x.rows()));
+}
+
+TEST_CASE("estimate_alpha_available_continuous: missing fixture is finite") {
+  const RealMat x = missing_continuous_items();
+  auto r = ms::estimate_alpha_available_continuous(x);
+  REQUIRE(r.has_value());
+
+  CHECK(std::isfinite(r->estimates(0)));
+  CHECK(r->vcov(0, 0) >= -1e-12);
+  check_influence_reconstructs_vcov(*r, static_cast<int>(x.rows()));
+}
+
+TEST_CASE("estimate_alpha_available: scored categorical path matches continuous path") {
+  const IntMat x = complete_items();
+  const RealVec values = three_scores();
+  RealMat y(x.rows(), x.cols());
+  for (int i = 0; i < x.rows(); ++i) {
+    for (int j = 0; j < x.cols(); ++j) y(i, j) = values(x(i, j));
+  }
+
+  auto cat = ms::estimate_alpha_available(x, values);
+  auto con = ms::estimate_alpha_available_continuous(y);
+  REQUIRE(cat.has_value());
+  REQUIRE(con.has_value());
+
+  CHECK(std::abs(cat->estimates(0) - con->estimates(0)) < 1e-12);
+  CHECK((cat->vcov - con->vcov).cwiseAbs().maxCoeff() < 1e-12);
+  CHECK((cat->psi - con->psi).cwiseAbs().maxCoeff() < 1e-12);
 }
 
 TEST_CASE("estimate_alpha_fiml: complete data matches available alpha") {
