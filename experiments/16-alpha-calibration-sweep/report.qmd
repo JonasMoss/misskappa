@@ -71,7 +71,7 @@ the exported per-subject influence rows.
 
 ## Short Answer
 
-This is a starter calibration run, not the final paper sweep. It found
+This is a capped calibration run, not the final paper sweep. It found
 `r total_failures` fit failures in the committed run, and the largest
 influence-to-vcov reconstruction error was `r fmt_sci(max_if_error)`.
 For the largest profile in this run (`r largest_profile$profile_label[1]`,
@@ -166,8 +166,14 @@ knitr::kable(diag, row.names = FALSE, align = "llrlrrr")
 - If a finite sample drops an entire category, the R wrapper estimates
   on the observed support. The summary records the minimum observed
   category count so support loss is visible.
-- The committed run is intended to exercise the full pipeline. Raise
-  `--reps` before using coverage or SE ratios as manuscript evidence.
+- The committed run uses `--paper-n-grid 250,1000`. An uncapped
+  `paper5x6`, `n = 4000`, `B = 200` pass was interrupted after it
+  stayed in the first high-dimensional `n = 4000` cell for several
+  minutes. Treat that as a feasibility finding: `5^6` needs separate
+  scheduled benchmarking or a smaller replication grid.
+- The committed run is intended to exercise the full pipeline and give
+  first-order calibration signals. Raise `--reps` further before using
+  coverage or SE ratios as manuscript evidence.
 
 ## Reproduce
 
@@ -184,14 +190,18 @@ Rscript experiments/16-alpha-calibration-sweep/run_experiment.R --profiles tiny3
 Fuller first pass:
 
 ```bash
-Rscript experiments/16-alpha-calibration-sweep/run_experiment.R --reps 200 --n-grid 250,1000,4000 --progress
+Rscript experiments/16-alpha-calibration-sweep/run_experiment.R \
+  --reps 200 \
+  --n-grid 250,1000,4000 \
+  --paper-n-grid 250,1000 \
+  --progress
 ```
 
 ```{r}
 cat(sprintf(
-  "Metadata: smoke=%s; profiles=%s; mechanisms=%s; n_grid=%s; reps=%s; seed_base=%s; truth=%s; misskappa=%s\n",
+  "Metadata: smoke=%s; profiles=%s; mechanisms=%s; n_grid=%s; paper_n_grid=%s; reps=%s; seed_base=%s; truth=%s; misskappa=%s\n",
   meta[["smoke"]], meta[["profiles"]], meta[["mechanisms"]], meta[["n_grid"]],
-  meta[["reps"]], meta[["seed_base"]], meta[["truth_method"]],
+  meta[["paper_n_grid"]], meta[["reps"]], meta[["seed_base"]], meta[["truth_method"]],
   meta[["misskappa_version"]]
 ))
 ```

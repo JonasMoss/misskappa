@@ -106,12 +106,15 @@ Runner + report under `experiments/16-alpha-calibration-sweep/`.
 Computes fixed population alpha truths by one-dimensional quadrature
 under latent ordinal item models, then compares alpha-available and
 categorical alpha-FIML across complete, MCAR, and anchor-MAR cells.
-The committed starter grid spans `C^R ∈ {81, 1024, 15625}`,
-`n ∈ {150, 500}`, and `B = 8`; it records bias, MC SD, mean SE,
-Wald coverage, timing, observed support, and IF-vcov reconstruction.
-Mechanical checks pass, but sparse `5^6` FIML cells show finite-sample
-downward bias at low `n`; use the runner for a larger replication and
-`n` sweep before manuscript claims.
+The committed capped full pass uses `B = 200`; `C^R ∈ {81, 1024}`
+run at `n ∈ {250, 1000, 4000}`, while `C^R = 15625` is capped at
+`n ∈ {250, 1000}` after the uncapped `5^6, n = 4000` cell proved too
+slow for an ordinary run. It records bias, MC SD, mean SE, Wald
+coverage, timing, observed support, and IF-vcov reconstruction.
+Mechanical checks pass, but sparse `5^6` FIML cells retain downward
+bias through `n = 1000`; high-dimensional FIML needs explicit
+feasibility guardrails and either larger scheduled benchmarks or
+approximate/sparse variants before manuscript claims.
 
 ### `15-alpha-categorical-smoke`
 
