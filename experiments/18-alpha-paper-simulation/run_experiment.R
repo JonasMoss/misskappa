@@ -6,8 +6,8 @@
 # thresholding a latent Gaussian copula. Population alpha is computed from the
 # exact scored-category covariance induced by the thresholds and latent
 # correlations. It compares pairwise alpha with its overlap-subsample SE,
-# saturated categorical EM, normal FIML applied to the scored categories, and
-# a listwise sanity check.
+# saturated categorical FIML, normal FIML applied to the scored categories,
+# and a listwise sanity check.
 #
 # Outputs:
 #   results/truth.csv
