@@ -114,6 +114,20 @@ Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::Cont
 Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
 
+// --- Coefficient alpha for scored categorical item batteries ----------------
+//
+// `ratings` is n x R with categories in [0, C-1] or `na_code`; `values` is the
+// length-C score vector used to turn categories into item scores. The available
+// estimator uses pairwise covariance moments and is an MCAR baseline. The FIML
+// estimator fits the saturated C^R full-response distribution by EM and maps it
+// to alpha through the implied covariance matrix, so it is intended for small
+// fixed-category batteries.
+//
+// Estimate returned: (alpha).
+Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& values);
+Result<Estimation> estimate_alpha_fiml(
+    IntMatView ratings, const RealVec& values, EmOptions opts);
+
 // --- Closed rectangular g-wise estimators -----------------------------------
 //
 // Complete-data estimator for symmetric g-wise disagreement kernels. This is

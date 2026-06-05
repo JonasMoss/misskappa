@@ -473,6 +473,70 @@ KappaMap build_kappa_map(const EmRunResult& em, RealMatView weights) {
   return m;
 }
 
+Result<void> validate_alpha_values(const RealVec& values) {
+  if (values.size() < 1) return std::unexpected(Error::invalid_argument);
+  for (Eigen::Index k = 0; k < values.size(); ++k) {
+    if (!std::isfinite(values(k))) return std::unexpected(Error::invalid_argument);
+  }
+  return {};
+}
+
+struct AlphaMap {
+  double alpha = std::numeric_limits<double>::quiet_NaN();
+  Eigen::VectorXd gradient;
+};
+
+AlphaMap build_alpha_map(const EmRunResult& em, const RealVec& values) {
+  const int R = em.R;
+  const Eigen::Index n_final = em.theta_hat.size();
+  const Eigen::VectorXd& theta = em.theta_hat;
+  const double factor = static_cast<double>(R) / static_cast<double>(R - 1);
+
+  RealMat pattern_scores = RealMat::Zero(n_final, R);
+  RealVec score_sum = RealVec::Zero(n_final);
+  RealVec score_sq_sum = RealVec::Zero(n_final);
+  RealVec mu = RealVec::Zero(R);
+  double e_score_sum_sq = 0.0;
+  double e_item_sq = 0.0;
+  double mean_score_sum = 0.0;
+
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    const auto row = unrank_tuple(em.pattern_indices[static_cast<std::size_t>(u)], R, em.c);
+    double s = 0.0;
+    double ss = 0.0;
+    for (int j = 0; j < R; ++j) {
+      const double y = values(row[static_cast<std::size_t>(j)]);
+      pattern_scores(u, j) = y;
+      mu(j) += theta(u) * y;
+      s += y;
+      ss += y * y;
+    }
+    score_sum(u) = s;
+    score_sq_sum(u) = ss;
+    mean_score_sum += theta(u) * s;
+    e_score_sum_sq += theta(u) * s * s;
+    e_item_sq += theta(u) * ss;
+  }
+
+  const double t1 = e_score_sum_sq - mean_score_sum * mean_score_sum;
+  const double t2 = e_item_sq - mu.squaredNorm();
+
+  AlphaMap out;
+  out.gradient = Eigen::VectorXd::Zero(n_final);
+  if (std::abs(t1) <= singular_tol) return out;
+  out.alpha = factor * (1.0 - t2 / t1);
+
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    const double grad_t1 = score_sum(u) * score_sum(u)
+                           - 2.0 * mean_score_sum * score_sum(u);
+    double mu_dot_y = 0.0;
+    for (int j = 0; j < R; ++j) mu_dot_y += mu(j) * pattern_scores(u, j);
+    const double grad_t2 = score_sq_sum(u) - 2.0 * mu_dot_y;
+    out.gradient(u) = factor * (t2 * grad_t1 - t1 * grad_t2) / (t1 * t1);
+  }
+  return out;
+}
+
 }  // namespace
 
 Result<Estimation> estimate_fiml(
@@ -528,6 +592,47 @@ Result<Estimation> estimate_fiml(
 
   RealMat vcov = jacobian * em->vcov * jacobian.transpose();
   RealMat psi = RealMat::Zero(n, 3);
+  const LouisReducedInfo info =
+      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
+  if (info.info_star.rows() > 0) {
+    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+    const RealMat jacobian_reduced = jacobian * info.jacobian;
+    const RealMat group_psi =
+        static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
+    for (Eigen::Index i = 0; i < n; ++i) {
+      psi.row(i) = group_psi.row(
+          static_cast<Eigen::Index>(in_res->subject_groups[static_cast<std::size_t>(i)]));
+    }
+  }
+
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+}
+
+Result<Estimation> estimate_alpha_fiml(
+    IntMatView ratings, const RealVec& values, EmOptions opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  if (n < 1) return std::unexpected(Error::invalid_argument);
+  if (R < 2) return std::unexpected(Error::invalid_argument);
+  auto valid = validate_alpha_values(values);
+  if (!valid) return std::unexpected(valid.error());
+  const int C = static_cast<int>(values.size());
+
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return std::unexpected(in_res.error());
+  auto em = run_em_preprocessed(*in_res, C, opts, true);
+  if (!em) return std::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+
+  const AlphaMap m = build_alpha_map(*em, values);
+  RealVec estimates(1);
+  estimates(0) = m.alpha;
+
+  RealMat jacobian(1, em->theta_hat.size());
+  jacobian.row(0) = m.gradient.transpose();
+  RealMat vcov = jacobian * em->vcov * jacobian.transpose();
+
+  RealMat psi = RealMat::Zero(n, 1);
   const LouisReducedInfo info =
       build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
   if (info.info_star.rows() > 0) {

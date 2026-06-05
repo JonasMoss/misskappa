@@ -47,6 +47,7 @@ T unwrap(misskappa::Result<T>&& r) {
 struct PreparedInputs {
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> ratings_indexed;
   Eigen::MatrixXd weights;
+  Eigen::VectorXd values;
   int C;
 };
 
@@ -112,7 +113,7 @@ PreparedInputs prepare_inputs(
     Rcpp::stop("Unknown weight type: " + weight_type);
   }
 
-  return {std::move(mapped), std::move(W), C};
+  return {std::move(mapped), std::move(W), std::move(v), C};
 }
 
 Rcpp::List estimation_to_list(const misskappa::Estimation& e) {
@@ -178,6 +179,26 @@ Rcpp::List rcpp_kappa_raw(
   } else if (method == "fiml") {
     misskappa::EmOptions opts = parse_em_options(em_options);
     r = misskappa::estimate_fiml(in.ratings_indexed, in.weights, opts);
+  } else {
+    Rcpp::stop("Unknown method: " + method);
+  }
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_alpha_raw(
+    const Rcpp::IntegerMatrix& x,
+    std::string method,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::List em_options) {
+  PreparedInputs in = prepare_inputs(x, "identity", values);
+
+  misskappa::Result<misskappa::Estimation> r;
+  if (method == "available") {
+    r = misskappa::estimate_alpha_available(in.ratings_indexed, in.values);
+  } else if (method == "fiml") {
+    misskappa::EmOptions opts = parse_em_options(em_options);
+    r = misskappa::estimate_alpha_fiml(in.ratings_indexed, in.values, opts);
   } else {
     Rcpp::stop("Unknown method: " + method);
   }
