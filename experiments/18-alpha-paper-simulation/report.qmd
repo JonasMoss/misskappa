@@ -34,14 +34,15 @@ fmt <- function(x, digits = 4) {
 
 ## Question
 
-For the standalone alpha-missing paper, do the paper-backed continuous item
-models and clean MCAR/MAR mechanisms produce the expected qualitative split:
-pairwise alpha is acceptable under MCAR but vulnerable under MAR, while
-normal-FIML is the MAR workhorse?
+For the standalone alpha-missing paper, do scored-ordinal item models and clean
+MCAR/MAR mechanisms produce the expected qualitative split: pairwise alpha has
+usable inference under MCAR but is vulnerable under MAR, while saturated
+categorical EM is the MAR workhorse?
 
-This first pass exercises the continuous arm. Pairwise coverage is intentionally
-blank because the package does not yet expose the overlapping-subsample
-pairwise SE.
+The item responses are three-category scored ordinal variables obtained by
+thresholding a latent Gaussian copula. Population alpha is computed from the
+exact scored-category covariance induced by the thresholds and latent
+correlations, not from the latent normal covariance.
 
 ## Short Answer
 
@@ -52,26 +53,26 @@ reps <- metadata$value[metadata$key == "reps"]
 
 This is a `r ifelse(identical(smoke, "TRUE"), "smoke", "configured")` run with
 `r reps` replications per cell. It is mainly an API and design check. The
-important thing to inspect is whether the MCAR rows keep pairwise and FIML
+important thing to inspect is whether the MCAR rows keep pairwise and Cat-EM
 centered on the same truth, while observed-anchor MAR starts separating the
-pairwise/listwise estimates from FIML.
+pairwise/listwise estimates from Cat-EM.
 
 ## Truths
 
 ```{r truths}
-truth_tab <- truth[, c("dgp", "family", "p", "truth_alpha",
-                       "min_loading", "max_loading",
-                       "min_residual_var", "max_residual_var")]
+truth_tab <- truth[, c("dgp", "family", "p", "categories", "truth_alpha",
+                       "min_latent_cor", "max_latent_cor",
+                       "min_score_cov", "max_score_cov")]
 truth_tab$truth_alpha <- fmt(truth_tab$truth_alpha)
-truth_tab$min_loading <- fmt(truth_tab$min_loading)
-truth_tab$max_loading <- fmt(truth_tab$max_loading)
-truth_tab$min_residual_var <- fmt(truth_tab$min_residual_var)
-truth_tab$max_residual_var <- fmt(truth_tab$max_residual_var)
+truth_tab$min_latent_cor <- fmt(truth_tab$min_latent_cor)
+truth_tab$max_latent_cor <- fmt(truth_tab$max_latent_cor)
+truth_tab$min_score_cov <- fmt(truth_tab$min_score_cov)
+truth_tab$max_score_cov <- fmt(truth_tab$max_score_cov)
 knitr::kable(
   truth_tab,
-  col.names = c("DGP", "Family", "Items", "Alpha",
-                "Min Loading", "Max Loading",
-                "Min Residual Var", "Max Residual Var")
+  col.names = c("DGP", "Family", "Items", "Categories", "Alpha",
+                "Min Latent Cor", "Max Latent Cor",
+                "Min Score Cov", "Max Score Cov")
 )
 ```
 
@@ -100,9 +101,9 @@ knitr::kable(
 ```{r bias-plot, fig.width=7, fig.height=4}
 old_par <- par(no.readonly = TRUE)
 on.exit(par(old_par), add = TRUE)
-plot_df <- summary[summary$method %in% c("pairwise", "fiml_sandwich", "listwise"), ]
+plot_df <- summary[summary$method %in% c("pairwise", "cat_em", "listwise"), ]
 plot_df$cell <- paste(plot_df$dgp, plot_df$mechanism, sep = "\n")
-cols <- c(pairwise = "#000000", fiml_sandwich = "#009E73", listwise = "#D55E00")
+cols <- c(pairwise = "#000000", cat_em = "#009E73", listwise = "#D55E00")
 methods <- intersect(names(cols), unique(plot_df$method))
 x <- seq_along(unique(plot_df$cell))
 cells <- unique(plot_df$cell)
@@ -123,13 +124,12 @@ legend("topright", legend = methods, pch = 16, col = cols[methods], bty = "n")
 
 ## Caveats
 
-- This is the continuous arm only. The ordinal/categorical arm remains the next
-  addition, capped to six five-category items.
-- Pairwise coverage is pending the package port of the pairwise overlapping
-  subsample SE. Until then, pairwise rows report point-estimate behavior and
-  Monte Carlo SD only.
-- `fiml_normal` is the normal-theory SE; `fiml_sandwich` is the default robust
-  SE and the main continuous-MAR method.
+- This is the scored-ordinal arm only, capped to six three-category items so the
+  saturated categorical EM state space stays small enough for repeated fits.
+- Pairwise coverage uses the package's overlap-subsample SE from
+  `alpha(method = "available")`.
+- `cat_em` is the saturated categorical EM estimator from
+  `alpha(method = "fiml")`; listwise is retained only as a sanity check.
 - Smoke results are not paper evidence. Use them to catch implementation and
   design problems before the `B = 500` or larger pass.
 
@@ -142,15 +142,15 @@ Rscript experiments/18-alpha-paper-simulation/run_experiment.R --smoke --progres
 quarto render experiments/18-alpha-paper-simulation/report.qmd
 ```
 
-Main continuous pass:
+Main ordinal pass:
 
 ```sh
 Rscript experiments/18-alpha-paper-simulation/run_experiment.R \
   --reps 500 \
   --n-grid 200,500,1000 \
-  --dgps tau6_essential,congeneric6_zy,congeneric8_gradient,twofactor8 \
-  --mechanisms mcar15,mcar30,mar_zy_light,mar_anchor15,mar_anchor30 \
-  --methods pairwise,fiml_sandwich,fiml_normal,listwise \
+  --dgps ordinal_tau6,ordinal_congeneric6,ordinal_twofactor6 \
+  --mechanisms mcar15,mcar30,mar_anchor15,mar_anchor30 \
+  --methods pairwise,cat_em,listwise \
   --progress
 ```
 
