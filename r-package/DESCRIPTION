@@ -9,9 +9,10 @@ Authors@R:
 Description: Estimation and inference for weighted agreement coefficients
     (Cohen, Fleiss, Conger, Brennan-Prediger) with arbitrary numbers of
     raters and arbitrary pairwise loss functions, plus coefficient alpha for
-    scored categorical item batteries. Supports incomplete categorical ratings
-    under MCAR (available-case, IPW) and MAR (FIML / EM). Wraps the standalone
-    C++23 'misskappa' library.
+    scored categorical and continuous item batteries. Supports incomplete data
+    under MCAR (available-case, IPW) and MAR (saturated categorical or normal
+    FIML / EM), with normal-theory and robust sandwich standard errors. Wraps
+    the standalone C++23 'misskappa' library.
 URL: https://jonasmoss.github.io/misskappa
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -25,6 +26,7 @@ LinkingTo:
     RcppEigen
 Suggests:
     testthat (>= 3.0.0),
-    irrcacsmoke
+    irrcacsmoke,
+    lavaan
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
