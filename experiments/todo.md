@@ -48,6 +48,9 @@ history) was split into three papers (see `papers/split-plan.md`). Each
   smoke/feasibility check for the categorical alpha package path.
 - `16-alpha-calibration-sweep` — standalone alpha-missing paper
   starter calibration and feasibility sweep for categorical alpha.
+- `18-alpha-paper-simulation` — standalone alpha-missing paper
+  simulation study once normal-FIML alpha and the pairwise SE surface are
+  ready.
 
 ## Open
 
@@ -72,6 +75,33 @@ MCAR-only or extends to MAR on pairwise-available data, and settles
 the efficiency-gain claim against Paper A's IPW. None of experiments
 01–06 are quadratic-focused; without 07 there is no empirical anchor
 for Paper C.
+
+### `18-alpha-paper-simulation` — feeds standalone alpha-missing paper
+
+**Question.** In paper-realistic finite samples, when is the
+pairwise-available alpha estimator calibrated under MCAR, how badly does
+it fail under clean MAR, and how much efficiency/calibration do the
+normal-FIML and categorical-FIML plug-ins buy?
+
+**Approach.** Implement the design in
+`dev/notes/alpha-missing-simulation-study.md`. Use paper-backed
+measurement models: an essential-tau six-item setup derived from
+Zhang-Yuan's equal-loading calibration, Zhang-Yuan's
+non-tau/congeneric one-factor setup, a stronger eight-item congeneric
+cell, and a two-factor non-congeneric stress cell. Cover MCAR with
+Enders-style target-item deletion at 15% and 30%; cover MAR with the
+Zhang-Yuan anchor mechanism plus stronger observed-anchor logistic MAR
+cells mirroring the clean-MAR style in experiments 12 and 16. Compare
+pairwise, normal-FIML sandwich/normal SEs, categorical FIML on capped
+five-category six-item cells, and optional listwise / average-n Feldt
+strawmen. Report bias, MC SD, mean SE, SE/SD ratio, Wald coverage, RMSE,
+failure rate, observed fraction, pair counts, support size, and timing.
+
+**Why it matters.** This becomes the main simulation evidence for the
+alpha-missing paper. It avoids Enders's parallel-only limitation while
+still borrowing his missingness-rate framing, and it keeps the saturated
+categorical FIML story honest after experiment 16 showed real
+high-dimensional finite-sample bias.
 
 ## In progress
 

@@ -45,7 +45,13 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       penalized/smoothed EM, bootstrap/jackknife corrections, or approximate
       sparse variants as optional follow-up. The normal-FIML comparison,
       applied `psych::bfi` example, alpha-specific Louis spectrum diagnostic,
-      and explicit high-dimensional FIML guardrails remain open.
+      and explicit high-dimensional FIML guardrails remain open. The proposed
+      paper-facing simulation grid is in
+      `dev/notes/alpha-missing-simulation-study.md`: use an essential-tau
+      setup derived from Zhang-Yuan's six-item calibration, include
+      Zhang-Yuan's congeneric cell, add stronger congeneric and two-factor
+      non-congeneric cells, borrow Enders/Savalei missingness rates, and use
+      clean observed-anchor MAR rather than truth-dependent missingness.
 - [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Continue the manuscript split/wiring work under the paper-local todo
       files once the current manuscript tree noise is settled.
