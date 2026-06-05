@@ -46,6 +46,8 @@ history) was split into three papers (see `papers/split-plan.md`). Each
   inherited fake-MAR DGP C.
 - `15-alpha-categorical-smoke` — standalone alpha-missing paper
   smoke/feasibility check for the categorical alpha package path.
+- `16-alpha-calibration-sweep` — standalone alpha-missing paper
+  starter calibration and feasibility sweep for categorical alpha.
 
 ## Open
 
@@ -97,6 +99,19 @@ smoke run is finite-sample MLE bias (clears at full grade) or a
 structural concern that warrants a manuscript caveat.
 
 ## Done
+
+### `16-alpha-calibration-sweep`
+
+Runner + report under `experiments/16-alpha-calibration-sweep/`.
+Computes fixed population alpha truths by one-dimensional quadrature
+under latent ordinal item models, then compares alpha-available and
+categorical alpha-FIML across complete, MCAR, and anchor-MAR cells.
+The committed starter grid spans `C^R ∈ {81, 1024, 15625}`,
+`n ∈ {150, 500}`, and `B = 8`; it records bias, MC SD, mean SE,
+Wald coverage, timing, observed support, and IF-vcov reconstruction.
+Mechanical checks pass, but sparse `5^6` FIML cells show finite-sample
+downward bias at low `n`; use the runner for a larger replication and
+`n` sweep before manuscript claims.
 
 ### `15-alpha-categorical-smoke`
 
