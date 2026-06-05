@@ -18,17 +18,6 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Active backlog
 
-- [ ] **Prototype coefficient alpha for scored categorical items.**
-      Treat alpha as a smooth functional of the saturated joint categorical
-      response distribution. First scope is raw subjects-by-items matrices with
-      a common fixed category set across items, scored by the category values
-      already passed through the R wrapper. Reuse/refactor the raw FIML EM +
-      Louis machinery, then map the fitted theta to `mu`, `Sigma`,
-      `1' Sigma 1`, `tr(Sigma)`, and
-      `alpha = R / (R - 1) * (1 - tr(Sigma) / (1' Sigma 1))`.
-      Include an MCAR available-case baseline from pairwise covariance moments.
-      Keep counts input, mixed item scales, and continuous/polychoric latent
-      SEM interpretations out of the first slice.
 - [ ] **Measure alpha FIML feasibility before expanding scope.**
       Exact EM over the full fixed-category pattern space is plausible for
       small Likert batteries but scales as `C^R`. Add guardrails/documentation
@@ -65,6 +54,14 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Done
 
+- [x] **Prototype coefficient alpha for scored categorical items.**
+      `estimate_alpha_available()` now computes the MCAR pairwise-covariance
+      alpha baseline with per-subject influence rows, and
+      `estimate_alpha_fiml()` reuses the raw categorical EM / Louis machinery
+      to fit the saturated full-response distribution and map theta to alpha.
+      The R package exposes `alpha(method = c("available", "fiml"))`.
+      Counts input, mixed item scales, feasibility benchmarking, approximate
+      EM, and experiments remain separate follow-ups.
 - [x] **Settle the inference-surface policy.**
       `misskappa_estimate` now has a consistent R-facing inference contract:
       all estimators with subject-level influence rows expose them through

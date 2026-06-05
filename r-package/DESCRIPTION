@@ -8,9 +8,10 @@ Authors@R:
            comment = c(ORCID = "0000-0002-6876-6964"))
 Description: Estimation and inference for weighted agreement coefficients
     (Cohen, Fleiss, Conger, Brennan-Prediger) with arbitrary numbers of
-    raters and arbitrary pairwise loss functions. Supports incomplete
-    categorical ratings under MCAR (available-case, IPW) and MAR (FIML / EM).
-    Wraps the standalone C++23 'misskappa' library.
+    raters and arbitrary pairwise loss functions, plus coefficient alpha for
+    scored categorical item batteries. Supports incomplete categorical ratings
+    under MCAR (available-case, IPW) and MAR (FIML / EM). Wraps the standalone
+    C++23 'misskappa' library.
 URL: https://jonasmoss.github.io/misskappa
 License: MIT + file LICENSE
 Encoding: UTF-8

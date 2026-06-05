@@ -14,6 +14,27 @@ test_that("kappa() routes the four methods and returns the S3 shape", {
   }
 })
 
+test_that("alpha() routes available and FIML and returns the S3 shape", {
+  x <- matrix(c(
+    1, 1, 2,
+    2, 2, 2,
+    3, 2, 3,
+    2, 3, 3,
+    1, 2, 1,
+    3, 3, 2
+  ), nrow = 6, byrow = TRUE)
+  fit_av <- alpha(x, method = "available")
+  fit_ml <- alpha(x, method = "fiml")
+
+  expect_s3_class(fit_av, "misskappa_estimate")
+  expect_s3_class(fit_ml, "misskappa_estimate")
+  expect_named(fit_av$estimates, "alpha")
+  expect_equal(dim(fit_av$vcov), c(1L, 1L))
+  expect_equal(dim(stats::influence(fit_av)), c(6L, 1L))
+  expect_equal(unname(fit_ml$estimates), unname(fit_av$estimates),
+               tolerance = 1e-8)
+})
+
 test_that("available-case on a Cohen-style 2-rater example matches the textbook value", {
   x <- matrix(
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),

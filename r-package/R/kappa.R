@@ -1,3 +1,64 @@
+#' Coefficient alpha with missing categorical item responses
+#'
+#' @description
+#' Estimates coefficient alpha for scored categorical item batteries. Missing
+#' entries can be handled by pairwise covariance moments under MCAR
+#' (`"available"`) or by saturated categorical FIML / EM under MAR (`"fiml"`).
+#'
+#' @param x A subjects-by-items matrix of integer category codes; `NA`s
+#'   indicate missing entries.
+#' @param method One of `"available"` or `"fiml"`.
+#' @param values Optional numeric vector of category scores. Defaults to the
+#'   sorted unique observed categories.
+#' @param em_options Named list of options for `method = "fiml"`:
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
+#'   `info_rcond` is the relative eigenvalue cutoff used when inverting
+#'   Louis' observed information. Pass any subset.
+#'
+#' @return An object of class `misskappa_estimate` carrying one coefficient
+#'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
+#'   `coef`, `vcov`, `confint`, `as.data.frame`.
+#'
+#' @export
+alpha <- function(x,
+                  method = c("available", "fiml"),
+                  values = NULL,
+                  em_options = list()) {
+  method <- match.arg(method)
+
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  storage.mode(x_mat) <- "integer"
+
+  out <- rcpp_alpha_raw(
+    x = x_mat,
+    method = method,
+    values = values,
+    em_options = em_options
+  )
+
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- "alpha"
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      psi = psi_mat,
+      method = paste0("alpha-", method),
+      weight = "score"
+    ),
+    class = "misskappa_estimate"
+  )
+}
+
 #' Weighted agreement coefficients with missing data
 #'
 #' @description
