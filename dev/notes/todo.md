@@ -32,6 +32,11 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       applied example on `psych::bfi`, reporting one alpha per Big Five
       personality scale under the available-case and FIML paths, with clear
       notes about item scoring/reversal and the fixed-category support used.
+      Starter categorical smoke/calibration runners now live in
+      `experiments/15-alpha-categorical-smoke/` and
+      `experiments/16-alpha-calibration-sweep/`; the full-grade
+      replication budget, normal-FIML comparison, applied `psych::bfi`
+      example, and alpha-specific Louis spectrum diagnostic remain open.
 - [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Continue the manuscript split/wiring work under the paper-local todo
       files once the current manuscript tree noise is settled.
