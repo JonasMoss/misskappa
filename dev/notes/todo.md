@@ -18,6 +18,17 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Active backlog
 
+- [ ] **Cut a 0.5.0-style R package release candidate.**
+      Before tagging, decide whether the package version should reset to a
+      pre-1.0 line (`0.5.0`) or keep continuity with the legacy package
+      version currently declared in `r-package/DESCRIPTION` (`2.0.0`).
+      Keep roxygen as the source of truth for `NAMESPACE` and `.Rd` files;
+      `just r-docs`, `just r-install`, `just r-check`, CI, and pkgdown now
+      regenerate docs from source. Make one explicit public-surface pass:
+      either keep the current specialized exports (`kappa_counts`,
+      `kappa_continuous`, `kappa_quadratic*`, `kappa_gwise`) as documented
+      advanced helpers, or move toward the narrower `kappa()` front door after
+      adding argument dispatch for those input shapes.
 - [ ] **Measure alpha FIML feasibility before expanding scope.**
       Exact EM over the full fixed-category pattern space is plausible for
       small Likert batteries but scales as `C^R`. Add guardrails/documentation
