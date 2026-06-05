@@ -49,7 +49,7 @@ jobs:
       - name: Install R dependencies
         shell: Rscript {0}
         run: |
-          install.packages(c("Rcpp", "RcppEigen", "testthat"))
+          install.packages(c("Rcpp", "RcppEigen", "roxygen2", "testthat"))
 
       - name: Build opt library
         run: |
@@ -58,6 +58,10 @@ jobs:
 
       - name: Install local irrCAC smoke oracle
         run: R CMD INSTALL --preclean dev/irrcacsmoke
+
+      - name: Generate R documentation
+        shell: Rscript {0}
+        run: roxygen2::roxygenise("r-package")
 
       - name: Check R package
         run: |

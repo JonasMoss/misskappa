@@ -36,13 +36,16 @@ test-opt: opt
   @ctest --preset opt
 
 # Reinstall the R package against a fresh opt build.
-r-install: opt
+r-docs:
+  @cd r-package && Rscript -e 'roxygen2::roxygenise()'
+
+r-install: opt r-docs
   @R CMD INSTALL --preclean r-package
 
 irrcacsmoke-install:
   @R CMD INSTALL --preclean dev/irrcacsmoke
 
-r-check: opt irrcacsmoke-install
+r-check: opt r-docs irrcacsmoke-install
   @cleanup() { rm -f misskappa_*.tar.gz; }; \
     cleanup; \
     trap cleanup EXIT; \

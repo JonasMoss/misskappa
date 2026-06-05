@@ -25,8 +25,11 @@ LinkingTo:
     Rcpp,
     RcppEigen
 Suggests:
+    roxygen2,
     testthat (>= 3.0.0),
     irrcacsmoke,
     lavaan
 Config/testthat/edition: 3
+Config/roxygen2/load: source
+Config/roxygen2/markdown: true
 Config/roxygen2/version: 8.0.0

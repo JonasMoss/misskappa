@@ -61,6 +61,3 @@ raters. *Psychological Bulletin*, 88(2), 322–328.
 
 Fleiss, J. L. (1971). Measuring nominal scale agreement among many raters.
 *Psychological Bulletin*, 76(5), 378–382.
-
-<!-- TODO: add citations to the misskappa papers (IPW / FIML / quadratic) once
-     they have stable titles and venues. -->
