@@ -18,6 +18,31 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Active backlog
 
+- [ ] **Prototype coefficient alpha for scored categorical items.**
+      Treat alpha as a smooth functional of the saturated joint categorical
+      response distribution. First scope is raw subjects-by-items matrices with
+      a common fixed category set across items, scored by the category values
+      already passed through the R wrapper. Reuse/refactor the raw FIML EM +
+      Louis machinery, then map the fitted theta to `mu`, `Sigma`,
+      `1' Sigma 1`, `tr(Sigma)`, and
+      `alpha = R / (R - 1) * (1 - tr(Sigma) / (1' Sigma 1))`.
+      Include an MCAR available-case baseline from pairwise covariance moments.
+      Keep counts input, mixed item scales, and continuous/polychoric latent
+      SEM interpretations out of the first slice.
+- [ ] **Measure alpha FIML feasibility before expanding scope.**
+      Exact EM over the full fixed-category pattern space is plausible for
+      small Likert batteries but scales as `C^R`. Add guardrails/documentation
+      around feasible `C, R`, benchmark memory/time on representative `C x R`
+      grids, and only then consider approximate or sparse EM variants
+      (active-support EM, low-rank/composite-likelihood starts, or other
+      approximations) as a separate follow-up.
+- [ ] **Add an alpha experiment suite.**
+      Simulate simple complete-data, MCAR, and MAR categorical item batteries;
+      compare complete-data alpha, pairwise/available covariance alpha, and
+      categorical FIML alpha for bias, SE calibration, and coverage. Add an
+      applied example on `psych::bfi`, reporting one alpha per Big Five
+      personality scale under the available-case and FIML paths, with clear
+      notes about item scoring/reversal and the fixed-category support used.
 - [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Continue the manuscript split/wiring work under the paper-local todo
       files once the current manuscript tree noise is settled.
