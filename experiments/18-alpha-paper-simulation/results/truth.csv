@@ -1,0 +1,4 @@
+"dgp","dgp_label","family","p","truth_alpha","min_loading","max_loading","min_residual_var","max_residual_var","truth_method"
+"tau6_essential","Essential-tau, 6 items","essential_tau",6,0.9,0.774596669241483,0.774596669241483,0.3,0.5,"analytic covariance"
+"congeneric6_zy","Congeneric Zhang-Yuan, 6 items","congeneric",6,0.777350269189626,0.447213595499958,0.774596669241483,0.4,0.8,"analytic covariance"
+"twofactor8","Two-factor, 8 items","twofactor",8,0.813977389516958,0.75,0.75,0.4375,0.4375,"analytic covariance"

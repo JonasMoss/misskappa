@@ -76,7 +76,32 @@ the efficiency-gain claim against Paper A's IPW. None of experiments
 01–06 are quadratic-focused; without 07 there is no empirical anchor
 for Paper C.
 
-### `18-alpha-paper-simulation` — feeds standalone alpha-missing paper
+## In progress
+
+### `05-fiml-sparsity-scaling` — owner: codex
+
+**Question.** Does the smoke-run FIML bias under MCAR-exchangeable
+(`~−0.015` at `n = 1000`, `B = 8`) shrink at the `1/n` rate as theory
+predicts, or does the `C^R` parameter-space dimension create a slow
+regime?
+
+**Approach.** Fix DGP A (or a cleaner exchangeable + MCAR variant).
+Sweep `n ∈ {500, 2000, 8000, 32000}` with `B` large enough to drive
+the Monte Carlo SE on bias below `0.001`. Plot bias × `n` vs `n`. Two
+parameter-space sizes:
+
+- P1: `C = 5`, `R = 6` → `15625` patterns (current paper).
+- P2: `C = 3`, `R = 4` → `81` patterns (low-dim sanity).
+
+Also sweep `prune_tol ∈ {1e-12, 1e-9, 1e-6}` at one `n` to confirm the
+manuscript hypothesis that pruning shifts `vcov` but not the point
+estimate.
+
+**Why it matters.** Decides whether the residual FIML bias seen in the
+smoke run is finite-sample MLE bias (clears at full grade) or a
+structural concern that warrants a manuscript caveat.
+
+### `18-alpha-paper-simulation` — owner: codex; feeds standalone alpha-missing paper
 
 **Question.** In paper-realistic finite samples, when is the
 pairwise-available alpha estimator calibrated under MCAR, how badly does
@@ -102,31 +127,6 @@ alpha-missing paper. It avoids Enders's parallel-only limitation while
 still borrowing his missingness-rate framing, and it keeps the saturated
 categorical FIML story honest after experiment 16 showed real
 high-dimensional finite-sample bias.
-
-## In progress
-
-### `05-fiml-sparsity-scaling` — owner: codex
-
-**Question.** Does the smoke-run FIML bias under MCAR-exchangeable
-(`~−0.015` at `n = 1000`, `B = 8`) shrink at the `1/n` rate as theory
-predicts, or does the `C^R` parameter-space dimension create a slow
-regime?
-
-**Approach.** Fix DGP A (or a cleaner exchangeable + MCAR variant).
-Sweep `n ∈ {500, 2000, 8000, 32000}` with `B` large enough to drive
-the Monte Carlo SE on bias below `0.001`. Plot bias × `n` vs `n`. Two
-parameter-space sizes:
-
-- P1: `C = 5`, `R = 6` → `15625` patterns (current paper).
-- P2: `C = 3`, `R = 4` → `81` patterns (low-dim sanity).
-
-Also sweep `prune_tol ∈ {1e-12, 1e-9, 1e-6}` at one `n` to confirm the
-manuscript hypothesis that pruning shifts `vcov` but not the point
-estimate.
-
-**Why it matters.** Decides whether the residual FIML bias seen in the
-smoke run is finite-sample MLE bias (clears at full grade) or a
-structural concern that warrants a manuscript caveat.
 
 ## Done
 
