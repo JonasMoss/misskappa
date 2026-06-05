@@ -6,7 +6,8 @@
 # thresholding a latent Gaussian copula. Population alpha is computed from the
 # exact scored-category covariance induced by the thresholds and latent
 # correlations. It compares pairwise alpha with its overlap-subsample SE,
-# saturated categorical EM, and a listwise sanity check.
+# saturated categorical EM, normal FIML applied to the scored categories, and
+# a listwise sanity check.
 #
 # Outputs:
 #   results/truth.csv
@@ -28,7 +29,7 @@ usage <- function(status = 0L) {
     "  --n-grid CSV        Sample sizes. Default: 200,500.\n",
     "  --dgps CSV          DGPs. Default: all ordinal DGPs.\n",
     "  --mechanisms CSV    Missingness mechanisms. Default: mcar30,mar_anchor30.\n",
-    "  --methods CSV       Methods. Default: pairwise,cat_em,listwise.\n",
+    "  --methods CSV       Methods. Default: pairwise,cat_em,normal_fiml,listwise.\n",
     "  --seed-base N       Base seed. Default: 181800.\n",
     "  --out-dir PATH      Output directory. Default: script-local results/.\n",
     "  --progress          Print one line per design cell.\n\n",
@@ -60,7 +61,7 @@ parse_args <- function(argv) {
     n_grid = c(200L, 500L),
     dgps = c("ordinal_tau6", "ordinal_congeneric6", "ordinal_twofactor6"),
     mechanisms = c("mcar30", "mar_anchor30"),
-    methods = c("pairwise", "cat_em", "listwise"),
+    methods = c("pairwise", "cat_em", "normal_fiml", "listwise"),
     seed_base = 181800L,
     out_dir = file.path(script_dir, "results"),
     progress = FALSE
@@ -114,7 +115,7 @@ parse_args <- function(argv) {
     if (!explicit$dgps) opts$dgps <- c("ordinal_tau6", "ordinal_congeneric6",
                                        "ordinal_twofactor6")
     if (!explicit$mechanisms) opts$mechanisms <- c("mcar30", "mar_anchor30")
-    if (!explicit$methods) opts$methods <- c("pairwise", "cat_em", "listwise")
+    if (!explicit$methods) opts$methods <- c("pairwise", "cat_em", "normal_fiml", "listwise")
   }
 
   if (is.na(opts$reps) || opts$reps < 1L) stop("--reps must be >= 1.", call. = FALSE)
@@ -174,7 +175,7 @@ dgp_defs <- list(
 
 valid_dgps <- names(dgp_defs)
 valid_mechanisms <- c("complete", "mcar15", "mcar30", "mar_anchor15", "mar_anchor30")
-valid_methods <- c("pairwise", "cat_em", "listwise")
+valid_methods <- c("pairwise", "cat_em", "normal_fiml", "listwise")
 
 if (!all(opts$dgps %in% valid_dgps)) {
   stop("--dgps must contain only: ", paste(valid_dgps, collapse = ","), call. = FALSE)
@@ -187,6 +188,10 @@ if (!all(opts$methods %in% valid_methods)) {
 }
 if (!exists("alpha", asNamespace("misskappa"), mode = "function")) {
   stop("misskappa::alpha() is not available; install the categorical alpha package build first.",
+       call. = FALSE)
+}
+if (!exists("alpha_continuous", asNamespace("misskappa"), mode = "function")) {
+  stop("misskappa::alpha_continuous() is not available; install the normal-FIML alpha package build first.",
        call. = FALSE)
 }
 
@@ -323,6 +328,20 @@ fit_cat_em <- function(X) {
        se = se_from_fit(fit), iter = NA_integer_)
 }
 
+fit_normal_fiml <- function(X) {
+  X_num <- matrix(as.numeric(X), nrow = nrow(X), ncol = ncol(X))
+  fit <- misskappa::alpha_continuous(
+    X_num,
+    se_type = "sandwich",
+    em_options = list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5)
+  )
+  list(
+    estimate = as.numeric(stats::coef(fit)[["alpha"]]),
+    se = se_from_fit(fit),
+    iter = fit$moments$iterations
+  )
+}
+
 fit_listwise <- function(X) {
   cc <- stats::complete.cases(X)
   if (sum(cc) < ncol(X)) stop("too few complete rows for listwise alpha.")
@@ -338,6 +357,7 @@ fit_one <- function(X, method) {
       method,
       pairwise = fit_pairwise(X),
       cat_em = fit_cat_em(X),
+      normal_fiml = fit_normal_fiml(X),
       listwise = fit_listwise(X)
     )
     ans$error <- ""

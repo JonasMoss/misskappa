@@ -37,7 +37,7 @@ fmt <- function(x, digits = 4) {
 For the standalone alpha-missing paper, do scored-ordinal item models and clean
 MCAR/MAR mechanisms produce the expected qualitative split: pairwise alpha has
 usable inference under MCAR but is vulnerable under MAR, while saturated
-categorical EM is the MAR workhorse?
+categorical EM and normal FIML are the MAR comparators?
 
 The item responses are three-category scored ordinal variables obtained by
 thresholding a latent Gaussian copula. Population alpha is computed from the
@@ -53,9 +53,9 @@ reps <- metadata$value[metadata$key == "reps"]
 
 This is a `r ifelse(identical(smoke, "TRUE"), "smoke", "configured")` run with
 `r reps` replications per cell. It is mainly an API and design check. The
-important thing to inspect is whether the MCAR rows keep pairwise and Cat-EM
-centered on the same truth, while observed-anchor MAR starts separating the
-pairwise/listwise estimates from Cat-EM.
+important thing to inspect is whether the MCAR rows keep pairwise, Cat-EM, and
+normal FIML centered on the same truth, while observed-anchor MAR starts
+separating the pairwise/listwise estimates from the likelihood estimators.
 
 ## Truths
 
@@ -101,9 +101,10 @@ knitr::kable(
 ```{r bias-plot, fig.width=7, fig.height=4}
 old_par <- par(no.readonly = TRUE)
 on.exit(par(old_par), add = TRUE)
-plot_df <- summary[summary$method %in% c("pairwise", "cat_em", "listwise"), ]
+plot_df <- summary[summary$method %in% c("pairwise", "cat_em", "normal_fiml", "listwise"), ]
 plot_df$cell <- paste(plot_df$dgp, plot_df$mechanism, sep = "\n")
-cols <- c(pairwise = "#000000", cat_em = "#009E73", listwise = "#D55E00")
+cols <- c(pairwise = "#000000", cat_em = "#009E73",
+          normal_fiml = "#0072B2", listwise = "#D55E00")
 methods <- intersect(names(cols), unique(plot_df$method))
 x <- seq_along(unique(plot_df$cell))
 cells <- unique(plot_df$cell)
@@ -130,6 +131,8 @@ legend("topright", legend = methods, pch = 16, col = cols[methods], bty = "n")
   `alpha(method = "available")`.
 - `cat_em` is the saturated categorical EM estimator from
   `alpha(method = "fiml")`; listwise is retained only as a sanity check.
+- `normal_fiml` treats the scored ordinal categories as continuous and uses
+  `alpha_continuous(se_type = "sandwich")`.
 - Smoke results are not paper evidence. Use them to catch implementation and
   design problems before the `B = 500` or larger pass.
 
@@ -150,7 +153,7 @@ Rscript experiments/18-alpha-paper-simulation/run_experiment.R \
   --n-grid 200,500,1000 \
   --dgps ordinal_tau6,ordinal_congeneric6,ordinal_twofactor6 \
   --mechanisms mcar15,mcar30,mar_anchor15,mar_anchor30 \
-  --methods pairwise,cat_em,listwise \
+  --methods pairwise,cat_em,normal_fiml,listwise \
   --progress
 ```
 
