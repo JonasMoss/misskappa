@@ -1,0 +1,11 @@
+"dist","R","coef","truth"
+"normal",4,"Conger",0.521852554821328
+"normal",4,"Fleiss",0.507061145408557
+"skewed",4,"Conger",0.521917790121227
+"skewed",4,"Fleiss",0.507166023658345
+"categorical",4,"Conger",0.556089470226231
+"categorical",4,"Fleiss",0.553873536782665
+"mixture",4,"Conger",0.776254456926283
+"mixture",4,"Fleiss",0.773080969285475
+"normal",2,"Conger",0.42117667415928
+"normal",2,"Fleiss",0.331181901828079

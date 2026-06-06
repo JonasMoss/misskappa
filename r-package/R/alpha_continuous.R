@@ -1,5 +1,6 @@
 # Coefficient alpha for continuous items under ignorable missingness, via a
-# saturated normal FIML / EM covariance and a delta-method standard error.
+# saturated normal FIML / EM covariance and a sandwich delta-method standard
+# error.
 #
 # This is the {continuous, missing} cell of the alpha-under-missingness grid:
 # the categorical multinomial-EM route lives in alpha_cat_fiml() /
@@ -163,28 +164,20 @@
 #' Coefficient alpha for continuous items under missing data (normal FIML)
 #'
 #' @description
-#' Estimates Cronbach's coefficient alpha for a battery of continuous items
-#' with missing entries, via a saturated multivariate-normal covariance fitted
-#' by full-information maximum likelihood (the EM algorithm), valid under
-#' ignorable (MCAR or MAR) missingness. The standard error is a delta-method
-#' contraction of the alpha gradient with the asymptotic covariance of the
-#' fitted moments.
+#' Backend for `alpha(method = "fiml", type = "normal")`. Estimates Cronbach's
+#' coefficient alpha for a battery of continuous items with missing entries,
+#' via a saturated multivariate-normal covariance fitted by full-information
+#' maximum likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
+#' missingness. The standard error is the sandwich delta-method contraction of
+#' the alpha gradient with the asymptotic covariance of the fitted moments.
 #'
-#' This is the normal-FIML path also used by `alpha(method = "fiml")`. The fit
-#' and its sandwich covariance reproduce magmaan's
-#' `estimate_saturated_em_moments()` and lavaan's saturated estimator; at
-#' `se_type = "sandwich"` the interval matches
-#' `coefficientalpha::alpha(varphi = 0)` and a nonparametric case bootstrap.
+#' The fit and its sandwich covariance reproduce magmaan's
+#' `estimate_saturated_em_moments()` and lavaan's saturated estimator; the
+#' interval matches `coefficientalpha::alpha(varphi = 0)` and a nonparametric
+#' case bootstrap.
 #'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped.
-#' @param se_type Standard-error flavour. `"sandwich"` (the default) is the
-#'   Huber-White / two-stage covariance \eqn{H^{-1} J H^{-1}}, robust to
-#'   non-normality and propagating the missing-data uncertainty; it exposes
-#'   per-subject influence functions for [joint_vcov()]. `"normal"` is the
-#'   normal-theory delta SE \eqn{H^{-1}} (van Zyl, Neudecker & Nel, 2000),
-#'   which assumes the items are multivariate normal and does not expose
-#'   influence functions.
 #' @param em_options Named list tuning the EM fit: `tol` (convergence
 #'   tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
 #'   and `fd_h` (finite-difference step for the information matrix, default
@@ -192,34 +185,17 @@
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance. Additional fields: `moments`
-#'   (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag) and
-#'   `se_type`. Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`,
-#'   and (for `"sandwich"`) `influence`.
+#'   (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag).
+#'   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
+#'   `influence`.
 #'
 #' @references
-#' van Zyl, J. M., Neudecker, H., & Nel, D. G. (2000). On the distribution of
-#' the maximum likelihood estimator of Cronbach's alpha. *Psychometrika*,
-#' 65(3), 271-280.
-#'
 #' Zhang, Z., & Yuan, K.-H. (2016). Robust coefficients alpha and omega and
 #' confidence intervals with outlying observations and missing data.
 #' *Educational and Psychological Measurement*, 76(3), 387-411.
 #'
-#' @examples
-#' set.seed(1)
-#' n <- 400L; p <- 5L
-#' L <- chol(0.3 + 0.7 * diag(p))
-#' x <- matrix(rnorm(n * p), n, p) %*% L
-#' x[matrix(runif(n * p) < 0.15, n, p)] <- NA
-#' fit <- alpha(x, method = "fiml")
-#' coef(fit)
-#' confint(fit)
-#'
-#' @export
-alpha_continuous <- function(x,
-                             se_type = c("sandwich", "normal"),
-                             em_options = list()) {
-  se_type <- match.arg(se_type)
+#' @keywords internal
+alpha_continuous <- function(x, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
   }
@@ -262,16 +238,10 @@ alpha_continuous <- function(x,
   g <- c(numeric(p), .amc_alpha_grad_s(Sigma))            # alpha has no mu part
 
   estimates <- c(alpha = alpha_hat)
-  if (se_type == "sandwich") {
-    # Per-subject influence psi_i = g' H^{-1} s_i; vcov = crossprod(psi) / n^2.
-    psi <- matrix(scores %*% (Hinv %*% g), ncol = 1L,
-                  dimnames = list(NULL, "alpha"))
-    var_alpha <- sum(psi^2) / n^2
-  } else {
-    # Normal-theory delta: ACOV(theta) = H^{-1} / n, contract with g.
-    var_alpha <- drop(t(g) %*% Hinv %*% g) / n
-    psi <- matrix(numeric(0), nrow = n, ncol = 0L)
-  }
+  # Per-subject influence psi_i = g' H^{-1} s_i; vcov = crossprod(psi) / n^2.
+  psi <- matrix(scores %*% (Hinv %*% g), ncol = 1L,
+                dimnames = list(NULL, "alpha"))
+  var_alpha <- sum(psi^2) / n^2
   vcov_mat <- matrix(var_alpha, 1L, 1L, dimnames = list("alpha", "alpha"))
 
   structure(
@@ -281,7 +251,6 @@ alpha_continuous <- function(x,
       psi = psi,
       method = "alpha-continuous-fiml",
       weight = "score",
-      se_type = se_type,
       moments = list(mu = em$mu, Sigma = Sigma,
                      iterations = em$iterations, converged = em$converged)
     ),

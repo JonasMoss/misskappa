@@ -54,10 +54,6 @@ Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 // Brennan-Prediger).
 Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values);
 
-// Counts-format counterpart of estimate_quadratic. `counts` is n x C, R is
-// the total number of raters. Returns (Fleiss, Brennan-Prediger).
-Result<Estimation> estimate_quadratic_counts(IntMatView counts, const RealVec& values, int R);
-
 // --- Counts-format input ---------------------------------------------------
 //
 // `counts` is n x C of non-negative integers: counts(i, k) is the number of

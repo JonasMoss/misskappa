@@ -11,11 +11,13 @@ Description: Estimation and inference for weighted agreement coefficients
     raters and arbitrary pairwise loss functions, plus coefficient alpha for
     scored categorical and continuous item batteries. Supports incomplete data
     under MCAR (available-case, IPW) and MAR (saturated categorical or normal
-    FIML / EM), with normal-theory and robust sandwich standard errors. Wraps
-    the standalone C++23 'misskappa' library.
+    FIML / EM), with sandwich standard errors. Wraps the standalone C++23
+    'misskappa' library.
 URL: https://jonasmoss.github.io/misskappa
+BugReports: https://github.com/JonasMoss/misskappa/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
+SystemRequirements: C++23
 LazyData: true
 Depends:
     R (>= 4.0.0)
