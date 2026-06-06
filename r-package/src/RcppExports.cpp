@@ -81,16 +81,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_kappa_quadratic
-Rcpp::List rcpp_kappa_quadratic(const Rcpp::NumericMatrix& x, Rcpp::NumericVector values, std::string vcov_type, double relative_kurtosis);
-RcppExport SEXP _misskappa_rcpp_kappa_quadratic(SEXP xSEXP, SEXP valuesSEXP, SEXP vcov_typeSEXP, SEXP relative_kurtosisSEXP) {
+Rcpp::List rcpp_kappa_quadratic(const Rcpp::NumericMatrix& x, Rcpp::NumericVector values);
+RcppExport SEXP _misskappa_rcpp_kappa_quadratic(SEXP xSEXP, SEXP valuesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type values(valuesSEXP);
-    Rcpp::traits::input_parameter< std::string >::type vcov_type(vcov_typeSEXP);
-    Rcpp::traits::input_parameter< double >::type relative_kurtosis(relative_kurtosisSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_quadratic(x, values, vcov_type, relative_kurtosis));
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_quadratic(x, values));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -168,7 +166,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_alpha_available_continuous", (DL_FUNC) &_misskappa_rcpp_alpha_available_continuous, 1},
     {"_misskappa_rcpp_kappa_fiml_counts", (DL_FUNC) &_misskappa_rcpp_kappa_fiml_counts, 5},
     {"_misskappa_rcpp_fiml_louis_spectrum", (DL_FUNC) &_misskappa_rcpp_fiml_louis_spectrum, 4},
-    {"_misskappa_rcpp_kappa_quadratic", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic, 4},
+    {"_misskappa_rcpp_kappa_quadratic", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic, 2},
     {"_misskappa_rcpp_kappa_quadratic_counts", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic_counts, 3},
     {"_misskappa_rcpp_kappa_counts", (DL_FUNC) &_misskappa_rcpp_kappa_counts, 3},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_continuous, 3},

@@ -17,18 +17,6 @@ struct EmOptions {
   double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.
 };
 
-enum class QuadraticVcov {
-  empirical,
-  normal,
-  elliptical
-};
-
-struct QuadraticOptions {
-  QuadraticVcov vcov = QuadraticVcov::empirical;
-  // Relative Mardia kurtosis beta. beta = 1 gives the normal covariance.
-  double relative_kurtosis = 1.0;
-};
-
 struct GwiseOptions {
   // If g <= 0, use all raters (g = R).
   int g = 0;
@@ -64,8 +52,7 @@ Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 // `ratings` is n x R real-valued; `values` is the length-C category-score
 // vector used to define the quadratic loss. Returns (Conger, Fleiss,
 // Brennan-Prediger).
-Result<Estimation> estimate_quadratic(
-    RealMatView ratings, const RealVec& values, QuadraticOptions opts = {});
+Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values);
 
 // Counts-format counterpart of estimate_quadratic. `counts` is n x C, R is
 // the total number of raters. Returns (Fleiss, Brennan-Prediger).
