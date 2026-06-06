@@ -226,7 +226,7 @@ vcov.misskappa_estimate <- function(object, ...) object$vcov
 #' Returns the `n x K` matrix of per-subject influence functions for the
 #' coefficient estimates, where `n` is the number of subjects and `K` is
 #' the number of coefficients. Estimators that do not expose influence
-#' functions (the closed-form quadratic estimators) return `NULL`.
+#' functions return `NULL`.
 #'
 #' When non-null, the influence-function matrix satisfies
 #' `vcov(object) == (1 / n^2) * crossprod(influence(object))` up to
@@ -292,40 +292,25 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
 #'   marks missing entries.
 #' @param values Length-C numeric vector of category scores. The quadratic
 #'   loss is `(values[i] - values[j])^2 / (max - min)^2`.
-#' @param vcov Variance estimator. `"empirical"` estimates the covariance
-#'   of the reduced quadratic moment summaries from their row-wise estimating
-#'   equations. `"normal"` and `"elliptical"` use the corresponding symmetric
-#'   model-based covariance for the moment summaries. The closed-form
-#'   quadratic estimators report `vcov()` but intentionally do not expose
-#'   subject-level `influence()` rows.
-#' @param relative_kurtosis Relative Mardia kurtosis used when
-#'   `vcov = "elliptical"`; the normal value is 1.
+#'   The covariance is the empirical covariance of the reduced quadratic
+#'   moment summaries from their row-wise estimating equations.
 #'
 #' @return A `misskappa_estimate` object with `Conger`, `Fleiss`,
-#'   `Brennan-Prediger` coefficients and the 3x3 vcov. `influence()` returns
-#'   `NULL` for this estimator by design.
+#'   `Brennan-Prediger` coefficients, the 3x3 vcov, and per-subject
+#'   influence-function rows.
 #'
 #' @export
-kappa_quadratic <- function(x, values,
-                            vcov = c("empirical", "normal", "elliptical"),
-                            relative_kurtosis = 1) {
+kappa_quadratic <- function(x, values) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
   }
   x_mat <- as.matrix(x)
   storage.mode(x_mat) <- "double"
   if (!is.numeric(values)) stop("'values' must be numeric.")
-  vcov <- match.arg(vcov)
-  if (!is.numeric(relative_kurtosis) || length(relative_kurtosis) != 1L ||
-      !is.finite(relative_kurtosis) || relative_kurtosis <= 0) {
-    stop("'relative_kurtosis' must be one finite positive number.")
-  }
 
   out <- rcpp_kappa_quadratic(
     x = x_mat,
-    values = as.numeric(values),
-    vcov_type = vcov,
-    relative_kurtosis = as.numeric(relative_kurtosis)
+    values = as.numeric(values)
   )
   estimates <- as.numeric(out$estimates)
   names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
@@ -339,8 +324,7 @@ kappa_quadratic <- function(x, values,
       vcov = vcov_mat,
       psi = psi_mat,
       method = "quadratic",
-      weight = "quadratic",
-      vcov_type = vcov
+      weight = "quadratic"
     ),
     class = "misskappa_estimate"
   )

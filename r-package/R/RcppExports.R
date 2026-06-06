@@ -21,8 +21,8 @@ rcpp_fiml_louis_spectrum <- function(x, weight_type, values, em_options) {
     .Call(`_misskappa_rcpp_fiml_louis_spectrum`, x, weight_type, values, em_options)
 }
 
-rcpp_kappa_quadratic <- function(x, values, vcov_type, relative_kurtosis) {
-    .Call(`_misskappa_rcpp_kappa_quadratic`, x, values, vcov_type, relative_kurtosis)
+rcpp_kappa_quadratic <- function(x, values) {
+    .Call(`_misskappa_rcpp_kappa_quadratic`, x, values)
 }
 
 rcpp_kappa_quadratic_counts <- function(x, values, r_total) {
