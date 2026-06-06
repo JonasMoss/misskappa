@@ -1,6 +1,5 @@
 // Closed-form quadratic-loss estimator (Conger, Fleiss, Brennan-Prediger)
-// for raw real-valued ratings. The counts-format counterpart is in
-// src/estimate_quadratic_counts.cpp.
+// for raw real-valued ratings.
 //
 // Treats categorical ratings as numeric scores; missing entries are NaN.
 // Per-rater means and covariances are computed from all available entries.

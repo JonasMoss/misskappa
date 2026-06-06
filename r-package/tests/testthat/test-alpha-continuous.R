@@ -21,7 +21,7 @@ test_that("complete-data alpha equals the MLE-covariance plug-in formula", {
 
 test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
   X <- make_data(400L, 6L, miss = 0.2, seed = 2L)
-  fit <- alpha_continuous(X, se_type = "sandwich")
+  fit <- alpha_continuous(X)
   psi <- stats::influence(fit)
   expect_true(is.matrix(psi))
   expect_equal(dim(psi), c(nrow(X), 1L))
@@ -31,27 +31,15 @@ test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
                tolerance = 1e-10)
 })
 
-test_that("normal-theory SE exposes no influence and gives a finite positive SE", {
-  X <- make_data(300L, 4L, miss = 0.15, seed = 3L)
-  fit <- alpha_continuous(X, se_type = "normal")
-  expect_null(stats::influence(fit))
-  se <- sqrt(diag(vcov(fit)))
-  expect_true(is.finite(se) && se > 0)
-})
-
 test_that("standard errors are stable across finite-difference steps", {
   X <- make_data(450L, 5L, rho = 0.35, miss = 0.2, seed = 8L)
   hs <- c(1e-4, 1e-5, 1e-6)
-  for (se_type in c("sandwich", "normal")) {
-    ses <- vapply(hs, function(h) {
-      fit <- alpha_continuous(
-        X, se_type = se_type, em_options = list(fd_h = h)
-      )
-      sqrt(vcov(fit)[1, 1])
-    }, numeric(1))
-    rel_span <- diff(range(ses)) / mean(ses)
-    expect_lt(rel_span, 1e-6)
-  }
+  ses <- vapply(hs, function(h) {
+    fit <- alpha_continuous(X, em_options = list(fd_h = h))
+    sqrt(vcov(fit)[1, 1])
+  }, numeric(1))
+  rel_span <- diff(range(ses)) / mean(ses)
+  expect_lt(rel_span, 1e-6)
 })
 
 test_that("analytic casewise scores match numerical differentiation", {
@@ -87,8 +75,8 @@ test_that("analytic casewise scores match numerical differentiation", {
 test_that("alpha_continuous fits plug into joint_vcov / wald_test", {
   X1 <- make_data(350L, 5L, miss = 0.2, seed = 5L)
   # A second item subset on the SAME subjects (drop last item).
-  fitA <- alpha_continuous(X1, se_type = "sandwich")
-  fitB <- alpha_continuous(X1[, 1:4], se_type = "sandwich")
+  fitA <- alpha_continuous(X1)
+  fitB <- alpha_continuous(X1[, 1:4])
   V <- joint_vcov(full = fitA, sub = fitB)
   expect_equal(dim(V), c(2L, 2L))
   expect_true(isSymmetric(V))
@@ -115,7 +103,7 @@ test_that("saturated EM moments match lavaan's h1 estimator", {
 test_that("sandwich SE matches coefficientalpha(varphi = 0)", {
   skip_if_not_installed("coefficientalpha")
   X <- make_data(500L, 6L, miss = 0.2, seed = 7L)
-  fit <- alpha_continuous(X, se_type = "sandwich")
+  fit <- alpha_continuous(X)
   invisible(utils::capture.output(
     ca <- coefficientalpha::alpha(X, varphi = 0, se = TRUE, test = FALSE,
                                   silent = TRUE)))

@@ -58,11 +58,16 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
   separate from and not part of the C++ build.
 - `papers/` — research manuscripts. `papers/ipw/`, `papers/fiml/`,
   `papers/quadratic/` are the three spinoffs (plus the independent
-  `papers/ac1-paper/`). Each carries its own `AGENTS.md`, `STYLE.md`,
-  `justfile`, bibliography, figures, tables, scripts, and results. The
-  cross-paper plan and section mapping live in `papers/split-plan.md`;
-  cross-paper todos in `papers/todo.md`. The combined draft they were
-  split from was deleted on 2026-06-02 (recoverable from git history).
+  `papers/ac1-paper/` and `papers/alpha-missing/`). Each carries its own
+  `AGENTS.md`, `STYLE.md`, `justfile`, bibliography, figures, tables,
+  scripts, and results. The cross-paper plan and section mapping live in
+  `papers/split-plan.md`; cross-paper todos in `papers/todo.md`. The
+  combined draft they were split from was deleted on 2026-06-02
+  (recoverable from git history). `papers/alpha-missing/` is a standalone
+  paper on inference for coefficient alpha under item-level missing data
+  (Psychometrika; pairwise-available covariance, multinomial EM, normal
+  FIML), a cousin to the kappa family that shares the missing-data
+  machinery but not the split.
 - `docs/` — repo-level documentation assets, including shared artwork such as
   the project logo. Generated docs output is under `docs/site/` and is ignored;
   do not commit generated HTML.
@@ -127,18 +132,37 @@ entry point per estimator, with C++ argument structure kept visible. Small R
 helpers are fine when they compose existing wrappers, validate R-shaped inputs,
 or preserve names for inspection; they should not contain parallel kappa logic.
 
-Public R surface:
+Public R surface (release target: GitHub-first; estimators + CIs, hypothesis
+tests deferred):
 
-- `kappa(x, method, weight, ...)` — single user entry point. `method` is one of
-  `"available"`, `"ipw"`, `"fiml"`, `"gwet"`. `weight` is a string naming the
-  loss or a user-supplied matrix.
+- Estimators, keyed by input shape (mirrors the C++ naming):
+  - `kappa(x, method, weight, ...)` — raw categorical ratings. `method` is one
+    of `"available"`, `"ipw"`, `"fiml"`, `"gwet"`.
+  - `kappa_counts(x, method, weight, ...)` — counts-format input.
+  - `kappa_continuous(x, method, weight)` — continuous ratings.
+  - `kappa_gwise(x, distance, g)` — complete rectangular g-wise agreement.
+  - `alpha(x, method, type, ...)` — coefficient alpha. `method = "fiml"` with
+    `type = "normal"` (saturated Gaussian EM) or `type = "categorical"`
+    (saturated multinomial EM). The single alpha entry point; the old
+    `alpha_continuous()` / `alpha_cat_fiml()` are its internal backends.
 - S3 generics on `misskappa_estimate`: `print`, `coef`, `vcov`, `as.data.frame`,
-  `confint` (Wald CIs from `vcov`).
-- `sim` — a list of simulation closures (`sim$mcar`, `sim$mar`, `sim$jsm`).
-  Exposed as a single object so simulation helpers occupy one manual entry
-  rather than many.
+  `confint` (Wald CIs from `vcov`; `transform = "fisher"` gives a delta-method
+  interval on the `atanh` scale), `influence` (per-subject IFs).
+- `sim` — a list of simulation closures (`sim$mcar`, `sim$mar_truth`,
+  `sim$jsm`). Exposed as a single object so simulation helpers occupy one
+  manual entry rather than many.
 - Datasets carried over from the legacy package: `dat.fleiss1971`,
-  `dat.gwet2014`, `dat.klein2018`, `dat.zapf2016`.
+  `dat.gwet2014`, `dat.klein2018`, `dat.zapf2016`, `dat.mcduff2019`.
+
+Kept in the tree but **unexported / internal** (`@keywords internal`), pending a
+later inference release: `joint_vcov()` and `wald_test()` (the IF-based joint
+covariance and Wald-contrast engine, including the dependent/paired case), and
+the closed-form `kappa_quadratic()` (a paper-C estimator that overlaps
+`kappa(weight = "quadratic")`). A `t.test`-style `kappa_test()` / `alpha_test()`
+front door over this engine is the natural next addition (one-sample and
+independent two-sample work for every estimator; paired works for every
+estimator that exposes influence functions, i.e. all but the normal-theory-SE
+fits).
 
 ## Namespace layout
 

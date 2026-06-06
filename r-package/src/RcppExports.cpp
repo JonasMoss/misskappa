@@ -92,19 +92,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_kappa_quadratic_counts
-Rcpp::List rcpp_kappa_quadratic_counts(const Rcpp::IntegerMatrix& x, Rcpp::NumericVector values, int r_total);
-RcppExport SEXP _misskappa_rcpp_kappa_quadratic_counts(SEXP xSEXP, SEXP valuesSEXP, SEXP r_totalSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Rcpp::IntegerMatrix& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type values(valuesSEXP);
-    Rcpp::traits::input_parameter< int >::type r_total(r_totalSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_quadratic_counts(x, values, r_total));
-    return rcpp_result_gen;
-END_RCPP
-}
 // rcpp_kappa_counts
 Rcpp::List rcpp_kappa_counts(const Rcpp::IntegerMatrix& x, std::string weight_type, Rcpp::Nullable<Rcpp::NumericVector> values);
 RcppExport SEXP _misskappa_rcpp_kappa_counts(SEXP xSEXP, SEXP weight_typeSEXP, SEXP valuesSEXP) {
@@ -167,7 +154,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_kappa_fiml_counts", (DL_FUNC) &_misskappa_rcpp_kappa_fiml_counts, 5},
     {"_misskappa_rcpp_fiml_louis_spectrum", (DL_FUNC) &_misskappa_rcpp_fiml_louis_spectrum, 4},
     {"_misskappa_rcpp_kappa_quadratic", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic, 2},
-    {"_misskappa_rcpp_kappa_quadratic_counts", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic_counts, 3},
     {"_misskappa_rcpp_kappa_counts", (DL_FUNC) &_misskappa_rcpp_kappa_counts, 3},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_continuous, 3},
     {"_misskappa_rcpp_kappa_gwise_categorical", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_categorical, 4},

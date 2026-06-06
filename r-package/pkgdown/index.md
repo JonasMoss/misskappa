@@ -8,9 +8,13 @@ continuous item batteries. Supports incomplete ratings under MCAR
 standalone C++23 `misskappa` library.
 
 The main entry points are `kappa()` for raw categorical rating matrices and
-`alpha()` for numeric item batteries. Specialized helpers cover saturated
-categorical alpha FIML (`alpha_cat_fiml()`), counts-format input, continuous
-ratings, closed-form quadratic loss, and complete rectangular g-wise agreement.
+`alpha()` for item batteries (`method = "fiml"` with `type = "normal"` for
+continuous items or `type = "categorical"` for saturated multinomial FIML).
+Shape-specific estimators cover counts-format input (`kappa_counts()`),
+continuous ratings (`kappa_continuous()`), and complete rectangular g-wise
+agreement (`kappa_gwise()`). Coefficients carry a covariance matrix, so `coef()`,
+`vcov()`, and `confint()` (with an optional Fisher `transform`) give estimates
+and Wald confidence intervals.
 
 See the [function reference](reference/index.html) for estimators and inference
 helpers, and the [mathematical guides](articles/index.html) for the loss-matrix

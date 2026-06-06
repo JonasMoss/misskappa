@@ -112,7 +112,7 @@ test_that("influence() returns per-subject IFs for FIML counts fits", {
                tolerance = 1e-10)
 })
 
-test_that("influence() returns NULL for estimators that do not expose IFs", {
+test_that("influence() returns per-subject IFs for quadratic fits", {
   x <- matrix(
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),
     nrow = 10, byrow = TRUE
@@ -126,12 +126,6 @@ test_that("influence() returns NULL for estimators that do not expose IFs", {
   expect_equal(dim(psi_quad), c(10L, 3L))
   expect_equal(unname(crossprod(psi_quad) / 100), unname(vcov(fit_quad)),
                tolerance = 1e-10)
-
-  # Counts-format closed-form quadratic still does not expose IF rows.
-  counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
-  storage.mode(counts) <- "integer"
-  fit_quad_counts <- kappa_quadratic_counts(counts, values = 1:3, r_total = 10)
-  expect_null(stats::influence(fit_quad_counts))
 })
 
 test_that("joint_vcov() assembles a block matrix and recovers per-fit vcov on the diagonal blocks", {
@@ -171,10 +165,6 @@ test_that("joint_vcov() errors on mismatched n or non-IF fits", {
   fit1 <- kappa(x1, method = "available")
   fit2 <- kappa(x2, method = "available")
   expect_error(joint_vcov(fit1, fit2), "same number of subjects")
-
-  counts1 <- t(apply(x1, 1L, tabulate, nbins = 4L))
-  fit_quad_counts <- kappa_quadratic_counts(counts1, values = 1:4, r_total = ncol(x1))
-  expect_error(joint_vcov(fit1, fit_quad_counts), "do not expose influence")
 
   expect_error(joint_vcov(fit1), "at least two")
 })
@@ -273,8 +263,6 @@ test_that("wald_test() validates contrasts and influence-function support", {
   expect_error(wald_test(fit, contrast = "Nope"), "Unknown coefficient")
   expect_error(wald_test(fit, contrast = c(1, 0)), "length")
 
-  counts <- t(apply(x, 1L, tabulate, nbins = 4L))
-  fit_quad_counts <- kappa_quadratic_counts(counts, values = 1:4, r_total = ncol(x))
-  expect_error(wald_test(fit, fit_quad_counts, contrast = c("fit1.Conger" = 1)),
-               "do not expose influence")
+  expect_error(wald_test(fit, contrast = c("fit.Conger" = 1, "fit.Nope" = -1)),
+               "Unknown coefficient")
 })

@@ -18,19 +18,14 @@ reference:
   - title: Estimators
     contents:
       - alpha
-      - alpha_cat_fiml
-      - alpha_continuous
       - kappa
-      - kappa_quadratic
-      - kappa_quadratic_counts
       - kappa_counts
       - kappa_continuous
       - kappa_gwise
   - title: Inference
     contents:
+      - confint.misskappa_estimate
       - influence.misskappa_estimate
-      - joint_vcov
-      - wald_test
   - title: Simulation helpers
     contents:
       - sim

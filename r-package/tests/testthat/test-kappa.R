@@ -187,14 +187,6 @@ test_that("kappa_quadratic() exposes empirical covariance and influence rows", {
                unname(vcov(fit)), tolerance = 1e-10)
 })
 
-test_that("kappa_quadratic_counts() matches legacy on Fleiss 1971", {
-  fit <- kappa_quadratic_counts(dat.fleiss1971, values = c(1, 2, 3, 4, 5),
-                                r_total = 6)
-  expect_named(fit$estimates, c("Fleiss", "Brennan-Prediger"))
-  expect_equal(unname(fit$estimates["Fleiss"]), 0.2840722495894910,
-               tolerance = 1e-9)
-})
-
 test_that("kappa_counts(method='fiml') matches available on Fleiss 1971", {
   fit_av <- kappa_counts(dat.fleiss1971, method = "available", weight = "identity")
   fit_ml <- kappa_counts(dat.fleiss1971, method = "fiml", weight = "identity")

@@ -47,64 +47,87 @@
   )
 }
 
-#' Coefficient alpha for numeric item scores with missing data
+#' Coefficient alpha with missing data
 #'
 #' @description
-#' Estimates coefficient alpha for a subjects-by-items matrix of numeric item
-#' scores. Missing entries can be handled by pairwise covariance moments under
-#' MCAR (`"available"`) or by saturated normal FIML / EM under ignorable
-#' missingness (`"fiml"`).
+#' Estimates Cronbach's coefficient alpha for a subjects-by-items matrix of
+#' item scores with missing entries. Missingness is handled either by
+#' pairwise-available covariance moments under MCAR (`method = "available"`)
+#' or by saturated full-information maximum likelihood under ignorable
+#' missingness (`method = "fiml"`). For FIML, `type` selects the response
+#' model: `"normal"` fits a saturated multivariate-normal covariance by EM
+#' (continuous items), and `"categorical"` fits the saturated multinomial
+#' full-response distribution by EM and maps it to the implied scored
+#' covariance (finite-category items).
 #'
-#' For ordinal or otherwise categorical responses, either pass the scored
-#' numeric matrix directly or pass integer category codes with `values`; the
-#' observed categories are sorted and mapped to `values` before estimation.
-#' Use [alpha_cat_fiml()] for saturated multinomial FIML on finite categorical
-#' response patterns.
+#' For ordinal or otherwise categorical responses under `"available"` or
+#' `type = "normal"`, either pass the scored numeric matrix directly or pass
+#' integer category codes with `values`; the observed categories are sorted
+#' and mapped to `values` before estimation.
 #'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` and other
-#'   non-finite values indicate missing entries.
-#' @param method One of `"available"` or `"fiml"`. `"available"` uses
-#'   pairwise-available covariance moments and an influence-function sandwich
-#'   SE. `"fiml"` uses saturated normal FIML via [alpha_continuous()].
+#'   non-finite values indicate missing entries. For
+#'   `method = "fiml", type = "categorical"`, entries are integer category
+#'   codes.
+#' @param method One of `"available"` (pairwise-available covariance moments
+#'   with an influence-function sandwich SE) or `"fiml"` (saturated EM under
+#'   ignorable missingness).
+#' @param type For `method = "fiml"`, the response model: `"normal"` (saturated
+#'   Gaussian covariance via EM with a sandwich delta-method SE) or
+#'   `"categorical"` (saturated multinomial EM mapped to the scored
+#'   covariance). Ignored when `method = "available"`.
 #' @param values Optional numeric vector of scores for observed categories.
 #'   When supplied, its length must equal the number of unique finite entries
 #'   in `x`.
-#' @param se_type For `method = "fiml"`, standard-error flavour passed to
-#'   [alpha_continuous()]: `"sandwich"` or `"normal"`.
-#' @param em_options For `method = "fiml"`, named list tuning the normal EM
-#'   fit: `tol`, `max_iter`, and `fd_h`. Pass any subset.
+#' @param em_options Named list tuning the EM fit. For `type = "normal"`:
+#'   `tol`, `max_iter`, `fd_h`. For `type = "categorical"`: `tol`, `max_iter`,
+#'   `prune_tol`, `start_alpha`, `info_rcond` (the relative eigenvalue cutoff
+#'   used when inverting Louis' observed information). Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
 #'   `coef`, `vcov`, `confint`, `as.data.frame`, and, when available,
 #'   `influence`.
 #'
+#' @examples
+#' set.seed(1)
+#' n <- 400L; p <- 5L
+#' L <- chol(0.3 + 0.7 * diag(p))
+#' x <- matrix(rnorm(n * p), n, p) %*% L
+#' x[matrix(runif(n * p) < 0.15, n, p)] <- NA
+#' fit <- alpha(x, method = "fiml")
+#' coef(fit)
+#' confint(fit)
+#'
 #' @export
 alpha <- function(x,
                   method = c("available", "fiml"),
+                  type = c("normal", "categorical"),
                   values = NULL,
-                  se_type = c("sandwich", "normal"),
                   em_options = list()) {
   method <- match.arg(method)
-  se_type <- match.arg(se_type)
-  X <- .alpha_score_matrix(x, values)
+  type <- match.arg(type)
 
   if (method == "available") {
+    X <- .alpha_score_matrix(x, values)
     out <- rcpp_alpha_available_continuous(X)
     return(.alpha_from_cpp(out, method = "alpha-available"))
   }
 
-  alpha_continuous(X, se_type = se_type, em_options = em_options)
+  if (type == "normal") {
+    X <- .alpha_score_matrix(x, values)
+    return(alpha_continuous(X, em_options = em_options))
+  }
+
+  alpha_cat_fiml(x, values = values, em_options = em_options)
 }
 
-#' Saturated categorical FIML coefficient alpha
+#' Saturated categorical FIML coefficient alpha (internal)
 #'
 #' @description
-#' Estimates coefficient alpha for scored categorical item batteries by fitting
-#' the saturated multinomial full-response distribution with EM, then mapping
-#' that distribution to the implied scored covariance matrix. This is the
-#' finite-category MAR estimator; for pairwise-available alpha on scored item
-#' data, use [alpha()].
+#' Backend for `alpha(method = "fiml", type = "categorical")`. Fits the
+#' saturated multinomial full-response distribution with EM, then maps that
+#' distribution to the implied scored covariance matrix.
 #'
 #' @param x A subjects-by-items matrix of integer category codes; `NA`s
 #'   indicate missing entries.
@@ -112,13 +135,11 @@ alpha <- function(x,
 #'   sorted unique observed categories.
 #' @param em_options Named list of options for the categorical EM fit:
 #'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
-#'   `info_rcond` is the relative eigenvalue cutoff used when inverting
-#'   Louis' observed information. Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix.
 #'
-#' @export
+#' @keywords internal
 alpha_cat_fiml <- function(x, values = NULL, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -206,10 +227,15 @@ kappa <- function(x,
 }
 
 #' @export
-print.misskappa_estimate <- function(x, digits = 4, ...) {
+print.misskappa_estimate <- function(x, digits = 4, level = 0.95,
+                                     transform = c("none", "fisher"), ...) {
+  transform <- match.arg(transform)
   cat(sprintf("misskappa: method=%s, weight=%s\n", x$method, x$weight))
   se <- sqrt(diag(x$vcov))
-  tab <- data.frame(estimate = x$estimates, se = se, row.names = names(x$estimates))
+  ci <- stats::confint(x, level = level, transform = transform)
+  tab <- data.frame(estimate = x$estimates, se = se,
+                    lower = ci[, 1L], upper = ci[, 2L],
+                    row.names = names(x$estimates))
   print(round(tab, digits = digits), ...)
   invisible(x)
 }
@@ -248,13 +274,53 @@ influence.misskappa_estimate <- function(model, ...) {
   psi
 }
 
+#' Confidence intervals for misskappa coefficients
+#'
+#' @description
+#' Wald confidence intervals for the coefficients of a `misskappa_estimate`,
+#' on the natural scale (`transform = "none"`) or via the variance-stabilising
+#' Fisher z transform (`transform = "fisher"`). The Fisher interval is built on
+#' the `atanh` scale with a delta-method standard error
+#' \eqn{\mathrm{se}_z = \mathrm{se} / (1 - \hat\theta^2)} and back-transformed
+#' with `tanh`, so it always lies in \eqn{(-1, 1)} and tends to have better
+#' small-sample coverage near the upper boundary.
+#'
+#' @param object A `misskappa_estimate` object.
+#' @param parm Optional subset of coefficients (names or indices); defaults to
+#'   all.
+#' @param level Confidence level.
+#' @param transform Either `"none"` (natural-scale Wald interval) or `"fisher"`
+#'   (delta-method interval on the `atanh` scale, back-transformed with
+#'   `tanh`). Coefficients with \eqn{|\hat\theta| \ge 1} yield `NA` limits
+#'   under `"fisher"`.
+#' @param ... Unused; present for S3 generic conformance.
+#'
+#' @return A two-column numeric matrix of lower and upper limits, one row per
+#'   coefficient.
+#'
 #' @export
-confint.misskappa_estimate <- function(object, parm = NULL, level = 0.95, ...) {
+confint.misskappa_estimate <- function(object, parm = NULL, level = 0.95,
+                                       transform = c("none", "fisher"), ...) {
+  transform <- match.arg(transform)
   est <- object$estimates
   se <- sqrt(diag(object$vcov))
   z <- stats::qnorm((1 + level) / 2)
-  lo <- est - z * se
-  hi <- est + z * se
+
+  if (transform == "fisher") {
+    interior <- abs(est) < 1
+    if (!all(interior)) {
+      warning("Fisher transform requires |estimate| < 1; ",
+              "returning NA limits for boundary coefficients.")
+    }
+    g <- ifelse(interior, atanh(ifelse(interior, est, 0)), NA_real_)
+    se_z <- ifelse(interior, se / (1 - est^2), NA_real_)
+    lo <- tanh(g - z * se_z)
+    hi <- tanh(g + z * se_z)
+  } else {
+    lo <- est - z * se
+    hi <- est + z * se
+  }
+
   ci <- cbind(lo, hi)
   colnames(ci) <- c(sprintf("%.1f %%", 100 * (1 - level) / 2),
                     sprintf("%.1f %%", 100 * (1 + level) / 2))
@@ -299,7 +365,7 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
 #'   `Brennan-Prediger` coefficients, the 3x3 vcov, and per-subject
 #'   influence-function rows.
 #'
-#' @export
+#' @keywords internal
 kappa_quadratic <- function(x, values) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -314,53 +380,6 @@ kappa_quadratic <- function(x, values) {
   )
   estimates <- as.numeric(out$estimates)
   names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = "quadratic",
-      weight = "quadratic"
-    ),
-    class = "misskappa_estimate"
-  )
-}
-
-#' Closed-form quadratic-loss kappa for counts-format input
-#'
-#' @description
-#' Counts-format counterpart of `kappa_quadratic()`. Useful when only the
-#' per-subject category counts are available (and not the rater-level data).
-#'
-#' @param x A subjects-by-categories non-negative integer matrix.
-#' @param values Length-C numeric vector of category scores.
-#' @param r_total Total number of raters per subject.
-#'
-#' @return A `misskappa_estimate` object with `Fleiss` and
-#'   `Brennan-Prediger` coefficients and the 2x2 vcov. `influence()` returns
-#'   `NULL` for this estimator by design.
-#'
-#' @export
-kappa_quadratic_counts <- function(x, values, r_total) {
-  if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
-  }
-  x_mat <- as.matrix(x)
-  storage.mode(x_mat) <- "integer"
-  if (!is.numeric(values)) stop("'values' must be numeric.")
-  if (!is.numeric(r_total) || length(r_total) != 1L || r_total < 2) {
-    stop("'r_total' must be an integer >= 2.")
-  }
-
-  out <- rcpp_kappa_quadratic_counts(
-    x = x_mat, values = as.numeric(values), r_total = as.integer(r_total)
-  )
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Fleiss", "Brennan-Prediger")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
   psi_mat <- out$psi
@@ -468,27 +487,36 @@ kappa_counts <- function(x,
 #'
 #' @description
 #' Estimates Conger / Fleiss weighted agreement coefficients for raw
-#' real-valued ratings under MCAR missingness (`"available"`, `"ipw"`,
-#' `"gwet"`). Missing entries are encoded as `NA` (or any non-finite
+#' real-valued ratings under missing data. The MCAR moment routes
+#' (`"available"`, `"ipw"`, `"gwet"`) cover any continuous loss kernel; the
+#' normal-FIML route (`"fiml"`, quadratic kernel only) fits a saturated
+#' multivariate-normal covariance by EM and is valid under ignorable (MCAR or
+#' MAR) missingness. Missing entries are encoded as `NA` (or any non-finite
 #' value).
 #'
 #' Brennan-Prediger is not reported for continuous data; the chance-
 #' disagreement baseline requires a finite number of categories.
 #'
 #' @param x A subjects-by-raters numeric matrix.
-#' @param method One of `"available"`, `"ipw"`, `"gwet"`.
+#' @param method One of `"available"`, `"ipw"`, `"gwet"`, or `"fiml"`.
+#'   `"fiml"` requires `weight = "quadratic"` and dispatches to
+#'   [kappa_quadratic_fiml()].
 #' @param weight Continuous loss kernel: `"identity"` (binary 0/1),
 #'   `"linear"`, `"quadratic"`, `"radical"`, or `"ratio"`. The data range
-#'   `[min(x), max(x)]` is used to parameterise the kernel.
+#'   `[min(x), max(x)]` is used to parameterise the kernel. Only
+#'   `"quadratic"` is available with `method = "fiml"`.
+#' @param em_options Used only when `method = "fiml"`: named list with `tol`,
+#'   `max_iter`, and `fd_h`.
 #'
 #' @return A `misskappa_estimate` object carrying named coefficients
 #'   (`Conger`, `Fleiss`) and the 2x2 asymptotic covariance matrix.
 #'
 #' @export
 kappa_continuous <- function(x,
-                             method = c("available", "ipw", "gwet"),
+                             method = c("available", "ipw", "gwet", "fiml"),
                              weight = c("quadratic", "linear", "identity",
-                                        "unweighted", "radical", "ratio")) {
+                                        "unweighted", "radical", "ratio"),
+                             em_options = list()) {
   method <- match.arg(method)
   weight <- match.arg(weight)
 
@@ -498,6 +526,15 @@ kappa_continuous <- function(x,
   x_mat <- as.matrix(x)
   if (!is.numeric(x_mat)) stop("'x' must be numeric.")
   storage.mode(x_mat) <- "double"
+
+  if (method == "fiml") {
+    if (weight != "quadratic") {
+      stop("method = \"fiml\" is only defined for the quadratic kernel; the ",
+           "Conger and Fleiss kappas are functions of the mean and covariance ",
+           "only under quadratic weighting.")
+    }
+    return(kappa_quadratic_fiml(x_mat, em_options = em_options))
+  }
 
   out <- rcpp_kappa_continuous(
     x = x_mat,
