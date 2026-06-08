@@ -39,6 +39,22 @@ Result<ContinuousLoss> quadratic_loss(double min_val, double max_val);
 Result<ContinuousLoss> radical_loss(double min_val, double max_val);
 Result<ContinuousLoss> ratio_loss(double min_val, double max_val);
 
+// Component-separable vector losses. A subject-rater vector is represented
+// externally by consecutive feature columns. The estimator forms weighted
+// component-loss totals and then applies `transform` to the component mean.
+// `rms_vector_loss` uses squared component loss plus sqrt transform.
+struct ComponentSeparableLoss {
+  RealVec feature_weights;
+  double (*compute)(double a, double b);
+  double (*transform)(double x);
+  double (*transform_derivative)(double x);
+};
+
+Result<ComponentSeparableLoss> hamming_vector_loss(const RealVec& feature_weights);
+Result<ComponentSeparableLoss> absolute_vector_loss(const RealVec& feature_weights);
+Result<ComponentSeparableLoss> squared_vector_loss(const RealVec& feature_weights);
+Result<ComponentSeparableLoss> rms_vector_loss(const RealVec& feature_weights);
+
 // Symmetric g-wise disagreement kernels for complete rectangular designs.
 // These are deliberately small POD wrappers around plain function pointers.
 // Categorical kernels expect category codes in [0, C-1]. Continuous kernels

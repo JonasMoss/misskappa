@@ -97,6 +97,23 @@ Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::Cont
 Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
 
+// --- Component-separable vector-rating estimators ---------------------------
+//
+// `ratings` is n x (R * p), with columns ordered rater-major:
+//   rater 0 feature 0..p-1, rater 1 feature 0..p-1, ...
+// Non-finite entries are missing component ratings. `features` is p.
+// `loss` carries diagonal feature weights and a component loss. The estimator
+// targets component-separable vector disagreement by summing weighted
+// component losses over observed rater-feature overlaps and applying the
+// loss transform (identity for Hamming/L1/squared, sqrt for RMS).
+//
+// Estimates returned: (Conger, Fleiss). Categorical full-pattern FIML and
+// non-diagonal feature weights are intentionally out of scope here.
+Result<Estimation> estimate_pairwise_vector(
+    RealMatView ratings, int features, loss::ComponentSeparableLoss loss);
+Result<Estimation> estimate_ipw_vector(
+    RealMatView ratings, int features, loss::ComponentSeparableLoss loss);
+
 // --- Coefficient alpha ------------------------------------------------------
 //
 // `ratings` is n x R with categories in [0, C-1] or `na_code`; `values` is the

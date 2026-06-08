@@ -193,6 +193,94 @@ Result<ContinuousLoss> ratio_loss(double min_val, double max_val) {
   return ContinuousLoss{min_val, max_val, &continuous_kernels::ratio};
 }
 
+// --- Component-separable vector loss kernels ---
+
+namespace vector_kernels {
+
+double hamming(double a, double b) {
+  return (std::abs(a - b) < zero_tol) ? 0.0 : 1.0;
+}
+
+double absolute(double a, double b) {
+  return std::abs(a - b);
+}
+
+double squared(double a, double b) {
+  return std::pow(a - b, 2);
+}
+
+double identity_transform(double x) {
+  return x;
+}
+
+double identity_derivative(double /*x*/) {
+  return 1.0;
+}
+
+double sqrt_transform(double x) {
+  return (x > 0.0) ? std::sqrt(x) : 0.0;
+}
+
+double sqrt_derivative(double x) {
+  return (x > zero_tol) ? 0.5 / std::sqrt(x) : 0.0;
+}
+
+}  // namespace vector_kernels
+
+Result<ComponentSeparableLoss> make_vector_loss(
+    const RealVec& feature_weights,
+    double (*compute)(double, double),
+    double (*transform)(double),
+    double (*transform_derivative)(double)) {
+  if (feature_weights.size() < 1) return std::unexpected(Error::invalid_argument);
+  double total = 0.0;
+  for (Eigen::Index i = 0; i < feature_weights.size(); ++i) {
+    const double w = feature_weights(i);
+    if (!std::isfinite(w) || w < 0.0) {
+      return std::unexpected(Error::invalid_argument);
+    }
+    total += w;
+  }
+  if (total < zero_tol) return std::unexpected(Error::invalid_argument);
+  return ComponentSeparableLoss{
+      feature_weights,
+      compute,
+      transform,
+      transform_derivative};
+}
+
+Result<ComponentSeparableLoss> hamming_vector_loss(const RealVec& feature_weights) {
+  return make_vector_loss(
+      feature_weights,
+      &vector_kernels::hamming,
+      &vector_kernels::identity_transform,
+      &vector_kernels::identity_derivative);
+}
+
+Result<ComponentSeparableLoss> absolute_vector_loss(const RealVec& feature_weights) {
+  return make_vector_loss(
+      feature_weights,
+      &vector_kernels::absolute,
+      &vector_kernels::identity_transform,
+      &vector_kernels::identity_derivative);
+}
+
+Result<ComponentSeparableLoss> squared_vector_loss(const RealVec& feature_weights) {
+  return make_vector_loss(
+      feature_weights,
+      &vector_kernels::squared,
+      &vector_kernels::identity_transform,
+      &vector_kernels::identity_derivative);
+}
+
+Result<ComponentSeparableLoss> rms_vector_loss(const RealVec& feature_weights) {
+  return make_vector_loss(
+      feature_weights,
+      &vector_kernels::squared,
+      &vector_kernels::sqrt_transform,
+      &vector_kernels::sqrt_derivative);
+}
+
 namespace gwise_kernels {
 
 double frechet_nominal(const int* values, int g, int C) {

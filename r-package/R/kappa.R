@@ -628,6 +628,92 @@ kappa_continuous <- function(x,
   )
 }
 
+#' Component-separable vector agreement coefficients
+#'
+#' @description
+#' Internal pilot for pairwise vector-valued ratings with component-wise
+#' missingness. Input is a rectangular subjects-by-raters-by-features array.
+#' The estimator forms diagonal-weighted component-loss moments and reports
+#' Conger and Fleiss coefficients.
+#'
+#' @param x Numeric array with dimensions subjects, raters, features.
+#' @param method `"pairwise"` for observed component-pair moments or `"ipw"`
+#'   for inverse-probability weighting by rater-feature and
+#'   rater-pair-feature observation rates.
+#' @param loss Component-separable loss: `"hamming"`, `"absolute"`,
+#'   `"squared"`, or `"rms"`.
+#' @param feature_weights Non-negative diagonal feature weights. Defaults to
+#'   equal weights.
+#'
+#' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
+#'   coefficients and a 2x2 influence-function covariance matrix.
+#'
+#' @keywords internal
+kappa_vector <- function(x,
+                         method = c("pairwise", "ipw"),
+                         loss = c("hamming", "absolute", "squared", "rms"),
+                         feature_weights = NULL) {
+  method <- match.arg(method)
+  loss <- match.arg(loss)
+  dims <- dim(x)
+  if (length(dims) != 3L) {
+    stop("'x' must be a subjects-by-raters-by-features array.")
+  }
+  if (dims[1L] < 1L || dims[2L] < 2L || dims[3L] < 1L) {
+    stop("'x' must have at least one subject, two raters, and one feature.")
+  }
+  if (!is.numeric(x)) stop("'x' must be numeric.")
+  storage.mode(x) <- "double"
+
+  n <- dims[1L]
+  R <- dims[2L]
+  p <- dims[3L]
+  if (is.null(feature_weights)) {
+    feature_weights <- rep(1, p)
+  }
+  if (!is.numeric(feature_weights) || length(feature_weights) != p ||
+      any(!is.finite(feature_weights)) || any(feature_weights < 0) ||
+      !any(feature_weights > 0)) {
+    stop("'feature_weights' must be a non-negative numeric vector of length ",
+         "dim(x)[3] with at least one positive entry.")
+  }
+
+  flat <- matrix(NA_real_, nrow = n, ncol = R * p)
+  for (r in seq_len(R)) {
+    for (l in seq_len(p)) {
+      flat[, (r - 1L) * p + l] <- x[, r, l]
+    }
+  }
+
+  out <- rcpp_kappa_vector(
+    x = flat,
+    features = as.integer(p),
+    method = method,
+    loss_type = loss,
+    feature_weights = as.numeric(feature_weights)
+  )
+
+  estimates <- as.numeric(out$estimates)
+  names(estimates) <- c("Conger", "Fleiss")
+  vcov_mat <- out$vcov
+  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      psi = psi_mat,
+      method = paste0("vector_", method),
+      weight = loss,
+      loss = loss,
+      feature_weights = as.numeric(feature_weights)
+    ),
+    class = "misskappa_estimate"
+  )
+}
+
 #' G-wise agreement coefficients for complete rectangular ratings
 #'
 #' @description

@@ -3,6 +3,13 @@
 Working note for the vector-valued agreement pilot in
 `experiments/26-crackles-vector-kappa/`.
 
+Status: the active implementation target is now the component-separable vector
+kappa in `dev/notes/component-separable-vector-kappa.md`. The original
+CRACKLES pilot used a pure-R squared-loss mean/covariance contraction with
+normal-FIML imputation as a feasibility check. The experiment should now call
+the internal `kappa_vector()` wrapper for pairwise and IPW component-missing
+estimators; categorical full-profile FIML is deferred.
+
 ## What the data are
 
 `dev/dat/CRACKLES.rda` is the CRACKLES / Tromso lung-sound agreement
