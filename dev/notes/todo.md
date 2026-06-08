@@ -58,15 +58,20 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
          `NAMESPACE` + `R/kappa.R` + doc fixes.
       5. Version decision: pre-1.0 reset (`0.5.0`) vs keep legacy `2.0.0`.
 
-- [ ] **GitHub-installability: vendor the C++ library into the R package.**
-      Hard blocker for `remotes::install_github`. `r-package/src/Makevars`
-      links a prebuilt `../../build-opt/libmisskappa.a`, and the library
-      sources are not under `src/`, so a clean clone fails to link (local
-      `R CMD check` passes only because that `.a` exists here). Bring the
-      sources (or a git-subtree of `include/` + needed `.cpp`) under
-      `r-package/src/` and have `Makevars` compile them, keeping
-      `-fno-exceptions -fno-rtti`, C++23, `EIGEN_NO_EXCEPTIONS`. Verify
-      `R CMD check` from a tarball with **no** `MISSKAPPA_LIB` env set.
+- [x] **GitHub-installability: vendor the C++ library into the R package.**
+      `dev/vendor-cpp.sh` (= `just vendor`) copies the canonical `src/*.cpp`,
+      `src/*.hpp`, and `include/misskappa/*.hpp` into `r-package/src/`, each
+      stamped with a `@generated` banner (and cleaned up by that banner on the
+      next run, so renames/deletes don't leave stale copies). `Makevars` is now
+      self-contained — `PKG_CPPFLAGS = -I. -DEIGEN_NO_EXCEPTIONS`, C++23, no
+      `PKG_LIBS`, no `../../include` — and R compiles every vendored `.cpp`.
+      Eigen comes from `LinkingTo: RcppEigen`. Dropped `-fno-exceptions/-rtti`
+      (Rcpp needs exceptions; the library never throws, so it's a no-op). The R
+      justfile recipes depend on `vendor`, so editing only the canonical sources
+      is enough; `just vendor-check` is the CI/pre-commit drift guard. Verified
+      by `R CMD build` + `R CMD INSTALL` of the tarball into a throwaway lib with
+      `MISSKAPPA_*` env scrubbed: `alpha()`/`kappa()` run, full testthat suite
+      201/201. `opt`/`test-opt` still build the static lib for the C++ ctest.
 
 - [ ] **Hypothesis-testing front door (deferred from the release).**
       `t.test`-style `kappa_test()` / `alpha_test()` returning `htest` over the

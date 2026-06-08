@@ -51,10 +51,14 @@ jobs:
         run: |
           install.packages(c("Rcpp", "RcppEigen", "roxygen2", "testthat"))
 
-      - name: Build opt library
+      - name: Vendor C++ into the R package and verify it's committed
         run: |
-          cmake --preset opt
-          cmake --build --preset opt --parallel
+          dev/vendor-cpp.sh
+          if [ -n "$(git status --porcelain -- r-package/src)" ]; then
+            echo "::error::r-package/src is out of sync with src/ + include/ — run 'just vendor' and commit."
+            git status --porcelain -- r-package/src
+            exit 1
+          fi
 
       - name: Install local irrCAC smoke oracle
         run: R CMD INSTALL --preclean dev/irrcacsmoke
@@ -69,6 +73,4 @@ jobs:
           cleanup
           trap cleanup EXIT
           R CMD build r-package
-          MISSKAPPA_INCLUDE="$PWD/include" \
-          MISSKAPPA_LIB="$PWD/build-opt/libmisskappa.a" \
           R CMD check --no-manual misskappa_*.tar.gz

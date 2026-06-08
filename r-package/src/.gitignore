@@ -1,0 +1,5 @@
+# Compiled objects from R's build of the vendored sources.
+*.o
+*.so
+*.dll
+symbols.rds

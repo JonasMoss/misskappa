@@ -1,14 +1,11 @@
-# Link against the prebuilt opt-preset libmisskappa.a so a header change forces
-# the R glue to recompile against the new ABI. Build the lib first with
-# `cmake --preset opt && cmake --build --preset opt` (or `just opt`).
+# The C++ library is vendored into this directory by dev/vendor-cpp.sh (run via
+# `just vendor`), so the package is self-contained: no reach-up to ../../include
+# and no prebuilt static library. R compiles every *.cpp here and links them
+# together. Do NOT edit the vendored *.cpp / misskappa/*.hpp — edit the canonical
+# sources under <repo>/src and <repo>/include and re-run `just vendor`.
 
 CXX_STD = CXX23
 
-MISSKAPPA_INCLUDE ?= $(CURDIR)/../../include
-MISSKAPPA_LIB ?= $(CURDIR)/../../build-opt/libmisskappa.a
-
-PKG_CPPFLAGS = -I$(MISSKAPPA_INCLUDE) -DEIGEN_NO_EXCEPTIONS
-PKG_LIBS = $(MISSKAPPA_LIB)
-
-# Force the R glue to relink when the static library changes.
-$(SHLIB): $(MISSKAPPA_LIB)
+# -I. resolves the vendored "misskappa/..." and "detail_..." headers. Eigen comes
+# from RcppEigen (LinkingTo). EIGEN_NO_EXCEPTIONS matches how the library is built.
+PKG_CPPFLAGS = -I. -DEIGEN_NO_EXCEPTIONS
