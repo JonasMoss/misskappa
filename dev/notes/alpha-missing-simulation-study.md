@@ -26,7 +26,7 @@ runner can be implemented once the normal-FIML alpha branch lands.
   Useful for the discrete scoring and coverage lens, but not a missing-data
   design.
 - Existing misskappa experiments: use the anchor-MAR pattern from
-  `experiments/12-clean-mar-dgp/` and `experiments/16-alpha-calibration-sweep/`
+  `experiments/studies/12-clean-mar-dgp/` and `experiments/probes/16-alpha-calibration-sweep/`
   instead of the old truth-dependent MAR mechanism.
 
 ## Measurement models
@@ -161,7 +161,7 @@ under MAR, and whether FIML buys enough efficiency/coverage to justify its cost.
 ## Implementation sequence
 
 1. Wait for the normal-FIML alpha work to land cleanly in the package.
-2. Add `experiments/18-alpha-paper-simulation/` with a smoke path and the
+2. Add `experiments/studies/18-alpha-paper-simulation/` with a smoke path and the
    continuous runner first.
 3. Add the ordinal/categorical arm after the continuous smoke is stable.
 4. Run the capped paper pass, render the report, then migrate the paper-worthy

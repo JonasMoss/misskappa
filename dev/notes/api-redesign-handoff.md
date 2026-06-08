@@ -29,8 +29,8 @@ behind it (so they are not relitigated), and the open items.
 - **`se_type="normal"` removed** package-wide; the sandwich/IF covariance is the
   only SE path, so every estimator exposes `fit$psi`.
 - **Worked examples (public-API demos for the papers):**
-  `experiments/24-alpha-equal-cocron` (paired alpha on `cocron::knowledge`) and
-  `experiments/25-kappa-equal-examples` (anxiety homogeneity, Westlund–Kurland MS
+  `experiments/studies/24-alpha-equal-cocron` (paired alpha on `cocron::knowledge`) and
+  `experiments/studies/25-kappa-equal-examples` (anxiety homogeneity, Westlund–Kurland MS
   two-sample, FEES `multiagree` benchmark, mcduff dependent-on-missing-data).
   Both use the public verbs only. Headline numbers: alpha 0.764/0.804 χ²≈4.36;
   MS quadratic κ 0.525/0.626 z≈−1.02; FEES exact match to `multiagree`;
@@ -66,13 +66,14 @@ Public surface: `alpha`, `kappa`, `kappa_counts`, `kappa_test`, `alpha_test`,
    compile. Fix: vendor `include/misskappa/` into the package (e.g.
    `r-package/inst/include/` or `src/`) so headers travel with the tarball.
    Tracked on the release checklist in `dev/notes/todo.md`.
-2. **Experiments framing/cleanup.** Every experiment **except 24/25** uses the
-   pre-redesign API (frozen; won't run against the current package). Do a
-   per-experiment triage — keep-as-frozen-record / distill / delete-truly-stale /
-   promote-to-paper — **not** a piecemeal API migration (re-running changes
-   frozen numbers; migrating-without-rerun makes runner/results inconsistent).
-   Findings to carry in:
-   - duplicate `12-` prefix (`12-clean-mar-dgp` + `12-quadratic-rare-disagreement`);
+2. **Experiments framing/cleanup.** Done: `experiments/` is now organized by
+   lifecycle, with canonical paths in `experiments/INDEX.md` and root-level
+   compatibility README stubs. Every experiment **except 24/25** still uses the
+   pre-redesign API, so treat frozen runners as records rather than migration
+   targets. Findings to carry in:
+   - duplicate `12-` prefix is resolved at the top level by the lifecycle
+     buckets (`studies/12-clean-mar-dgp` versus
+     `archive/pre-redesign/12-quadratic-rare-disagreement`);
    - `18`/`23` (`*-paper-simulation`) are *fuller* than the papers' own
      `scripts/*_simulation.R` — distill, don't blind-delete;
    - `22` (`quadratic-nt-fiml-validation`): its `se_type` sandwich-vs-normal
@@ -93,4 +94,4 @@ Public surface: `alpha`, `kappa`, `kappa_counts`, `kappa_test`, `alpha_test`,
   `feedback_api_minimal_footprint`.
 - Key files: `r-package/R/{kappa.R, agreement_test.R, joint_vcov.R}`,
   `r-package/{NEWS.md,_pkgdown.yml,pkgdown/index.md}`, `AGENTS.md`,
-  `experiments/{24-alpha-equal-cocron,25-kappa-equal-examples}`.
+  `experiments/studies/{24-alpha-equal-cocron,25-kappa-equal-examples}`.

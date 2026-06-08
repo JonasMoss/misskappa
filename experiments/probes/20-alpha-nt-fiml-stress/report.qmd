@@ -1,0 +1,196 @@
+---
+title: "Experiment 20: Normal-FIML Stress Check for Ordinal MAR Alpha"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+res_dir <- "results"
+if (!dir.exists(res_dir)) {
+  res_dir <- file.path("experiments", "probes", "20-alpha-nt-fiml-stress", "results")
+}
+needed <- c("truth.csv", "summary.csv", "metadata.csv")
+missing <- needed[!file.exists(file.path(res_dir, needed))]
+if (length(missing)) {
+  stop(
+    "Missing results: ", paste(missing, collapse = ", "),
+    ". Run: Rscript experiments/probes/20-alpha-nt-fiml-stress/run_experiment.R --smoke --progress"
+  )
+}
+truth <- read.csv(file.path(res_dir, "truth.csv"), stringsAsFactors = FALSE)
+summary <- read.csv(file.path(res_dir, "summary.csv"), stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(res_dir, "metadata.csv"), stringsAsFactors = FALSE)
+
+fmt <- function(x, digits = 4) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+label_method <- function(x) {
+  out <- x
+  out[out == "pairwise"] <- "Pairwise"
+  out[out == "cat_fiml"] <- "Cat-FIML"
+  out[out == "normal_fiml"] <- "Normal FIML"
+  out[out == "listwise"] <- "Listwise"
+  out
+}
+label_mechanism <- function(x) {
+  out <- x
+  out[out == "mcar30"] <- "MCAR 30%"
+  out[out == "mar_linear30"] <- "Linear Anchor MAR 30%"
+  out[out == "mar_lowgate45"] <- "Low-Anchor MAR 45%"
+  out
+}
+```
+
+## Question
+
+Can the surprisingly small bias of normal-theory FIML in the paper-facing
+ordinal simulation be broken by changing only the ordinal margins, latent
+response distribution, and MAR shape?
+
+The control condition is the current thresholded congeneric Gaussian copula with
+balanced three-category margins. The stress conditions keep six scored ordinal
+items but use skewed margins, replace the Gaussian copula with a two-class
+ordinal mixture, and add an anchor-group mixture in which item 1 indexes groups
+with different target-item covariance. Missingness is still MAR because all
+target-item response probabilities depend only on item 1, which is always
+observed.
+
+## Short Answer
+
+```{r short-answer}
+normal <- summary[summary$method == "normal_fiml", ]
+mar <- normal[normal$mechanism != "mcar30", ]
+worst <- mar[which.max(abs(mar$bias)), ]
+reps <- metadata$value[metadata$key == "reps"]
+n <- metadata$value[metadata$key == "n"]
+```
+
+This run uses `r reps` replications per cell at `n = r n`. The largest absolute
+normal-FIML MAR bias is `r fmt(worst$bias, 3)` in the
+`r worst$dgp_label` / `r label_mechanism(worst$mechanism)` cell. Treat this as a
+stress diagnostic, not final paper evidence: the useful question is whether the
+direction and size persist when we later increase replications or move to a
+larger population-style run.
+
+## Truths
+
+```{r truths}
+truth_tab <- truth[, c("dgp", "family", "truth_alpha", "min_score_cov",
+                       "max_score_cov", "dgp_note")]
+truth_tab$truth_alpha <- fmt(truth_tab$truth_alpha)
+truth_tab$min_score_cov <- fmt(truth_tab$min_score_cov)
+truth_tab$max_score_cov <- fmt(truth_tab$max_score_cov)
+knitr::kable(
+  truth_tab,
+  col.names = c("DGP", "Family", "Alpha", "Min Score Cov",
+                "Max Score Cov", "DGP Note")
+)
+```
+
+## Evidence
+
+```{r evidence-table}
+display <- summary[, c("dgp", "mechanism", "method", "n_valid", "truth",
+                       "bias", "mc_se_bias", "mse", "coverage95",
+                       "mean_complete_rows")]
+display$mechanism <- label_mechanism(display$mechanism)
+display$method <- label_method(display$method)
+display$truth <- fmt(display$truth)
+display$bias <- fmt(display$bias)
+display$mc_se_bias <- fmt(display$mc_se_bias)
+display$mse <- fmt(display$mse)
+display$coverage95 <- fmt(display$coverage95, 3)
+display$mean_complete_rows <- fmt(display$mean_complete_rows, 1)
+knitr::kable(
+  display,
+  col.names = c("DGP", "Mechanism", "Method", "Valid", "Truth",
+                "Bias", "MC SE Bias", "MSE", "Coverage", "Complete Rows")
+)
+```
+
+```{r normal-focus}
+normal_tab <- summary[summary$method == "normal_fiml",
+                      c("dgp", "mechanism", "bias", "mc_se_bias", "mse",
+                        "coverage95", "mean_ci_length")]
+normal_tab$mechanism <- label_mechanism(normal_tab$mechanism)
+normal_tab$bias <- fmt(normal_tab$bias)
+normal_tab$mc_se_bias <- fmt(normal_tab$mc_se_bias)
+normal_tab$mse <- fmt(normal_tab$mse)
+normal_tab$coverage95 <- fmt(normal_tab$coverage95, 3)
+normal_tab$mean_ci_length <- fmt(normal_tab$mean_ci_length)
+knitr::kable(
+  normal_tab,
+  col.names = c("DGP", "Mechanism", "Bias", "MC SE Bias", "MSE",
+                "Coverage", "CI Length")
+)
+```
+
+```{r bias-plot, fig.width=7, fig.height=4.5}
+old_par <- par(no.readonly = TRUE)
+on.exit(par(old_par), add = TRUE)
+plot_df <- summary
+plot_df$cell <- paste(plot_df$dgp, label_mechanism(plot_df$mechanism), sep = "\n")
+cols <- c(pairwise = "#000000", cat_fiml = "#009E73",
+          normal_fiml = "#0072B2", listwise = "#D55E00")
+methods <- intersect(names(cols), unique(plot_df$method))
+cells <- unique(plot_df$cell)
+x <- seq_along(cells)
+ylim <- range(plot_df$bias, na.rm = TRUE)
+plot(x, rep(NA_real_, length(x)), ylim = ylim, xaxt = "n",
+     xlab = "", ylab = "Bias", main = "Bias by DGP and Missingness")
+abline(h = 0, col = "gray70", lty = 2)
+offsets <- seq(-0.20, 0.20, length.out = length(methods))
+for (m_idx in seq_along(methods)) {
+  m <- methods[m_idx]
+  g <- plot_df[plot_df$method == m, ]
+  points(match(g$cell, cells) + offsets[m_idx], g$bias,
+         pch = 16, col = cols[m])
+}
+axis(1, at = x, labels = cells, las = 2, cex.axis = 0.65)
+legend("topright", legend = label_method(methods), pch = 16,
+       col = cols[methods], bty = "n")
+```
+
+## Caveats
+
+- This is deliberately a stress check. The low-anchor MAR mechanism is plausible
+  as an early-item dropout proxy, but it is stronger and less smooth than the
+  paper's current MAR design.
+- Cat-FIML is saturated over the observed ordinal response space. At `n = 100`,
+  it can still have finite-sample bias from sparse cells even when its model is
+  correctly specified.
+- Normal FIML uses the scored categories as continuous and reports sandwich
+  intervals. The sandwich does not remove pseudo-model bias.
+- The latent-class DGP is not calibrated to match the Gaussian-copula covariance
+  exactly. The anchor-group DGP is even more diagnostic because it makes the
+  conditional covariance of the target items depend on the observed anchor. These
+  are candidate additions, not replacement paper DGPs yet.
+
+## Reproduce
+
+Smoke:
+
+```sh
+Rscript experiments/probes/20-alpha-nt-fiml-stress/run_experiment.R --smoke --progress
+quarto render experiments/probes/20-alpha-nt-fiml-stress/report.qmd
+```
+
+Configured diagnostic:
+
+```sh
+Rscript experiments/probes/20-alpha-nt-fiml-stress/run_experiment.R \
+  --reps 200 \
+  --n 100 \
+  --progress
+quarto render experiments/probes/20-alpha-nt-fiml-stress/report.qmd
+```
+
+```{r metadata}
+knitr::kable(metadata, col.names = c("Key", "Value"))
+```

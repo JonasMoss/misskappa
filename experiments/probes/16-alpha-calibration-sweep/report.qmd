@@ -1,0 +1,207 @@
+---
+title: "Experiment 16: Alpha Calibration Sweep"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- tryCatch(knitr::current_input(), error = function(e) NA_character_)
+base_dir <- if (is.na(input)) getwd() else dirname(normalizePath(input, mustWork = FALSE))
+candidate_dirs <- c(
+  file.path(base_dir, "results"),
+  "results",
+  file.path("experiments", "probes", "16-alpha-calibration-sweep", "results")
+)
+result_dir <- candidate_dirs[file.exists(file.path(candidate_dirs, "summary.csv"))][1L]
+if (is.na(result_dir)) {
+  stop("Missing results. Run: Rscript experiments/probes/16-alpha-calibration-sweep/run_experiment.R --smoke",
+       call. = FALSE)
+}
+
+summary <- read.csv(file.path(result_dir, "summary.csv"), stringsAsFactors = FALSE)
+truth <- read.csv(file.path(result_dir, "truth.csv"), stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(result_dir, "metadata.csv"), stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+fmt_ms <- function(x) ifelse(is.na(x), "", formatC(x, format = "f", digits = 1))
+fmt_sci <- function(x, digits = 2) ifelse(is.na(x), "", formatC(x, format = "e", digits = digits))
+
+total_failures <- sum(summary$failures)
+max_if_error <- max(summary$max_psi_vcov_abs_error, na.rm = TRUE)
+if (!is.finite(max_if_error)) max_if_error <- NA_real_
+
+largest_profile <- truth[which.max(truth$patterns), ]
+largest_timing <- subset(
+  summary,
+  profile == largest_profile$profile[1L] & method == "fiml" & mechanism == "mar"
+)
+largest_timing <- if (nrow(largest_timing)) {
+  largest_timing[which.max(largest_timing$n), ]
+} else {
+  data.frame(median_elapsed_ms = NA_real_)
+}
+
+fiml_rows <- subset(summary, method == "fiml")
+worst_fiml <- if (nrow(fiml_rows)) {
+  fiml_rows[which.max(abs(fiml_rows$bias)), ]
+} else {
+  data.frame(profile_label = "", mechanism = "", n = NA_integer_, bias = NA_real_)
+}
+```
+
+## Question
+
+Against fixed population alpha truths, how do `alpha(method =
+"available")` and saturated categorical `alpha(method = "fiml")` behave
+under complete data, MCAR missingness, and an ignorable anchor-item MAR
+mechanism across small `C x R x n` grids?
+
+The population truth is computed by one-dimensional quadrature under the
+latent ordinal item model, rather than by a large simulated complete
+sample. The Louis-information path is checked externally through mean
+estimated SE, Wald coverage, timing, and reconstruction of `vcov()` from
+the exported per-subject influence rows.
+
+## Short Answer
+
+This is a capped calibration run, not the final paper sweep. It found
+`r total_failures` fit failures in the committed run, and the largest
+influence-to-vcov reconstruction error was `r fmt_sci(max_if_error)`.
+For the largest profile in this run (`r largest_profile$profile_label[1]`,
+`C^R = r largest_profile$patterns[1]`), median FIML time in the MAR cell
+at the largest displayed `n` was `r fmt_ms(largest_timing$median_elapsed_ms[1])`
+ms.
+
+The largest absolute FIML bias in the committed run was
+`r fmt(worst_fiml$bias[1])` in the `r worst_fiml$profile_label[1]`,
+`r worst_fiml$mechanism[1]`, `n = r worst_fiml$n[1]` cell. That is a
+finite-sample/sparse-support warning rather than a conclusion; it is
+the cell to revisit with a larger `n` grid and replication budget.
+
+Use this to check mechanics and choose the full replication budget. The
+coverage columns are still Monte Carlo noisy unless `--reps` is raised.
+
+## Truths
+
+```{r}
+truth_display <- truth
+truth_display$`Profile` <- truth_display$profile_label
+truth_display$`C` <- truth_display$C
+truth_display$`R` <- truth_display$R
+truth_display$`C^R` <- truth_display$patterns
+truth_display$`Alpha` <- fmt(truth_display$truth_alpha)
+truth_display$`Total Var` <- fmt(truth_display$total_variance)
+truth_display$`Item Var Sum` <- fmt(truth_display$item_variance_sum)
+truth_display <- truth_display[, c("Profile", "C", "R", "C^R", "Alpha",
+                                   "Total Var", "Item Var Sum")]
+knitr::kable(truth_display, row.names = FALSE, align = "lrrrrrr")
+```
+
+## Calibration
+
+```{r}
+cal <- summary[, c(
+  "profile_label", "mechanism", "n", "method", "truth", "reps",
+  "n_valid", "bias", "mc_se_bias", "sd_estimate", "mean_se",
+  "se_over_sd", "coverage95", "mean_z", "sd_z", "median_elapsed_ms",
+  "mean_observed_fraction", "failures"
+)]
+cal <- cal[order(cal$profile_label, cal$mechanism, cal$n, cal$method), ]
+cal$Profile <- cal$profile_label
+cal$Mechanism <- cal$mechanism
+cal$Method <- cal$method
+cal$Truth <- fmt(cal$truth)
+cal$Bias <- fmt(cal$bias)
+cal$`MC SE Bias` <- fmt(cal$mc_se_bias)
+cal$`SD Est` <- fmt(cal$sd_estimate)
+cal$`Mean SE` <- fmt(cal$mean_se)
+cal$`SE/SD` <- fmt(cal$se_over_sd, 2)
+cal$`Cover 95` <- fmt(cal$coverage95)
+cal$`Mean z` <- fmt(cal$mean_z, 2)
+cal$`SD z` <- fmt(cal$sd_z, 2)
+cal$`Median ms` <- fmt_ms(cal$median_elapsed_ms)
+cal$`Obs Frac` <- fmt(cal$mean_observed_fraction)
+cal$Failures <- cal$failures
+cal <- cal[, c("Profile", "Mechanism", "n", "Method", "Truth", "reps",
+               "n_valid", "Bias", "MC SE Bias", "SD Est", "Mean SE",
+               "SE/SD", "Cover 95", "Mean z", "SD z", "Median ms",
+               "Obs Frac", "Failures")]
+knitr::kable(cal, row.names = FALSE, align = "llrlrrrrrrrrrrrrrr")
+```
+
+## Diagnostics
+
+```{r}
+diag <- summary[, c("profile_label", "mechanism", "n", "method",
+                    "min_pair_count_min", "min_observed_categories",
+                    "max_psi_vcov_abs_error")]
+diag <- diag[order(diag$profile_label, diag$mechanism, diag$n, diag$method), ]
+diag$Profile <- diag$profile_label
+diag$Mechanism <- diag$mechanism
+diag$Method <- diag$method
+diag$`Min Pair n` <- diag$min_pair_count_min
+diag$`Min Categories` <- diag$min_observed_categories
+diag$`Max IF Vcov Error` <- formatC(diag$max_psi_vcov_abs_error, format = "e", digits = 2)
+diag <- diag[, c("Profile", "Mechanism", "n", "Method", "Min Pair n",
+                 "Min Categories", "Max IF Vcov Error")]
+knitr::kable(diag, row.names = FALSE, align = "llrlrrr")
+```
+
+## Caveats
+
+- The alpha-specific Louis eigenspectrum is not exposed by the R package
+  yet. This runner checks SE calibration and IF reconstruction, but a
+  true spectrum diagnostic would need a small alpha analogue of
+  `rcpp_fiml_louis_spectrum`.
+- The MAR mechanism observes item 1 for everyone and lets the other
+  items' observation probabilities depend on item 1. That is ignorable
+  for the saturated FIML model, but it is only one MAR design.
+- If a finite sample drops an entire category, the R wrapper estimates
+  on the observed support. The summary records the minimum observed
+  category count so support loss is visible.
+- The committed run uses `--paper-n-grid 250,1000`. An uncapped
+  `paper5x6`, `n = 4000`, `B = 200` pass was interrupted after it
+  stayed in the first high-dimensional `n = 4000` cell for several
+  minutes. Treat that as a feasibility finding: `5^6` needs separate
+  scheduled benchmarking or a smaller replication grid.
+- The committed run is intended to exercise the full pipeline and give
+  first-order calibration signals. Raise `--reps` further before using
+  coverage or SE ratios as manuscript evidence.
+
+## Reproduce
+
+```bash
+Rscript experiments/probes/16-alpha-calibration-sweep/run_experiment.R --smoke
+```
+
+Starter sweep:
+
+```bash
+Rscript experiments/probes/16-alpha-calibration-sweep/run_experiment.R --profiles tiny3x4,ordinal4x5,paper5x6 --n-grid 150,500 --reps 8 --progress
+```
+
+Fuller first pass:
+
+```bash
+Rscript experiments/probes/16-alpha-calibration-sweep/run_experiment.R \
+  --reps 200 \
+  --n-grid 250,1000,4000 \
+  --paper-n-grid 250,1000 \
+  --progress
+```
+
+```{r}
+cat(sprintf(
+  "Metadata: smoke=%s; profiles=%s; mechanisms=%s; n_grid=%s; paper_n_grid=%s; reps=%s; seed_base=%s; truth=%s; misskappa=%s\n",
+  meta[["smoke"]], meta[["profiles"]], meta[["mechanisms"]], meta[["n_grid"]],
+  meta[["paper_n_grid"]], meta[["reps"]], meta[["seed_base"]], meta[["truth_method"]],
+  meta[["misskappa_version"]]
+))
+```

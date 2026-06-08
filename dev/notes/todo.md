@@ -82,7 +82,7 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       paired/dependent needs stacked IFs via `joint_vcov()` and works for any
       fit whose `influence()` is non-NULL. Same-data method/weight/coefficient
       contrasts stay `wald_test()` territory. Exploratory runners:
-      `experiments/24-alpha-equal-cocron/`, `experiments/25-kappa-equal-examples/`.
+      `experiments/studies/24-alpha-equal-cocron/`, `experiments/studies/25-kappa-equal-examples/`.
 - [ ] **Measure alpha FIML feasibility before expanding scope.**
       Exact EM over the full fixed-category pattern space is plausible for
       small Likert batteries but scales as `C^R`. Add guardrails/documentation
@@ -98,8 +98,8 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       personality scale under the available-case and FIML paths, with clear
       notes about item scoring/reversal and the fixed-category support used.
       Starter categorical smoke/calibration runners now live in
-      `experiments/15-alpha-categorical-smoke/` and
-      `experiments/16-alpha-calibration-sweep/`. Experiment 16 has a
+      `experiments/probes/15-alpha-categorical-smoke/` and
+      `experiments/probes/16-alpha-calibration-sweep/`. Experiment 16 has a
       capped `B = 200` calibration pass: `5^6, n = 4000` was too slow
       for an ordinary run, and `5^6` FIML retains downward bias through
       `n = 1000`. Independent saturated-EM checks agree with the package
@@ -131,7 +131,7 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       wrapper `kappa_vector()` is internal/unexported for experiments. The
       math and FIML boundary are in
       `dev/notes/component-separable-vector-kappa.md`; the CRACKLES pilot uses
-      `experiments/26-crackles-vector-kappa/`.
+      `experiments/workbench/26-crackles-vector-kappa/`.
 - [x] **Add full-weight quadratic vector covariance route.**
       The internal R backend `kappa_vector_quadratic()` estimates Conger and
       Fleiss from `(mu, Sigma)` with a full symmetric PSD feature metric `W`,

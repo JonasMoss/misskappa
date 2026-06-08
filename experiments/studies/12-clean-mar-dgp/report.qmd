@@ -1,0 +1,210 @@
+---
+title: "Clean MAR replacement DGPs"
+subtitle: "Experiment 12"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+results_dir <- "results"
+baseline_path <- file.path(results_dir, "baseline_summary.csv")
+candidate_path <- file.path(results_dir, "candidate_summary.csv")
+ranking_path <- file.path(results_dir, "candidate_ranking.csv")
+mechanisms_path <- file.path(results_dir, "mechanisms.csv")
+metadata_path <- file.path(results_dir, "metadata.csv")
+
+if (!file.exists(baseline_path)) {
+  stop(
+    "Results not found. Run:\n",
+    "  Rscript run_experiment.R --smoke   # smoke\n",
+    "  Rscript run_experiment.R           # default\n",
+    "from the experiment directory first."
+  )
+}
+
+baseline <- read.csv(baseline_path, stringsAsFactors = FALSE)
+candidate <- read.csv(candidate_path, stringsAsFactors = FALSE)
+ranking <- read.csv(ranking_path, stringsAsFactors = FALSE)
+mechanisms <- read.csv(mechanisms_path, stringsAsFactors = FALSE)
+meta <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta_kv <- setNames(meta$value, meta$key)
+
+method_order <- c("available", "ipw", "fiml", "gwet")
+method_label <- c(available = "AC", ipw = "IPW", fiml = "FIML", gwet = "Gwet")
+fmt <- function(x, digits = 4) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+fmt_signed <- function(x, digits = 4) {
+  ifelse(is.na(x), "", sprintf(paste0("%+.", digits, "f"), x))
+}
+fmt_prop <- function(x) fmt(x, 3)
+```
+
+## Question
+
+Can the old latent-truth DGP C be replaced by a genuinely MAR mechanism
+that demonstrates the methodological point cleanly, and can the gap
+between FIML and the non-MAR estimators be made larger without leaving
+MAR?
+
+## Short Answer
+
+Yes. The baseline `anchor_moderate` DGP is a clean, fairly mundane MAR
+replacement: rater 1 is always observed, and raters 2--4 are observed
+with probabilities depending on rater 1's observed category. The
+missingness is value-dependent but MAR because the value controlling
+missingness is always observed.
+
+At `n = 8000`, the non-FIML estimators retain an asymptotic positive
+bias around `r fmt_signed(max(abs(subset(baseline, n == max(baseline$n) & method != "fiml")$bias)), 3)`,
+while FIML is near truth (`r fmt_signed(subset(baseline, n == max(baseline$n) & method == "fiml")$bias, 3)`).
+This is not a theatrical effect, but it is exactly the methodological
+story: under clean MAR the observed ratings are not representative of
+the full-data rating distribution, and the observed-data likelihood
+uses the incomplete patterns correctly.
+
+More dramatic examples are possible. The candidate search finds
+sequential MAR designs where the largest non-FIML bias is about
+`r fmt_signed(ranking$largest_non_fiml_bias[1], 3)` while the FIML bias is
+`r fmt_signed(ranking$fiml_bias[1], 3)`. These designs are still MAR, but
+they are less mundane: later raters are much less likely to be observed
+after hard or already-missing previous ratings.
+
+## Why These Mechanisms Are MAR
+
+The old DGP C used missingness probabilities depending on latent truth
+`T_i`. That is not MAR for the FIML model used here because `T_i` is not
+observed and is not part of the fitted full-data vector.
+
+The replacement mechanisms condition only on observed information:
+
+- **Anchor MAR:** rater 1 is always observed; for raters `j > 1`,
+  `P(M_j = 1 | X*) = pi[X_1]`. Since `X_1` is observed for every subject,
+  the missingness probability is a function of the observed data.
+- **Sequential MAR:** rater 1 is always observed; for raters `j > 1`,
+  observation depends on the observed value of rater `j - 1`, or on a
+  constant fallback if rater `j - 1` is missing. This is a monotone-style
+  observed-history mechanism.
+
+Both preserve positivity in the committed grid: all category-specific
+observation probabilities are strictly between zero and one.
+
+## Baseline Evidence
+
+```{r baseline-table}
+baseline_display <- baseline
+baseline_display$Method <- method_label[baseline_display$method]
+baseline_display <- baseline_display[order(baseline_display$n,
+                                           match(baseline_display$method, method_order)), ]
+tab <- data.frame(
+  n = baseline_display$n,
+  Method = baseline_display$Method,
+  Truth = fmt(baseline_display$truth, 4),
+  Mean = fmt(baseline_display$mean_est, 4),
+  Bias = fmt_signed(baseline_display$bias, 4),
+  `MC SD` = fmt(baseline_display$sd_est, 4),
+  `MC SE(Bias)` = fmt(baseline_display$mc_se_bias, 4),
+  `Observed Fraction` = fmt_prop(baseline_display$mean_observed_fraction),
+  check.names = FALSE
+)
+knitr::kable(tab, align = "rlrrrrrr",
+             caption = paste0(
+               "Baseline anchor-MAR DGP, Conger's kappa with identity loss. ",
+               "B = ", meta_kv[["baseline_reps"]], " replicates per n."
+             ))
+```
+
+The gap stabilises rather than vanishes for AC, IPW, and Gwet. FIML has
+larger Monte Carlo SD in this small support, but the mean moves toward
+the full-data target as `n` increases.
+
+## Candidate Search
+
+```{r ranking-table}
+ranking_display <- ranking
+ranking_display$Mechanism <- ranking_display$mechanism
+ranking_display$Spec <- ranking_display$spec
+ranking_display <- ranking_display[order(-ranking_display$abs_bias_gap), ]
+rank_tab <- data.frame(
+  Spec = ranking_display$Spec,
+  Mechanism = ranking_display$Mechanism,
+  C = ranking_display$C,
+  R = ranking_display$R,
+  `Observed Fraction` = fmt_prop(ranking_display$mean_observed_fraction),
+  `Largest Non-FIML` = method_label[ranking_display$largest_non_fiml_method],
+  `Largest Non-FIML Bias` = fmt_signed(ranking_display$largest_non_fiml_bias, 4),
+  `FIML Bias` = fmt_signed(ranking_display$fiml_bias, 4),
+  `Abs Bias Gap` = fmt(ranking_display$abs_bias_gap, 4),
+  check.names = FALSE
+)
+knitr::kable(rank_tab, align = "llrrrlrrr",
+             caption = paste0(
+               "Candidate clean-MAR designs at n = ", meta_kv[["search_n"]],
+               ", B = ", meta_kv[["search_reps"]], ". Sorted by the gap ",
+               "between the largest non-FIML absolute bias and FIML absolute bias."
+             ))
+```
+
+The sequential candidates create the largest visual separation. The
+mechanism is not invalid: it conditions on observed rating history. But
+it is a stronger design choice than the anchor baseline because one
+hard or missing rating can make later ratings sparse.
+
+```{r top-candidate-methods}
+top_specs <- head(ranking$spec, 3L)
+top <- subset(candidate, spec %in% top_specs)
+top$method <- factor(top$method, levels = method_order)
+top <- top[order(match(top$spec, top_specs), top$method), ]
+top_tab <- data.frame(
+  Spec = top$spec,
+  Method = method_label[as.character(top$method)],
+  Truth = fmt(top$truth, 4),
+  Mean = fmt(top$mean_est, 4),
+  Bias = fmt_signed(top$bias, 4),
+  `MC SD` = fmt(top$sd_est, 4),
+  check.names = FALSE
+)
+knitr::kable(top_tab, align = "llrrrr",
+             caption = "Method-level summaries for the three most separated candidates.")
+```
+
+## Mechanism Parameters
+
+```{r mechanism-table}
+mech_tab <- mechanisms[, c("spec", "mechanism", "C", "R", "p",
+                           "rho_base", "rho_truth_mult", "pi_anchor",
+                           "pi_fallback")]
+names(mech_tab) <- c("Spec", "Mechanism", "C", "R", "p",
+                     "rho_base", "rho_truth_mult", "pi_anchor",
+                     "pi_fallback")
+knitr::kable(mech_tab, align = "llrrlllll")
+```
+
+## Caveats
+
+- The candidate search is deliberately small and qualitative. It shows
+  existence, not an optimal or exhaustive stress test.
+- The most dramatic designs are close to the edge of practical
+  positivity: they keep nonzero observation probabilities, but some
+  categories are observed by later raters only rarely.
+- The baseline is probably the better main-text replacement for old DGP
+  C. The severe sequential cases are useful as a supplement or a
+  robustness paragraph if the paper needs a more visible demonstration.
+- This experiment reports point-estimate bias only. Coverage under the
+  clean-MAR replacements belongs in a follow-up of experiment 01 if the
+  final manuscript wants Wald interval evidence.
+
+## Reproduce
+
+```bash
+cd experiments/studies/12-clean-mar-dgp
+Rscript run_experiment.R --smoke
+Rscript run_experiment.R
+quarto render report.qmd
+```
