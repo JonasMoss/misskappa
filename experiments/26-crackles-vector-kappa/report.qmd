@@ -1,0 +1,159 @@
+---
+title: "Vector Fleiss/Conger kappa on CRACKLES"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+read_results <- function(f) {
+  p <- file.path("results", f)
+  if (!file.exists(p)) {
+    stop("Missing ", p, ". Run: Rscript run_experiment.R", call. = FALSE)
+  }
+  read.csv(p, check.names = FALSE)
+}
+complete <- read_results("complete_estimates.csv")
+masked <- read_results("masked_summary.csv")
+site_layout <- read_results("site_layout.csv")
+meta <- read_results("metadata.csv")
+mv <- function(k) meta$value[meta$key == k]
+fmt <- function(x, d = 3) formatC(as.numeric(x), digits = d, format = "f")
+```
+
+## Question
+
+Can the scalar Fréchet/quadratic agreement coefficient be lifted directly
+to vector ratings and used as a CRACKLES pilot, where each patient carries
+multiple binary site ratings? The experiment uses only the empirical
+mean-covariance pair $(\widehat\mu,\widehat\Sigma)$ and then asks what
+happens if site ratings are made incomplete by synthetic cell masking.
+
+## Estimand
+
+For $R$ raters and $S$ sites, stack the rater vectors as
+$X=(X_1',\ldots,X_R')'$ with $X_r\in\mathbb{R}^S$,
+$\mu=(\mu_1',\ldots,\mu_R')'$, and block covariance
+$\Sigma^{rs}=\operatorname{Cov}(X_r,X_s)$. For a site metric $W\succeq 0$,
+define
+
+$$
+T_W=\sum_r \operatorname{tr}(W\Sigma^{rr}),\qquad
+B_W=\sum_{r,s}\operatorname{tr}(W\Sigma^{rs}),\qquad
+G_W=\sum_r(\mu_r-\bar\mu)'W(\mu_r-\bar\mu),
+$$
+
+with $\bar\mu=R^{-1}\sum_r\mu_r$. The two contractions are
+
+$$
+\kappa_F^W =
+\frac{B_W-T_W-G_W}{(R-1)(T_W+G_W)},\qquad
+\kappa_C^W =
+\frac{B_W-T_W}{(R-1)T_W+R\,G_W}.
+$$
+
+This pilot sets $W=I_S$. On binary CRACKLES ratings this is Hamming loss
+over sites. The trace in $B_W-T_W$ keeps same-site cross-rater
+covariances and drops cross-site covariances; the normal-FIML missing-data
+plug-in can still use the full covariance when imputing missing site
+entries.
+
+## Data Pivot
+
+`CRACKLES.rda` has `r mv("n_rows")` rows and `r mv("n_rating_columns")`
+binary rating columns. Each of the `r mv("n_patients")` patients has six
+rows. The current pivot treats the within-patient row order as the site
+index and keeps the `UP`/`LO` indicators only as labels:
+
+```{r sites}
+knitr::kable(site_layout, caption = "Inferred six-site layout from row order.")
+```
+
+This is the key unresolved codebook point: the data are complete, but the
+meaning of the two rows with `UP=LO=0` needs confirmation before this
+becomes manuscript material.
+
+## Short Answer
+
+The vector coefficient is well-defined on the complete CRACKLES pivot and
+gives stable, interpretable values. The all-rater pooled analysis has a
+smaller $\kappa_F$ than $\kappa_C$ because the rater mean vectors are not
+equal; within four-rater panels, the spread is substantial, with `RUS` and
+`STU` showing the largest site-level agreement and `WAL`/`NLD` the lowest
+in this pilot.
+
+Under synthetic missingness (`r fmt(100 * as.numeric(mv("mask_prop")), 1)`% cell
+masking, `r mv("reps")` replicates), complete-case analysis is mostly a
+diagnostic because 20 patients vanish quickly in the pooled 28-by-6 matrix.
+Pairwise moments remain usable for the pooled matrix. The normal-FIML
+moment plug-in is run on the seven four-rater panels, where the dimension
+is small enough for this pure-R pilot. FIML is not a categorical model
+here; it is the same robust-normal moment idea as the quadratic paper,
+used only to produce a full $(\mu,\Sigma)$ for the contraction.
+
+## Complete-Data Estimates
+
+```{r complete}
+tab <- complete[, c("analysis", "R", "S", "T", "B", "G", "kappa_F", "kappa_C")]
+tab[, c("T", "B", "G", "kappa_F", "kappa_C")] <-
+  lapply(tab[, c("T", "B", "G", "kappa_F", "kappa_C")], fmt, d = 3)
+knitr::kable(tab, align = "lrrrrrrr",
+             caption = "Vector kappa plug-ins on the complete CRACKLES data.")
+```
+
+The pooled row treats all 28 columns as raters. The `panel_*` rows treat
+each four-rater prefix as a separate interchangeable-rater panel. Those
+within-panel rows are the cleaner reading if the column prefixes denote
+distinct clinical or reader groups rather than exchangeable raters.
+
+## Synthetic Missing Sites
+
+```{r masked}
+keep <- masked[, c("analysis", "method", "R", "S",
+                   "kappa_F_mean", "err_F_mean", "err_F_sd",
+                   "kappa_C_mean", "err_C_mean", "err_C_sd",
+                   "n_used_mean")]
+for (j in c("kappa_F_mean", "err_F_mean", "err_F_sd",
+            "kappa_C_mean", "err_C_mean", "err_C_sd", "n_used_mean")) {
+  keep[[j]] <- fmt(keep[[j]], ifelse(j == "n_used_mean", 1, 3))
+}
+knitr::kable(keep, align = "llrrrrrrrrr",
+             caption = "Mean masked-data estimates and errors relative to the complete-data plug-in.")
+```
+
+The masked run is deliberately modest. It is a feasibility check for the
+moment contraction, not a missingness theorem. The data are naturally
+complete, so MCAR deletion is created by random masking; MAR/site-dependent
+masking would be the next experiment once the site codebook is settled.
+
+## Caveats
+
+The site labels are inferred, not documented. The six-row order appears
+consistent by patient, but a codebook should confirm whether `MID1/MID2`
+is the right interpretation for `UP=LO=0` and whether the two repeated
+rows in each region are ordered locations, duplicate readings, or
+something else.
+
+The all-28-rater analysis is descriptive. If the prefixes are distinct
+training cohorts, specialties, or countries, the within-prefix R=4 panels
+are the primary interchangeable-rater analyses and the pooled result is a
+stress test.
+
+## Reproduce
+
+```sh
+cd experiments/26-crackles-vector-kappa
+Rscript run_experiment.R --smoke
+quarto render report.qmd
+```
+
+For the fuller default used here:
+
+```sh
+Rscript run_experiment.R --reps 25 --mask-prop 0.25 --seed-base 26000
+```
