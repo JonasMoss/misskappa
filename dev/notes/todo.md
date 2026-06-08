@@ -118,6 +118,24 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Deferred
 
+- [ ] **Next package pass: vector-valued pairwise agreement.**
+      Keep this behind the current GitHub-first release work. Natural input is
+      a rectangular `subjects x raters x features` array, with long/indexed
+      data handled by R-side densifying helpers rather than by making the C++
+      estimator ragged. Start with `g = 2` pairwise vector ratings, not general
+      g-wise missing-data machinery. Candidate losses: weighted L1 / city-block
+      distance, weighted Euclidean distance, weighted squared Euclidean
+      distance, and componentwise nominal / Hamming distance. For binary
+      feature profiles, Hamming, L1, and squared Euclidean with diagonal
+      weights coincide up to scaling; keep the names distinct so non-binary and
+      weighted cases remain clear. Whole-vector nominal exact-match
+      disagreement should be named separately as Hubert-style agreement, since
+      it asks for identical full profiles rather than componentwise similarity.
+      Complete-data vector Hubert is straightforward for finite pattern spaces
+      (e.g. six binary CRACKLES sites -> 64 patterns), but missing components
+      make the equality event latent; require either full-vector observation
+      IPW, an explicit full-pattern model/FIML, or a deliberately new
+      observed-data estimand.
 - [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
       The Eigen API is already thin for the two consumers we have (in-tree
       C++ tests and R via Rcpp+RcppEigen). If we ever add a Python / Julia /
