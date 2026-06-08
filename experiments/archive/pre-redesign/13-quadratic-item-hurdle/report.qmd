@@ -1,0 +1,202 @@
+---
+title: "Experiment 13: Item-Level Hurdle Intervals"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+input <- knitr::current_input()
+base_dir <- if (!is.null(input)) dirname(normalizePath(input)) else getwd()
+summary_path <- file.path(base_dir, "results", "summary.csv")
+metadata_path <- file.path(base_dir, "results", "metadata.csv")
+
+if (!file.exists(summary_path) || !file.exists(metadata_path)) {
+  stop(
+    "Missing experiment results. Run: Rscript experiments/archive/pre-redesign/13-quadratic-item-hurdle/run_experiment.R --smoke",
+    call. = FALSE
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+
+method_order <- c(
+  "moss_fisher", "delta2_fisher",
+  "item_t_plug", "item_t_chance",
+  "item_empbern_plug", "item_empbern_chance",
+  "hurdle_t_plug", "hurdle_t_chance",
+  "hurdle_empbern_plug", "hurdle_empbern_chance"
+)
+summary$method <- factor(summary$method, levels = method_order)
+focus <- summary[summary$coefficient %in% c("Conger", "Fleiss"), ]
+focus <- focus[order(focus$target, focus$coefficient, focus$R, focus$n, focus$method), ]
+
+overall <- aggregate(
+  cbind(coverage, miss_below, miss_above, mean_length, zero_disagreement_rate, item_disagreement_rate) ~ target + method,
+  data = focus,
+  FUN = mean
+)
+overall <- overall[order(overall$target, overall$method), ]
+overall_value <- function(target, method, column) {
+  overall[overall$target == target & as.character(overall$method) == method, column][[1]]
+}
+cell_value <- function(target, R, n, coefficient, method, column) {
+  focus[
+    focus$target == target &
+      focus$R == R &
+      focus$n == n &
+      focus$coefficient == coefficient &
+      as.character(focus$method) == method,
+    column
+  ][[1]]
+}
+overall_tab <- data.frame(
+  Target = overall$target,
+  Method = overall$method,
+  Coverage = fmt(overall$coverage),
+  `Miss Below` = fmt(overall$miss_below),
+  `Miss Above` = fmt(overall$miss_above),
+  `Mean Length` = fmt(overall$mean_length),
+  `Zero All Items` = fmt(overall$zero_disagreement_rate),
+  `Item Disagree` = fmt(overall$item_disagreement_rate),
+  check.names = FALSE
+)
+
+item_diag <- aggregate(
+  cbind(zero_disagreement_rate, item_disagreement_rate, mean_loss_units_item, mean_chance_disagreement) ~ target + R + n,
+  data = focus[focus$method == "moss_fisher" & focus$coefficient == "Conger", ],
+  FUN = mean
+)
+item_diag <- item_diag[order(item_diag$target, item_diag$R, item_diag$n), ]
+item_tab <- data.frame(
+  Target = item_diag$target,
+  R = item_diag$R,
+  n = item_diag$n,
+  `Zero All Items` = fmt(item_diag$zero_disagreement_rate),
+  `Item Disagree` = fmt(item_diag$item_disagreement_rate),
+  `Mean Loss Units` = fmt(item_diag$mean_loss_units_item, 2),
+  `Mean Chance Disagree` = fmt(item_diag$mean_chance_disagreement),
+  check.names = FALSE
+)
+
+worst <- focus[order(focus$coverage), ][1, ]
+worst_tab <- head(focus[order(focus$coverage), ], 14)
+worst_tab <- data.frame(
+  Target = worst_tab$target,
+  Coefficient = worst_tab$coefficient,
+  R = worst_tab$R,
+  n = worst_tab$n,
+  Method = worst_tab$method,
+  Coverage = fmt(worst_tab$coverage),
+  `Miss Below` = fmt(worst_tab$miss_below),
+  `Miss Above` = fmt(worst_tab$miss_above),
+  `Mean Length` = fmt(worst_tab$mean_length),
+  check.names = FALSE
+)
+
+best_by_cell <- do.call(rbind, lapply(split(
+  focus,
+  interaction(focus$target, focus$coefficient, focus$R, focus$n)
+), function(d) {
+  d[which.min(abs(d$coverage - 0.95)), ]
+}))
+best_tab <- data.frame(
+  Target = best_by_cell$target,
+  Coefficient = best_by_cell$coefficient,
+  R = best_by_cell$R,
+  n = best_by_cell$n,
+  Method = best_by_cell$method,
+  Coverage = fmt(best_by_cell$coverage),
+  `Mean Length` = fmt(best_by_cell$mean_length),
+  check.names = FALSE
+)
+```
+
+## Question
+
+Can an item-level hurdle interval fix the high-agreement boundary problem better than total-count Poissonization?
+
+## Short Answer
+
+This is closer to the right sampling unit than Experiment 12. It models item disagreement as a two-part problem: whether an item has any disagreement, and how large the positive item-level loss is. That avoids treating pairwise loss units within an item as independent.
+
+The hurdle construction does repair the all-zero `R = 2`, `n = 10`, target `0.95` corner, where Moss Fisher covers `r fmt(cell_value(0.95, 2, 10, "Conger", "moss_fisher", "coverage"))` and the hurdle t interval with plug-in chance denominator covers `r fmt(cell_value(0.95, 2, 10, "Conger", "hurdle_t_plug", "coverage"))`. But it is conservative and not competitive as a default. Averaged over target `0.95`, Moss Fisher covers `r fmt(overall_value(0.95, "moss_fisher", "coverage"))`, delta Fisher covers `r fmt(overall_value(0.95, "delta2_fisher", "coverage"))`, and the hurdle t plug-in interval covers `r fmt(overall_value(0.95, "hurdle_t_plug", "coverage"))`, with mean length `r fmt(overall_value(0.95, "hurdle_t_plug", "mean_length"))` versus `r fmt(overall_value(0.95, "delta2_fisher", "mean_length"))` for delta Fisher. Empirical-Bernstein is even more cautious.
+
+The strongest takeaway is methodological: the boundary correction needs item-level support, but the positive-loss severity model is the hard part. A useful final method probably needs a sharper model for the positive item loss distribution than either a t interval or a distribution-free bounded severity bound.
+
+## Evidence
+
+`Miss Below` means the interval upper endpoint is below the true coefficient; `Miss Above` means the lower endpoint is above it.
+
+Average over coefficients, rater counts, and sample sizes:
+
+```{r}
+knitr::kable(overall_tab, align = "rlrrrrrr")
+```
+
+Item-level diagnostics for Conger:
+
+```{r}
+knitr::kable(item_tab, align = "rrrrrrr")
+```
+
+Worst cells:
+
+```{r}
+knitr::kable(worst_tab, align = "rlrrlrrrr")
+```
+
+Closest-to-nominal method by cell:
+
+```{r}
+knitr::kable(best_tab, align = "rlrrlrr")
+```
+
+## Methods
+
+For each item, let `S_i` be the unnormalized sum of squared category-distance units across all rater pairs. Then
+
+```text
+A = mean(S_i) / (16 * choose(R, 2))
+```
+
+and `kappa = 1 - A / B`, where `B` is the chance disagreement. The direct item methods put a t interval or empirical-Bernstein interval on `mean(S_i)`. The hurdle methods write
+
+```text
+E(S_i) = Pr(S_i > 0) * E(S_i | S_i > 0).
+```
+
+They use Wilson's score interval for `Pr(S_i > 0)` and either a t interval or empirical-Bernstein interval for the positive severity mean. The `plug` versions hold `B` fixed; the `chance` versions widen `B` with a delta t interval.
+
+Baselines are Moss's Fisher transform and the Fisher interval with the second-order delta variance from Experiment 11.
+
+## Caveats
+
+The empirical-Bernstein severity bound is intentionally cautious. It uses only the bounded item-loss support, so it can be far wider than necessary. This is useful as a diagnostic but probably too blunt for a final interval.
+
+## Reproduce
+
+Smoke run:
+
+```sh
+Rscript experiments/archive/pre-redesign/13-quadratic-item-hurdle/run_experiment.R --smoke
+```
+
+Exploratory run used here:
+
+```sh
+Rscript experiments/archive/pre-redesign/13-quadratic-item-hurdle/run_experiment.R --reps 500 --target-grid 0.8,0.9,0.95 --n-grid 10,20,40 --r-grid 2,5 --progress
+```
+
+This report used n grid `r meta[["n_grid"]]`, R grid `r meta[["r_grid"]]`, reps `r meta[["reps"]]`, target grid `r meta[["target_grid"]]`, and seed base `r meta[["seed_base"]]`.

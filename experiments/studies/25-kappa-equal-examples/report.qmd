@@ -1,0 +1,267 @@
+---
+title: "Equality tests for quadratic Conger's kappa: real-data examples"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+read_results <- function(f) {
+  p <- file.path("results", f)
+  if (!file.exists(p))
+    stop("Missing ", p, ". Run: Rscript run_experiment.R", call. = FALSE)
+  read.csv(p, check.names = FALSE)
+}
+A_pairs <- read_results("caseA_pairs.csv")
+A_test  <- read_results("caseA_test.csv")
+B_kappa <- read_results("caseB_kappa.csv")
+B_test  <- read_results("caseB_test.csv")
+D_kappa <- read_results("caseD_kappa.csv")
+D_test  <- read_results("caseD_test.csv")
+C_stat  <- read_results("caseC_status.csv")
+C_ran   <- isTRUE(C_stat$ran)
+if (C_ran) {
+  C_kappa <- read_results("caseC_kappa.csv")
+  C_test  <- read_results("caseC_test.csv")
+}
+meta    <- read_results("metadata.csv")
+mv  <- function(k) meta$value[meta$key == k]
+fmt <- function(x, d = 3) formatC(as.numeric(x), digits = d, format = "f")
+```
+
+## Question
+
+The quadratic-kappa paper promises two equality tests as extensions: a
+**two-independent-sample** Wald test on $\widehat{\kappa}^{(1)} -
+\widehat{\kappa}^{(2)}$, and a **within-matrix** joint test of whether
+the two-rater quadratic kappa is constant across rater pairs. Do both
+work on real ordinal rating data using only the package's existing
+influence-function machinery? We add a third, substantive *dependent*
+contrast --- equal agreement on two constructs rated by the same judges,
+on genuinely incomplete data --- and an external benchmark.
+
+## Short answer
+
+Yes, with no new package code. The within-data homogeneity test runs on
+`irr::anxiety` through the NT-FIML estimator's influence functions
+and the public `kappa_test()` verb; the two-independent-sample test runs on the classic
+multiple-sclerosis data of Westlund & Kurland (via Landis & Koch 1977),
+where variances simply add; and a *dependent* two-construct test runs on
+the genuinely incomplete `dat.mcduff2019` (smile vs positivity, same
+judges and items), where the cross-covariance is what makes the test
+correct. None shows significant heterogeneity, but all exercise the full
+pipeline and reproduce known unweighted-kappa values as a check. As an
+external benchmark, we reproduce Vanbelle's (2017) FEES weighted kappas
+**exactly** against the `multiagree` package, with a matching
+homogeneity-test conclusion.
+
+## Evidence
+
+### Case A --- constant kappa across rater pairs (within one matrix)
+
+`irr::anxiety`: 3 raters score 20 subjects on a 6-point anxiety scale.
+We fit the two-rater quadratically weighted Conger kappa on each rater
+pair with the paper's NT-FIML estimator (`kappa(estimator = "nt_fiml")`),
+then `kappa_test(p12, p13, p23, coef = "Conger", paired = TRUE)` stacks the
+three same-subject influence functions and tests that all three are equal.
+
+```{r caseA-pairs}
+a <- A_pairs
+a$`rater pair` <- sprintf("(%d, %d)", a$rater_1, a$rater_2)
+a$`Conger kappa` <- fmt(a$Conger, 3)
+a$`SE` <- fmt(a$se, 3)
+knitr::kable(a[, c("rater pair", "Conger kappa", "SE")],
+  align = "lrr",
+  caption = "Per-pair quadratic Conger kappa, anxiety data.")
+```
+
+Joint homogeneity test across the `r A_test$n_pairs` pairs (mean pairwise
+correlation of the kappa estimates ≈ `r fmt(A_test$mean_pairwise_corr, 2)`):
+**Wald** $\chi^2$ = `r fmt(A_test$wald_chisq, 2)` on
+`r A_test$df` df, *p* = `r fmt(A_test$p_value, 3)`. At n = 20 the
+pairwise kappas range over `r fmt(A_test$range, 2)` but the standard
+errors are wide, so there is no evidence the rater pairs differ in
+agreement. The point of the example is that the joint test assembles and
+runs correctly on a single real rating matrix.
+
+### Case B --- equal kappa across two independent samples
+
+The Westlund & Kurland multiple-sclerosis data (Landis & Koch 1977): two
+neurologists place patients into four ordinal diagnostic classes,
+separately in Winnipeg (n = 149) and New Orleans (n = 69). These are two
+independent samples, so a difference in quadratic Conger kappa is tested
+with $z = (\widehat\kappa_1 - \widehat\kappa_2)/\sqrt{\,\widehat{\mathrm{se}}_1^2 + \widehat{\mathrm{se}}_2^2}$.
+
+```{r caseB-kappa}
+b <- B_kappa
+tab <- reshape(b[, c("weight", "city", "Conger", "se")],
+               idvar = "weight", timevar = "city", direction = "wide")
+disp <- data.frame(
+  `weight`               = tab$weight,
+  `kappa (Winnipeg)`     = fmt(tab$`Conger.Winnipeg`, 3),
+  `SE (Winnipeg)`        = fmt(tab$`se.Winnipeg`, 3),
+  `kappa (New Orleans)`  = fmt(tab$`Conger.New Orleans`, 3),
+  `SE (New Orleans)`     = fmt(tab$`se.New Orleans`, 3),
+  check.names = FALSE)
+knitr::kable(disp, align = "lrrrr",
+  caption = "Conger kappa by city and weight scheme.")
+```
+
+```{r caseB-test}
+t <- B_test
+disp2 <- data.frame(
+  `weight`     = t$weight,
+  `difference` = fmt(t$diff, 3),
+  `SE of diff` = fmt(t$se_diff, 3),
+  `z`          = fmt(t$z, 2),
+  `p-value`    = fmt(t$p_value, 3),
+  check.names = FALSE)
+knitr::kable(disp2, align = "lrrrr",
+  caption = "Two-sample equal-kappa tests (Winnipeg minus New Orleans).")
+```
+
+The quadratically weighted agreement is higher in New Orleans
+(`r fmt(B_test$kappa_neworleans[B_test$weight == "quadratic"], 2)`) than
+Winnipeg
+(`r fmt(B_test$kappa_winnipeg[B_test$weight == "quadratic"], 2)`), but
+the gap is about one standard error
+(*z* = `r fmt(B_test$z[B_test$weight == "quadratic"], 2)`,
+*p* = `r fmt(B_test$p_value[B_test$weight == "quadratic"], 2)`): no
+significant difference in how well the two neurologist pairs agree, on
+any weight scheme. As a correctness check, the unweighted Conger kappa
+for the New Orleans table is
+`r fmt(B_kappa$Conger[B_kappa$weight == "identity" & B_kappa$city == "New Orleans"], 3)`,
+the value reported for this table in the standard references.
+
+### Case D --- two constructs on the same incomplete data (dependent)
+
+`dat.mcduff2019`: MTurk judges rate smiling images on two attributes ---
+whether the person is *smiling* and whether the image is *positive*. The
+same judges rate the same items, and the design is genuinely incomplete:
+only `r fmt(100*D_kappa$observed_frac[1], 1)`% of the
+`r D_kappa$n_items[1]` items $\times$ `r D_kappa$n_judges[1]` judges grid
+is observed. Because both kappas are computed on the same items, "is
+agreement equal for the two constructs?" is a *dependent* contrast, and
+`kappa_test(paired = TRUE)` takes the cross-covariance from the influence
+functions --- here on real missing data, which is the point.
+
+```{r caseD}
+d <- D_kappa
+knitr::kable(
+  data.frame(
+    construct = d$construct,
+    `Conger kappa` = fmt(d$Conger, 3),
+    `SE` = fmt(d$se, 3),
+    check.names = FALSE),
+  align = "lrr",
+  caption = sprintf("Quadratic Conger kappa per construct (%d items, %d judges, %.1f%% observed).",
+                    d$n_items[1], d$n_judges[1], 100*d$observed_frac[1]))
+```
+
+The two constructs are agreed upon almost identically (difference
+`r fmt(D_test$diff, 3)`), so the dependent Wald test does not reject
+($\chi^2$ = `r fmt(D_test$wald_chisq, 3)`, *p* = `r fmt(D_test$p_dependent, 2)`).
+The dependence is real but modest (correlation of the two kappa estimates
+`r fmt(D_test$corr, 2)`): the dependent standard error
+(`r fmt(D_test$se_dependent, 3)`) is about
+`r fmt(D_test$se_independent/D_test$se_dependent, 2)`$\times$ tighter than
+the naive independent one (`r fmt(D_test$se_independent, 3)`). The
+estimator runs stably at ~4% density because the available-case
+covariance pools item-level concordance rather than relying on dense
+rater-pair overlap.
+
+### Case C --- FEES external benchmark (Vanbelle 2017, `multiagree`)
+
+Vanbelle's (2017) FEES study compares dependent weighted kappas and ships
+with the `multiagree` package, so it is the natural external check. Two
+observers rate swallows on several ordinal criteria; `multiagree` forms
+three rater-pair kappas and tests their equality with a multilevel
+Hotelling $T^2$. It aligns the pairs to their common complete cases
+(`r if (C_ran) C_test$n_aligned[1] else NA` subjects here), which is also
+what `kappa_test(paired = TRUE)` needs, so we can run the same comparison.
+
+```{r caseC, eval=C_ran}
+mw <- C_kappa[C_kappa$weight == "quadratic", ]
+disp <- data.frame(
+  `rater pair`         = mw$pair,
+  `our Conger`         = fmt(mw$our_Conger, 4),
+  `multiagree kappa`   = fmt(mw$multiagree_kappa, 4),
+  `our SE`             = fmt(mw$our_se, 4),
+  `multiagree SE`      = fmt(mw$multiagree_se, 4),
+  check.names = FALSE)
+knitr::kable(disp, align = "lrrrr",
+  caption = "Quadratically weighted kappa, FEES: misskappa vs multiagree (aligned cases).")
+```
+
+```{r caseC-test, eval=C_ran}
+t <- C_test
+disp2 <- data.frame(
+  `weight`               = t$weight,
+  `our Wald chi-sq (df 2)` = fmt(t$our_wald_chisq, 2),
+  `our p`                = fmt(t$our_p, 3),
+  `multiagree T-sq`      = fmt(t$multiagree_T2, 2),
+  `multiagree p`         = fmt(t$multiagree_p, 3),
+  check.names = FALSE)
+knitr::kable(disp2, align = "lrrrr",
+  caption = "Homogeneity of the three rater-pair kappas: our Wald test vs multiagree's Hotelling T-squared.")
+```
+
+`r if (!C_ran) as.character(C_stat$note)`
+
+```{r caseC-prose, eval=C_ran, results="asis"}
+cat(sprintf(
+"The point estimates match **exactly** across all three weight schemes
+(the quadratic kappas are %s, %s, %s in both packages), confirming our
+Conger kappa is the standard Cohen weighted kappa. The standard errors
+agree closely; the small differences are `multiagree`'s multilevel
+correction versus our delta-method influence functions. The two
+omnibus tests reach the same conclusion --- no significant heterogeneity
+among the rater pairs --- with our asymptotic Wald chi-square running
+slightly more liberal than the finite-sample Hotelling $T^2$.",
+fmt(C_kappa$our_Conger[C_kappa$weight=='quadratic'][1], 3),
+fmt(C_kappa$our_Conger[C_kappa$weight=='quadratic'][2], 3),
+fmt(C_kappa$our_Conger[C_kappa$weight=='quadratic'][3], 3)))
+```
+
+The one caveat is the multilevel design: on this aligned subset the
+clustering is negligible (`multiagree`'s multilevel and non-multilevel
+fits coincide), but in general two-swallows-per-patient dependence is
+outside our one-row-per-subject `kappa_test()`, so `multiagree` remains
+the right tool when clustering bites.
+
+## Caveats
+
+* Both A and B are *illustrations of the machinery*, not power studies.
+  Calibrated size/power for these tests live in
+  `experiments/probes/09-joint-vcov-pilot/` (joint
+  vcov) and the simulation experiments.
+* Every estimator now exposes per-subject influence functions, so any of
+  them can feed `kappa_test()`. Case A uses `nt_fiml`; on complete
+  integer-score data the `pairwise` and `nt_fiml` paths give identical
+  point estimates.
+* Cases A and B use complete data; Case D carries native item
+  missingness (~4% observed) and is where the pairwise-available
+  estimator earns its keep. Calibrated MCAR robustness of weighted-kappa
+  inference is covered in experiments 14 / 22 / 23, and the
+  equality-test-under-MCAR story in the companion alpha example
+  (experiment 24).
+* `dat.zapf2016` (50 subjects, 4 raters, 5-point ordinal) is an
+  in-package alternative for a richer within-data Case A if more power is
+  wanted.
+
+## Reproduce
+
+```bash
+cd experiments/studies/25-kappa-equal-examples
+Rscript run_experiment.R            # runs Cases A, B; C if multiagree present
+Rscript run_experiment.R --only B   # one case
+quarto render report.qmd
+```
+
+Run with `misskappa` `r mv("misskappa_version")`, `irr`
+`r mv("irr_version")`, R `r mv("R_version")`.

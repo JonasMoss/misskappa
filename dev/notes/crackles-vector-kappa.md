@@ -1,7 +1,7 @@
 # CRACKLES vector-kappa notes
 
 Working note for the vector-valued agreement pilot in
-`experiments/26-crackles-vector-kappa/`.
+`experiments/workbench/26-crackles-vector-kappa/`.
 
 Status: the active implementation target is now the component-separable vector
 kappa in `dev/notes/component-separable-vector-kappa.md`. The original

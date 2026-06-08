@@ -1,0 +1,245 @@
+---
+title: "Vector kappa on CRACKLES"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+read_results <- function(f) {
+  p <- file.path("results", f)
+  if (!file.exists(p)) {
+    stop("Missing ", p, ". Run: Rscript run_experiment.R --smoke", call. = FALSE)
+  }
+  read.csv(p, check.names = FALSE)
+}
+complete <- read_results("complete_estimates.csv")
+masked <- read_results("masked_summary.csv")
+synthetic <- read_results("synthetic_summary.csv")
+quadratic_complete <- read_results("quadratic_complete_estimates.csv")
+quadratic_sim <- read_results("quadratic_sim_summary.csv")
+quadratic_truth <- read_results("quadratic_sim_truth.csv")
+site_layout <- read_results("site_layout.csv")
+meta <- read_results("metadata.csv")
+mv <- function(k) meta$value[meta$key == k]
+fmt <- function(x, d = 3) formatC(as.numeric(x), digits = d, format = "f")
+```
+
+## Question
+
+Can the component-separable vector kappa estimator support patient-level
+CRACKLES profiles, component-wise missingness, and full-weight quadratic vector
+loss without exposing a new public R API?
+
+## Short Answer
+
+Yes. The internal `kappa_vector()` wrapper estimates Conger and Fleiss
+coefficients for rectangular `subjects x raters x features` arrays, and the
+CRACKLES pivot is a natural complete-data pilot. Synthetic component masking
+keeps the estimator numerically stable in this small data set. A separate
+synthetic DGP with heterogeneous feature/rater missingness checks that the IPW
+path is wired to a target where observation rates differ across components.
+
+The full-weight quadratic route also works internally. It treats
+$(x-y)'W(x-y)$ as a moment problem in the stacked rater-feature mean and
+covariance, with a pairwise-available covariance estimator and a saturated
+normal-theory FIML estimator for the paper-like missing-data experiment.
+
+## Estimand
+
+The implemented class is **component-separable vector loss**. For rater vectors
+$x=(x_1,\ldots,x_p)$ and $y=(y_1,\ldots,y_p)$,
+
+$$
+D(x,y) =
+h\left\{
+\frac{\sum_{\ell=1}^p v_\ell d_\ell(x_\ell,y_\ell)}
+     {\sum_{\ell=1}^p v_\ell}
+\right\}.
+$$
+
+With missing components, the pairwise estimator uses the same ratio over
+jointly observed components. The IPW estimator replaces each component-pair
+term by an inverse observation-rate weighted term: rater-pair-feature rates for
+observed disagreement and rater-feature marginal rates for chance disagreement.
+The current implementation uses diagonal feature weights only.
+
+## Full-Weight Quadratic Route
+
+For a full symmetric positive-semidefinite feature metric $W$, the squared
+vector loss is
+
+$$
+D_W(x,y)=(x-y)'W(x-y).
+$$
+
+Stack one subject's ratings as $X_i=(X_{i1}',\ldots,X_{iR}')'$ with mean
+$\mu$ and covariance $\Sigma$. Let
+$P_R=I_R-R^{-1}{\bf 1}_R{\bf 1}_R'$. The internal quadratic backend uses the
+unsimplified tensor moment summaries
+
+$$
+B_W=\operatorname{tr}\{({\bf 1}_R{\bf 1}_R'\otimes W)\Sigma\},\qquad
+T_W=\operatorname{tr}\{(I_R\otimes W)\Sigma\},\qquad
+G_W=\mu'(P_R\otimes W)\mu .
+$$
+
+The reported coefficients are
+
+$$
+\kappa_C^W=\frac{B_W-T_W}{(R-1)T_W+RG_W},\qquad
+\kappa_F^W=\frac{B_W-T_W-G_W}{(R-1)(T_W+G_W)} .
+$$
+
+The pairwise method estimates $\mu$ and $\Sigma$ with available covariance
+moments. The `nt_fiml` method estimates the same $\mu,\Sigma$ under a saturated
+normal model and then applies the same map.
+
+This report uses Hamming loss for CRACKLES. For the binary site ratings this is
+component mismatch, averaged over the six body sites.
+
+## Data Pivot
+
+`CRACKLES.rda` has `r mv("n_rows")` rows and `r mv("n_rating_columns")`
+binary rating columns. Each of the `r mv("n_patients")` patients has six rows:
+two upper posterior, two lower posterior, and two anterior recordings.
+
+```{r sites}
+site_tab <- site_layout[, c("site", "site_label", "location_code",
+                            "location", "side_index")]
+names(site_tab) <- c("Site", "Site label", "Location code",
+                     "Thorax location", "Within-location side index")
+knitr::kable(site_tab, caption = "Six-site patient-level layout.")
+```
+
+## Complete-Data Estimates
+
+```{r complete}
+tab <- complete[, c("analysis_label", "observer_code", "method", "loss",
+                    "R", "features", "kappa_C", "se_C", "kappa_F", "se_F")]
+names(tab)[1:4] <- c("Analysis", "Prefix", "Estimator", "Loss")
+for (j in c("kappa_C", "se_C", "kappa_F", "se_F")) tab[[j]] <- fmt(tab[[j]])
+knitr::kable(tab, align = "llllrrrrrr",
+             caption = "Complete CRACKLES vector-kappa estimates.")
+```
+
+The pooled row treats all 28 rating columns as one descriptive panel. The
+observer-class rows are the cleaner interchangeable-rater analyses because
+each prefix identifies a separate clinical or training group.
+
+## Complete-Data Full-W Estimates
+
+```{r quadratic-complete}
+qtab <- quadratic_complete[, c("analysis_label", "observer_code", "method",
+                               "loss", "R", "features", "W_rank", "kappa_C",
+                               "se_C", "kappa_F", "se_F")]
+names(qtab)[1:4] <- c("Analysis", "Prefix", "Estimator", "Loss")
+for (j in c("kappa_C", "se_C", "kappa_F", "se_F")) qtab[[j]] <- fmt(qtab[[j]])
+knitr::kable(qtab, align = "llllrrrrrrr",
+             caption = "Complete CRACKLES full-W quadratic estimates.")
+```
+
+The six-site CRACKLES metric is identity plus a small same-location
+off-diagonal weight for each left/right site pair. These estimates are
+pairwise-covariance plug-ins; pooled saturated FIML would require a 168-variate
+normal moment fit and is not a useful default run.
+
+## Synthetic CRACKLES Masking
+
+```{r masked}
+keep <- masked[, c("analysis_label", "observer_code", "method", "loss",
+                   "R", "features", "kappa_C_mean", "err_C_mean",
+                   "kappa_F_mean", "err_F_mean", "missing_fraction_mean")]
+names(keep)[1:4] <- c("Analysis", "Prefix", "Estimator", "Loss")
+for (j in c("kappa_C_mean", "err_C_mean", "kappa_F_mean", "err_F_mean",
+            "missing_fraction_mean")) {
+  keep[[j]] <- fmt(keep[[j]])
+}
+knitr::kable(keep, align = "llllrrrrrrr",
+             caption = "Masked CRACKLES estimates relative to the complete-data pairwise estimate.")
+```
+
+The CRACKLES data are naturally complete. The masking here is only an
+engineering and estimand check: it deletes components independently at rate
+`r fmt(mv("mask_prop"), 2)` for `r mv("reps")` replicates.
+
+## Synthetic Verification
+
+```{r synthetic}
+stab <- synthetic[, c("dgp", "method", "loss", "R", "features",
+                      "kappa_C_mean", "err_C_mean", "kappa_F_mean",
+                      "err_F_mean", "missing_fraction_mean")]
+names(stab)[1:3] <- c("DGP", "Estimator", "Loss")
+for (j in c("kappa_C_mean", "err_C_mean", "kappa_F_mean", "err_F_mean",
+            "missing_fraction_mean")) {
+  stab[[j]] <- fmt(stab[[j]])
+}
+knitr::kable(stab, align = "lllrrrrrrr",
+             caption = "Synthetic heterogeneous-MCAR check.")
+```
+
+The synthetic DGP uses binary component profiles with feature weights
+$(1,2,4)$ and deliberately uneven rater-feature missingness. This is not a
+paper simulation; it is a smoke test that the pairwise and IPW paths behave
+under component-wise observation rates.
+
+## Quadratic Missing-Data Simulation
+
+```{r quadratic-truth}
+truth_tab <- quadratic_truth
+truth_tab$truth <- fmt(truth_tab$truth)
+knitr::kable(truth_tab,
+             caption = "Analytic tensor-moment truth for the normal quadratic DGP.")
+```
+
+```{r quadratic-sim}
+qsim <- quadratic_sim[, c("mechanism", "method", "coefficient", "truth",
+                          "bias", "rmse", "sd_est", "mean_se", "coverage95",
+                          "missing_fraction_mean", "n_used_mean",
+                          "valid_reps", "error_reps")]
+names(qsim)[1:3] <- c("Missingness", "Estimator", "Coefficient")
+for (j in c("truth", "bias", "rmse", "sd_est", "mean_se", "coverage95",
+            "missing_fraction_mean", "n_used_mean")) {
+  qsim[[j]] <- fmt(qsim[[j]])
+}
+knitr::kable(qsim, align = "lllrrrrrrrrrr",
+             caption = "Normal-theory quadratic simulation with layered missingness.")
+```
+
+The simulation uses four raters and three vector components with a full
+positive-definite feature metric. `mcar_layered` combines rater-profile dropout
+with component-specific dropout. `mar_anchor` keeps rater 1 observed and lets
+the other raters' profile and component missingness depend on those observed
+anchor values. This is closer to the quadratic paper's normal-moment setup
+than the binary CRACKLES masking, but adds the extra rater-feature missingness
+layer needed for vector ratings.
+
+## Caveats
+
+Component-separable losses are not arbitrary vector distances. Whole-profile
+exact match, max-component loss, and cosine distance need different
+missing-data estimands or model-based integration. Full feature metrics are
+currently covered only for the quadratic covariance route.
+
+Categorical full-profile FIML is deferred. It is the natural model-based
+extension for finite components, but the profile support grows
+combinatorially in raters and features.
+
+## Reproduce
+
+```sh
+cd experiments/workbench/26-crackles-vector-kappa
+Rscript run_experiment.R --smoke
+quarto render report.qmd
+```
+
+For the fuller default:
+
+```sh
+Rscript run_experiment.R --reps 25 --quad-reps 25 --mask-prop 0.25 --seed-base 26000
+```

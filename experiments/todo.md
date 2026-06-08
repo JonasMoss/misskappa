@@ -1,16 +1,19 @@
 # experiments TODO
 
-Open experiments backlog. Each is one focused folder under `experiments/`,
-following `experiments/AGENTS.md`. Pick one, do it end-to-end (runner +
-report), move the entry to "Done" with a one-line summary of the finding.
+Open experiments backlog. Each is one focused folder under the lifecycle tree
+documented in `experiments/AGENTS.md` and cataloged in
+`experiments/INDEX.md`. Start new work in `experiments/workbench/`, do it
+end-to-end (runner + report), then move it to "Done" with a one-line summary
+of the finding and promote the folder to `studies/`, `probes/`, or
+`archive/pre-redesign/` as appropriate.
 
 Experiments are exploration first. They may motivate paper / library
 changes, or they may end in the trash. Do not bind manuscript prose to
 results until the relevant experiment has landed.
 
-Multiple agents may work in parallel, one experiment per agent. Pick a
-slug from "Open", move it to "In progress" with your owner string, and
-proceed. Do not touch entries other agents are working on.
+Multiple agents may work in parallel, one experiment per agent. Pick a slug
+from "Open", move it to "In progress" with your owner string, and proceed. Do
+not touch entries other agents are working on.
 
 ## Paper mapping
 
@@ -33,7 +36,7 @@ history) was split into three papers (see `papers/split-plan.md`). Each
   directly.
 - `07-quadratic-edgeworth-coverage` — Edgeworth coverage / quadratic
   variance work feeding **Paper C** (created in parallel by another
-  agent; report under `experiments/07-quadratic-edgeworth-coverage/`).
+  agent; report under `experiments/archive/pre-redesign/07-quadratic-edgeworth-coverage/`).
 - `08-quadratic-vs-ipw` (open, below) — **Paper C** centerpiece.
 - `09-joint-vcov-pilot` — joint inference across non-independent kappa
   estimates on the same data; pilot motivates a per-subject IF /
@@ -51,6 +54,9 @@ history) was split into three papers (see `papers/split-plan.md`). Each
 - `18-alpha-paper-simulation` — standalone alpha-missing paper
   simulation study once normal-FIML alpha and the pairwise SE surface are
   ready.
+
+For canonical paths and current/frozen runner status, use
+`experiments/INDEX.md`.
 
 ## Open
 
@@ -132,7 +138,7 @@ high-dimensional finite-sample bias.
 
 ### `16-alpha-calibration-sweep`
 
-Runner + report under `experiments/16-alpha-calibration-sweep/`.
+Runner + report under `experiments/probes/16-alpha-calibration-sweep/`.
 Computes fixed population alpha truths by one-dimensional quadrature
 under latent ordinal item models, then compares alpha-available and
 categorical alpha-FIML across complete, MCAR, and anchor-MAR cells.
@@ -153,7 +159,7 @@ or approximate sparse variants can be left as optional future work.
 
 ### `15-alpha-categorical-smoke`
 
-Runner + report under `experiments/15-alpha-categorical-smoke/`. First
+Runner + report under `experiments/probes/15-alpha-categorical-smoke/`. First
 mechanical alpha diagnostic for the standalone alpha-missing paper:
 complete-data FIML-vs-available equality, small MCAR/MAR categorical
 item batteries compared against the paired complete-data alpha, and
@@ -163,7 +169,7 @@ remains open.
 
 ### `12-clean-mar-dgp`
 
-Runner + report under `experiments/12-clean-mar-dgp/`. Replaces the
+Runner + report under `experiments/studies/12-clean-mar-dgp/`. Replaces the
 old latent-truth DGP C with genuinely MAR mechanisms. The baseline
 anchor-MAR design always observes rater 1 and lets raters 2--4 be
 observed according to rater 1's observed category; at
@@ -177,7 +183,7 @@ severe sequential designs as supplement/stress-test evidence.
 
 ### `09-joint-vcov-pilot`
 
-Runner + report under `experiments/09-joint-vcov-pilot/`. Joint
+Runner + report under `experiments/probes/09-joint-vcov-pilot/`. Joint
 inference across non-independent kappa estimates on the same data,
 using the analytical IF-based `misskappa::joint_vcov()` helper that
 landed in the same commit cycle. `n = 500`, `reps = 200`. Whole sweep
@@ -208,7 +214,7 @@ categorical raw estimators.
 
 ### `10-louis-spectrum`
 
-Runner under `experiments/10-louis-spectrum/`. One DGP-A draw at
+Runner under `experiments/probes/10-louis-spectrum/`. One DGP-A draw at
 `n = 8000` decomposes Conger's FIML Louis variance by eigendirection of
 the reduced observed-information matrix. With the untruncated inverse,
 effectively all variance comes from relative eigenvalues below `1e-3`;
@@ -217,7 +223,7 @@ with `info_rcond = 5e-5`, the diagnostic variance matches the package
 
 ### `01-coverage-iif-louis`
 
-Runner + report landed under `experiments/01-coverage-iif-louis/`. At
+Runner + report landed under `experiments/archive/pre-redesign/01-coverage-iif-louis/`. At
 `n ∈ {500, 2000, 8000}`, `B = 50`: IPW Wald coverage is near nominal
 under MCAR (DGPs A and B, `cov_95 ∈ [0.92, 0.98]`, `SD(z) ≈ 1`). The
 FIML Louis SE blow-up was resolved by the rank-truncated inverse
@@ -235,14 +241,14 @@ or rewrite the prose to flag the MNAR boundary.
 ### `02-rater-model-sensitivity`
 
 Runner + report landed under
-`experiments/02-rater-model-sensitivity/`; the larger `n = 1000`,
+`experiments/archive/pre-redesign/02-rater-model-sensitivity/`; the larger `n = 1000`,
 `B = 50` run showed unstable Conger identity-loss orderings between
 the truth-plus-guess and Dawid-Skene models, so the paper DGP needs a
 deliberate choice rather than assuming model invariance.
 
 ### `04-counts-sampling-misspec`
 
-Runner + report landed under `experiments/04-counts-sampling-misspec/`.
+Runner + report landed under `experiments/archive/pre-redesign/04-counts-sampling-misspec/`.
 Counts-FIML is badly biased when heterogeneous rater MCAR data are
 aggregated first (Fleiss bias +0.092 at `n = 500`, `B = 30`), while raw
 FIML and raw IPW stay near truth. Value-dependent dropout biases all
@@ -250,7 +256,7 @@ methods.
 
 ### `03-ac-vs-ipw-efficiency`
 
-Runner + report landed under `experiments/03-ac-vs-ipw-efficiency/`.
+Runner + report landed under `experiments/studies/03-ac-vs-ipw-efficiency/`.
 Conger × identity, `n = 1000`, `B = 500`, factorial over exchangeability
 × `var(π_j)` × within-subject `corr(M_{i,j}, M_{i,k})`.
 
