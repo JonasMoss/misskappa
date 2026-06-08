@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <numbers>
 #include <vector>
 
 namespace misskappa::loss {
@@ -10,6 +9,7 @@ namespace misskappa::loss {
 namespace {
 
 constexpr double zero_tol = 1e-9;
+constexpr double pi = 3.141592653589793238462643383279502884;
 
 // Convenience: build a c x c agreement matrix from a pairwise functor.
 template <typename F>
@@ -36,13 +36,13 @@ bool length_ok(const RealVec& v, int c) {
 // preserved deliberately so estimator code carrying both is unsurprised.
 
 Result<RealMat> identity_weights(int c) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
   return RealMat(RealMat::Identity(c, c));
 }
 
 Result<RealMat> linear_weights(int c, const RealVec& v) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
-  if (!length_ok(v, c)) return std::unexpected(Error::dimension_mismatch);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
+  if (!length_ok(v, c)) return misskappa::unexpected(Error::dimension_mismatch);
   const double range = std::abs(v.maxCoeff() - v.minCoeff());
   if (range < zero_tol) return identity_weights(c);
   return fill_pairwise(c, [&](int i, int j) {
@@ -51,8 +51,8 @@ Result<RealMat> linear_weights(int c, const RealVec& v) {
 }
 
 Result<RealMat> quadratic_weights(int c, const RealVec& v) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
-  if (!length_ok(v, c)) return std::unexpected(Error::dimension_mismatch);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
+  if (!length_ok(v, c)) return misskappa::unexpected(Error::dimension_mismatch);
   const double range_sq = std::pow(v.maxCoeff() - v.minCoeff(), 2);
   if (range_sq < zero_tol) return identity_weights(c);
   return fill_pairwise(c, [&](int i, int j) {
@@ -61,7 +61,7 @@ Result<RealMat> quadratic_weights(int c, const RealVec& v) {
 }
 
 Result<RealMat> ordinal_weights(int c) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
   RealMat W = fill_pairwise(c, [](int i, int j) {
     const double nkl = std::abs(i - j) + 1.0;
     return nkl * (nkl - 1.0) / 2.0;
@@ -72,8 +72,8 @@ Result<RealMat> ordinal_weights(int c) {
 }
 
 Result<RealMat> radical_weights(int c, const RealVec& v) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
-  if (!length_ok(v, c)) return std::unexpected(Error::dimension_mismatch);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
+  if (!length_ok(v, c)) return misskappa::unexpected(Error::dimension_mismatch);
   const double range_sqrt = std::sqrt(std::abs(v.maxCoeff() - v.minCoeff()));
   if (range_sqrt < zero_tol) return identity_weights(c);
   return fill_pairwise(c, [&](int i, int j) {
@@ -82,8 +82,8 @@ Result<RealMat> radical_weights(int c, const RealVec& v) {
 }
 
 Result<RealMat> ratio_weights(int c, const RealVec& v) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
-  if (!length_ok(v, c)) return std::unexpected(Error::dimension_mismatch);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
+  if (!length_ok(v, c)) return misskappa::unexpected(Error::dimension_mismatch);
   const double v_min = v.minCoeff();
   const double v_max = v.maxCoeff();
   if (std::abs(v_max + v_min) < zero_tol) return identity_weights(c);
@@ -98,12 +98,12 @@ Result<RealMat> ratio_weights(int c, const RealVec& v) {
 }
 
 Result<RealMat> circular_weights(int c, const RealVec& v) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
-  if (!length_ok(v, c)) return std::unexpected(Error::dimension_mismatch);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
+  if (!length_ok(v, c)) return misskappa::unexpected(Error::dimension_mismatch);
   const double U = v.maxCoeff() - v.minCoeff() + 1.0;
   if (U < zero_tol) return identity_weights(c);
   RealMat W = fill_pairwise(c, [&](int i, int j) {
-    return std::pow(std::sin(std::numbers::pi * (v(i) - v(j)) / U), 2);
+    return std::pow(std::sin(pi * (v(i) - v(j)) / U), 2);
   });
   const double max_w = W.maxCoeff();
   if (max_w < zero_tol) return identity_weights(c);
@@ -111,8 +111,8 @@ Result<RealMat> circular_weights(int c, const RealVec& v) {
 }
 
 Result<RealMat> bipolar_weights(int c, const RealVec& v) {
-  if (c <= 0) return std::unexpected(Error::invalid_argument);
-  if (!length_ok(v, c)) return std::unexpected(Error::dimension_mismatch);
+  if (c <= 0) return misskappa::unexpected(Error::invalid_argument);
+  if (!length_ok(v, c)) return misskappa::unexpected(Error::dimension_mismatch);
   const double v_min = v.minCoeff();
   const double v_max = v.maxCoeff();
   RealMat W = RealMat::Zero(c, c);
@@ -232,16 +232,16 @@ Result<ComponentSeparableLoss> make_vector_loss(
     double (*compute)(double, double),
     double (*transform)(double),
     double (*transform_derivative)(double)) {
-  if (feature_weights.size() < 1) return std::unexpected(Error::invalid_argument);
+  if (feature_weights.size() < 1) return misskappa::unexpected(Error::invalid_argument);
   double total = 0.0;
   for (Eigen::Index i = 0; i < feature_weights.size(); ++i) {
     const double w = feature_weights(i);
     if (!std::isfinite(w) || w < 0.0) {
-      return std::unexpected(Error::invalid_argument);
+      return misskappa::unexpected(Error::invalid_argument);
     }
     total += w;
   }
-  if (total < zero_tol) return std::unexpected(Error::invalid_argument);
+  if (total < zero_tol) return misskappa::unexpected(Error::invalid_argument);
   return ComponentSeparableLoss{
       feature_weights,
       compute,
@@ -331,12 +331,12 @@ double hubert_continuous(const double* values, int g) {
 }  // namespace gwise_kernels
 
 Result<GwiseCategoricalDistance> frechet_nominal_distance(int C) {
-  if (C <= 0) return std::unexpected(Error::invalid_argument);
+  if (C <= 0) return misskappa::unexpected(Error::invalid_argument);
   return GwiseCategoricalDistance{C, &gwise_kernels::frechet_nominal};
 }
 
 Result<GwiseCategoricalDistance> hubert_categorical_distance(int C) {
-  if (C <= 0) return std::unexpected(Error::invalid_argument);
+  if (C <= 0) return misskappa::unexpected(Error::invalid_argument);
   return GwiseCategoricalDistance{C, &gwise_kernels::hubert_categorical};
 }
 

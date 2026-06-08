@@ -40,15 +40,15 @@ Result<Estimation> estimate_continuous(
     RealMatView ratings, loss::ContinuousLoss loss, detail::Reweighting mode) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
-  if (R < 2) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
 
   const auto mask = build_finite_mask(ratings);
   bool any_observed = mask.sum() > 0;
-  if (!any_observed) return std::unexpected(Error::invalid_argument);
+  if (!any_observed) return misskappa::unexpected(Error::invalid_argument);
 
   auto wres = detail::compute_inverse_weights(mask, n, R, mode);
-  if (!wres) return std::unexpected(wres.error());
+  if (!wres) return misskappa::unexpected(wres.error());
   const RealVec& pi_j_inv = wres->pi_j_inv;
   const RealMat& pi_jk_inv = wres->pi_jk_inv;
 

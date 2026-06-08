@@ -71,7 +71,7 @@ Result<VectorWeights> compute_vector_weights(
       int count = 0;
       const int c = col_index(j, l, features);
       for (int i = 0; i < n; ++i) count += mask(i, c);
-      if (count == 0) return std::unexpected(Error::singular_weight);
+      if (count == 0) return misskappa::unexpected(Error::singular_weight);
       out.pi_inv(j, l) = static_cast<double>(n) / static_cast<double>(count);
     }
   }
@@ -102,18 +102,18 @@ Result<Estimation> estimate_vector(
     VectorReweighting mode) {
   const int n = static_cast<int>(ratings.rows());
   const int cols = static_cast<int>(ratings.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
-  if (features < 1) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (features < 1) return misskappa::unexpected(Error::invalid_argument);
   if (cols < 1 || cols % features != 0) {
-    return std::unexpected(Error::dimension_mismatch);
+    return misskappa::unexpected(Error::dimension_mismatch);
   }
   const int R = cols / features;
-  if (R < 2) return std::unexpected(Error::invalid_argument);
-  if (!valid_loss(loss, features)) return std::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
+  if (!valid_loss(loss, features)) return misskappa::unexpected(Error::invalid_argument);
 
   const auto mask = build_finite_mask(ratings);
   auto wres = compute_vector_weights(mask, n, R, features, loss, mode);
-  if (!wres) return std::unexpected(wres.error());
+  if (!wres) return misskappa::unexpected(wres.error());
   const VectorWeights& weights = *wres;
 
   RealVec h_dN = RealVec::Zero(n);
@@ -137,7 +137,7 @@ Result<Estimation> estimate_vector(
   }
   const double psi_dN_hat = h_dN.mean();
   const double psi_dD_hat = h_dD.mean();
-  if (psi_dD_hat <= zero_tol) return std::unexpected(Error::invalid_argument);
+  if (psi_dD_hat <= zero_tol) return misskappa::unexpected(Error::invalid_argument);
 
   detail::KernelMoments kernel_CN(n);
   detail::KernelMoments kernel_CD(n);
@@ -180,7 +180,7 @@ Result<Estimation> estimate_vector(
   const double psi_FN_hat = kernel_FN.mean(n);
   const double psi_FD_hat = kernel_FD.mean(n);
   if (psi_CD_hat <= zero_tol || psi_FD_hat <= zero_tol) {
-    return std::unexpected(Error::invalid_argument);
+    return misskappa::unexpected(Error::invalid_argument);
   }
 
   const double raw_d   = psi_dN_hat / psi_dD_hat;

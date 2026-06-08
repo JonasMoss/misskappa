@@ -30,15 +30,15 @@ constexpr double zero_tol = 1e-9;
 Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights) {
   const int n = static_cast<int>(counts.rows());
   const int C = static_cast<int>(counts.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
   if (weights.rows() != C || weights.cols() != C) {
-    return std::unexpected(Error::dimension_mismatch);
+    return misskappa::unexpected(Error::dimension_mismatch);
   }
-  if (C < 1) return std::unexpected(Error::invalid_argument);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
   // Validate non-negative integer counts.
   for (Eigen::Index i = 0; i < counts.rows(); ++i) {
     for (Eigen::Index k = 0; k < counts.cols(); ++k) {
-      if (counts(i, k) < 0) return std::unexpected(Error::invalid_argument);
+      if (counts(i, k) < 0) return misskappa::unexpected(Error::invalid_argument);
     }
   }
 

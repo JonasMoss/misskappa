@@ -181,15 +181,15 @@ Result<Estimation> estimate_gwise(
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
   const int g = (opts.g <= 0) ? R : opts.g;
-  if (n < 1 || R < 2 || g < 2 || g > R) return std::unexpected(Error::invalid_argument);
+  if (n < 1 || R < 2 || g < 2 || g > R) return misskappa::unexpected(Error::invalid_argument);
   if (distance.C <= 0 || distance.compute == nullptr) {
-    return std::unexpected(Error::invalid_argument);
+    return misskappa::unexpected(Error::invalid_argument);
   }
 
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
     for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
       const int x = ratings(i, j);
-      if (x < 0 || x >= distance.C) return std::unexpected(Error::invalid_argument);
+      if (x < 0 || x >= distance.C) return misskappa::unexpected(Error::invalid_argument);
     }
   }
 
@@ -197,11 +197,11 @@ Result<Estimation> estimate_gwise(
   std::int64_t category_projection_tuples = 0;
   if (!checked_power(distance.C, g, opts.max_chance_tuples, category_tuples)
       || !checked_power(distance.C, g - 1, opts.max_chance_tuples, category_projection_tuples)) {
-    return std::unexpected(Error::not_supported);
+    return misskappa::unexpected(Error::not_supported);
   }
 
   const auto c_raters = combinations(R, g);
-  if (c_raters.empty()) return std::unexpected(Error::invalid_argument);
+  if (c_raters.empty()) return misskappa::unexpected(Error::invalid_argument);
 
   std::vector<int> values(static_cast<std::size_t>(g), 0);
   RealVec d_values = RealVec::Zero(n);
@@ -263,12 +263,12 @@ Result<Estimation> estimate_gwise_continuous(
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
   const int g = (opts.g <= 0) ? R : opts.g;
-  if (n < 1 || R < 2 || g < 2 || g > R) return std::unexpected(Error::invalid_argument);
-  if (distance.compute == nullptr) return std::unexpected(Error::invalid_argument);
+  if (n < 1 || R < 2 || g < 2 || g > R) return misskappa::unexpected(Error::invalid_argument);
+  if (distance.compute == nullptr) return misskappa::unexpected(Error::invalid_argument);
 
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
     for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
-      if (!std::isfinite(ratings(i, j))) return std::unexpected(Error::invalid_argument);
+      if (!std::isfinite(ratings(i, j))) return misskappa::unexpected(Error::invalid_argument);
     }
   }
 
@@ -276,12 +276,12 @@ Result<Estimation> estimate_gwise_continuous(
   std::int64_t n_g_minus_1 = 0;
   if (!checked_power(n, g, opts.max_chance_tuples, n_g)
       || !checked_power(n, g - 1, opts.max_chance_tuples, n_g_minus_1)) {
-    return std::unexpected(Error::not_supported);
+    return misskappa::unexpected(Error::not_supported);
   }
 
   const auto c_raters = combinations(R, g);
   const auto f_raters = rater_tuples(R, g);
-  if (c_raters.empty() || f_raters.empty()) return std::unexpected(Error::invalid_argument);
+  if (c_raters.empty() || f_raters.empty()) return misskappa::unexpected(Error::invalid_argument);
 
   std::vector<double> values(static_cast<std::size_t>(g), 0.0);
   RealVec d_values = RealVec::Zero(n);
