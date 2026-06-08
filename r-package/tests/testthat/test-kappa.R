@@ -231,6 +231,35 @@ test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {
   expect_equal(unname(fit$estimates["Conger"]), 1.0, tolerance = 1e-9)
 })
 
+test_that("kappa_vector() internal wrapper handles component-separable losses", {
+  x <- array(c(
+    0, 1,  0, 1,  1, 1,
+    1, 0,  1, 0,  1, 1,
+    0, 0,  1, 0,  0, 0,
+    1, 1,  1, 0,  0, 1,
+    0, 1,  0, 0,  0, 1
+  ), dim = c(5L, 3L, 2L))
+
+  fit_pair <- kappa_vector(x, method = "pairwise", loss = "hamming",
+                           feature_weights = c(1, 2))
+  fit_ipw <- kappa_vector(x, method = "ipw", loss = "hamming",
+                          feature_weights = c(1, 2))
+  expect_s3_class(fit_pair, "misskappa_estimate")
+  expect_named(fit_pair$estimates, c("Conger", "Fleiss"))
+  expect_equal(unname(fit_pair$estimates), unname(fit_ipw$estimates),
+               tolerance = 1e-9)
+  expect_false("kappa_vector" %in% getNamespaceExports("misskappa"))
+
+  x[1, 1, 2] <- NA_real_
+  x[2, 3, 1] <- NA_real_
+  fit_rms <- kappa_vector(x, method = "ipw", loss = "rms",
+                          feature_weights = c(1, 2))
+  expect_true(all(is.finite(fit_rms$estimates)))
+  expect_equal(dim(fit_rms$psi), c(5L, 2L))
+  expect_equal(unname(crossprod(fit_rms$psi) / 25), unname(vcov(fit_rms)),
+               tolerance = 1e-10)
+})
+
 test_that("kappa_gwise() estimates Frechet and Hubert complete-data coefficients", {
   x <- matrix(c(
     1, 1, 2, 1, 1,

@@ -402,6 +402,45 @@ Rcpp::List rcpp_kappa_continuous(
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_kappa_vector(
+    const Rcpp::NumericMatrix& x,
+    int features,
+    std::string method,
+    std::string loss_type,
+    Rcpp::NumericVector feature_weights) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+
+  Eigen::VectorXd weights(feature_weights.size());
+  for (int i = 0; i < feature_weights.size(); ++i) weights(i) = feature_weights[i];
+
+  misskappa::loss::ComponentSeparableLoss loss;
+  if (loss_type == "hamming") {
+    loss = unwrap(misskappa::loss::hamming_vector_loss(weights));
+  } else if (loss_type == "absolute") {
+    loss = unwrap(misskappa::loss::absolute_vector_loss(weights));
+  } else if (loss_type == "squared") {
+    loss = unwrap(misskappa::loss::squared_vector_loss(weights));
+  } else if (loss_type == "rms") {
+    loss = unwrap(misskappa::loss::rms_vector_loss(weights));
+  } else {
+    Rcpp::stop("Unknown vector loss type: " + loss_type);
+  }
+
+  misskappa::Result<misskappa::Estimation> r;
+  if (method == "pairwise") {
+    r = misskappa::estimate_pairwise_vector(ratings, features, loss);
+  } else if (method == "ipw") {
+    r = misskappa::estimate_ipw_vector(ratings, features, loss);
+  } else {
+    Rcpp::stop("Unknown vector method: " + method);
+  }
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_gwise_categorical(
     const Rcpp::IntegerMatrix& x,
     std::string distance_type,

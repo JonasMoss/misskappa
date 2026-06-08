@@ -33,6 +33,10 @@ rcpp_kappa_continuous <- function(x, method, weight_type) {
     .Call(`_misskappa_rcpp_kappa_continuous`, x, method, weight_type)
 }
 
+rcpp_kappa_vector <- function(x, features, method, loss_type, feature_weights) {
+    .Call(`_misskappa_rcpp_kappa_vector`, x, features, method, loss_type, feature_weights)
+}
+
 rcpp_kappa_gwise_categorical <- function(x, distance_type, g, max_chance_tuples) {
     .Call(`_misskappa_rcpp_kappa_gwise_categorical`, x, distance_type, g, max_chance_tuples)
 }
