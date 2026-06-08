@@ -162,7 +162,7 @@ struct LouisReducedInfoCounts {
 
 Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
   if (counts.rows() == 0 || counts.cols() == 0) {
-    return std::unexpected(Error::invalid_argument);
+    return misskappa::unexpected(Error::invalid_argument);
   }
   EmInputCounts in;
   in.c = static_cast<int>(counts.cols());
@@ -173,10 +173,10 @@ Result<EmInputCounts> preprocess_counts(IntMatView counts, int r_total) {
     int row_sum = 0;
     for (Eigen::Index k = 0; k < counts.cols(); ++k) {
       const int v = counts(i, k);
-      if (v < 0) return std::unexpected(Error::invalid_argument);
+      if (v < 0) return misskappa::unexpected(Error::invalid_argument);
       row_sum += v;
     }
-    if (row_sum > r_total) return std::unexpected(Error::invalid_argument);
+    if (row_sum > r_total) return misskappa::unexpected(Error::invalid_argument);
   }
 
   Binomial B(r_total + in.c + 1);
@@ -481,7 +481,7 @@ Result<EmRunResultCounts> run_em_preprocessed(
   const EmIterStatus status = run_em_iterations(theta, in, opts);
   out.iterations = status.iterations;
   out.converged = status.converged;
-  if (!out.converged) return std::unexpected(Error::not_converged);
+  if (!out.converged) return misskappa::unexpected(Error::not_converged);
 
   // Prune low-mass entries.
   std::vector<std::uint64_t> pruned_active;
@@ -494,12 +494,12 @@ Result<EmRunResultCounts> run_em_preprocessed(
       pruned_theta.push_back(theta(i));
     }
   }
-  if (pruned_active.empty()) return std::unexpected(Error::numerical_error);
+  if (pruned_active.empty()) return misskappa::unexpected(Error::numerical_error);
 
   Eigen::VectorXd tp = Eigen::Map<Eigen::VectorXd>(
       pruned_theta.data(), static_cast<Eigen::Index>(pruned_theta.size()));
   const double s = tp.sum();
-  if (s < zero_tol) return std::unexpected(Error::numerical_error);
+  if (s < zero_tol) return misskappa::unexpected(Error::numerical_error);
   tp /= s;
 
   out.theta_hat = std::move(tp);
@@ -593,19 +593,19 @@ Estimation map_to_kappa(
 
 Result<Estimation> estimate_fiml_counts(
     IntMatView counts, RealMatView weights, int r_total, EmOptions opts) {
-  if (counts.rows() < 1) return std::unexpected(Error::invalid_argument);
-  if (r_total < 2) return std::unexpected(Error::invalid_argument);
+  if (counts.rows() < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (r_total < 2) return misskappa::unexpected(Error::invalid_argument);
   const int C = static_cast<int>(weights.rows());
   if (weights.cols() != C || counts.cols() != C) {
-    return std::unexpected(Error::dimension_mismatch);
+    return misskappa::unexpected(Error::dimension_mismatch);
   }
 
   auto in_res = preprocess_counts(counts, r_total);
-  if (!in_res) return std::unexpected(in_res.error());
+  if (!in_res) return misskappa::unexpected(in_res.error());
 
   auto em = run_em_preprocessed(*in_res, opts);
-  if (!em) return std::unexpected(em.error());
-  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
   return map_to_kappa(*em, weights, *in_res, opts);
 }

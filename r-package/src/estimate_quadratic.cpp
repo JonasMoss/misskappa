@@ -63,7 +63,7 @@ Result<AcovResults> calculate_psi(
   RealVec count = M.cast<double>().colwise().sum().transpose();  // length R
   out.mu_hat.resize(R);
   for (int j = 0; j < R; ++j) {
-    if (count(j) <= zero_tol) return std::unexpected(Error::invalid_argument);
+    if (count(j) <= zero_tol) return misskappa::unexpected(Error::invalid_argument);
     out.mu_hat(j) = (count(j) > 0) ? Xf.col(j).sum() / count(j)
                                    : std::numeric_limits<double>::quiet_NaN();
   }
@@ -80,7 +80,7 @@ Result<AcovResults> calculate_psi(
   RealMat p2 = (M.cast<double>().transpose() * M.cast<double>()) / static_cast<double>(n);
   for (int j = 0; j < R; ++j) {
     for (int k = j; k < R; ++k) {
-      if (p2(j, k) <= zero_tol) return std::unexpected(Error::invalid_argument);
+      if (p2(j, k) <= zero_tol) return misskappa::unexpected(Error::invalid_argument);
     }
   }
 
@@ -137,9 +137,9 @@ Result<AcovResults> calculate_psi(
 
 Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values) {
   const int C = static_cast<int>(values.size());
-  if (C < 1) return std::unexpected(Error::invalid_argument);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
   if (ratings.rows() < 1 || ratings.cols() < 2) {
-    return std::unexpected(Error::invalid_argument);
+    return misskappa::unexpected(Error::invalid_argument);
   }
 
   // Brennan-Prediger constant: 2 / C^2 * (C * sum(v^2) - sum(v)^2).
@@ -151,7 +151,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   const int R = static_cast<int>(ratings.cols());
 
   auto acov = calculate_psi(x_all, M_full, n);
-  if (!acov) return std::unexpected(acov.error());
+  if (!acov) return misskappa::unexpected(acov.error());
 
   // Summary stats t1 = sum(Sigma), t2 = tr(Sigma), t3 = sum((mu - mean(mu))^2).
   const double t1 = acov->sigma_hat.sum();

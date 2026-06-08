@@ -28,28 +28,28 @@ Result<Estimation> estimate_raw(
     IntMatView ratings, RealMatView weights, detail::Reweighting mode) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
-  if (R < 2) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
 
   // Validate category indices: must be na_code or in [0, C-1] where C is
   // the dimension of the weight matrix.
   const int C = static_cast<int>(weights.rows());
-  if (weights.cols() != C) return std::unexpected(Error::dimension_mismatch);
-  if (C < 1) return std::unexpected(Error::invalid_argument);
+  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
   bool any_observed = false;
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
     for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
       const int x = ratings(i, j);
       if (x == na_code) continue;
       any_observed = true;
-      if (x < 0 || x >= C) return std::unexpected(Error::invalid_argument);
+      if (x < 0 || x >= C) return misskappa::unexpected(Error::invalid_argument);
     }
   }
-  if (!any_observed) return std::unexpected(Error::invalid_argument);
+  if (!any_observed) return misskappa::unexpected(Error::invalid_argument);
 
   const auto mask = build_mask(ratings);
   auto wres = detail::compute_inverse_weights(mask, n, R, mode);
-  if (!wres) return std::unexpected(wres.error());
+  if (!wres) return misskappa::unexpected(wres.error());
   const RealVec& pi_j_inv = wres->pi_j_inv;
   const RealMat& pi_jk_inv = wres->pi_jk_inv;
 

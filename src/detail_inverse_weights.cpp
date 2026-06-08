@@ -18,7 +18,7 @@ Result<InverseWeights> compute_inverse_weights(
   RealMat mask_d = rating_mask.cast<double>();
   RealVec pi_j = mask_d.colwise().sum().transpose() / n;
   if (pi_j.minCoeff() < zero_tol) {
-    return std::unexpected(Error::singular_weight);
+    return misskappa::unexpected(Error::singular_weight);
   }
   w.pi_j_inv = pi_j.cwiseInverse();
 

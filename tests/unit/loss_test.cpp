@@ -3,7 +3,6 @@
 #include "misskappa/loss.hpp"
 
 #include <cmath>
-#include <numbers>
 
 using misskappa::Error;
 using misskappa::RealMat;

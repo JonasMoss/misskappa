@@ -4,7 +4,7 @@
 # together. Do NOT edit the vendored *.cpp / misskappa/*.hpp — edit the canonical
 # sources under <repo>/src and <repo>/include and re-run `just vendor`.
 
-CXX_STD = CXX23
+CXX_STD = CXX17
 
 # -I. resolves the vendored "misskappa/..." and "detail_..." headers. Eigen comes
 # from RcppEigen (LinkingTo). EIGEN_NO_EXCEPTIONS matches how the library is built.

@@ -111,7 +111,7 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
     for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
       const int v = ratings(i, j);
       if (v == na_code) continue;
-      if (v < 0 || v >= c) return std::unexpected(Error::invalid_argument);
+      if (v < 0 || v >= c) return misskappa::unexpected(Error::invalid_argument);
     }
   }
 
@@ -375,7 +375,7 @@ Result<EmRunResult> run_em_preprocessed(
   const EmIterStatus status = run_em_iterations(theta, in, opts);
   out.iterations = status.iterations;
   out.converged = status.converged;
-  if (!out.converged) return std::unexpected(Error::not_converged);
+  if (!out.converged) return misskappa::unexpected(Error::not_converged);
 
   // Prune patterns with negligible probability mass.
   std::vector<std::uint64_t> pruned_ranks;
@@ -388,12 +388,12 @@ Result<EmRunResult> run_em_preprocessed(
       pruned_theta.push_back(theta(i));
     }
   }
-  if (pruned_ranks.empty()) return std::unexpected(Error::numerical_error);
+  if (pruned_ranks.empty()) return misskappa::unexpected(Error::numerical_error);
 
   Eigen::VectorXd theta_pruned = Eigen::Map<Eigen::VectorXd>(
       pruned_theta.data(), static_cast<Eigen::Index>(pruned_theta.size()));
   const double s = theta_pruned.sum();
-  if (s < zero_tol) return std::unexpected(Error::numerical_error);
+  if (s < zero_tol) return misskappa::unexpected(Error::numerical_error);
   theta_pruned /= s;
 
   out.theta_hat = std::move(theta_pruned);
@@ -474,9 +474,9 @@ KappaMap build_kappa_map(const EmRunResult& em, RealMatView weights) {
 }
 
 Result<void> validate_alpha_values(const RealVec& values) {
-  if (values.size() < 1) return std::unexpected(Error::invalid_argument);
+  if (values.size() < 1) return misskappa::unexpected(Error::invalid_argument);
   for (Eigen::Index k = 0; k < values.size(); ++k) {
-    if (!std::isfinite(values(k))) return std::unexpected(Error::invalid_argument);
+    if (!std::isfinite(values(k))) return misskappa::unexpected(Error::invalid_argument);
   }
   return {};
 }
@@ -543,17 +543,17 @@ Result<Estimation> estimate_fiml(
     IntMatView ratings, RealMatView weights, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
-  if (R < 2) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
   const int C = static_cast<int>(weights.rows());
-  if (weights.cols() != C) return std::unexpected(Error::dimension_mismatch);
-  if (C < 1) return std::unexpected(Error::invalid_argument);
+  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
 
   auto in_res = preprocess_raw(ratings, C);
-  if (!in_res) return std::unexpected(in_res.error());
+  if (!in_res) return misskappa::unexpected(in_res.error());
   auto em = run_em_preprocessed(*in_res, C, opts, true);
-  if (!em) return std::unexpected(em.error());
-  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
   const KappaMap m = build_kappa_map(*em, weights);
 
@@ -612,17 +612,17 @@ Result<Estimation> estimate_alpha_fiml(
     IntMatView ratings, const RealVec& values, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
-  if (R < 2) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
   auto valid = validate_alpha_values(values);
-  if (!valid) return std::unexpected(valid.error());
+  if (!valid) return misskappa::unexpected(valid.error());
   const int C = static_cast<int>(values.size());
 
   auto in_res = preprocess_raw(ratings, C);
-  if (!in_res) return std::unexpected(in_res.error());
+  if (!in_res) return misskappa::unexpected(in_res.error());
   auto em = run_em_preprocessed(*in_res, C, opts, true);
-  if (!em) return std::unexpected(em.error());
-  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
   const AlphaMap m = build_alpha_map(*em, values);
   RealVec estimates(1);
@@ -653,23 +653,23 @@ Result<FimlLouisDiagnostic> diagnose_fiml_louis(
     IntMatView ratings, RealMatView weights, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return std::unexpected(Error::invalid_argument);
-  if (R < 2) return std::unexpected(Error::invalid_argument);
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
   const int C = static_cast<int>(weights.rows());
-  if (weights.cols() != C) return std::unexpected(Error::dimension_mismatch);
-  if (C < 1) return std::unexpected(Error::invalid_argument);
+  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
 
   auto in_res = preprocess_raw(ratings, C);
-  if (!in_res) return std::unexpected(in_res.error());
+  if (!in_res) return misskappa::unexpected(in_res.error());
   auto em = run_em_preprocessed(*in_res, C, opts, false);
-  if (!em) return std::unexpected(em.error());
-  if (em->theta_hat.size() == 0) return std::unexpected(Error::numerical_error);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
   const KappaMap m = build_kappa_map(*em, weights);
   const Eigen::VectorXd& theta = em->theta_hat;
   const double pd = m.d_vec.dot(theta);
   const double pec = (theta.transpose() * m.Qed_conger * theta).value();
-  if (std::abs(pec) <= singular_tol) return std::unexpected(Error::numerical_error);
+  if (std::abs(pec) <= singular_tol) return misskappa::unexpected(Error::numerical_error);
 
   const RealMat sym = 0.5 * (m.Qed_conger + m.Qed_conger.transpose());
   const RealVec grad_pec = 2.0 * sym * theta;
@@ -694,7 +694,7 @@ Result<FimlLouisDiagnostic> diagnose_fiml_louis(
   }
 
   Eigen::SelfAdjointEigenSolver<RealMat> es(info.info_star);
-  if (es.info() != Eigen::Success) return std::unexpected(Error::numerical_error);
+  if (es.info() != Eigen::Success) return misskappa::unexpected(Error::numerical_error);
   const RealVec& evals = es.eigenvalues();
   const RealMat& evecs = es.eigenvectors();
   out.lambda_max = evals.maxCoeff();

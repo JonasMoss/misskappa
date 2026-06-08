@@ -14,7 +14,7 @@ TEST_CASE("Result<int> carries values") {
 }
 
 TEST_CASE("Result<int> carries errors") {
-  misskappa::Result<int> bad = std::unexpected(misskappa::Error::invalid_argument);
+  misskappa::Result<int> bad = misskappa::unexpected(misskappa::Error::invalid_argument);
   REQUIRE(!bad.has_value());
   CHECK(bad.error() == misskappa::Error::invalid_argument);
 }
