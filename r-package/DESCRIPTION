@@ -30,7 +30,10 @@ Suggests:
     roxygen2,
     testthat (>= 3.0.0),
     irrcacsmoke,
-    lavaan
+    lavaan,
+    psych,
+    quarto
+VignetteBuilder: quarto
 Config/testthat/edition: 3
 Config/roxygen2/load: source
 Config/roxygen2/markdown: true

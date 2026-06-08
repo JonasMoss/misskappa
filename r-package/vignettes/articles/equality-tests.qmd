@@ -1,0 +1,149 @@
+---
+title: "Testing Equality Of Agreement Coefficients"
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+Every `misskappa` estimate carries an asymptotic covariance matrix, and --- for
+the influence-function estimators --- a per-subject influence matrix `fit$psi`
+satisfying `vcov == crossprod(psi) / n^2`. That is exactly what a Wald test of a
+linear hypothesis needs, so `kappa_test()` and `alpha_test()` can compare a
+coefficient across fits and return a standard `htest`. Only the way the
+covariance of the contrast is assembled changes between designs:
+
+* **one sample** --- the coefficient's own variance;
+* **independent samples** --- the per-fit variances add (block diagonal);
+* **paired / same-subject** --- the cross-fit dependence is read from the
+  stacked influence functions `fit$psi`.
+
+```{r}
+#| message: false
+library(misskappa)
+```
+
+## One sample: is a coefficient equal to a fixed value?
+
+Pass a single fit and a `value`. This tests whether the (linearly weighted)
+Conger coefficient for the Gwet (2014) data equals 0.5:
+
+```{r}
+kappa_test(kappa(dat.gwet2014, estimator = "ipw"), coef = "Conger", value = 0.5)
+```
+
+## Independent samples: two studies, different subjects
+
+When the fits come from disjoint sets of subjects, set `paired = FALSE`; the
+variances add. Here the Conger coefficient is compared between the Gwet (2014)
+and Klein (2018) studies:
+
+```{r}
+kappa_test(
+  gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
+  klein = kappa(dat.klein2018, estimator = "ipw"),
+  coef = "Conger", paired = FALSE
+)
+```
+
+The same works for coefficient alpha, and `psych::bfi` makes the point on **real
+missing data**: 2800 respondents answer the 25-item Big Five inventory and about
+360 of them skip at least one item. We reverse-key the negatively-worded items
+and treat each five-item scale as a battery; the normal-theory FIML estimator
+handles the missing responses under ignorable missingness.
+
+```{r}
+data(bfi, package = "psych")
+neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
+bfi[neg] <- 7 - bfi[neg]
+scale_items <- function(letter) as.matrix(bfi[, paste0(letter, 1:5)])
+```
+
+Is the Conscientiousness scale equally reliable for men and women? Different
+respondents, so the samples are independent:
+
+```{r}
+g <- split(seq_len(nrow(bfi)), bfi$gender)
+alpha_test(
+  men   = alpha(scale_items("C")[g[["1"]], ], estimator = "nt_fiml"),
+  women = alpha(scale_items("C")[g[["2"]], ], estimator = "nt_fiml"),
+  paired = FALSE
+)
+```
+
+## Paired: same subjects, two coefficients
+
+When both coefficients are computed on the *same* subjects, the two estimates
+are correlated and ignoring that dependence gives the wrong standard error.
+`paired = TRUE` (the default) takes the dependence from the influence functions.
+
+A clean illustration on **real missing data**: in `dat.mcduff2019`, MTurk judges
+rate smiling images on two attributes --- *smile presence* and *image
+positivity* --- but only about 4% of the item-by-judge grid is observed. Because
+both coefficients are estimated on the same items, the contrast is dependent.
+
+```{r}
+to_wide <- function(attribute) {
+  m <- with(dat.mcduff2019,
+            tapply(get(attribute), list(item, judge), function(z) z[1]))
+  matrix(as.numeric(m), nrow = nrow(m))
+}
+smile    <- kappa(to_wide("rating_smile"),    estimator = "pairwise")
+positive <- kappa(to_wide("rating_positive"), estimator = "pairwise")
+
+kappa_test(smile = smile, positive = positive, coef = "Conger")
+```
+
+The headline is that this paired test runs on a genuinely incomplete design: the
+pairwise-available estimator supplies both the point estimates and the influence
+functions that encode their dependence.
+
+Coefficient alpha has the same structure. Every `bfi` respondent answers all five
+scales, so two scales' alphas are estimated on the same people and the comparison
+is paired. Are Neuroticism and Extraversion equally reliable?
+
+```{r}
+alpha_test(N = alpha(scale_items("N"), estimator = "nt_fiml"),
+           E = alpha(scale_items("E"), estimator = "nt_fiml"),
+           paired = TRUE)
+```
+
+## *G*-way homogeneity: are several coefficients all equal?
+
+With more than two fits the test becomes the joint hypothesis that they are all
+equal, with `G - 1` degrees of freedom.
+
+For coefficient alpha, all five `bfi` scales are answered by the same
+respondents, so testing that they are equally reliable is a paired *G* = 5
+homogeneity test (`df = 4`):
+
+```{r}
+scales <- c("A", "C", "E", "N", "O")
+fits <- lapply(scales, function(L) alpha(scale_items(L), estimator = "nt_fiml"))
+names(fits) <- scales
+do.call(alpha_test, c(fits, list(paired = TRUE)))
+```
+
+The test decisively rejects: Neuroticism (`r round(coef(fits$N), 2)`) is far more
+reliable than Openness (`r round(coef(fits$O), 2)`).
+
+The kappa analogue is "is the two-rater quadratic coefficient constant across all
+rater pairs?". The Zapf (2016) data has four raters and hence six pairs, all on
+the same 50 subjects:
+
+```{r}
+pairs <- combn(4, 2)
+pair_fits <- apply(pairs, 2, function(rs)
+  kappa(dat.zapf2016[, rs], estimator = "pairwise"), simplify = FALSE)
+names(pair_fits) <- apply(pairs, 2, paste0, collapse = "")
+do.call(kappa_test, c(pair_fits, list(coef = "Conger", paired = TRUE)))
+```
+
+## Under the hood
+
+All four cases are built only on the exported `coef()`, `vcov()`, and `fit$psi`.
+If you need an arbitrary linear hypothesis --- general contrasts with non-zero
+margins across several fits --- the internal `joint_vcov()` and `wald_test()`
+provide the general engine that `kappa_test()` and `alpha_test()` are
+convenience wrappers around.

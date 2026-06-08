@@ -50,3 +50,21 @@ through internal entry points but are no longer exported.
 * The general linear-hypothesis engine they stand on — `joint_vcov()` and
   `wald_test()` (arbitrary contrasts and non-zero margins) — and the closed-form
   `kappa_quadratic()` remain internal, for the rare power-user case.
+
+## Documentation and datasets
+
+* New dataset `dat.holzinger1939`: the classic, public-domain Holzinger &
+  Swineford (1939) nine-item mental-ability battery — a compact *continuous*
+  item battery used for the always-runnable coefficient-alpha examples.
+* Every exported function and dataset now carries a runnable example built on
+  the bundled data, including paired and independent `kappa_test()` /
+  `alpha_test()` calls. The legacy `dat.gwet2014` / `dat.klein2018` /
+  `dat.zapf2016` help pages gained `format` and `source` details.
+* The coefficient-alpha equality tests are additionally demonstrated on **real
+  missing data with grouping structure** via `psych::bfi` (added to `Suggests`):
+  a dependent test across two Big Five scales (same respondents), an independent
+  test across gender, and G-way homogeneity across all five scales.
+* New shipped vignette *"Getting started with misskappa"* (a load → fit →
+  confint → test walkthrough), plus a *"Testing equality of agreement
+  coefficients"* how-to article covering the one-sample, independent, paired,
+  and G-way cases on real data.

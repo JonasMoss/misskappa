@@ -1,0 +1,120 @@
+---
+title: "Getting started with misskappa"
+vignette: >
+  %\VignetteIndexEntry{Getting started with misskappa}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+format: html
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+`misskappa` estimates weighted agreement coefficients (Conger, Fleiss,
+Brennan–Prediger) and coefficient alpha when some ratings are **missing**, and
+attaches an asymptotic covariance matrix to every estimate so you get standard
+errors, confidence intervals, and equality tests for free. Each estimator is
+chosen with a single `estimator=` argument; you never have to remember a
+combination of `method` and `type` flags.
+
+```{r}
+#| message: false
+library(misskappa)
+```
+
+## A first agreement coefficient
+
+`dat.gwet2014` is a small categorical rating matrix --- 20 subjects, five
+raters, four categories --- with some ratings missing (`NA`). The
+inverse-probability-weighted (IPW) estimator is consistent under
+missing-completely-at-random missingness:
+
+```{r}
+fit <- kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
+fit
+```
+
+The print method shows each coefficient with its standard error and a 95%
+confidence interval. The object carries everything you need:
+
+```{r}
+coef(fit)
+sqrt(diag(vcov(fit)))
+```
+
+### Confidence intervals
+
+`confint()` gives natural-scale Wald intervals, or a variance-stabilising
+Fisher *z* interval that always stays inside `(-1, 1)` --- useful when a
+coefficient is close to the boundary:
+
+```{r}
+confint(fit)
+confint(fit, transform = "fisher")
+```
+
+## Choosing an estimator
+
+The right `estimator=` depends on the data and the missingness assumption:
+
+| Input | `estimator` | Assumption |
+|---|---|---|
+| Categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
+| Categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
+| Scored ratings (quadratic) | `"pairwise"` | MCAR, distribution-free |
+| Scored ratings (quadratic) | `"nt_fiml"` | Ignorable, normal-theory |
+
+The scored estimators treat the categories as numbers and use the quadratic
+loss; pass the scores directly, or integer codes together with `values`.
+
+```{r}
+kappa(dat.zapf2016, estimator = "pairwise")
+```
+
+## Counts-format data
+
+When raters are interchangeable and you only have per-subject category counts,
+use `kappa_counts()`. `dat.fleiss1971` is the classic psychiatric-diagnosis
+table (30 subjects, six raters, five categories):
+
+```{r}
+kappa_counts(dat.fleiss1971, estimator = "pairwise")
+```
+
+## Coefficient alpha
+
+`alpha()` estimates Cronbach's coefficient alpha for a subjects-by-items score
+battery, again with missing entries allowed. `psych::bfi` is a 25-item Big Five
+questionnaire answered by 2800 people, many of whom skipped at least one item.
+Treating the five-item Neuroticism scale as the battery, the normal-theory FIML
+estimator handles the missing responses under ignorable missingness:
+
+```{r}
+#| eval: !expr requireNamespace("psych", quietly = TRUE)
+data(bfi, package = "psych")
+neuroticism <- as.matrix(bfi[, paste0("N", 1:5)])
+sum(!complete.cases(neuroticism))      # respondents missing at least one item
+alpha(neuroticism, estimator = "nt_fiml")
+```
+
+## Testing whether coefficients are equal
+
+A common question is whether a coefficient is the *same* across two groups, two
+estimators, two timepoints, or several rater pairs. `kappa_test()` and
+`alpha_test()` answer it and return a standard `htest`. Use `paired = TRUE`
+(the default) when the fits share the same subjects --- the dependence is taken
+from the per-subject influence functions --- and `paired = FALSE` for
+independent samples.
+
+```{r}
+kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
+           CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
+           coef = "Conger")
+```
+
+See the [equality tests](articles/equality-tests.html) article for the
+one-sample, independent, paired, and *G*-way homogeneity cases worked out on
+real data, and the [mathematical guides](articles/index.html) for the
+loss-matrix formulation and the missing-data estimators.

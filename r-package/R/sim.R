@@ -28,6 +28,16 @@
 #' All generators accept a `seed` argument; if non-NULL it is passed to
 #' `set.seed()` before sampling.
 #'
+#' @examples
+#' # Simulate MCAR categorical ratings (200 subjects, 3 raters, 4 categories,
+#' # 15% missing per cell) and estimate kappa on the incomplete matrix.
+#' x <- sim$mcar(n = 200, R = 3, C = 4, p = c(0.4, 0.3, 0.2, 0.1),
+#'               p_missing = 0.15, seed = 1)
+#' kappa(x, estimator = "ipw")
+#'
+#' # The underlying complete matrix is kept as an attribute for comparison.
+#' dim(attr(x, "complete"))
+#'
 #' @keywords datasets
 #' @export
 sim <- local({

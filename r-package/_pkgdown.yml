@@ -35,6 +35,10 @@ reference:
       - starts_with("dat.")
 
 articles:
+  - title: How-to guides
+    navbar: How-to
+    contents:
+      - articles/equality-tests
   - title: Mathematical Guides
     navbar: Mathematical Guides
     contents:

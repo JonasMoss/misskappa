@@ -86,14 +86,19 @@
 #'   `psi` component (the n-by-1 matrix of per-subject influence functions).
 #'
 #' @examples
-#' set.seed(1)
-#' n <- 400L; p <- 5L
-#' L <- chol(0.3 + 0.7 * diag(p))
-#' x <- matrix(rnorm(n * p), n, p) %*% L
-#' x[matrix(runif(n * p) < 0.15, n, p)] <- NA
-#' fit <- alpha(x, estimator = "nt_fiml")
+#' # Continuous item battery: the textual subscale of the Holzinger-Swineford
+#' # (1939) data. Normal-theory FIML alpha, valid under ignorable missingness.
+#' textual <- as.matrix(dat.holzinger1939[, c("x4", "x5", "x6")])
+#' fit <- alpha(textual, estimator = "nt_fiml")
 #' coef(fit)
 #' confint(fit)
+#'
+#' @examplesIf requireNamespace("psych", quietly = TRUE)
+#' # Real item-level missing data: the Neuroticism scale of psych::bfi
+#' # (2800 respondents, ~360 with at least one missing item). The FIML
+#' # estimator is valid under ignorable missingness.
+#' data(bfi, package = "psych")
+#' alpha(as.matrix(bfi[, paste0("N", 1:5)]), estimator = "nt_fiml")
 #'
 #' @export
 alpha <- function(x,
@@ -253,6 +258,15 @@ estimate_kappa_raw <- function(x,
 #'   functions, satisfying `vcov == crossprod(psi) / n^2` --- for power users
 #'   who want to build their own contrasts or joint tests.
 #'
+#' @examples
+#' # Categorical ratings with missing entries (Gwet 2014): the
+#' # inverse-probability-weighted estimator under MCAR, with linear weights.
+#' kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
+#'
+#' # Scored coefficient (quadratic loss) via the pairwise-available moment
+#' # estimator; treats the columns as numeric scores.
+#' kappa(dat.zapf2016, estimator = "pairwise")
+#'
 #' @export
 kappa <- function(x,
                   estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml"),
@@ -336,6 +350,11 @@ vcov.misskappa_estimate <- function(object, ...) object$vcov
 #'
 #' @return A two-column numeric matrix of lower and upper limits, one row per
 #'   coefficient.
+#'
+#' @examples
+#' fit <- kappa(dat.gwet2014, estimator = "ipw")
+#' confint(fit)                       # natural-scale Wald interval
+#' confint(fit, transform = "fisher") # Fisher z interval; always within (-1, 1)
 #'
 #' @export
 confint.misskappa_estimate <- function(object, parm = NULL, level = 0.95,
@@ -472,6 +491,14 @@ kappa_quadratic <- function(x, values) {
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
 #'   `Brennan-Prediger` coefficients and the 2x2 vcov.
+#'
+#' @examples
+#' # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
+#' # in counts format (one row per subject, one column per category).
+#' kappa_counts(dat.fleiss1971, estimator = "pairwise")
+#'
+#' # Treat the categories as ordered scores with a quadratic loss.
+#' kappa_counts(dat.fleiss1971, estimator = "pairwise", weight = "quadratic")
 #'
 #' @export
 kappa_counts <- function(x,
