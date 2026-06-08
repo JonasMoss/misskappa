@@ -5,6 +5,7 @@
 
 #include <Eigen/Eigenvalues>
 #include <cmath>
+#include <limits>
 
 using misskappa::IntMat;
 using misskappa::RealMat;
@@ -25,6 +26,24 @@ IntMat frechet_fixture_int() {
 
 RealMat frechet_fixture_real() {
   return frechet_fixture_int().cast<double>() + RealMat::Constant(4, 5, 1.0);
+}
+
+RealMat missing_3rater_real_fixture() {
+  const double na = std::numeric_limits<double>::quiet_NaN();
+  RealMat x(12, 3);
+  x << 0.0, 0.0, 0.0,
+       1.0, 1.0, na,
+       2.0, 2.0, 2.0,
+       0.0, 0.0, 1.0,
+       na, 2.0, 1.0,
+       2.0, 1.0, 2.0,
+       0.0, 1.0, 0.0,
+       1.0, 1.0, 2.0,
+       2.0, 2.0, 2.0,
+       0.0, 0.0, 0.0,
+       1.0, 0.0, 1.0,
+       2.0, 2.0, 1.0;
+  return x;
 }
 
 IntMat missing_3rater_fixture() {
@@ -136,6 +155,63 @@ TEST_CASE("G-wise absolute Frechet: all-rater median disagreement fixture") {
   CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-12);
 }
 
+TEST_CASE("G-wise absolute Frechet IPW: complete data matches complete estimator") {
+  RealMat x = frechet_fixture_real();
+  auto distance = ms::loss::frechet_absolute_distance();
+  REQUIRE(distance.has_value());
+
+  auto complete = ms::estimate_gwise_continuous(x, *distance);
+  auto ipw = ms::estimate_ipw_gwise_continuous(x, *distance);
+  REQUIRE(complete.has_value());
+  REQUIRE(ipw.has_value());
+
+  CHECK((complete->estimates - ipw->estimates).cwiseAbs().maxCoeff() < tol);
+  CHECK((complete->vcov - ipw->vcov).cwiseAbs().maxCoeff() < 1e-12);
+  CHECK((complete->psi - ipw->psi).cwiseAbs().maxCoeff() < 1e-12);
+}
+
+TEST_CASE("G-wise continuous IPW: g=2 matches pairwise continuous IPW") {
+  RealMat x = missing_3rater_real_fixture();
+
+  auto absolute_distance = ms::loss::frechet_absolute_distance();
+  auto absolute_loss = ms::loss::linear_loss(0.0, 2.0);
+  REQUIRE(absolute_distance.has_value());
+  REQUIRE(absolute_loss.has_value());
+  auto gwise_absolute =
+      ms::estimate_ipw_gwise_continuous(x, *absolute_distance, ms::GwiseOptions{2});
+  auto pairwise_absolute = ms::estimate_ipw_continuous(x, *absolute_loss);
+  REQUIRE(gwise_absolute.has_value());
+  REQUIRE(pairwise_absolute.has_value());
+  CHECK((gwise_absolute->estimates - pairwise_absolute->estimates).cwiseAbs().maxCoeff() < tol);
+  CHECK((gwise_absolute->vcov - pairwise_absolute->vcov).cwiseAbs().maxCoeff() < 1e-10);
+
+  auto quadratic_distance = ms::loss::frechet_quadratic_distance();
+  auto quadratic_loss = ms::loss::quadratic_loss(0.0, 2.0);
+  REQUIRE(quadratic_distance.has_value());
+  REQUIRE(quadratic_loss.has_value());
+  auto gwise_quadratic =
+      ms::estimate_ipw_gwise_continuous(x, *quadratic_distance, ms::GwiseOptions{2});
+  auto pairwise_quadratic = ms::estimate_ipw_continuous(x, *quadratic_loss);
+  REQUIRE(gwise_quadratic.has_value());
+  REQUIRE(pairwise_quadratic.has_value());
+  CHECK((gwise_quadratic->estimates - pairwise_quadratic->estimates).cwiseAbs().maxCoeff() < tol);
+
+  auto hubert_distance = ms::loss::hubert_continuous_distance();
+  auto identity_loss = ms::loss::identity_loss();
+  REQUIRE(hubert_distance.has_value());
+  REQUIRE(identity_loss.has_value());
+  auto gwise_hubert =
+      ms::estimate_ipw_gwise_continuous(x, *hubert_distance, ms::GwiseOptions{2});
+  auto pairwise_identity = ms::estimate_ipw_continuous(x, *identity_loss);
+  REQUIRE(gwise_hubert.has_value());
+  REQUIRE(pairwise_identity.has_value());
+  CHECK((gwise_hubert->estimates - pairwise_identity->estimates).cwiseAbs().maxCoeff() < tol);
+
+  const RealMat psi_vcov = (gwise_absolute->psi.transpose() * gwise_absolute->psi)
+                           / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((psi_vcov - gwise_absolute->vcov).cwiseAbs().maxCoeff() < 1e-12);
+}
+
 TEST_CASE("G-wise Hubert disagreement: perfect agreement returns one") {
   IntMat x(3, 3);
   x << 0, 0, 0,
@@ -145,6 +221,22 @@ TEST_CASE("G-wise Hubert disagreement: perfect agreement returns one") {
   REQUIRE(distance.has_value());
 
   auto r = ms::estimate_gwise(x, *distance);
+  REQUIRE(r.has_value());
+  CHECK(std::abs(r->estimates(0) - 1.0) < tol);
+  CHECK(std::abs(r->estimates(1) - 1.0) < tol);
+}
+
+TEST_CASE("G-wise continuous IPW: perfect observed agreement returns one") {
+  const double na = std::numeric_limits<double>::quiet_NaN();
+  RealMat x(4, 3);
+  x << 0.0, 0.0, 0.0,
+       1.0, 1.0, na,
+       2.0, 2.0, 2.0,
+       na, 1.0, 1.0;
+  auto distance = ms::loss::frechet_absolute_distance();
+  REQUIRE(distance.has_value());
+
+  auto r = ms::estimate_ipw_gwise_continuous(x, *distance);
   REQUIRE(r.has_value());
   CHECK(std::abs(r->estimates(0) - 1.0) < tol);
   CHECK(std::abs(r->estimates(1) - 1.0) < tol);
@@ -215,6 +307,35 @@ TEST_CASE("G-wise nominal Frechet IPW: rejects invalid or unidentified missingne
   CHECK(oversized.error() == ms::Error::not_supported);
 }
 
+TEST_CASE("G-wise continuous IPW: rejects unidentified missingness patterns and oversized jobs") {
+  const double na = std::numeric_limits<double>::quiet_NaN();
+  auto distance = ms::loss::frechet_absolute_distance();
+  REQUIRE(distance.has_value());
+
+  RealMat zero_rater(3, 3);
+  zero_rater << 0.0, 0.0, na,
+                1.0, 1.0, na,
+                2.0, 2.0, na;
+  auto singular_rater =
+      ms::estimate_ipw_gwise_continuous(zero_rater, *distance, ms::GwiseOptions{2});
+  REQUIRE(!singular_rater.has_value());
+  CHECK(singular_rater.error() == ms::Error::singular_weight);
+
+  RealMat no_joint(3, 3);
+  no_joint << 0.0, na, na,
+              na, 1.0, na,
+              na, na, 2.0;
+  auto no_tuple = ms::estimate_ipw_gwise_continuous(no_joint, *distance);
+  REQUIRE(!no_tuple.has_value());
+  CHECK(no_tuple.error() == ms::Error::singular_weight);
+
+  auto oversized =
+      ms::estimate_ipw_gwise_continuous(
+          frechet_fixture_real(), *distance, ms::GwiseOptions{5, 100});
+  REQUIRE(!oversized.has_value());
+  CHECK(oversized.error() == ms::Error::not_supported);
+}
+
 TEST_CASE("G-wise categorical chance uses finite support instead of n^g item tuples") {
   IntMat x(200, 3);
   for (int i = 0; i < static_cast<int>(x.rows()); ++i) {
@@ -251,6 +372,16 @@ TEST_CASE("G-wise nominal Frechet IPW covariance is symmetric and PSD") {
   REQUIRE(distance.has_value());
 
   auto r = ms::estimate_ipw_gwise(x, *distance);
+  REQUIRE(r.has_value());
+  check_symmetric_psd(r->vcov);
+}
+
+TEST_CASE("G-wise continuous IPW covariance is symmetric and PSD") {
+  RealMat x = missing_3rater_real_fixture();
+  auto distance = ms::loss::frechet_absolute_distance();
+  REQUIRE(distance.has_value());
+
+  auto r = ms::estimate_ipw_gwise_continuous(x, *distance);
   REQUIRE(r.has_value());
   check_symmetric_psd(r->vcov);
 }
