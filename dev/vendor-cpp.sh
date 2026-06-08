@@ -42,11 +42,15 @@ vendor() {  # vendor <src-file> <dest-file>
 }
 
 count=0
-for s in "$src_dir"/*.cpp "$src_dir"/*.hpp; do
+for s in "$src_dir"/*.cpp; do
   vendor "$s" "$dest/$(basename "$s")"
   count=$((count + 1))
 done
-for s in "$inc_dir"/*.hpp; do
+# Private impl headers (src/*.hpp) join the public headers under misskappa/, so
+# the src/ top level holds only *.cpp. R CMD check flags stray top-level headers
+# in src/ as "unlikely file names"; Makevars adds -Imisskappa so the unqualified
+# `#include "detail_*.hpp"` in the .cpp still resolves.
+for s in "$src_dir"/*.hpp "$inc_dir"/*.hpp; do
   vendor "$s" "$dest/misskappa/$(basename "$s")"
   count=$((count + 1))
 done

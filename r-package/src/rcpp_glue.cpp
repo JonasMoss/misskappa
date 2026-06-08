@@ -1,4 +1,4 @@
-// Rcpp glue between R and the standalone C++23 misskappa library.
+// Rcpp glue between R and the standalone C++17 misskappa library.
 //
 // The library is compiled with -fno-exceptions and returns Result<T> by value
 // for fallible APIs. This TU runs with exceptions enabled (Rcpp requires it)

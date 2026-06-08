@@ -6,6 +6,8 @@
 
 CXX_STD = CXX17
 
-# -I. resolves the vendored "misskappa/..." and "detail_..." headers. Eigen comes
-# from RcppEigen (LinkingTo). EIGEN_NO_EXCEPTIONS matches how the library is built.
-PKG_CPPFLAGS = -I. -DEIGEN_NO_EXCEPTIONS
+# -I. resolves the qualified "misskappa/..." headers; -Imisskappa resolves the
+# unqualified "detail_..." impl headers, which are vendored under misskappa/ so the
+# src/ top level holds only *.cpp (R CMD check flags stray top-level headers).
+# Eigen comes from RcppEigen (LinkingTo); EIGEN_NO_EXCEPTIONS matches the library.
+PKG_CPPFLAGS = -I. -Imisskappa -DEIGEN_NO_EXCEPTIONS

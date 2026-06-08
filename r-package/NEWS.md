@@ -1,7 +1,7 @@
-# misskappa 2.0.0
+# misskappa 1.0.0
 
 First release of the rewritten package: a thin Rcpp interface over the
-standalone C++23 `misskappa` library.
+standalone C++17 `misskappa` library.
 
 ## Public API
 
