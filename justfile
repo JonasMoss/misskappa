@@ -87,6 +87,10 @@ docs: docs-r docs-cpp
 docs-clean:
   @rm -rf docs/site docs/doxygen
 
+# Render README.qmd -> README.md against the freshly built package.
+readme: r-install
+  @quarto render README.qmd
+
 # Delegate to a paper-local justfile. Slug is one of: combined, ipw, fiml, quadratic.
 # Example: just paper ipw pdf
 paper slug *args:

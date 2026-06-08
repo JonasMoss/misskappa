@@ -4,7 +4,7 @@ Estimation and inference for weighted agreement coefficients (Cohen, Fleiss,
 Conger, Brennan-Prediger) with arbitrary numbers of raters and arbitrary
 pairwise loss functions, plus coefficient alpha for scored categorical and
 continuous item batteries. Supports incomplete ratings under MCAR and MAR.
-Wraps the standalone C++23 `misskappa` library.
+Wraps the standalone C++17 `misskappa` library.
 
 Each estimator is selected with a single `estimator=` argument:
 

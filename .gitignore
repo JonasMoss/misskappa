@@ -30,8 +30,6 @@ r-package/src/*.o
 r-package/src/*.so
 r-package/src/*.dll
 r-package/src/symbols.rds
-# Generated help pages (roxygen). Keep man/figures/ (logo etc.) tracked.
-r-package/man/*.Rd
 
 # Generated documentation
 docs/site/
