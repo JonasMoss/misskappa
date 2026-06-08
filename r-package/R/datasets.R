@@ -130,3 +130,45 @@
 #' alpha(as.matrix(dat.holzinger1939[, c("x4", "x5", "x6")]), estimator = "nt_fiml")
 #' @keywords datasets
 "dat.holzinger1939"
+
+#' Vanbelle (2019) crackles lung-sound agreement study (vector-valued ratings)
+#'
+#' The CRACKLES auscultation study: 20 patients from the Tromso cohort, each
+#' recorded at six chest sites, classified for the presence of crackles
+#' (`0`/`1`) by 28 observers from seven groups of four (international experts
+#' `EXP`, general practitioners from Norway `NOR`, Russia `RUS`, Wales `WAL` and
+#' the Netherlands `NLD`, pulmonologists `PUL`, and medical students `STU`).
+#' Because each observer rates a patient at all six sites, every rating is a
+#' six-component *vector*, which makes this the worked example for the
+#' vector-valued (component-separable) path of [kappa()]: pass the array and
+#' pick a component loss with `weight`. Ratings are complete (no missing
+#' entries). The data are factual binary classifications and are treated as
+#' public domain.
+#'
+#' @format A 20 x 28 x 6 numeric array of `0`/`1` crackle classifications with
+#'   named dimensions:
+#'   \describe{
+#'     \item{patient}{20 patients (`"1"`--`"20"`).}
+#'     \item{rater}{28 observers, four per group: `EXP1`--`EXP4`, `NOR1`--`NOR4`,
+#'       `RUS1`--`RUS4`, `WAL1`--`WAL4`, `NLD1`--`NLD4`, `PUL1`--`PUL4`,
+#'       `STU1`--`STU4`.}
+#'     \item{site}{six chest sites: `U1`, `U2` (upper posterior, left/right),
+#'       `L1`, `L2` (lower posterior), `A1`, `A2` (anterior).}
+#'   }
+#' @source The `CRACKLES` data frame distributed with the \pkg{multiagree}
+#'   package (Vanbelle), reshaped into a subjects-by-raters-by-features array.
+#' @references
+#'   Vanbelle, S. (2019). Asymptotic variability of (multilevel) multirater
+#'   kappa coefficients. \emph{Statistical Methods in Medical Research},
+#'   28(10-11), 3012-3026. \doi{10.1177/0962280218794733}
+#'
+#'   Aviles-Solis, J. C., Vanbelle, S., Halvorsen, P. A., et al. (2017).
+#'   International perception of lung sounds: a comparison of classification
+#'   across some European borders. \emph{BMJ Open Respiratory Research}, 4(1),
+#'   e000250. \doi{10.1136/bmjresp-2017-000250}
+#' @examples
+#' # Vector-valued agreement across the six sites for the four expert observers,
+#' # with the default Hamming component loss (count of disagreeing sites).
+#' kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+#' @keywords datasets
+"dat.vanbelle2019"

@@ -101,4 +101,9 @@ kappa(dat.zapf2016, estimator = "pairwise")
 # g-wise (multirater) nominal kappa over triples of raters.
 kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 
+# Vector-valued ratings: a subjects-by-raters-by-features array. Each of the
+# four expert observers classifies crackles at six chest sites, so a rating
+# is a six-vector; the default Hamming loss counts disagreeing sites.
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
+
 }
