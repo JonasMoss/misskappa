@@ -18,17 +18,66 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 
 ## Active backlog
 
-- [ ] **Cut a 0.5.0-style R package release candidate.**
-      Before tagging, decide whether the package version should reset to a
-      pre-1.0 line (`0.5.0`) or keep continuity with the legacy package
-      version currently declared in `r-package/DESCRIPTION` (`2.0.0`).
-      Keep roxygen as the source of truth for `NAMESPACE` and `.Rd` files;
-      `just r-docs`, `just r-install`, `just r-check`, CI, and pkgdown now
-      regenerate docs from source. Make one explicit public-surface pass:
-      either keep the current specialized exports (`kappa_counts`,
-      `kappa_continuous`, `kappa_quadratic*`, `kappa_gwise`) as documented
-      advanced helpers, or move toward the narrower `kappa()` front door after
-      adding argument dispatch for those input shapes.
+- [ ] **R package release (GitHub-first): finish the unified-API refactor.**
+      Decided 2026-06-06: ship a clean *estimators + CIs* surface, defer
+      hypothesis tests, release on GitHub first (CRAN later). The public
+      surface is narrowed to one entry point per input shape driven by a shared
+      `estimator =` selector; the engine builds + runs (smoke-tested all six
+      paths). State is mid-refactor — code works, tests/docs lag.
+
+      *Done (mostly committed; `NAMESPACE` + `R/kappa.R` still dirty):*
+      shared `estimator` vocabulary `pairwise | ipw | cat_fiml | nt_fiml` on
+      `alpha()`, `kappa()`, `kappa_counts()`; `se_type` dropped (sandwich SE
+      only); available-case + Gwet pulled from public `kappa()` (reachable for
+      sims via internal `estimate_kappa_raw()`); default weight `identity` ->
+      `nominal`; `kappa_continuous()` + `kappa_gwise()` demoted to internal
+      (so public estimators are just `alpha`/`kappa`/`kappa_counts`);
+      `kappa_quadratic_counts()` removed; `kappa_quadratic()` simplified to
+      `(x, values)` empirical-IF only (normal/elliptical modes dropped, C++
+      glue regenerated to 2-arg) and now returns IFs; new
+      `kappa_quadratic_fiml()` (robust NT-FIML, quadratic kernel) backs
+      `estimator = "nt_fiml"`; `confint(transform = "fisher")` delta-method CI
+      + `print()` CI columns; `joint_vcov()`/`wald_test()` kept internal.
+
+      *Open, next session, in order:*
+      1. **Update the test suite to the new API** — ~31 old-API call sites in
+         `test-kappa.R`, `test-influence.R`, `test-parity-irrcacsmoke.R`,
+         `test-kappa-quadratic-fiml.R`: `method=` -> `estimator=`; drop
+         `se_type` / `vcov=` / `relative_kurtosis`; route dropped public
+         `available`/`gwet` through internal `estimate_kappa_raw()`; weight
+         default is now `nominal`. R CMD check tests currently fail on these.
+      2. **Fix stale roxygen cross-refs**, then re-roxygenise with the
+         `pkgload` loader (bare `roxygenise()` chokes on the dataset string
+         docs): `alpha_cat_fiml`/`alpha_continuous`/`kappa_quadratic`/
+         `kappa_counts` descriptions still say `alpha(method=, type=)` /
+         `kappa(method="available")`.
+      3. **Sync `_pkgdown.yml`** — Estimators list still names now-internal
+         `kappa_continuous` + `kappa_gwise`; reduce to `alpha`/`kappa`/
+         `kappa_counts`.
+      4. `just r-check` to confirm `R CMD check` is clean; commit
+         `NAMESPACE` + `R/kappa.R` + doc fixes.
+      5. Version decision: pre-1.0 reset (`0.5.0`) vs keep legacy `2.0.0`.
+
+- [ ] **GitHub-installability: vendor the C++ library into the R package.**
+      Hard blocker for `remotes::install_github`. `r-package/src/Makevars`
+      links a prebuilt `../../build-opt/libmisskappa.a`, and the library
+      sources are not under `src/`, so a clean clone fails to link (local
+      `R CMD check` passes only because that `.a` exists here). Bring the
+      sources (or a git-subtree of `include/` + needed `.cpp`) under
+      `r-package/src/` and have `Makevars` compile them, keeping
+      `-fno-exceptions -fno-rtti`, C++23, `EIGEN_NO_EXCEPTIONS`. Verify
+      `R CMD check` from a tarball with **no** `MISSKAPPA_LIB` env set.
+
+- [ ] **Hypothesis-testing front door (deferred from the release).**
+      `t.test`-style `kappa_test()` / `alpha_test()` returning `htest` over the
+      already-built `joint_vcov()` / `wald_test()` engine. Use snake_case, not
+      dotted names: `base::kappa` is a generic, so `kappa.test` would
+      mis-dispatch as an S3 method. One-sample (`theta = theta0`) and
+      independent two-sample (variances add) work for any estimator;
+      paired/dependent needs stacked IFs via `joint_vcov()` and works for any
+      fit whose `influence()` is non-NULL. Same-data method/weight/coefficient
+      contrasts stay `wald_test()` territory. Exploratory runners:
+      `experiments/24-alpha-equal-cocron/`, `experiments/25-kappa-equal-examples/`.
 - [ ] **Measure alpha FIML feasibility before expanding scope.**
       Exact EM over the full fixed-category pattern space is plausible for
       small Likert batteries but scales as `C^R`. Add guardrails/documentation
