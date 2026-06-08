@@ -22,7 +22,7 @@ test_that("complete-data alpha equals the MLE-covariance plug-in formula", {
 test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
   X <- make_data(400L, 6L, miss = 0.2, seed = 2L)
   fit <- alpha_continuous(X)
-  psi <- stats::influence(fit)
+  psi <- fit$psi
   expect_true(is.matrix(psi))
   expect_equal(dim(psi), c(nrow(X), 1L))
   expect_equal(colnames(psi), "alpha")

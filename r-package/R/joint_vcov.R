@@ -11,11 +11,9 @@
 #' `V = (1 / n^2) * crossprod(cbind(psi_1, ..., psi_K))`. This is the
 #' standard nonparametric IF-based joint asymptotic covariance.
 #'
-#' All inputs must expose influence functions (currently the categorical
-#' raw available-case / IPW / Gwet / FIML estimators, counts-format
-#' available-case / FIML estimators, continuous MCAR estimators, and closed
-#' rectangular g-wise estimators). Fits from estimators that do not yet expose
-#' IFs (quadratic and quadratic-counts) are not supported.
+#' All `misskappa_estimate` inputs expose per-subject influence functions, so
+#' any combination of estimators, weight schemes, or rater subsets fit on the
+#' same subjects can be stacked.
 #'
 #' Row alignment is the caller's responsibility: the helper only checks
 #' that the number of subjects matches across inputs and stacks `psi`
@@ -34,8 +32,8 @@
 #' n <- 500; R <- 4
 #' x <- matrix(sample.int(5, n * R, replace = TRUE), n, R)
 #' x[matrix(runif(n * R) < 0.3, n, R)] <- NA
-#' ac  <- kappa(x, method = "available")
-#' ipw <- kappa(x, method = "ipw")
+#' ac  <- estimate_kappa_raw(x, method = "available")
+#' ipw <- kappa(x, estimator = "ipw")
 #' V   <- joint_vcov(ac = ac, ipw = ipw)
 #'
 #' # Hausman-style Wald test of kappa_AC = kappa_IPW (Conger).
@@ -54,12 +52,14 @@ joint_vcov <- function(...) {
   if (!all(vapply(fits, inherits, logical(1), "misskappa_estimate")))
     stop("All inputs must be 'misskappa_estimate' objects.")
 
-  psis <- lapply(fits, stats::influence)
+  psis <- lapply(fits, function(f) {
+    m <- f$psi
+    if (is.null(m) || prod(dim(m)) == 0L) NULL else m
+  })
   null_idx <- vapply(psis, is.null, logical(1))
   if (any(null_idx))
     stop("Inputs ", paste(which(null_idx), collapse = ", "),
-         " do not expose influence functions. ",
-         "Only fits with non-null influence() currently support joint_vcov().")
+         " do not carry per-subject influence functions (fit$psi).")
 
   ns <- vapply(psis, nrow, integer(1))
   if (length(unique(ns)) != 1L)

@@ -1,0 +1,142 @@
+---
+title: "Equality of two dependent alphas: a worked example (cocron::knowledge)"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+read_results <- function(f) {
+  p <- file.path("results", f)
+  if (!file.exists(p))
+    stop("Missing ", p, ". Run: Rscript run_experiment.R", call. = FALSE)
+  read.csv(p, check.names = FALSE)
+}
+bench <- read_results("bench.csv")
+miss  <- read_results("missing_summary.csv")
+meta  <- read_results("metadata.csv")
+mv    <- function(k) meta$value[meta$key == k]
+fmt   <- function(x, d = 3) formatC(as.numeric(x), digits = d, format = "f")
+```
+
+## Question
+
+Can the influence-function machinery in the alpha-missing paper deliver a
+real-data **test of equal coefficient alpha** for two forms taken by the
+same subjects (a *paired* contrast), and does that test survive
+item-level missingness?
+
+The data are Diedenhofen & Musch's `knowledge` set from the `cocron`
+package: `r mv("n_subjects")` testees who each took two
+`r mv("n_items_per_form")`-item binary knowledge tests. Because the same
+people took both forms, the two alpha estimates are dependent.
+
+## Short answer
+
+Yes on both counts. `misskappa::alpha(estimator = "pairwise")` reproduces
+`cocron`'s alpha for each form to the printed precision, and the
+IF-based paired Wald test `alpha_test(fit_a, fit_b, paired = TRUE)`
+rejects equal alpha (p ≈ `r fmt(bench$p_value[bench$test == "paired (dependent IF)"], 3)`),
+agreeing in direction with `cocron`'s normal-theory dependent test. The
+two differ in magnitude for a principled reason: our test uses the
+robust sandwich covariance of the two alpha estimators, while `cocron`
+uses the Feldt-family normal-theory variance. Under MCAR amputation the
+available-case contrast stays essentially unbiased and its standard
+error inflates smoothly, so the test loses power gracefully rather than
+breaking.
+
+## Evidence
+
+### Complete data: misskappa vs cocron
+
+```{r bench-table}
+b <- bench
+b$`alpha A` <- fmt(b$alpha_A, 4)
+b$`alpha B` <- fmt(b$alpha_B, 4)
+b$`diff`    <- fmt(b$diff, 4)
+b$`corr(A,B)` <- ifelse(is.na(b$corr), "--", fmt(b$corr, 3))
+b$`chi-square` <- fmt(b$statistic, 3)
+b$`p-value`    <- fmt(b$p_value, 4)
+knitr::kable(
+  b[, c("source", "test", "alpha A", "alpha B", "diff",
+        "corr(A,B)", "chi-square", "p-value")],
+  align = "llrrrrrr",
+  caption = "Equal-alpha tests on the complete knowledge data (df = 1)."
+)
+```
+
+Two points stand out.
+
+* **Point estimates agree exactly.** The available-case alpha equals
+  `cocron`'s for both forms, so any difference in the test is about the
+  *variance*, not the estimate.
+* **Dependence matters, and the variance model matters.** Treating the
+  forms as independent (ignoring that the same subjects took both)
+  roughly halves the chi-square for both packages. Among the dependent
+  tests, the IF/sandwich statistic
+  (`r fmt(bench$statistic[bench$test == "paired (dependent IF)"], 2)`) is
+  smaller than `cocron`'s normal-theory one
+  (`r fmt(bench$statistic[bench$test == "dependent (Feldt/normal)"], 2)`):
+  the sandwich estimator is robust to the non-normality of binary items
+  and ties the dependence to the actual correlation of the two alpha
+  estimators (≈ `r fmt(bench$corr[bench$test == "paired (dependent IF)"], 2)`),
+  whereas the Feldt construction leverages the higher inter-form score
+  correlation. Both reject at the 5% level.
+
+### Missing data: MCAR robustness of the available-case contrast
+
+```{r miss-table}
+m <- miss
+out <- data.frame(
+  `MCAR rate`        = fmt(m$rate, 2),
+  `mean alpha A`     = fmt(m$mean_alpha_A, 4),
+  `mean alpha B`     = fmt(m$mean_alpha_B, 4),
+  `mean diff`        = fmt(m$mean_diff, 4),
+  `bias of diff`     = fmt(m$bias_diff, 4),
+  `mean SE (dep)`    = fmt(m$mean_se_dep, 4),
+  `power @ .05`      = fmt(m$power_05, 2),
+  check.names = FALSE
+)
+knitr::kable(out, align = "rrrrrrr",
+  caption = "Available-case paired test under MCAR amputation; bias is relative to the complete-data contrast.")
+```
+
+As the item-missing rate rises, the mean available-case contrast tracks
+the complete-data value (bias near zero), the estimated standard error
+of the contrast inflates monotonically, and rejection power falls
+accordingly. This is exactly the behaviour the paper's MCAR theory
+predicts: the estimator stays valid, it just has less information.
+
+## Caveats
+
+* This is an illustration, not a calibration study. The two real forms
+  genuinely differ in alpha, so the "power" column is power against the
+  true alternative, not a size check. A null-DGP size study lives in the
+  simulation experiments (18--23), not here.
+* `mean SE (dep)` is the full estimated standard error of the contrast;
+  `mc_sd_diff` in `results/missing_summary.csv` is only the
+  amputation-induced spread (data held fixed), so the two are not
+  comparable.
+* Binary items make `cocron`'s normal-theory assumption least
+  favourable; the gap between the two dependent tests should narrow for
+  approximately normal items.
+* Saturated categorical FIML is deliberately *not* used here: a 30-item
+  binary table has $2^{30}$ cells. The available-case (pairwise
+  covariance) estimator is the right tool for these widths under MCAR.
+
+## Reproduce
+
+```bash
+cd experiments/24-alpha-equal-cocron
+Rscript run_experiment.R --smoke      # fast (reps = 20)
+Rscript run_experiment.R              # full (reps = 300)
+quarto render report.qmd
+```
+
+Run with `misskappa` `r mv("misskappa_version")`, `cocron`
+`r mv("cocron_version")`, R `r mv("R_version")`.
