@@ -3,7 +3,8 @@
 # 26-crackles-vector-kappa
 #
 # CRACKLES pilot and synthetic verification for the internal
-# component-separable vector kappa estimator.
+# component-separable vector kappa estimator and the full-weight quadratic
+# covariance route.
 
 args <- commandArgs(trailingOnly = TRUE)
 has_flag <- function(name) name %in% args
@@ -16,6 +17,8 @@ if (has_flag("--help") || has_flag("-h")) {
   cat("Usage: Rscript run_experiment.R [options]\n",
       " --mask-prop P   Synthetic component-missing fraction (default 0.25).\n",
       " --reps N        Number of masking replicates (default 25; smoke 3).\n",
+      " --quad-n N      Normal quadratic simulation n (default 250; smoke 160).\n",
+      " --quad-reps N   Normal quadratic simulation reps (default --reps).\n",
       " --seed-base N   Deterministic seed base (default 26000).\n",
       " --smoke         Cheap run with 3 masking replicates and smaller synthetic n.\n",
       " --help, -h      This help.\n", sep = "")
@@ -24,8 +27,11 @@ if (has_flag("--help") || has_flag("-h")) {
 
 mask_prop <- get_val("--mask-prop", 0.25, as.numeric)
 reps <- get_val("--reps", if (has_flag("--smoke")) 3L else 25L, as.integer)
+quad_reps <- get_val("--quad-reps", reps, as.integer)
 seed_base <- get_val("--seed-base", 26000L, as.integer)
 synthetic_n <- if (has_flag("--smoke")) 80L else 500L
+quadratic_n <- get_val("--quad-n", if (has_flag("--smoke")) 160L else 250L,
+                       as.integer)
 
 script_arg <- commandArgs(FALSE)
 script_file <- sub("^--file=", "", script_arg[grep("^--file=", script_arg)][1L])
@@ -43,8 +49,16 @@ if (!file.exists(data_path)) {
   stop("Missing CRACKLES data at ", data_path, call. = FALSE)
 }
 
-library(misskappa)
+pkg_dir <- file.path(repo_root, "r-package")
+if (requireNamespace("pkgload", quietly = TRUE) &&
+    file.exists(file.path(pkg_dir, "DESCRIPTION"))) {
+  pkgload::load_all(pkg_dir, export_all = FALSE, quiet = TRUE)
+} else {
+  library(misskappa)
+}
 vector_kappa <- getFromNamespace("kappa_vector", "misskappa")
+vector_quadratic <- getFromNamespace("kappa_vector_quadratic", "misskappa")
+kvq_grad <- getFromNamespace(".kvq_grad", "misskappa")
 
 load(data_path)
 d <- CRACKLES
@@ -131,6 +145,61 @@ fit_grid <- function(X, losses = "hamming", methods = c("pairwise", "ipw"),
   do.call(rbind, rows)
 }
 
+make_site_W <- function(features) {
+  W <- diag(features)
+  if (features == 6L) {
+    for (idx in list(c(1L, 2L), c(3L, 4L), c(5L, 6L))) {
+      W[idx[1L], idx[2L]] <- W[idx[2L], idx[1L]] <- 0.25
+    }
+  }
+  W
+}
+
+fit_quadratic <- function(X, method, W, em_options = list(),
+                          loss = "quadratic_full_W") {
+  fit <- vector_quadratic(X, method = method, W = W, em_options = em_options)
+  V <- vcov(fit)
+  data.frame(
+    method = method,
+    loss = loss,
+    kappa_C = unname(fit$estimates["Conger"]),
+    kappa_F = unname(fit$estimates["Fleiss"]),
+    se_C = sqrt(V["Conger", "Conger"]),
+    se_F = sqrt(V["Fleiss", "Fleiss"]),
+    n_used = dim(X)[1L],
+    error = NA_character_,
+    stringsAsFactors = FALSE
+  )
+}
+
+safe_fit_quadratic <- function(X, method, W, em_options = list(),
+                               loss = "quadratic_full_W") {
+  tryCatch(
+    fit_quadratic(X, method, W, em_options = em_options, loss = loss),
+    error = function(e) {
+      data.frame(
+        method = method,
+        loss = loss,
+        kappa_C = NA_real_,
+        kappa_F = NA_real_,
+        se_C = NA_real_,
+        se_F = NA_real_,
+        n_used = dim(X)[1L],
+        error = conditionMessage(e),
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+}
+
+fit_quadratic_methods <- function(X, W, methods = "pairwise",
+                                  em_options = list()) {
+  rows <- lapply(methods, function(method) {
+    safe_fit_quadratic(X, method, W, em_options = em_options)
+  })
+  do.call(rbind, rows)
+}
+
 mask_mcar <- function(X, prop) {
   Xm <- X
   drop <- stats::runif(length(Xm)) < prop
@@ -171,6 +240,42 @@ summarise_group <- function(g) {
   out
 }
 
+summarise_quadratic_sim <- function(g, truth) {
+  coef_info <- data.frame(
+    suffix = c("C", "F"),
+    coefficient = c("Conger", "Fleiss"),
+    truth = c(unname(truth["Conger"]), unname(truth["Fleiss"])),
+    stringsAsFactors = FALSE
+  )
+  rows <- lapply(seq_len(nrow(coef_info)), function(i) {
+    s <- coef_info$suffix[i]
+    est <- as.numeric(g[[paste0("kappa_", s)]])
+    se <- as.numeric(g[[paste0("se_", s)]])
+    ok <- is.finite(est)
+    ok_se <- ok & is.finite(se)
+    err <- est - coef_info$truth[i]
+    cover <- abs(err) <= 1.96 * se
+    data.frame(
+      mechanism = g$mechanism[1L],
+      method = g$method[1L],
+      loss = g$loss[1L],
+      coefficient = coef_info$coefficient[i],
+      truth = coef_info$truth[i],
+      valid_reps = sum(ok),
+      bias = if (any(ok)) mean(err[ok]) else NA_real_,
+      rmse = if (any(ok)) sqrt(mean(err[ok]^2)) else NA_real_,
+      sd_est = if (sum(ok) > 1L) stats::sd(est[ok]) else NA_real_,
+      mean_se = if (any(ok_se)) mean(se[ok_se]) else NA_real_,
+      coverage95 = if (any(ok_se)) mean(cover[ok_se]) else NA_real_,
+      missing_fraction_mean = mean(g$missing_fraction),
+      n_used_mean = mean(g$n_used[ok], na.rm = TRUE),
+      error_reps = sum(!is.na(g$error)),
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
 site_layout <- make_site_layout(d)
 site_summary <- unique(site_layout[, c("site", "location_code", "location",
                                        "side_index", "site_label")])
@@ -195,6 +300,7 @@ analysis_info <- analysis_info[match(names(analysis_sets), analysis_info$analysi
 
 complete_rows <- list()
 masked_rows <- list()
+quadratic_complete_rows <- list()
 set.seed(seed_base)
 for (nm in names(analysis_sets)) {
   cols <- analysis_sets[[nm]]
@@ -211,6 +317,16 @@ for (nm in names(analysis_sets)) {
     vanbelle_label = info$vanbelle_label,
     n_patients = dim(X)[1L], R = R, features = features,
     missing_fraction = mean(is.na(X)), full)
+
+  W_site <- make_site_W(features)
+  qfull <- fit_quadratic_methods(X, W = W_site, methods = "pairwise")
+  quadratic_complete_rows[[length(quadratic_complete_rows) + 1L]] <- cbind(
+    analysis = nm, analysis_label = info$analysis_label,
+    observer_code = info$observer_code, observer_class = info$observer_class,
+    vanbelle_label = info$vanbelle_label,
+    n_patients = dim(X)[1L], R = R, features = features,
+    missing_fraction = mean(is.na(X)),
+    W_rank = qr(W_site)$rank, W_trace = sum(diag(W_site)), qfull)
 
   truth <- full[full$method == "pairwise" & full$loss == "hamming",
                 c("kappa_C", "kappa_F")]
@@ -291,19 +407,201 @@ for (rep in seq_len(reps)) {
     missing_fraction = mean(is.na(Xm)), fits)
 }
 
+make_quadratic_dgp <- function(R = 4L, features = 3L) {
+  Lw <- matrix(c(
+    1.00, 0.00, 0.00,
+    0.25, 1.05, 0.00,
+   -0.10, 0.35, 1.15
+  ), nrow = features, byrow = TRUE)
+  W <- crossprod(Lw)
+
+  Lf <- matrix(c(
+    1.00, 0.00, 0.00,
+    0.35, 0.90, 0.00,
+    0.15, 0.25, 0.80
+  ), nrow = features, byrow = TRUE)
+  feature_cov <- crossprod(Lf)
+  rater_idx <- seq_len(R)
+  rater_cov <- 0.58 ^ abs(outer(rater_idx, rater_idx, "-"))
+  residual <- diag(c(0.30, 0.22, 0.36), features)
+  Sigma <- kronecker(rater_cov, feature_cov) + kronecker(diag(R), residual)
+
+  feature_level <- c(-0.45, 0.05, 0.55)
+  rater_shift <- c(-0.25, -0.05, 0.10, 0.24)
+  mu_mat <- outer(rater_shift, rep(1, features)) +
+    outer(rep(1, R), feature_level)
+  mu <- as.vector(t(mu_mat))
+  list(R = R, features = features, W = W, mu = mu, Sigma = Sigma)
+}
+
+simulate_quadratic_array <- function(n, dgp, seed) {
+  set.seed(seed)
+  q <- length(dgp$mu)
+  Xflat <- matrix(stats::rnorm(n * q), nrow = n) %*% chol(dgp$Sigma)
+  Xflat <- sweep(Xflat, 2L, dgp$mu, "+")
+  X <- array(NA_real_, dim = c(n, dgp$R, dgp$features))
+  for (j in seq_len(dgp$R)) {
+    for (l in seq_len(dgp$features)) {
+      X[, j, l] <- Xflat[, (j - 1L) * dgp$features + l]
+    }
+  }
+  X
+}
+
+std_score <- function(x) {
+  z <- as.numeric(scale(x))
+  z[!is.finite(z)] <- 0
+  z
+}
+
+mask_quadratic_mcar <- function(X) {
+  Xm <- X
+  n <- dim(X)[1L]; R <- dim(X)[2L]; features <- dim(X)[3L]
+  component_prob <- matrix(c(
+    0.02, 0.06, 0.12,
+    0.04, 0.08, 0.14,
+    0.06, 0.10, 0.16,
+    0.08, 0.12, 0.20
+  ), nrow = R, byrow = TRUE)
+  profile_prob <- c(0.00, 0.02, 0.03, 0.05)
+  profile_drop <- matrix(FALSE, n, R)
+  for (j in seq_len(R)) {
+    profile_drop[, j] <- stats::runif(n) < profile_prob[j]
+  }
+  for (j in seq_len(R)) {
+    for (l in seq_len(features)) {
+      drop <- profile_drop[, j] |
+        stats::runif(n) < component_prob[j, l]
+      Xm[drop, j, l] <- NA_real_
+    }
+  }
+  Xm
+}
+
+mask_quadratic_mar <- function(X) {
+  Xm <- X
+  n <- dim(X)[1L]; R <- dim(X)[2L]; features <- dim(X)[3L]
+  anchor_global <- std_score(rowMeans(X[, 1L, ]))
+  anchor_feature <- apply(X[, 1L, ], 2L, std_score)
+  component_base <- matrix(c(
+    0.00, 0.00, 0.00,
+    0.05, 0.10, 0.18,
+    0.08, 0.14, 0.23,
+    0.10, 0.18, 0.30
+  ), nrow = R, byrow = TRUE)
+  profile_base <- c(0.00, 0.02, 0.04, 0.06)
+  profile_drop <- matrix(FALSE, n, R)
+  for (j in 2L:R) {
+    eta_profile <- stats::qlogis(profile_base[j]) +
+      0.70 * anchor_global + 0.12 * (j - 2L)
+    profile_drop[, j] <- stats::runif(n) < stats::plogis(eta_profile)
+  }
+  for (j in 2L:R) {
+    for (l in seq_len(features)) {
+      eta_component <- stats::qlogis(component_base[j, l]) +
+        0.65 * anchor_global + 0.40 * anchor_feature[, l] +
+        0.10 * (j - 2L) - 0.08 * (l - 2L)
+      drop <- profile_drop[, j] |
+        stats::runif(n) < stats::plogis(eta_component)
+      Xm[drop, j, l] <- NA_real_
+    }
+  }
+  Xm
+}
+
+fit_quadratic_sim_method <- function(X, method, W) {
+  Xfit <- X
+  backend <- method
+  if (method == "listwise") {
+    keep <- apply(is.finite(X), 1L, all)
+    Xfit <- X[keep, , , drop = FALSE]
+    backend <- "pairwise"
+  }
+  if (dim(Xfit)[1L] < 10L) {
+    stop("fewer than 10 usable subjects.", call. = FALSE)
+  }
+  fit <- safe_fit_quadratic(
+    Xfit, backend, W,
+    em_options = list(tol = 1e-7, max_iter = 2000L, fd_h = 1e-4)
+  )
+  fit$method <- method
+  fit$n_used <- dim(Xfit)[1L]
+  fit
+}
+
+quadratic_dgp <- make_quadratic_dgp()
+quadratic_truth <- kvq_grad(
+  quadratic_dgp$mu, quadratic_dgp$Sigma,
+  quadratic_dgp$R, quadratic_dgp$features, quadratic_dgp$W
+)$estimates
+quadratic_truth_df <- data.frame(
+  coefficient = names(quadratic_truth),
+  truth = unname(quadratic_truth),
+  R = quadratic_dgp$R,
+  features = quadratic_dgp$features,
+  stringsAsFactors = FALSE
+)
+
+quadratic_sim_rows <- list()
+mechanisms <- list(mcar_layered = mask_quadratic_mcar,
+                   mar_anchor = mask_quadratic_mar)
+for (rep in seq_len(quad_reps)) {
+  Xq <- simulate_quadratic_array(
+    quadratic_n, quadratic_dgp, seed_base + 9000L + rep
+  )
+  for (mech in names(mechanisms)) {
+    Xmiss <- mechanisms[[mech]](Xq)
+    for (method in c("listwise", "pairwise", "nt_fiml")) {
+      fit <- tryCatch(
+        fit_quadratic_sim_method(Xmiss, method, quadratic_dgp$W),
+        error = function(e) {
+          data.frame(
+            method = method,
+            loss = "quadratic_full_W",
+            kappa_C = NA_real_,
+            kappa_F = NA_real_,
+            se_C = NA_real_,
+            se_F = NA_real_,
+            n_used = NA_integer_,
+            error = conditionMessage(e),
+            stringsAsFactors = FALSE
+          )
+        }
+      )
+      fit$err_C <- fit$kappa_C - unname(quadratic_truth["Conger"])
+      fit$err_F <- fit$kappa_F - unname(quadratic_truth["Fleiss"])
+      quadratic_sim_rows[[length(quadratic_sim_rows) + 1L]] <- cbind(
+        mechanism = mech, rep = rep, n_patients = dim(Xmiss)[1L],
+        R = dim(Xmiss)[2L], features = dim(Xmiss)[3L],
+        missing_fraction = mean(is.na(Xmiss)), fit)
+    }
+  }
+}
+
 complete_df <- do.call(rbind, complete_rows)
 masked_df <- do.call(rbind, masked_rows)
+quadratic_complete_df <- do.call(rbind, quadratic_complete_rows)
 synthetic_df <- rbind(
   cbind(n_patients = dim(synthetic_complete)[1L], R = dim(synthetic_complete)[2L],
         features = dim(synthetic_complete)[3L], synthetic_truth),
   do.call(rbind, synthetic_rows)
 )
+quadratic_sim_df <- do.call(rbind, quadratic_sim_rows)
 
 write.csv(complete_df, file.path(results_dir, "complete_estimates.csv"),
           row.names = FALSE)
 write.csv(masked_df, file.path(results_dir, "masked_estimates.csv"),
           row.names = FALSE)
 write.csv(synthetic_df, file.path(results_dir, "synthetic_estimates.csv"),
+          row.names = FALSE)
+write.csv(quadratic_complete_df,
+          file.path(results_dir, "quadratic_complete_estimates.csv"),
+          row.names = FALSE)
+write.csv(quadratic_sim_df,
+          file.path(results_dir, "quadratic_sim_estimates.csv"),
+          row.names = FALSE)
+write.csv(quadratic_truth_df[, c("coefficient", "truth", "R", "features")],
+          file.path(results_dir, "quadratic_sim_truth.csv"),
           row.names = FALSE)
 
 masked_keys <- unique(masked_df[, c("analysis", "method", "loss", "R", "features")])
@@ -328,12 +626,26 @@ synthetic_summary <- do.call(rbind, lapply(seq_len(nrow(synthetic_keys)), functi
 write.csv(synthetic_summary, file.path(results_dir, "synthetic_summary.csv"),
           row.names = FALSE)
 
+quadratic_sim_keys <- unique(quadratic_sim_df[
+  , c("mechanism", "method", "loss", "R", "features")
+])
+quadratic_sim_summary <- do.call(rbind, lapply(seq_len(nrow(quadratic_sim_keys)),
+                                               function(i) {
+  keep <- quadratic_sim_df$mechanism == quadratic_sim_keys$mechanism[i] &
+    quadratic_sim_df$method == quadratic_sim_keys$method[i] &
+    quadratic_sim_df$loss == quadratic_sim_keys$loss[i]
+  summarise_quadratic_sim(quadratic_sim_df[keep, ], quadratic_truth)
+}))
+write.csv(quadratic_sim_summary,
+          file.path(results_dir, "quadratic_sim_summary.csv"),
+          row.names = FALSE)
+
 metadata <- data.frame(
   key = c("mask_prop", "reps", "seed_base", "synthetic_n", "n_rows",
-          "n_patients", "n_rating_columns", "R_version",
+          "quadratic_n", "quad_reps", "n_patients", "n_rating_columns", "R_version",
           "misskappa_version"),
   value = c(mask_prop, reps, seed_base, synthetic_n, nrow(d),
-            length(unique(d$patient)), length(rating_cols),
+            quadratic_n, quad_reps, length(unique(d$patient)), length(rating_cols),
             paste(R.version$major, R.version$minor, sep = "."),
             as.character(utils::packageVersion("misskappa"))),
   stringsAsFactors = FALSE
@@ -347,4 +659,8 @@ cat("Wrote:\n",
     " ", file.path(results_dir, "masked_summary.csv"), "\n",
     " ", file.path(results_dir, "synthetic_estimates.csv"), "\n",
     " ", file.path(results_dir, "synthetic_summary.csv"), "\n",
+    " ", file.path(results_dir, "quadratic_complete_estimates.csv"), "\n",
+    " ", file.path(results_dir, "quadratic_sim_estimates.csv"), "\n",
+    " ", file.path(results_dir, "quadratic_sim_summary.csv"), "\n",
+    " ", file.path(results_dir, "quadratic_sim_truth.csv"), "\n",
     " ", file.path(results_dir, "metadata.csv"), "\n", sep = "")

@@ -126,7 +126,9 @@ agreement should be considered nonregular.
 ## Squared-loss connection
 
 With complete data, diagonal weights, and squared component loss, the estimator
-matches the mean/covariance contraction used in the CRACKLES pilot. Stack
+matches the mean/covariance contraction used in the CRACKLES pilot. The full
+feature-weight version is recorded in
+`dev/notes/quadratic-vector-tensor-kappa.md`. Stack
 `X = (X_1', ..., X_R')'`, where `X_j` is length `p`, and write block
 covariances as `Sigma^{jk}`. For diagonal `V = diag(v)`,
 

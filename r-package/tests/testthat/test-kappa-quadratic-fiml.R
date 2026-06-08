@@ -113,6 +113,80 @@ test_that("fits plug into joint_vcov / wald_test", {
   expect_true(is.finite(wt$p.value))
 })
 
+test_that("vector quadratic complete data matches tensor plug-in and FIML", {
+  set.seed(31L)
+  X <- array(rnorm(180L * 3L * 2L), dim = c(180L, 3L, 2L))
+  X[, 2L, ] <- X[, 2L, ] + 0.25
+  W <- matrix(c(1.0, 0.3, 0.3, 1.8), 2L, 2L)
+
+  fit_pair <- kappa_vector_quadratic(X, method = "pairwise", W = W)
+  fit_ml <- kappa_vector_quadratic(X, method = "nt_fiml", W = W)
+
+  flat <- matrix(NA_real_, nrow = dim(X)[1L], ncol = dim(X)[2L] * dim(X)[3L])
+  for (r in seq_len(dim(X)[2L])) {
+    for (l in seq_len(dim(X)[3L])) flat[, (r - 1L) * dim(X)[3L] + l] <- X[, r, l]
+  }
+  Smle <- stats::cov(flat) * (nrow(flat) - 1) / nrow(flat)
+  manual <- misskappa:::.kvq_grad(colMeans(flat), Smle, 3L, 2L, W)$estimates
+
+  expect_equal(coef(fit_pair), manual, tolerance = 1e-8)
+  expect_equal(coef(fit_ml), manual, tolerance = 1e-8)
+  expect_false("kappa_vector_quadratic" %in% getNamespaceExports("misskappa"))
+})
+
+test_that("vector quadratic diagonal W matches component-separable squared loss", {
+  X <- array(c(
+    0, 1,  0, 1,  1, 1,
+    1, 0,  1, 0,  1, 1,
+    0, 0,  1, 0,  0, 0,
+    1, 1,  1, 0,  0, 1,
+    0, 1,  0, 0,  0, 1
+  ), dim = c(5L, 3L, 2L))
+  w <- c(1, 2)
+  fit_sep <- kappa_vector(X, method = "pairwise", loss = "squared",
+                          feature_weights = w)
+  fit_cov <- kappa_vector_quadratic(X, method = "pairwise", W = diag(w))
+  expect_equal(coef(fit_cov), coef(fit_sep), tolerance = 1e-9)
+})
+
+test_that("vector quadratic handles full-W missing data and IF covariance", {
+  set.seed(32L)
+  X <- array(rnorm(220L * 3L * 2L), dim = c(220L, 3L, 2L))
+  X[, 3L, 1L] <- X[, 3L, 1L] + 0.4
+  W <- matrix(c(1.2, 0.25, 0.25, 0.9), 2L, 2L)
+  X[array(runif(length(X)) < 0.18, dim = dim(X))] <- NA_real_
+
+  fit_pair <- kappa_vector_quadratic(X, method = "pairwise", W = W)
+  fit_ml <- kappa_vector_quadratic(
+    X, method = "nt_fiml", W = W, em_options = list(fd_h = 1e-4)
+  )
+
+  expect_equal(dim(fit_pair$psi), c(dim(X)[1L], 2L))
+  expect_equal(dim(fit_ml$psi), c(dim(X)[1L], 2L))
+  expect_equal(unname(crossprod(fit_pair$psi) / dim(X)[1L]^2),
+               unname(vcov(fit_pair)), tolerance = 1e-10)
+  expect_equal(unname(crossprod(fit_ml$psi) / dim(X)[1L]^2),
+               unname(vcov(fit_ml)), tolerance = 1e-10)
+  expect_true(all(is.finite(coef(fit_pair))))
+  expect_true(all(is.finite(coef(fit_ml))))
+})
+
+test_that("vector quadratic validates the full feature metric", {
+  X <- array(rnorm(80L * 3L * 2L), dim = c(80L, 3L, 2L))
+  expect_error(
+    kappa_vector_quadratic(X, W = diag(3L)),
+    "features-by-features"
+  )
+  expect_error(
+    kappa_vector_quadratic(X, W = matrix(c(1, 0.2, 0.3, 1), 2L, 2L)),
+    "symmetric"
+  )
+  expect_error(
+    kappa_vector_quadratic(X, W = matrix(c(1, 2, 2, 1), 2L, 2L)),
+    "positive semidefinite"
+  )
+})
+
 test_that("saturated EM covariance matches magmaan's oracle", {
   skip_if_not_installed("magmaan")
   X <- make_ratings(500L, 5L, miss = 0.2, seed = 6L)
