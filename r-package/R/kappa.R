@@ -237,19 +237,43 @@ estimate_kappa_raw <- function(x,
 #' as numeric scores (pass scores directly, or integer codes with `values`)
 #' and require `weight = "quadratic"`.
 #'
-#' @param x A subjects-by-raters matrix or data frame. Integer category codes
-#'   for `"ipw"` / `"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`.
-#'   `NA` marks missing entries.
+#' Two generalizations are reached through the same call. Set `g > 2` for the
+#' Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
+#' (distinct rater combinations) and Fleiss-type coefficients. Pass a
+#' subjects-by-raters-by-features array to score vector-valued ratings with a
+#' component-separable loss. See the arguments for the estimator / weight
+#' combinations supported in each mode.
+#'
+#' @param x A subjects-by-raters matrix or data frame of scalar ratings, or a
+#'   subjects-by-raters-by-features 3-D array of vector-valued ratings (the
+#'   array form is auto-detected). Integer category codes for `"ipw"` /
+#'   `"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
+#'   missing entries.
 #' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`.
+#'   Vector-valued ratings support `"pairwise"` and `"ipw"` only; continuous
+#'   g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
+#'   `"ipw"` only.
 #' @param weight Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
 #'   default), `"linear"`, `"quadratic"`, `"ordinal"`, `"radical"`, `"ratio"`,
 #'   `"circular"`, or `"bipolar"`. `"pairwise"` / `"nt_fiml"` require
-#'   `"quadratic"`.
+#'   `"quadratic"`. For `g > 2` only `"nominal"`, `"linear"`, `"hubert"`, and
+#'   `"quadratic"` are defined, where `"hubert"` is the all-raters-equal
+#'   multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
+#'   the component loss (`"nominal"` -> Hamming, `"linear"` -> L1,
+#'   `"quadratic"` -> squared).
+#' @param g Arity of the multirater disagreement kernel. `g = 2` (the default)
+#'   is ordinary pairwise kappa; `g > 2` uses the Frechet / Hubert g-wise
+#'   family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
+#'   the cheap closed form is used. Ignored for vector-valued ratings.
 #' @param values Optional numeric vector of category scores used by the metric
-#'   weightings (and by the quadratic estimators to map integer codes to
-#'   scores). Defaults to the sorted unique observed categories.
+#'   weightings (and by the quadratic / continuous g-wise estimators to map
+#'   integer codes to scores). Defaults to the sorted unique observed
+#'   categories.
 #' @param em_options Named list of EM options for the likelihood estimators
 #'   (`"cat_fiml"`, `"nt_fiml"`). Pass any subset.
+#' @param ... Mode-specific extras: `feature_weights` and `loss` (e.g.
+#'   `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the
+#'   number of chance tuples enumerated) for `g > 2`.
 #'
 #' @return An object of class `misskappa_estimate` carrying the named
 #'   coefficient estimates and their asymptotic covariance matrix. Methods:
@@ -267,17 +291,55 @@ estimate_kappa_raw <- function(x,
 #' # estimator; treats the columns as numeric scores.
 #' kappa(dat.zapf2016, estimator = "pairwise")
 #'
+#' # g-wise (multirater) nominal kappa over triples of raters.
+#' kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+#'
 #' @export
 kappa <- function(x,
                   estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml"),
                   weight = c("nominal", "linear", "quadratic", "ordinal",
-                             "radical", "ratio", "circular", "bipolar"),
+                             "radical", "ratio", "circular", "bipolar",
+                             "hubert"),
+                  g = 2L,
                   values = NULL,
-                  em_options = list()) {
+                  em_options = list(),
+                  ...) {
   estimator <- match.arg(estimator)
   weight_supplied <- !missing(weight)
   weight <- match.arg(weight)
+  dots <- list(...)
 
+  ## Vector-valued ratings: subjects-by-raters-by-features array.
+  if (is.array(x) && length(dim(x)) == 3L) {
+    return(.kappa_vector_dispatch(x, estimator, weight, dots))
+  }
+
+  if (!is.numeric(g) || length(g) != 1L || !is.finite(g) || g < 2 ||
+      g != round(g)) {
+    stop("'g' must be an integer >= 2.")
+  }
+  g <- as.integer(g)
+  if (weight == "hubert" && g == 2L) {
+    stop('weight = "hubert" is only defined for g > 2; use weight = ',
+         '"nominal" for g = 2.')
+  }
+
+  ## Quadratic weighting is a moment functional and therefore g-invariant: any
+  ## g collapses to the same coefficient, so always take the cheap closed form
+  ## (the g = 2 path) and never the combinatorial g-wise enumeration.
+  if (weight == "quadratic" || g == 2L) {
+    return(.kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
+                            em_options))
+  }
+
+  ## g > 2, non-quadratic: the Frechet / Hubert g-wise family.
+  .kappa_scalar_gwise(x, estimator, weight, g, values, em_options, dots)
+}
+
+# Ordinary pairwise (g = 2) kappa: the historical kappa() body, also reached by
+# any quadratic request because quadratic kappa does not depend on g.
+.kappa_scalar_g2 <- function(x, estimator, weight, weight_supplied, values,
+                             em_options) {
   if (estimator %in% c("pairwise", "nt_fiml")) {
     if (weight_supplied && weight != "quadratic") {
       stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
@@ -307,11 +369,78 @@ kappa <- function(x,
   fit
 }
 
+# g > 2, non-quadratic. Maps the public weight to a g-wise kernel and the
+# public estimator to the backend method, then delegates to kappa_gwise().
+.kappa_scalar_gwise <- function(x, estimator, weight, g, values, em_options,
+                                dots) {
+  map <- switch(weight,
+    nominal = list(distance = "nominal", family = "categorical"),
+    hubert  = list(distance = "hubert",  family = "categorical"),
+    linear  = list(distance = "absolute", family = "continuous"),
+    stop(sprintf(
+      'weight = "%s" has no g-wise (g > 2) kernel; use "nominal", "linear", "hubert", or "quadratic".',
+      weight))
+  )
+
+  method <- switch(estimator,
+    ipw      = "ipw",
+    pairwise = "complete",
+    cat_fiml = if (map$family == "categorical") "fiml" else stop(
+      'estimator = "cat_fiml" has no continuous g-wise variant; use ',
+      'weight = "nominal"/"hubert", or estimator = "ipw".'),
+    nt_fiml  = stop('estimator = "nt_fiml" is only available for ',
+                    'weight = "quadratic" (where g is ignored).')
+  )
+
+  max_chance_tuples <- if (!is.null(dots$max_chance_tuples)) {
+    dots$max_chance_tuples
+  } else {
+    5000000L
+  }
+  xx <- if (map$family == "continuous") .score_matrix(x, values) else x
+
+  fit <- kappa_gwise(xx, distance = map$distance, method = method, g = g,
+                     em_options = em_options,
+                     max_chance_tuples = max_chance_tuples)
+  fit$method <- estimator
+  fit$weight <- weight
+  fit
+}
+
+# Vector-valued ratings (subjects-by-raters-by-features array). Maps the public
+# weight to a component loss and delegates to kappa_vector(); `g` is ignored.
+.kappa_vector_dispatch <- function(x, estimator, weight, dots) {
+  if (!estimator %in% c("pairwise", "ipw")) {
+    stop(sprintf(
+      'vector-valued ratings support estimator = "pairwise" or "ipw"; got "%s".',
+      estimator))
+  }
+  loss <- if (!is.null(dots$loss)) {
+    dots$loss
+  } else {
+    switch(weight,
+      nominal   = "hamming",
+      linear    = "absolute",
+      quadratic = "squared",
+      stop(sprintf(
+        'weight = "%s" has no vector component loss; use "nominal", "linear", or "quadratic", or pass loss = "rms".',
+        weight))
+    )
+  }
+  fit <- kappa_vector(x, method = estimator, loss = loss,
+                      feature_weights = dots$feature_weights)
+  fit$method <- estimator
+  fit$weight <- loss
+  fit
+}
+
 #' @export
 print.misskappa_estimate <- function(x, digits = 4, level = 0.95,
                                      transform = c("none", "fisher"), ...) {
   transform <- match.arg(transform)
-  cat(sprintf("misskappa: estimator=%s, weight=%s\n", x$method, x$weight))
+  hdr <- sprintf("misskappa: estimator=%s, weight=%s", x$method, x$weight)
+  if (!is.null(x$g) && x$g > 2L) hdr <- sprintf("%s, g=%d", hdr, x$g)
+  cat(hdr, "\n", sep = "")
   se <- sqrt(diag(x$vcov))
   ci <- stats::confint(x, level = level, transform = transform)
   tab <- data.frame(estimate = x$estimates, se = se,
@@ -714,35 +843,41 @@ kappa_vector <- function(x,
   )
 }
 
-#' G-wise agreement coefficients for complete rectangular ratings
+#' G-wise agreement coefficients for rectangular ratings
 #'
 #' @description
-#' Estimates closed-data g-wise Cohen-type and Fleiss-type agreement
-#' coefficients using multirater disagreement kernels. This is the
-#' Frechet / Hubert family for complete rectangular designs: every subject
-#' must have the same set of observed raters, and missing values are not
-#' supported.
+#' Estimates g-wise Conger-type and Fleiss-type agreement coefficients using
+#' multirater disagreement kernels (the Frechet / Hubert family). The
+#' `"complete"` estimator requires every entry observed; `"ipw"` and `"fiml"`
+#' admit missing entries (FIML is categorical only).
 #'
-#' @param x A complete subjects-by-raters matrix or data frame.
+#' @param x A subjects-by-raters matrix or data frame.
 #' @param distance Multirater disagreement kernel. `"nominal"` uses Frechet
 #'   mode disagreement for categorical ratings; `"absolute"` uses median
 #'   absolute deviation; `"quadratic"` uses mean squared deviation; `"hubert"`
 #'   uses all-raters-equal disagreement.
+#' @param method `"complete"` (complete-data), `"ipw"` (MCAR inverse-probability
+#'   weighting), or `"fiml"` (categorical full-information ML under ignorable
+#'   missingness; not defined for the continuous kernels).
 #' @param g Arity of the multirater distance. Defaults to all raters
 #'   (`ncol(x)`). Must be between 2 and `ncol(x)`.
+#' @param em_options Named list of EM options used by `method = "fiml"`.
 #' @param max_chance_tuples Maximum number of direct `n^g` item tuples to
 #'   evaluate before stopping for continuous distances, or finite category
 #'   tuples for categorical distances.
 #'
-#' @return A `misskappa_estimate` object with `Cohen` and `Fleiss`
+#' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
 #'   coefficients and a 2x2 influence-function covariance matrix.
 #'
 #' @keywords internal
 kappa_gwise <- function(x,
                         distance = c("nominal", "absolute", "quadratic", "hubert"),
+                        method = c("complete", "ipw", "fiml"),
                         g = NULL,
+                        em_options = list(),
                         max_chance_tuples = 5000000L) {
   distance <- match.arg(distance)
+  method <- match.arg(method)
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
   }
@@ -759,31 +894,39 @@ kappa_gwise <- function(x,
     stop("'max_chance_tuples' must be a positive integer.")
   }
 
-  if (distance %in% c("nominal", "hubert")) {
-    if (any(!is.finite(x_mat))) {
-      stop("'x' must be complete and finite for g-wise categorical distances.")
-    }
+  categorical <- distance %in% c("nominal", "hubert")
+  if (method == "fiml" && !categorical) {
+    stop('method = "fiml" is only available for categorical g-wise distances.')
+  }
+  if (method == "complete" && any(!is.finite(x_mat))) {
+    stop("the complete-data g-wise estimator requires complete, finite ratings.")
+  }
+
+  if (categorical) {
     cats <- sort(unique(c(x_mat)))
     x_indexed <- matrix(match(x_mat, cats) - 1L, nrow = nrow(x_mat), ncol = ncol(x_mat))
     storage.mode(x_indexed) <- "integer"
     out <- rcpp_kappa_gwise_categorical(
       x = x_indexed,
       distance_type = distance,
+      method = method,
       g = as.integer(g),
-      max_chance_tuples = as.integer(max_chance_tuples)
+      max_chance_tuples = as.integer(max_chance_tuples),
+      em_options = em_options
     )
   } else {
     storage.mode(x_mat) <- "double"
     out <- rcpp_kappa_gwise_continuous(
       x = x_mat,
       distance_type = distance,
+      method = method,
       g = as.integer(g),
       max_chance_tuples = as.integer(max_chance_tuples)
     )
   }
 
   estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Cohen", "Fleiss")
+  names(estimates) <- c("Conger", "Fleiss")
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
   psi_mat <- out$psi
@@ -794,7 +937,7 @@ kappa_gwise <- function(x,
       estimates = estimates,
       vcov = vcov_mat,
       psi = psi_mat,
-      method = "gwise",
+      method = paste0("gwise_", method),
       weight = distance,
       distance = distance,
       g = as.integer(g)

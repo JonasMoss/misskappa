@@ -444,18 +444,32 @@ Rcpp::List rcpp_kappa_vector(
 Rcpp::List rcpp_kappa_gwise_categorical(
     const Rcpp::IntegerMatrix& x,
     std::string distance_type,
+    std::string method,
     int g,
-    int max_chance_tuples) {
+    int max_chance_tuples,
+    Rcpp::List em_options) {
+  // The complete-data estimator requires every entry observed; the IPW and
+  // FIML estimators accept missing entries (NA / na_code).
+  const bool allow_missing = (method == "ipw" || method == "fiml");
   int C = 0;
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> ratings(x.nrow(), x.ncol());
   for (int i = 0; i < x.nrow(); ++i) {
     for (int j = 0; j < x.ncol(); ++j) {
       const int v = x(i, j);
-      if (v == NA_INTEGER || v < 0) Rcpp::stop("G-wise categorical ratings must be complete non-negative codes.");
+      if (v == NA_INTEGER || v == kPkgNaCode) {
+        if (!allow_missing) {
+          Rcpp::stop("Complete-data g-wise estimator requires complete ratings; "
+                     "use estimator = \"ipw\" or \"cat_fiml\" for missing data.");
+        }
+        ratings(i, j) = kPkgNaCode;
+        continue;
+      }
+      if (v < 0) Rcpp::stop("G-wise categorical ratings must be non-negative codes.");
       ratings(i, j) = v;
       if (v + 1 > C) C = v + 1;
     }
   }
+  if (C < 1) Rcpp::stop("All ratings are missing.");
 
   misskappa::loss::GwiseCategoricalDistance distance;
   if (distance_type == "nominal") {
@@ -469,7 +483,18 @@ Rcpp::List rcpp_kappa_gwise_categorical(
   misskappa::GwiseOptions opts;
   opts.g = g;
   opts.max_chance_tuples = max_chance_tuples;
-  auto r = misskappa::estimate_gwise(ratings, distance, opts);
+
+  misskappa::Result<misskappa::Estimation> r;
+  if (method == "complete") {
+    r = misskappa::estimate_gwise(ratings, distance, opts);
+  } else if (method == "ipw") {
+    r = misskappa::estimate_ipw_gwise(ratings, distance, opts);
+  } else if (method == "fiml") {
+    misskappa::EmOptions em = parse_em_options(em_options);
+    r = misskappa::estimate_fiml_gwise(ratings, distance, em, opts);
+  } else {
+    Rcpp::stop("Unknown categorical g-wise method: " + method);
+  }
   return estimation_to_list(unwrap(std::move(r)));
 }
 
@@ -477,6 +502,7 @@ Rcpp::List rcpp_kappa_gwise_categorical(
 Rcpp::List rcpp_kappa_gwise_continuous(
     const Rcpp::NumericMatrix& x,
     std::string distance_type,
+    std::string method,
     int g,
     int max_chance_tuples) {
   Eigen::MatrixXd ratings(x.nrow(), x.ncol());
@@ -498,6 +524,14 @@ Rcpp::List rcpp_kappa_gwise_continuous(
   misskappa::GwiseOptions opts;
   opts.g = g;
   opts.max_chance_tuples = max_chance_tuples;
-  auto r = misskappa::estimate_gwise_continuous(ratings, distance, opts);
+
+  misskappa::Result<misskappa::Estimation> r;
+  if (method == "complete") {
+    r = misskappa::estimate_gwise_continuous(ratings, distance, opts);
+  } else if (method == "ipw") {
+    r = misskappa::estimate_ipw_gwise_continuous(ratings, distance, opts);
+  } else {
+    Rcpp::stop("Unknown continuous g-wise method: " + method);
+  }
   return estimation_to_list(unwrap(std::move(r)));
 }

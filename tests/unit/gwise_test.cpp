@@ -212,6 +212,33 @@ TEST_CASE("G-wise continuous IPW: g=2 matches pairwise continuous IPW") {
   CHECK((psi_vcov - gwise_absolute->vcov).cwiseAbs().maxCoeff() < 1e-12);
 }
 
+TEST_CASE("G-wise quadratic Frechet is g-invariant (justifies R short-circuit)") {
+  // Quadratic disagreement decomposes into pairwise squared terms, so the
+  // combinatorial constant cancels in the kappa ratio: the g-wise coefficient
+  // equals the pairwise one for every g. This is why the R API ignores g for
+  // weight = "quadratic" and takes the cheap closed form instead of the n^g
+  // enumeration.
+  RealMat x = frechet_fixture_real();  // 4 subjects x 5 raters
+  auto distance = ms::loss::frechet_quadratic_distance();
+  REQUIRE(distance.has_value());
+
+  auto base = ms::estimate_gwise_continuous(x, *distance, ms::GwiseOptions{2});
+  REQUIRE(base.has_value());
+  for (int g = 3; g <= 5; ++g) {
+    auto fit = ms::estimate_gwise_continuous(x, *distance, ms::GwiseOptions{g});
+    REQUIRE(fit.has_value());
+    CHECK((fit->estimates - base->estimates).cwiseAbs().maxCoeff() < tol);
+  }
+
+  // ... and the g-invariant value equals the closed-form quadratic estimator.
+  ms::RealVec v(5);
+  v << 1.0, 2.0, 3.0, 4.0, 5.0;
+  auto closed = ms::estimate_quadratic(x, v);
+  REQUIRE(closed.has_value());
+  CHECK(std::abs(base->estimates(0) - closed->estimates(0)) < tol);  // Conger
+  CHECK(std::abs(base->estimates(1) - closed->estimates(1)) < tol);  // Fleiss
+}
+
 TEST_CASE("G-wise Hubert disagreement: perfect agreement returns one") {
   IntMat x(3, 3);
   x << 0, 0, 0,

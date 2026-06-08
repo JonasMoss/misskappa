@@ -37,11 +37,11 @@ rcpp_kappa_vector <- function(x, features, method, loss_type, feature_weights) {
     .Call(`_misskappa_rcpp_kappa_vector`, x, features, method, loss_type, feature_weights)
 }
 
-rcpp_kappa_gwise_categorical <- function(x, distance_type, g, max_chance_tuples) {
-    .Call(`_misskappa_rcpp_kappa_gwise_categorical`, x, distance_type, g, max_chance_tuples)
+rcpp_kappa_gwise_categorical <- function(x, distance_type, method, g, max_chance_tuples, em_options) {
+    .Call(`_misskappa_rcpp_kappa_gwise_categorical`, x, distance_type, method, g, max_chance_tuples, em_options)
 }
 
-rcpp_kappa_gwise_continuous <- function(x, distance_type, g, max_chance_tuples) {
-    .Call(`_misskappa_rcpp_kappa_gwise_continuous`, x, distance_type, g, max_chance_tuples)
+rcpp_kappa_gwise_continuous <- function(x, distance_type, method, g, max_chance_tuples) {
+    .Call(`_misskappa_rcpp_kappa_gwise_continuous`, x, distance_type, method, g, max_chance_tuples)
 }
 
