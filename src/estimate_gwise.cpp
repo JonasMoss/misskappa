@@ -173,6 +173,25 @@ double categorical_expectation_fixed(
   return acc;
 }
 
+bool fill_observed_g_tuple(
+    IntMatView ratings, int item, const std::vector<int>& raters,
+    std::vector<int>& values) {
+  for (std::size_t pos = 0; pos < raters.size(); ++pos) {
+    const int x = ratings(item, raters[pos]);
+    if (x == na_code) return false;
+    values[pos] = x;
+  }
+  return true;
+}
+
+struct ActiveCategoricalSubset {
+  std::vector<int> raters;
+  double pi_inv = 1.0;
+  double observed_disagreement = 0.0;
+  double chance_disagreement = 0.0;
+  RealMat fixed_expectations;
+};
+
 }  // namespace
 
 Result<Estimation> estimate_gwise(
@@ -255,6 +274,170 @@ Result<Estimation> estimate_gwise(
 
   return finish_estimation(std::move(d_values), C_hat, F_hat, g,
                            std::move(mu_C_projection), std::move(mu_F_projection));
+}
+
+Result<Estimation> estimate_ipw_gwise(
+    IntMatView ratings, loss::GwiseCategoricalDistance distance,
+    GwiseOptions opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  const int g = (opts.g <= 0) ? R : opts.g;
+  if (n < 1 || R < 2 || g < 2 || g > R) return misskappa::unexpected(Error::invalid_argument);
+  if (distance.C <= 0 || distance.compute == nullptr) {
+    return misskappa::unexpected(Error::invalid_argument);
+  }
+
+  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
+    for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
+      const int x = ratings(i, j);
+      if (x == na_code) continue;
+      if (x < 0 || x >= distance.C) return misskappa::unexpected(Error::invalid_argument);
+    }
+  }
+
+  std::int64_t category_tuples = 0;
+  std::int64_t category_projection_tuples = 0;
+  if (!checked_power(distance.C, g, opts.max_chance_tuples, category_tuples)
+      || !checked_power(distance.C, g - 1, opts.max_chance_tuples, category_projection_tuples)) {
+    return misskappa::unexpected(Error::not_supported);
+  }
+
+  RealVec pi_j_inv = RealVec::Zero(R);
+  RealMat probs = RealMat::Zero(R, distance.C);
+  for (int r = 0; r < R; ++r) {
+    int n_observed = 0;
+    for (int i = 0; i < n; ++i) {
+      if (ratings(i, r) != na_code) ++n_observed;
+    }
+    if (n_observed == 0) return misskappa::unexpected(Error::singular_weight);
+    pi_j_inv(r) = static_cast<double>(n) / static_cast<double>(n_observed);
+    for (int i = 0; i < n; ++i) {
+      const int x = ratings(i, r);
+      if (x == na_code) continue;
+      probs(r, x) += pi_j_inv(r) / static_cast<double>(n);
+    }
+  }
+
+  const auto all_subsets = combinations(R, g);
+  if (all_subsets.empty()) return misskappa::unexpected(Error::invalid_argument);
+
+  std::vector<ActiveCategoricalSubset> active_subsets;
+  active_subsets.reserve(all_subsets.size());
+  std::vector<int> values(static_cast<std::size_t>(g), 0);
+  double D_hat = 0.0;
+  double C_hat = 0.0;
+
+  for (const auto& raters : all_subsets) {
+    int n_joint = 0;
+    double observed_sum = 0.0;
+    for (int i = 0; i < n; ++i) {
+      if (!fill_observed_g_tuple(ratings, i, raters, values)) continue;
+      observed_sum += distance.compute(values.data(), g, distance.C);
+      ++n_joint;
+    }
+    if (n_joint == 0) continue;
+
+    ActiveCategoricalSubset subset;
+    subset.raters = raters;
+    subset.pi_inv = static_cast<double>(n) / static_cast<double>(n_joint);
+    subset.observed_disagreement = observed_sum / static_cast<double>(n_joint);
+    subset.chance_disagreement = categorical_expectation(
+        distance, g, [&](int pos, int cat) { return probs(raters[pos], cat); });
+    subset.fixed_expectations = RealMat::Zero(g, distance.C);
+    for (int pos = 0; pos < g; ++pos) {
+      for (int cat = 0; cat < distance.C; ++cat) {
+        subset.fixed_expectations(pos, cat) = categorical_expectation_fixed(
+            distance, g, pos, cat,
+            [&](int other_pos, int other_cat) { return probs(raters[other_pos], other_cat); });
+      }
+    }
+
+    D_hat += subset.observed_disagreement;
+    C_hat += subset.chance_disagreement;
+    active_subsets.push_back(std::move(subset));
+  }
+
+  if (active_subsets.empty()) return misskappa::unexpected(Error::singular_weight);
+
+  const double n_active = static_cast<double>(active_subsets.size());
+  D_hat /= n_active;
+  C_hat /= n_active;
+
+  const RealVec pooled = probs.colwise().mean().transpose();
+  const double F_hat = categorical_expectation(
+      distance, g, [&](int /*pos*/, int cat) { return pooled(cat); });
+
+  RealMat fleiss_fixed = RealMat::Zero(g, distance.C);
+  for (int pos = 0; pos < g; ++pos) {
+    for (int cat = 0; cat < distance.C; ++cat) {
+      fleiss_fixed(pos, cat) = categorical_expectation_fixed(
+          distance, g, pos, cat,
+          [&](int /*other_pos*/, int other_cat) { return pooled(other_cat); });
+    }
+  }
+  RealVec fleiss_baseline_by_rater = RealVec::Zero(R);
+  for (int r = 0; r < R; ++r) {
+    for (int pos = 0; pos < g; ++pos) {
+      for (int cat = 0; cat < distance.C; ++cat) {
+        fleiss_baseline_by_rater(r) += probs(r, cat) * fleiss_fixed(pos, cat);
+      }
+    }
+  }
+
+  RealMat phi = RealMat::Zero(n, 3);
+  for (int i = 0; i < n; ++i) {
+    double observed_numerator = 0.0;
+    double observed_denominator = 0.0;
+    for (const auto& subset : active_subsets) {
+      if (fill_observed_g_tuple(ratings, i, subset.raters, values)) {
+        const double d_i = distance.compute(values.data(), g, distance.C);
+        observed_numerator += subset.pi_inv * d_i;
+        observed_denominator += subset.pi_inv;
+      }
+
+      for (int pos = 0; pos < g; ++pos) {
+        const int r = subset.raters[static_cast<std::size_t>(pos)];
+        const int x = ratings(i, r);
+        if (x == na_code) continue;
+        phi(i, 1) += pi_j_inv(r)
+                     * (subset.fixed_expectations(pos, x) - subset.chance_disagreement);
+      }
+    }
+    phi(i, 0) = (observed_numerator - D_hat * observed_denominator) / n_active;
+    phi(i, 1) /= n_active;
+
+    for (int r = 0; r < R; ++r) {
+      const int x = ratings(i, r);
+      if (x == na_code) continue;
+      double fixed_sum = 0.0;
+      for (int pos = 0; pos < g; ++pos) fixed_sum += fleiss_fixed(pos, x);
+      phi(i, 2) += pi_j_inv(r) * (fixed_sum - fleiss_baseline_by_rater(r));
+    }
+    phi(i, 2) /= static_cast<double>(R);
+  }
+
+  RealVec estimates(2);
+  estimates(0) = (C_hat > zero_tol)
+                     ? 1.0 - D_hat / C_hat
+                     : std::numeric_limits<double>::quiet_NaN();
+  estimates(1) = (F_hat > zero_tol)
+                     ? 1.0 - D_hat / F_hat
+                     : std::numeric_limits<double>::quiet_NaN();
+
+  RealMat Gamma_hat = (phi.transpose() * phi) / static_cast<double>(n);
+  RealMat J = RealMat::Zero(2, 3);
+  if (C_hat > zero_tol) {
+    J(0, 0) = -1.0 / C_hat;
+    J(0, 1) = D_hat / (C_hat * C_hat);
+  }
+  if (F_hat > zero_tol) {
+    J(1, 0) = -1.0 / F_hat;
+    J(1, 2) = D_hat / (F_hat * F_hat);
+  }
+
+  RealMat vcov = (J * Gamma_hat * J.transpose()) / static_cast<double>(n);
+  RealMat psi = build_psi_from_phi(phi, J);
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
 }
 
 Result<Estimation> estimate_gwise_continuous(
