@@ -67,16 +67,16 @@ entries.
 
 `CRACKLES.rda` has `r mv("n_rows")` rows and `r mv("n_rating_columns")`
 binary rating columns. Each of the `r mv("n_patients")` patients has six
-rows. The current pivot treats the within-patient row order as the site
-index and keeps the `UP`/`LO` indicators only as labels:
+rows: two upper posterior, two lower posterior, and two anterior thorax
+recordings. The pivot treats those six recordings as the patient-level site
+vector and keeps the `UP`/`LO` indicators as location labels:
 
 ```{r sites}
 knitr::kable(site_layout, caption = "Inferred six-site layout from row order.")
 ```
 
-This is the key unresolved codebook point: the data are complete, but the
-meaning of the two rows with `UP=LO=0` needs confirmation before this
-becomes manuscript material.
+The two rows with `UP=LO=0` are anterior thorax recordings; Vanbelle's
+tables label this location `A`.
 
 ## Short Answer
 
@@ -129,15 +129,14 @@ knitr::kable(keep, align = "llrrrrrrrrr",
 The masked run is deliberately modest. It is a feasibility check for the
 moment contraction, not a missingness theorem. The data are naturally
 complete, so MCAR deletion is created by random masking; MAR/site-dependent
-masking would be the next experiment once the site codebook is settled.
+masking would be the next experiment if this pilot becomes paper-facing.
 
 ## Caveats
 
-The site labels are inferred, not documented. The six-row order appears
-consistent by patient, but a codebook should confirm whether `MID1/MID2`
-is the right interpretation for `UP=LO=0` and whether the two repeated
-rows in each region are ordered locations, duplicate readings, or
-something else.
+The site labels are documented at the location level, but left/right side is
+not represented by a separate variable in this copy of the data. The six-row
+order is consistent by patient and should be interpreted as two recordings
+per location: upper posterior, lower posterior, and anterior.
 
 The all-28-rater analysis is descriptive. If the prefixes are distinct
 training cohorts, specialties, or countries, the within-prefix R=4 panels

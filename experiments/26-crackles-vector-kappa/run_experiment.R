@@ -62,7 +62,7 @@ make_site_layout <- function(d) {
   }
   S <- unique(n_by_patient)
   site_ord <- ave(seq_len(nrow(d)), d$patient, FUN = seq_along)
-  region <- ifelse(d$UP == 1L, "UP", ifelse(d$LO == 1L, "LO", "MID"))
+  region <- ifelse(d$UP == 1L, "UP", ifelse(d$LO == 1L, "LO", "ANT"))
   region_occ <- ave(region, d$patient, region, FUN = seq_along)
   data.frame(
     row = seq_len(nrow(d)),
