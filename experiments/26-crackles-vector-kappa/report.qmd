@@ -72,7 +72,11 @@ recordings. The pivot treats those six recordings as the patient-level site
 vector and keeps the `UP`/`LO` indicators as location labels:
 
 ```{r sites}
-knitr::kable(site_layout, caption = "Inferred six-site layout from row order.")
+site_tab <- site_layout[, c("site", "site_label", "location_code",
+                            "location", "side_index")]
+names(site_tab) <- c("Site", "Site label", "Vanbelle location",
+                     "Thorax location", "Within-location side index")
+knitr::kable(site_tab, caption = "Six-site patient-level layout.")
 ```
 
 The two rows with `UP=LO=0` are anterior thorax recordings; Vanbelle's
@@ -81,7 +85,7 @@ tables label this location `A`.
 ## Short Answer
 
 The vector coefficient is well-defined on the complete CRACKLES pivot and
-gives stable, interpretable values. The all-rater pooled analysis has a
+gives stable, interpretable values. The all-observer pooled analysis has a
 smaller $\kappa_F$ than $\kappa_C$ because the rater mean vectors are not
 equal; within four-rater panels, the spread is substantial, with `RUS` and
 `STU` showing the largest site-level agreement and `WAL`/`NLD` the lowest
@@ -99,30 +103,34 @@ used only to produce a full $(\mu,\Sigma)$ for the contraction.
 ## Complete-Data Estimates
 
 ```{r complete}
-tab <- complete[, c("analysis", "R", "S", "T", "B", "G", "kappa_F", "kappa_C")]
+tab <- complete[, c("analysis_label", "observer_code", "vanbelle_label",
+                    "R", "S", "T", "B", "G", "kappa_F", "kappa_C")]
+names(tab)[1:3] <- c("Analysis", "Data prefix", "Vanbelle label")
 tab[, c("T", "B", "G", "kappa_F", "kappa_C")] <-
   lapply(tab[, c("T", "B", "G", "kappa_F", "kappa_C")], fmt, d = 3)
-knitr::kable(tab, align = "lrrrrrrr",
+knitr::kable(tab, align = "lllrrrrrrr",
              caption = "Vector kappa plug-ins on the complete CRACKLES data.")
 ```
 
-The pooled row treats all 28 columns as raters. The `panel_*` rows treat
-each four-rater prefix as a separate interchangeable-rater panel. Those
-within-panel rows are the cleaner reading if the column prefixes denote
-distinct clinical or reader groups rather than exchangeable raters.
+The pooled row treats all 28 columns as raters. The observer-class rows
+treat each four-rater prefix as a separate interchangeable-rater panel.
+Those within-panel rows are the cleaner reading because the prefixes denote
+distinct clinical or reader groups rather than one exchangeable rater
+population.
 
 ## Synthetic Missing Sites
 
 ```{r masked}
-keep <- masked[, c("analysis", "method", "R", "S",
+keep <- masked[, c("analysis_label", "observer_code", "method", "R", "S",
                    "kappa_F_mean", "err_F_mean", "err_F_sd",
                    "kappa_C_mean", "err_C_mean", "err_C_sd",
                    "n_used_mean")]
+names(keep)[1:3] <- c("Analysis", "Data prefix", "Method")
 for (j in c("kappa_F_mean", "err_F_mean", "err_F_sd",
             "kappa_C_mean", "err_C_mean", "err_C_sd", "n_used_mean")) {
   keep[[j]] <- fmt(keep[[j]], ifelse(j == "n_used_mean", 1, 3))
 }
-knitr::kable(keep, align = "llrrrrrrrrr",
+knitr::kable(keep, align = "lllrrrrrrrrr",
              caption = "Mean masked-data estimates and errors relative to the complete-data plug-in.")
 ```
 
