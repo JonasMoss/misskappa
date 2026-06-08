@@ -15,6 +15,8 @@ namespace ms = misskappa;
 
 namespace {
 
+constexpr double tol = 1e-9;
+
 IntMat ten_subject_2rater() {
   IntMat x(10, 2);
   x <<
@@ -48,6 +50,15 @@ IntMat twelve_subject_3rater_3cat() {
     0, 0, 0,
     1, 0, 1,
     2, 2, 1;
+  return x;
+}
+
+IntMat frechet_fixture_int() {
+  IntMat x(4, 5);
+  x << 0, 0, 1, 0, 0,
+       0, 1, 2, 1, 1,
+       1, 0, 0, 0, 0,
+       1, 2, 3, 3, 4;
   return x;
 }
 
@@ -115,6 +126,62 @@ TEST_CASE("estimate_fiml: influence functions reconstruct Louis vcov") {
   CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
 }
 
+TEST_CASE("estimate_fiml_gwise: complete data matches complete g-wise estimator") {
+  IntMat x = frechet_fixture_int();
+  auto distance = ms::loss::frechet_nominal_distance(5);
+  REQUIRE(distance.has_value());
+
+  auto complete = ms::estimate_gwise(x, *distance);
+  auto fiml = ms::estimate_fiml_gwise(x, *distance, EmOptions{});
+  REQUIRE(complete.has_value());
+  REQUIRE(fiml.has_value());
+
+  CHECK((complete->estimates - fiml->estimates).cwiseAbs().maxCoeff() < tol);
+  CHECK((complete->vcov - fiml->vcov).cwiseAbs().maxCoeff() < 1e-8);
+  REQUIRE(fiml->psi.rows() == x.rows());
+  REQUIRE(fiml->psi.cols() == 2);
+  const RealMat psi_vcov =
+      (fiml->psi.transpose() * fiml->psi) / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((psi_vcov - fiml->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
+TEST_CASE("estimate_fiml_gwise: g=2 nominal matches categorical FIML") {
+  IntMat x = twelve_subject_3rater_3cat();
+  auto distance = ms::loss::frechet_nominal_distance(3);
+  auto weights = ms::loss::identity_weights(3);
+  REQUIRE(distance.has_value());
+  REQUIRE(weights.has_value());
+
+  auto gwise = ms::estimate_fiml_gwise(x, *distance, EmOptions{}, ms::GwiseOptions{2});
+  auto pairwise = ms::estimate_fiml(x, *weights, EmOptions{});
+  REQUIRE(gwise.has_value());
+  REQUIRE(pairwise.has_value());
+
+  CHECK(std::abs(gwise->estimates(0) - pairwise->estimates(0)) < 1e-8);
+  CHECK(std::abs(gwise->estimates(1) - pairwise->estimates(1)) < 1e-8);
+  CHECK((gwise->vcov - pairwise->vcov.block(0, 0, 2, 2)).cwiseAbs().maxCoeff() < 1e-6);
+}
+
+TEST_CASE("estimate_fiml_gwise: variance is symmetric PSD and psi reconstructs it") {
+  IntMat x = twelve_subject_3rater_3cat();
+  auto distance = ms::loss::hubert_categorical_distance(3);
+  REQUIRE(distance.has_value());
+
+  auto r = ms::estimate_fiml_gwise(x, *distance, EmOptions{});
+  REQUIRE(r.has_value());
+  const RealMat& V = r->vcov;
+  CHECK((V - V.transpose()).cwiseAbs().maxCoeff() < 1e-10);
+  Eigen::SelfAdjointEigenSolver<RealMat> es(V);
+  REQUIRE(es.info() == Eigen::Success);
+  CHECK(es.eigenvalues().minCoeff() > -1e-8);
+
+  REQUIRE(r->psi.rows() == x.rows());
+  REQUIRE(r->psi.cols() == 2);
+  const RealMat psi_vcov =
+      (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
 TEST_CASE("estimate_fiml: info_rcond affects Louis variance, not estimates") {
   IntMat x = twelve_subject_3rater_3cat();
   RealVec v(3);
@@ -150,6 +217,22 @@ TEST_CASE("estimate_fiml: perfect agreement converges to kappa = 1") {
   CHECK(std::abs(r->estimates(2) - 1.0) < 1e-6);
 }
 
+TEST_CASE("estimate_fiml_gwise: perfect agreement converges to kappa = 1") {
+  IntMat x(5, 3);
+  x << 0, 0, 0,
+       1, 1, 1,
+       0, 0, 0,
+       1, 1, 1,
+       0, 0, 0;
+  auto distance = ms::loss::frechet_nominal_distance(2);
+  REQUIRE(distance.has_value());
+
+  auto r = ms::estimate_fiml_gwise(x, *distance, EmOptions{});
+  REQUIRE(r.has_value());
+  CHECK(std::abs(r->estimates(0) - 1.0) < 1e-6);
+  CHECK(std::abs(r->estimates(1) - 1.0) < 1e-6);
+}
+
 TEST_CASE("estimate_fiml: too few raters -> invalid_argument") {
   IntMat x(3, 1);
   x << 0, 1, 0;
@@ -157,6 +240,31 @@ TEST_CASE("estimate_fiml: too few raters -> invalid_argument") {
   auto r = ms::estimate_fiml(x, *W, EmOptions{});
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::invalid_argument);
+}
+
+TEST_CASE("estimate_fiml_gwise: rejects invalid arguments") {
+  auto distance = ms::loss::frechet_nominal_distance(3);
+  REQUIRE(distance.has_value());
+
+  IntMat one_rater(3, 1);
+  one_rater << 0, 1, 0;
+  auto too_few = ms::estimate_fiml_gwise(one_rater, *distance, EmOptions{});
+  REQUIRE(!too_few.has_value());
+  CHECK(too_few.error() == ms::Error::invalid_argument);
+
+  IntMat out_of_range = twelve_subject_3rater_3cat();
+  out_of_range(0, 0) = 3;
+  auto bad_category = ms::estimate_fiml_gwise(out_of_range, *distance, EmOptions{});
+  REQUIRE(!bad_category.has_value());
+  CHECK(bad_category.error() == ms::Error::invalid_argument);
+
+  auto distance5 = ms::loss::frechet_nominal_distance(5);
+  REQUIRE(distance5.has_value());
+  auto oversized =
+      ms::estimate_fiml_gwise(
+          frechet_fixture_int(), *distance5, EmOptions{}, ms::GwiseOptions{5, 100});
+  REQUIRE(!oversized.has_value());
+  CHECK(oversized.error() == ms::Error::not_supported);
 }
 
 TEST_CASE("estimate_fiml: out-of-range category -> invalid_argument") {
