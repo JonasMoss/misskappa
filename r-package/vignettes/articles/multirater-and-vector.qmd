@@ -1,0 +1,116 @@
+---
+title: "Multirater And Vector-Valued Agreement"
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+Ordinary weighted kappa is a *pairwise* construction: chance-corrected
+agreement is built from how often two raters disagree. `misskappa` reaches two
+generalizations through the same `kappa()` call --- agreement among *more than
+two* raters at once, and ratings that are *vectors* rather than single
+categories --- without any new functions. Both still report the Conger and
+Fleiss coefficients with an asymptotic covariance matrix.
+
+```{r}
+#| message: false
+library(misskappa)
+```
+
+## g-wise (multirater) agreement
+
+The `g` argument is the *arity* of the disagreement kernel: how many raters are
+compared at once. The default `g = 2` is the familiar pairwise kappa. With
+`g > 2`, observed disagreement averages a symmetric $g$-rater distance over the
+within-subject rater combinations, and the chance baseline uses the matching
+$g$-rater $V$-statistic --- the Fréchet / Hubert multirater family. The
+Conger coefficient uses distinct-rater-combination chance; the Fleiss
+coefficient pools the rater margins.
+
+```{r}
+# Pairwise (g = 2) versus triple-wise (g = 3) nominal agreement on the
+# Gwet (2014) categorical data (five raters, some ratings missing).
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal")
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+```
+
+The estimator menu carries over. `"ipw"` reweights for missing entries under
+MCAR, `"cat_fiml"` is the saturated-multinomial FIML for categorical ratings
+under ignorable missingness, and `"pairwise"` is the complete-data estimator
+(it errors if any rating is missing). For `g > 2` the supported `weight`s are
+`"nominal"`, `"linear"`, and `"hubert"` (the all-raters-equal kernel, defined
+only for `g > 2`).
+
+### Quadratic weighting is g-invariant
+
+Quadratic (squared-error) disagreement decomposes into pairwise terms, so the
+combinatorial constant cancels in the kappa ratio: the $g$-wise coefficient
+equals the pairwise one for *every* $g$. `kappa()` exploits this --- with
+`weight = "quadratic"` the `g` argument is ignored and the cheap closed form is
+used instead of the $g^{\text{th}}$-order enumeration.
+
+```{r}
+g2 <- coef(kappa(dat.gwet2014, estimator = "pairwise", weight = "quadratic"))
+g4 <- coef(kappa(dat.gwet2014, estimator = "pairwise", weight = "quadratic", g = 4))
+rbind(g2 = g2, g4 = g4)
+```
+
+## Vector-valued ratings
+
+Sometimes a single rating is itself a vector. In the CRACKLES auscultation
+study shipped as `dat.vanbelle2019`, each of 28 observers classifies the
+presence of crackles (`0`/`1`) at six chest sites per patient, so one observer's
+verdict on one patient is a six-component vector. The data are a
+subjects-by-raters-by-features **array** --- and an array keeps its labels on
+every axis:
+
+```{r}
+dim(dat.vanbelle2019)
+dimnames(dat.vanbelle2019)$site
+dat.vanbelle2019["1", "EXP1", ]   # patient 1, observer EXP1, the six sites
+```
+
+Pass the array and `kappa()` takes the vector-valued path automatically. The
+disagreement between two rater vectors $x$ and $y$ is a component-separable loss
+
+$$
+D(x, y) = \sum_{\ell=1}^{p} w_\ell\, d(x_\ell, y_\ell),
+$$
+
+and `weight` selects the per-component loss $d$: `"nominal"` is Hamming (count
+of disagreeing sites), `"linear"` is absolute difference, `"quadratic"` is
+squared difference. The expert panel:
+
+```{r}
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+```
+
+The Conger coefficient by observer group reproduces the kind of breakdown
+Vanbelle (2019) reports --- experts and pulmonologists agree most, students
+least:
+
+```{r}
+groups <- c("EXP", "NOR", "RUS", "WAL", "NLD", "PUL", "STU")
+conger <- sapply(groups, function(grp) {
+  cols <- paste0(grp, 1:4)
+  coef(kappa(dat.vanbelle2019[, cols, ], estimator = "pairwise"))["Conger"]
+})
+round(sort(conger, decreasing = TRUE), 3)
+```
+
+Two knobs are passed through `...`: `feature_weights` (non-negative per-site
+weights, e.g. to down-weight the anterior sites) and `loss = "rms"` (the
+root-mean-square component loss). For missing components, use
+`estimator = "ipw"`, which reweights by the per-rater-feature observation rates;
+on the complete CRACKLES data it agrees with the pairwise estimator.
+
+```{r}
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw",
+      feature_weights = c(1, 1, 1, 1, 0.5, 0.5))
+```
+
+See the [getting-started vignette](../misskappa.html) for the pairwise
+estimators and tests, and the mathematical guides for the loss-matrix and
+missing-data foundations these generalizations build on.

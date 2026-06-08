@@ -39,6 +39,7 @@ articles:
     navbar: How-to
     contents:
       - articles/equality-tests
+      - articles/multirater-and-vector
   - title: Mathematical Guides
     navbar: Mathematical Guides
     contents:
