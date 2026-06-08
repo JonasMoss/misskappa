@@ -27,7 +27,7 @@ fmt-cpp:
       | rg '\.(c|cc|cpp|cxx|h|hpp)$' \
       | xargs "$formatter" -i
 
-# Release build (no sanitizers). This is what the R package links against.
+# Release build (no sanitizers). Used by the C++ unit tests (ctest).
 opt:
   @cmake --preset opt
   @cmake --build --preset opt
@@ -35,32 +35,46 @@ opt:
 test-opt: opt
   @ctest --preset opt
 
-# Reinstall the R package against a fresh opt build.
+# Vendor the canonical C++ (src/ + include/) into r-package/src/ so the package
+# is self-contained. Run after any C++ change — the R recipes below depend on it,
+# so `just r-install` / `r-check` always build against fresh-vendored sources.
+vendor:
+  @dev/vendor-cpp.sh
+
+# Fail if the vendored copies are stale (canonical changed without re-vendoring,
+# a vendored copy was hand-edited, or a new canonical source wasn't vendored).
+# For CI / pre-commit.
+vendor-check: vendor
+  @if [ -n "$(git status --porcelain -- r-package/src)" ]; then \
+     echo "r-package/src is out of sync — run \`just vendor\` and commit:"; \
+     git status --porcelain -- r-package/src; \
+     exit 1; \
+   fi
+
+# Reinstall the R package against fresh-vendored sources.
 r-docs:
   @cd r-package && Rscript -e 'roxygen2::roxygenise()'
 
-r-install: opt r-docs
+r-install: vendor r-docs
   @R CMD INSTALL --preclean r-package
 
 irrcacsmoke-install:
   @R CMD INSTALL --preclean dev/irrcacsmoke
 
-r-check: opt r-docs irrcacsmoke-install
+r-check: vendor r-docs irrcacsmoke-install
   @cleanup() { rm -f misskappa_*.tar.gz; }; \
     cleanup; \
     trap cleanup EXIT; \
     R CMD build r-package; \
-    MISSKAPPA_INCLUDE="$PWD/include" \
-    MISSKAPPA_LIB="$PWD/build-opt/libmisskappa.a" \
     R CMD check --no-manual misskappa_*.tar.gz
 
 # Regenerate irrCAC oracle fixtures (requires R + irrCAC installed).
 regen-oracle:
   @Rscript tests/tools/regen_oracle.R
 
-# Build pkgdown site. Requires the R packages pkgdown and quarto; builds the
-# opt library first because pkgdown installs/loads the R package.
-docs-r: opt
+# Build pkgdown site. Requires the R packages pkgdown and quarto; vendors first
+# because pkgdown installs/loads the R package.
+docs-r: vendor
   @cd r-package && Rscript -e 'roxygen2::roxygenise(); pkgdown::build_site()'
 
 # Build C++ API reference into the pkgdown output tree. Requires doxygen.
