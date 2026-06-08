@@ -99,6 +99,27 @@ sum(!complete.cases(neuroticism))      # respondents missing at least one item
 alpha(neuroticism, estimator = "nt_fiml")
 ```
 
+## Beyond pairwise: multirater and vector-valued agreement
+
+The same `kappa()` reaches two generalizations. Set `g > 2` for *multirater*
+agreement, where the disagreement kernel compares `g` raters at once (`g = 2` is
+ordinary pairwise kappa):
+
+```{r}
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+```
+
+And when each rating is a *vector*, pass a subjects-by-raters-by-features array.
+`dat.vanbelle2019` holds 28 observers classifying crackles at six chest sites
+for 20 patients; a component loss (`weight`) measures vector disagreement:
+
+```{r}
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+```
+
+The [multirater and vector-valued agreement](articles/multirater-and-vector.html)
+article works both out in full.
+
 ## Testing whether coefficients are equal
 
 A common question is whether a coefficient is the *same* across two groups, two

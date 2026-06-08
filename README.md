@@ -50,6 +50,20 @@ kappa(dat.klein2018, estimator = "ipw")
 #> Brennan-Prediger   0.4204 0.1136 0.1978 0.6430
 ```
 
+The same `kappa()` also handles *multirater* kernels (`g > 2`) and
+*vector-valued* ratings. `dat.vanbelle2019` records 28 observers classifying
+crackles at six chest sites for 20 patients ([Vanbelle,
+2019](https://doi.org/10.1177/0962280218794733)); each rating is a six-vector,
+and a component loss measures agreement across the four expert observers:
+
+``` r
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
+#> misskappa: estimator=ipw, weight=hamming
+#>        estimate     se  lower  upper
+#> Conger   0.5192 0.0794 0.3635 0.6748
+#> Fleiss   0.5150 0.0813 0.3557 0.6743
+```
+
 Coefficient alpha under missing data, on the Neuroticism items of
 [`psych::bfi`](https://CRAN.R-project.org/package=psych) — 2800 respondents
 from the [SAPA project](https://www.sapa-project.org/) ([Revelle, Wilt &
@@ -94,6 +108,7 @@ The [package website](https://jonasmoss.github.io/misskappa/) has the full
 reference and the worked-example articles:
 
 - [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html)
+- [Multirater and vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/multirater-and-vector.html)
 - [Agreement coefficients and loss matrices](https://jonasmoss.github.io/misskappa/articles/agreement-coefficients.html)
 - [Missingness and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
 - [Testing equality of agreement coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
