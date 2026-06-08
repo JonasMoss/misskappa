@@ -132,6 +132,14 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       math and FIML boundary are in
       `dev/notes/component-separable-vector-kappa.md`; the CRACKLES pilot uses
       `experiments/26-crackles-vector-kappa/`.
+- [x] **Add full-weight quadratic vector covariance route.**
+      The internal R backend `kappa_vector_quadratic()` estimates Conger and
+      Fleiss from `(mu, Sigma)` with a full symmetric PSD feature metric `W`,
+      using either pairwise-available covariance moments or saturated
+      normal-theory FIML. Tensor formulas live in
+      `dev/notes/quadratic-vector-tensor-kappa.md`; the CRACKLES experiment
+      compares pairwise covariance and NT-FIML under richer component
+      missingness.
 - [ ] **Categorical FIML for vector profiles.**
       Deferred. Component-wise missingness makes full-profile categorical
       equality and general finite-vector losses latent. A saturated
