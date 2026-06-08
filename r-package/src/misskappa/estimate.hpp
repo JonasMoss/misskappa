@@ -133,19 +133,33 @@ Result<Estimation> estimate_alpha_fiml(
 
 // --- Closed rectangular g-wise estimators -----------------------------------
 //
-// Complete-data estimator for symmetric g-wise disagreement kernels. This is
-// the Frechet / Hubert-style multirater-distance family: observed
-// disagreement averages a g-argument distance over within-item rater
-// combinations; chance disagreement uses Cohen-type (distinct rater
-// combinations) and Fleiss-type (all ordered rater tuples) V-statistics.
+// Complete-data, categorical IPW, and categorical FIML estimators for
+// symmetric g-wise disagreement kernels. This is the Frechet / Hubert-style
+// multirater-distance family: observed disagreement averages a g-argument
+// distance over within-item rater combinations; chance disagreement uses
+// Cohen-type (distinct rater combinations) and Fleiss-type (all ordered rater
+// tuples) V-statistics.
 //
-// Missing ratings are intentionally not supported here. Categorical entries
-// must be non-negative codes in [0, C-1], where C is carried by `distance`.
-// Continuous entries must be finite. Estimates returned: (Cohen, Fleiss).
+// `estimate_gwise` and `estimate_gwise_continuous` are complete-data only.
+// `estimate_ipw_gwise` accepts categorical ratings with `na_code`, and
+// `estimate_ipw_gwise_continuous` accepts non-finite missing ratings, under
+// the same MCAR IPW convention as the pairwise IPW estimators.
+// `estimate_fiml_gwise` fits the saturated categorical full-response
+// distribution by EM under ignorable missingness. Estimates returned:
+// (Cohen, Fleiss).
 Result<Estimation> estimate_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
     GwiseOptions opts = {});
+Result<Estimation> estimate_ipw_gwise(
+    IntMatView ratings, loss::GwiseCategoricalDistance distance,
+    GwiseOptions opts = {});
+Result<Estimation> estimate_fiml_gwise(
+    IntMatView ratings, loss::GwiseCategoricalDistance distance,
+    EmOptions em_opts, GwiseOptions gwise_opts = {});
 Result<Estimation> estimate_gwise_continuous(
+    RealMatView ratings, loss::GwiseContinuousDistance distance,
+    GwiseOptions opts = {});
+Result<Estimation> estimate_ipw_gwise_continuous(
     RealMatView ratings, loss::GwiseContinuousDistance distance,
     GwiseOptions opts = {});
 

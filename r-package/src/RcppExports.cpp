@@ -134,30 +134,33 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_kappa_gwise_categorical
-Rcpp::List rcpp_kappa_gwise_categorical(const Rcpp::IntegerMatrix& x, std::string distance_type, int g, int max_chance_tuples);
-RcppExport SEXP _misskappa_rcpp_kappa_gwise_categorical(SEXP xSEXP, SEXP distance_typeSEXP, SEXP gSEXP, SEXP max_chance_tuplesSEXP) {
+Rcpp::List rcpp_kappa_gwise_categorical(const Rcpp::IntegerMatrix& x, std::string distance_type, std::string method, int g, int max_chance_tuples, Rcpp::List em_options);
+RcppExport SEXP _misskappa_rcpp_kappa_gwise_categorical(SEXP xSEXP, SEXP distance_typeSEXP, SEXP methodSEXP, SEXP gSEXP, SEXP max_chance_tuplesSEXP, SEXP em_optionsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::IntegerMatrix& >::type x(xSEXP);
     Rcpp::traits::input_parameter< std::string >::type distance_type(distance_typeSEXP);
+    Rcpp::traits::input_parameter< std::string >::type method(methodSEXP);
     Rcpp::traits::input_parameter< int >::type g(gSEXP);
     Rcpp::traits::input_parameter< int >::type max_chance_tuples(max_chance_tuplesSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_gwise_categorical(x, distance_type, g, max_chance_tuples));
+    Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_gwise_categorical(x, distance_type, method, g, max_chance_tuples, em_options));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_kappa_gwise_continuous
-Rcpp::List rcpp_kappa_gwise_continuous(const Rcpp::NumericMatrix& x, std::string distance_type, int g, int max_chance_tuples);
-RcppExport SEXP _misskappa_rcpp_kappa_gwise_continuous(SEXP xSEXP, SEXP distance_typeSEXP, SEXP gSEXP, SEXP max_chance_tuplesSEXP) {
+Rcpp::List rcpp_kappa_gwise_continuous(const Rcpp::NumericMatrix& x, std::string distance_type, std::string method, int g, int max_chance_tuples);
+RcppExport SEXP _misskappa_rcpp_kappa_gwise_continuous(SEXP xSEXP, SEXP distance_typeSEXP, SEXP methodSEXP, SEXP gSEXP, SEXP max_chance_tuplesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
     Rcpp::traits::input_parameter< std::string >::type distance_type(distance_typeSEXP);
+    Rcpp::traits::input_parameter< std::string >::type method(methodSEXP);
     Rcpp::traits::input_parameter< int >::type g(gSEXP);
     Rcpp::traits::input_parameter< int >::type max_chance_tuples(max_chance_tuplesSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_gwise_continuous(x, distance_type, g, max_chance_tuples));
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_gwise_continuous(x, distance_type, method, g, max_chance_tuples));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -172,8 +175,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_kappa_counts", (DL_FUNC) &_misskappa_rcpp_kappa_counts, 3},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_continuous, 3},
     {"_misskappa_rcpp_kappa_vector", (DL_FUNC) &_misskappa_rcpp_kappa_vector, 5},
-    {"_misskappa_rcpp_kappa_gwise_categorical", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_categorical, 4},
-    {"_misskappa_rcpp_kappa_gwise_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_continuous, 4},
+    {"_misskappa_rcpp_kappa_gwise_categorical", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_categorical, 6},
+    {"_misskappa_rcpp_kappa_gwise_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_continuous, 5},
     {NULL, NULL, 0}
 };
 

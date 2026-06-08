@@ -8,29 +8,50 @@ kappa(
   x,
   estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml"),
   weight = c("nominal", "linear", "quadratic", "ordinal", "radical", "ratio", "circular",
-    "bipolar"),
+    "bipolar", "hubert"),
+  g = 2L,
   values = NULL,
-  em_options = list()
+  em_options = list(),
+  ...
 )
 }
 \arguments{
-\item{x}{A subjects-by-raters matrix or data frame. Integer category codes
-for `"ipw"` / `"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`.
-`NA` marks missing entries.}
+\item{x}{A subjects-by-raters matrix or data frame of scalar ratings, or a
+subjects-by-raters-by-features 3-D array of vector-valued ratings (the
+array form is auto-detected). Integer category codes for `"ipw"` /
+`"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
+missing entries.}
 
-\item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`.}
+\item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`.
+Vector-valued ratings support `"pairwise"` and `"ipw"` only; continuous
+g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
+`"ipw"` only.}
 
 \item{weight}{Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
 default), `"linear"`, `"quadratic"`, `"ordinal"`, `"radical"`, `"ratio"`,
 `"circular"`, or `"bipolar"`. `"pairwise"` / `"nt_fiml"` require
-`"quadratic"`.}
+`"quadratic"`. For `g > 2` only `"nominal"`, `"linear"`, `"hubert"`, and
+`"quadratic"` are defined, where `"hubert"` is the all-raters-equal
+multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
+the component loss (`"nominal"` -> Hamming, `"linear"` -> L1,
+`"quadratic"` -> squared).}
+
+\item{g}{Arity of the multirater disagreement kernel. `g = 2` (the default)
+is ordinary pairwise kappa; `g > 2` uses the Frechet / Hubert g-wise
+family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
+the cheap closed form is used. Ignored for vector-valued ratings.}
 
 \item{values}{Optional numeric vector of category scores used by the metric
-weightings (and by the quadratic estimators to map integer codes to
-scores). Defaults to the sorted unique observed categories.}
+weightings (and by the quadratic / continuous g-wise estimators to map
+integer codes to scores). Defaults to the sorted unique observed
+categories.}
 
 \item{em_options}{Named list of EM options for the likelihood estimators
 (`"cat_fiml"`, `"nt_fiml"`). Pass any subset.}
+
+\item{...}{Mode-specific extras: `feature_weights` and `loss` (e.g.
+`"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the
+number of chance tuples enumerated) for `g > 2`.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the named
@@ -60,6 +81,13 @@ coefficients for raw ratings with missing entries. Pick the estimator with
 `"pairwise"` and `"nt_fiml"` are quadratic by construction: they treat `x`
 as numeric scores (pass scores directly, or integer codes with `values`)
 and require `weight = "quadratic"`.
+
+Two generalizations are reached through the same call. Set `g > 2` for the
+Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
+(distinct rater combinations) and Fleiss-type coefficients. Pass a
+subjects-by-raters-by-features array to score vector-valued ratings with a
+component-separable loss. See the arguments for the estimator / weight
+combinations supported in each mode.
 }
 \examples{
 # Categorical ratings with missing entries (Gwet 2014): the
@@ -69,5 +97,8 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
 # Scored coefficient (quadratic loss) via the pairwise-available moment
 # estimator; treats the columns as numeric scores.
 kappa(dat.zapf2016, estimator = "pairwise")
+
+# g-wise (multirater) nominal kappa over triples of raters.
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 
 }

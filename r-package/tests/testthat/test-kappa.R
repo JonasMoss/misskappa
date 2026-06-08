@@ -270,15 +270,15 @@ test_that("kappa_gwise() estimates Frechet and Hubert complete-data coefficients
 
   fit_nom <- kappa_gwise(x, distance = "nominal")
   expect_s3_class(fit_nom, "misskappa_estimate")
-  expect_named(fit_nom$estimates, c("Cohen", "Fleiss"))
-  expect_equal(unname(fit_nom$estimates["Cohen"]), 0.23353293413173815,
+  expect_named(fit_nom$estimates, c("Conger", "Fleiss"))
+  expect_equal(unname(fit_nom$estimates["Conger"]), 0.23353293413173815,
                tolerance = 1e-9)
   expect_equal(unname(fit_nom$estimates["Fleiss"]), 0.21735788407113500,
                tolerance = 1e-9)
   expect_equal(dim(fit_nom$psi), c(4L, 2L))
 
   fit_abs <- kappa_gwise(x, distance = "absolute")
-  expect_equal(unname(fit_abs$estimates["Cohen"]), 0.45877378435517835,
+  expect_equal(unname(fit_abs$estimates["Conger"]), 0.45877378435517835,
                tolerance = 1e-9)
   expect_equal(unname(fit_abs$estimates["Fleiss"]), 0.44821878125323300,
                tolerance = 1e-9)

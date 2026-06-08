@@ -100,6 +100,58 @@ void enumerate_completions(
   }
 }
 
+bool checked_power(int base, int exponent, std::int64_t limit, std::int64_t& out) {
+  if (base < 0 || exponent < 0 || limit < 1) return false;
+  std::int64_t value = 1;
+  for (int i = 0; i < exponent; ++i) {
+    if (base != 0 && value > limit / base) return false;
+    value *= base;
+  }
+  out = value;
+  return true;
+}
+
+void combinations_rec(
+    int R, int g, int start, std::vector<int>& current,
+    std::vector<std::vector<int>>& out) {
+  if (static_cast<int>(current.size()) == g) {
+    out.push_back(current);
+    return;
+  }
+  const int need = g - static_cast<int>(current.size());
+  for (int r = start; r <= R - need; ++r) {
+    current.push_back(r);
+    combinations_rec(R, g, r + 1, current, out);
+    current.pop_back();
+  }
+}
+
+std::vector<std::vector<int>> combinations(int R, int g) {
+  std::vector<std::vector<int>> out;
+  std::vector<int> current;
+  combinations_rec(R, g, 0, current, out);
+  return out;
+}
+
+template <typename Visitor>
+void visit_category_tuples_rec(
+    int C, int g, int depth, std::vector<int>& current, Visitor& visitor) {
+  if (depth == g) {
+    visitor(current);
+    return;
+  }
+  for (int cat = 0; cat < C; ++cat) {
+    current[static_cast<std::size_t>(depth)] = cat;
+    visit_category_tuples_rec(C, g, depth + 1, current, visitor);
+  }
+}
+
+template <typename Visitor>
+void visit_category_tuples(int C, int g, Visitor& visitor) {
+  std::vector<int> current(static_cast<std::size_t>(g), 0);
+  visit_category_tuples_rec(C, g, 0, current, visitor);
+}
+
 // --- Preprocessing: build EM input from raw n x R matrix ---
 
 Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
@@ -474,6 +526,164 @@ KappaMap build_kappa_map(const EmRunResult& em, RealMatView weights) {
   return m;
 }
 
+template <typename ProbAtPos>
+double categorical_expectation(
+    loss::GwiseCategoricalDistance distance, int g, ProbAtPos&& prob_at_pos) {
+  std::vector<int> values(static_cast<std::size_t>(g), 0);
+  double acc = 0.0;
+  auto visitor = [&](const std::vector<int>& cats) {
+    double prob = 1.0;
+    for (int pos = 0; pos < g; ++pos) {
+      const int cat = cats[static_cast<std::size_t>(pos)];
+      values[static_cast<std::size_t>(pos)] = cat;
+      prob *= prob_at_pos(pos, cat);
+    }
+    acc += prob * distance.compute(values.data(), g, distance.C);
+  };
+  visit_category_tuples(distance.C, g, visitor);
+  return acc;
+}
+
+template <typename ProbAtPos>
+double categorical_expectation_fixed(
+    loss::GwiseCategoricalDistance distance, int g, int fixed_pos,
+    int fixed_value, ProbAtPos&& prob_at_pos) {
+  std::vector<int> values(static_cast<std::size_t>(g), 0);
+  values[static_cast<std::size_t>(fixed_pos)] = fixed_value;
+  double acc = 0.0;
+  auto visitor = [&](const std::vector<int>& cats) {
+    int cursor = 0;
+    double prob = 1.0;
+    for (int pos = 0; pos < g; ++pos) {
+      if (pos == fixed_pos) continue;
+      const int cat = cats[static_cast<std::size_t>(cursor++)];
+      values[static_cast<std::size_t>(pos)] = cat;
+      prob *= prob_at_pos(pos, cat);
+    }
+    acc += prob * distance.compute(values.data(), g, distance.C);
+  };
+  visit_category_tuples(distance.C, g - 1, visitor);
+  return acc;
+}
+
+struct GwiseFimlMap {
+  Eigen::VectorXd d_vec;
+  Eigen::VectorXd grad_C;
+  Eigen::VectorXd grad_F;
+  double C_hat = 0.0;
+  double F_hat = 0.0;
+};
+
+Result<GwiseFimlMap> build_gwise_fiml_map(
+    const EmRunResult& em, loss::GwiseCategoricalDistance distance,
+    GwiseOptions opts) {
+  const int R = em.R;
+  const int g = (opts.g <= 0) ? R : opts.g;
+  if (g < 2 || g > R) return misskappa::unexpected(Error::invalid_argument);
+  if (distance.C != em.c || distance.compute == nullptr) {
+    return misskappa::unexpected(Error::invalid_argument);
+  }
+
+  std::int64_t category_tuples = 0;
+  std::int64_t category_projection_tuples = 0;
+  if (!checked_power(distance.C, g, opts.max_chance_tuples, category_tuples)
+      || !checked_power(distance.C, g - 1, opts.max_chance_tuples, category_projection_tuples)) {
+    return misskappa::unexpected(Error::not_supported);
+  }
+
+  const auto c_raters = combinations(R, g);
+  if (c_raters.empty()) return misskappa::unexpected(Error::invalid_argument);
+
+  const Eigen::Index n_final = em.theta_hat.size();
+  const Eigen::VectorXd& theta = em.theta_hat;
+  std::vector<std::vector<int>> pattern_matrix;
+  pattern_matrix.reserve(static_cast<std::size_t>(n_final));
+
+  RealMat probs = RealMat::Zero(R, distance.C);
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    auto row = unrank_tuple(em.pattern_indices[static_cast<std::size_t>(u)], R, em.c);
+    for (int r = 0; r < R; ++r) {
+      probs(r, row[static_cast<std::size_t>(r)]) += theta(u);
+    }
+    pattern_matrix.push_back(std::move(row));
+  }
+  const RealVec pooled = probs.colwise().mean().transpose();
+
+  GwiseFimlMap m;
+  m.d_vec = Eigen::VectorXd::Zero(n_final);
+  m.grad_C = Eigen::VectorXd::Zero(n_final);
+  m.grad_F = Eigen::VectorXd::Zero(n_final);
+
+  std::vector<int> values(static_cast<std::size_t>(g), 0);
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    double acc = 0.0;
+    for (const auto& raters : c_raters) {
+      for (int pos = 0; pos < g; ++pos) {
+        values[static_cast<std::size_t>(pos)] =
+            pattern_matrix[static_cast<std::size_t>(u)][static_cast<std::size_t>(raters[pos])];
+      }
+      acc += distance.compute(values.data(), g, distance.C);
+    }
+    m.d_vec(u) = acc / static_cast<double>(c_raters.size());
+  }
+
+  std::vector<RealMat> fixed_by_subset;
+  fixed_by_subset.reserve(c_raters.size());
+  for (const auto& raters : c_raters) {
+    m.C_hat += categorical_expectation(
+        distance, g, [&](int pos, int cat) { return probs(raters[pos], cat); });
+
+    RealMat fixed = RealMat::Zero(g, distance.C);
+    for (int pos = 0; pos < g; ++pos) {
+      for (int cat = 0; cat < distance.C; ++cat) {
+        fixed(pos, cat) = categorical_expectation_fixed(
+            distance, g, pos, cat,
+            [&](int other_pos, int other_cat) { return probs(raters[other_pos], other_cat); });
+      }
+    }
+    fixed_by_subset.push_back(std::move(fixed));
+  }
+  m.C_hat /= static_cast<double>(c_raters.size());
+
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    double grad = 0.0;
+    for (std::size_t s = 0; s < c_raters.size(); ++s) {
+      const auto& raters = c_raters[s];
+      const RealMat& fixed = fixed_by_subset[s];
+      for (int pos = 0; pos < g; ++pos) {
+        const int r = raters[static_cast<std::size_t>(pos)];
+        const int cat = pattern_matrix[static_cast<std::size_t>(u)][static_cast<std::size_t>(r)];
+        grad += fixed(pos, cat);
+      }
+    }
+    m.grad_C(u) = grad / static_cast<double>(c_raters.size());
+  }
+
+  m.F_hat = categorical_expectation(
+      distance, g, [&](int /*pos*/, int cat) { return pooled(cat); });
+  RealMat fleiss_fixed = RealMat::Zero(g, distance.C);
+  for (int pos = 0; pos < g; ++pos) {
+    for (int cat = 0; cat < distance.C; ++cat) {
+      fleiss_fixed(pos, cat) = categorical_expectation_fixed(
+          distance, g, pos, cat,
+          [&](int /*other_pos*/, int other_cat) { return pooled(other_cat); });
+    }
+  }
+
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    double grad = 0.0;
+    for (int pos = 0; pos < g; ++pos) {
+      for (int r = 0; r < R; ++r) {
+        const int cat = pattern_matrix[static_cast<std::size_t>(u)][static_cast<std::size_t>(r)];
+        grad += fleiss_fixed(pos, cat) / static_cast<double>(R);
+      }
+    }
+    m.grad_F(u) = grad;
+  }
+
+  return m;
+}
+
 Result<void> validate_alpha_values(const RealVec& values) {
   if (values.size() < 1) return misskappa::unexpected(Error::invalid_argument);
   for (Eigen::Index k = 0; k < values.size(); ++k) {
@@ -597,6 +807,69 @@ Result<Estimation> estimate_fiml(
       build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+    const RealMat jacobian_reduced = jacobian * info.jacobian;
+    const RealMat group_psi =
+        static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
+    for (Eigen::Index i = 0; i < n; ++i) {
+      psi.row(i) = group_psi.row(
+          static_cast<Eigen::Index>(in_res->subject_groups[static_cast<std::size_t>(i)]));
+    }
+  }
+
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+}
+
+Result<Estimation> estimate_fiml_gwise(
+    IntMatView ratings, loss::GwiseCategoricalDistance distance,
+    EmOptions em_opts, GwiseOptions gwise_opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  const int g = (gwise_opts.g <= 0) ? R : gwise_opts.g;
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2 || g < 2 || g > R) return misskappa::unexpected(Error::invalid_argument);
+  if (distance.C < 1 || distance.compute == nullptr) {
+    return misskappa::unexpected(Error::invalid_argument);
+  }
+
+  auto in_res = preprocess_raw(ratings, distance.C);
+  if (!in_res) return misskappa::unexpected(in_res.error());
+  auto em = run_em_preprocessed(*in_res, distance.C, em_opts, true);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+
+  auto map_res = build_gwise_fiml_map(*em, distance, gwise_opts);
+  if (!map_res) return misskappa::unexpected(map_res.error());
+  const GwiseFimlMap& m = *map_res;
+
+  const Eigen::VectorXd& theta = em->theta_hat;
+  const double pd = m.d_vec.dot(theta);
+  const double pec = m.C_hat;
+  const double pef = m.F_hat;
+
+  RealVec estimates(2);
+  estimates(0) = (std::abs(pec) > singular_tol)
+                     ? 1.0 - pd / pec
+                     : std::numeric_limits<double>::quiet_NaN();
+  estimates(1) = (std::abs(pef) > singular_tol)
+                     ? 1.0 - pd / pef
+                     : std::numeric_limits<double>::quiet_NaN();
+
+  RealMat jacobian = RealMat::Zero(2, theta.size());
+  if (std::abs(pec) > singular_tol) {
+    jacobian.row(0) =
+        (-(m.d_vec * pec - pd * m.grad_C).transpose()) / (pec * pec);
+  }
+  if (std::abs(pef) > singular_tol) {
+    jacobian.row(1) =
+        (-(m.d_vec * pef - pd * m.grad_F).transpose()) / (pef * pef);
+  }
+
+  RealMat vcov = jacobian * em->vcov * jacobian.transpose();
+  RealMat psi = RealMat::Zero(n, 2);
+  const LouisReducedInfo info =
+      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
+  if (info.info_star.rows() > 0) {
+    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, em_opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
     const RealMat group_psi =
         static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();

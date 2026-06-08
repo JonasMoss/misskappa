@@ -2,39 +2,46 @@
 % Please edit documentation in R/kappa.R
 \name{kappa_gwise}
 \alias{kappa_gwise}
-\title{G-wise agreement coefficients for complete rectangular ratings}
+\title{G-wise agreement coefficients for rectangular ratings}
 \usage{
 kappa_gwise(
   x,
   distance = c("nominal", "absolute", "quadratic", "hubert"),
+  method = c("complete", "ipw", "fiml"),
   g = NULL,
+  em_options = list(),
   max_chance_tuples = 5000000L
 )
 }
 \arguments{
-\item{x}{A complete subjects-by-raters matrix or data frame.}
+\item{x}{A subjects-by-raters matrix or data frame.}
 
 \item{distance}{Multirater disagreement kernel. `"nominal"` uses Frechet
 mode disagreement for categorical ratings; `"absolute"` uses median
 absolute deviation; `"quadratic"` uses mean squared deviation; `"hubert"`
 uses all-raters-equal disagreement.}
 
+\item{method}{`"complete"` (complete-data), `"ipw"` (MCAR inverse-probability
+weighting), or `"fiml"` (categorical full-information ML under ignorable
+missingness; not defined for the continuous kernels).}
+
 \item{g}{Arity of the multirater distance. Defaults to all raters
 (`ncol(x)`). Must be between 2 and `ncol(x)`.}
+
+\item{em_options}{Named list of EM options used by `method = "fiml"`.}
 
 \item{max_chance_tuples}{Maximum number of direct `n^g` item tuples to
 evaluate before stopping for continuous distances, or finite category
 tuples for categorical distances.}
 }
 \value{
-A `misskappa_estimate` object with `Cohen` and `Fleiss`
+A `misskappa_estimate` object with `Conger` and `Fleiss`
   coefficients and a 2x2 influence-function covariance matrix.
 }
 \description{
-Estimates closed-data g-wise Cohen-type and Fleiss-type agreement
-coefficients using multirater disagreement kernels. This is the
-Frechet / Hubert family for complete rectangular designs: every subject
-must have the same set of observed raters, and missing values are not
-supported.
+Estimates g-wise Conger-type and Fleiss-type agreement coefficients using
+multirater disagreement kernels (the Frechet / Hubert family). The
+`"complete"` estimator requires every entry observed; `"ipw"` and `"fiml"`
+admit missing entries (FIML is categorical only).
 }
 \keyword{internal}
