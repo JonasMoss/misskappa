@@ -70,7 +70,7 @@
 #' Quadratic (Conger / Fleiss) kappa under missing data (normal FIML)
 #'
 #' @description
-#' Backend for `kappa_continuous(method = "fiml")`. Estimates the
+#' Backend for `kappa(estimator = "nt_fiml")`. Estimates the
 #' quadratically weighted Conger and Fleiss agreement coefficients for
 #' continuous (or numerically scored) ratings with missing entries, via a
 #' saturated multivariate-normal covariance fitted by full-information maximum

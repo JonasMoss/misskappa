@@ -1,0 +1,2 @@
+"n_subjects","n_raters","n_pairs","min_kappa","max_kappa","range","mean_pairwise_corr","wald_chisq","df","p_value"
+20,3,3,0.0695067264573996,0.29676511954993,0.22725839309253,0.21271241960739,1.50003331321327,2,0.472358684782686

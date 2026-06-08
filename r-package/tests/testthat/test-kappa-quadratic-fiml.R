@@ -45,7 +45,7 @@ test_that("complete-data point matches kappa_quadratic(empirical)", {
 test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
   X <- make_ratings(500L, 5L, miss = 0.2, seed = 2L)
   fit <- kappa_quadratic_fiml(X)
-  psi <- stats::influence(fit)
+  psi <- fit$psi
   expect_true(is.matrix(psi))
   expect_equal(dim(psi), c(nrow(X), 2L))
   expect_equal(colnames(psi), c("Conger", "Fleiss"))

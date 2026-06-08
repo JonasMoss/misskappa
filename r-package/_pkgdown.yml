@@ -20,12 +20,13 @@ reference:
       - alpha
       - kappa
       - kappa_counts
-      - kappa_continuous
-      - kappa_gwise
+  - title: Hypothesis tests
+    contents:
+      - kappa_test
+      - alpha_test
   - title: Inference
     contents:
       - confint.misskappa_estimate
-      - influence.misskappa_estimate
   - title: Simulation helpers
     contents:
       - sim

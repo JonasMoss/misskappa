@@ -135,16 +135,20 @@ or preserve names for inspection; they should not contain parallel kappa logic.
 Public R surface (release target: GitHub-first; estimators + CIs, hypothesis
 tests deferred):
 
-- Estimators, keyed by input shape (mirrors the C++ naming):
-  - `kappa(x, method, weight, ...)` — raw categorical ratings. `method` is one
-    of `"available"`, `"ipw"`, `"fiml"`, `"gwet"`.
-  - `kappa_counts(x, method, weight, ...)` — counts-format input.
-  - `kappa_continuous(x, method, weight)` — continuous ratings.
-  - `kappa_gwise(x, distance, g)` — complete rectangular g-wise agreement.
-  - `alpha(x, method, type, ...)` — coefficient alpha. `method = "fiml"` with
-    `type = "normal"` (saturated Gaussian EM) or `type = "categorical"`
-    (saturated multinomial EM). The single alpha entry point; the old
-    `alpha_continuous()` / `alpha_cat_fiml()` are its internal backends.
+- Estimators select the method with a single `estimator=` argument:
+  - `kappa(x, estimator, weight, values, ...)` — raw ratings. `estimator` is
+    `"ipw"` or `"cat_fiml"` for categorical ratings (integer codes, any
+    `weight`), or `"pairwise"` / `"nt_fiml"` for the quadratically weighted
+    scored coefficient (these treat `x` as numeric scores and require
+    `weight = "quadratic"`). Absorbs the former `kappa_continuous`.
+  - `kappa_counts(x, estimator, weight, ...)` — counts-format input;
+    `estimator` is `"pairwise"` or `"cat_fiml"`.
+  - `alpha(x, estimator, values, ...)` — coefficient alpha; `estimator` is
+    `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`. `alpha_continuous()` /
+    `alpha_cat_fiml()` are its internal backends.
+  The two FIMLs are named distinctly (`cat_fiml` = saturated multinomial,
+  `nt_fiml` = robust normal-theory) so one token never denotes two estimators;
+  the unweighted loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
 - S3 generics on `misskappa_estimate`: `print`, `coef`, `vcov`, `as.data.frame`,
   `confint` (Wald CIs from `vcov`; `transform = "fisher"` gives a delta-method
   interval on the `atanh` scale), `influence` (per-subject IFs).
@@ -154,15 +158,17 @@ tests deferred):
 - Datasets carried over from the legacy package: `dat.fleiss1971`,
   `dat.gwet2014`, `dat.klein2018`, `dat.zapf2016`, `dat.mcduff2019`.
 
-Kept in the tree but **unexported / internal** (`@keywords internal`), pending a
-later inference release: `joint_vcov()` and `wald_test()` (the IF-based joint
-covariance and Wald-contrast engine, including the dependent/paired case), and
-the closed-form `kappa_quadratic()` (a paper-C estimator that overlaps
-`kappa(weight = "quadratic")`). A `t.test`-style `kappa_test()` / `alpha_test()`
-front door over this engine is the natural next addition (one-sample and
-independent two-sample work for every estimator; paired works for every
-estimator that exposes influence functions, i.e. all but the normal-theory-SE
-fits).
+Kept in the tree but **unexported / internal** (`@keywords internal`), reachable
+for simulations: the estimators dropped from the public surface — Gwet's
+reweighting and available-case for categorical `kappa` (via
+`estimate_kappa_raw()`), the full continuous dispatch (`kappa_continuous()`), and
+g-wise agreement (`kappa_gwise()`) — plus the inference engine `joint_vcov()` and
+`wald_test()` (IF-based joint covariance + Wald contrast, including the
+dependent/paired case) and the closed-form `kappa_quadratic()`. A `t.test`-style
+`kappa_test()` / `alpha_test()` front door over that engine is the natural next
+addition: one-sample and independent two-sample work for every estimator, and —
+now that `se_type = "normal"` is gone and every estimator exposes influence
+functions — paired works for every estimator too.
 
 ## Namespace layout
 

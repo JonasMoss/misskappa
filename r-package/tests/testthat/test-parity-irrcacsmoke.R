@@ -19,7 +19,7 @@ test_that("available raw complete-data matches irrcacsmoke", {
   )
   storage.mode(x) <- "integer"
 
-  fit <- kappa(x, method = "available", weight = "identity")
+  fit <- estimate_kappa_raw(x, method = "available", weight = "identity")
   oracle <- rbind(
     Conger = irrcacsmoke::conger.kappa.raw(x),
     Fleiss = irrcacsmoke::fleiss.kappa.raw(x),
@@ -41,7 +41,7 @@ test_that("available raw complete-data matches irrcacsmoke", {
 test_that("counts complete-data matches irrcacsmoke", {
   skip_if_not_installed("irrcacsmoke")
 
-  fit <- kappa_counts(dat.fleiss1971, weight = "identity")
+  fit <- kappa_counts(dat.fleiss1971, weight = "nominal")
   oracle <- rbind(
     Fleiss = irrcacsmoke::fleiss.kappa.dist(dat.fleiss1971),
     `Brennan-Prediger` = irrcacsmoke::bp.coeff.dist(dat.fleiss1971)

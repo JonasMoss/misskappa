@@ -8,8 +8,8 @@ test_that("influence() returns the per-subject IF for categorical raw fits", {
   storage.mode(x) <- "integer"
 
   for (m in c("available", "ipw", "gwet")) {
-    fit <- kappa(x, method = m, weight = "identity")
-    psi <- stats::influence(fit)
+    fit <- estimate_kappa_raw(x, method =m, weight = "identity")
+    psi <- fit$psi
     expect_true(is.matrix(psi))
     expect_equal(dim(psi), c(n, 3L))
     expect_equal(colnames(psi), c("Conger", "Fleiss", "Brennan-Prediger"))
@@ -27,8 +27,8 @@ test_that("vcov = (1 / n^2) crossprod(psi) to floating-point noise", {
 
   for (m in c("available", "ipw", "gwet")) {
     for (w in c("identity", "linear", "quadratic")) {
-      fit <- kappa(x, method = m, weight = w)
-      psi <- stats::influence(fit)
+      fit <- estimate_kappa_raw(x, method =m, weight = w)
+      psi <- fit$psi
       v_reconstructed <- crossprod(psi) / (n * n)
       v_orig <- vcov(fit)
       expect_equal(
@@ -61,8 +61,8 @@ test_that("influence() returns per-subject IFs for FIML fits", {
     nrow = 12, byrow = TRUE
   )
   storage.mode(x) <- "integer"
-  fit <- kappa(x, method = "fiml", weight = "quadratic")
-  psi <- stats::influence(fit)
+  fit <- estimate_kappa_raw(x, method ="fiml", weight = "quadratic")
+  psi <- fit$psi
   expect_equal(dim(psi), c(12L, 3L))
   expect_equal(unname(crossprod(psi) / 144), unname(vcov(fit)),
                tolerance = 1e-10)
@@ -71,22 +71,22 @@ test_that("influence() returns per-subject IFs for FIML fits", {
 test_that("influence() returns per-subject IFs for counts, continuous, and g-wise fits", {
   counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
   storage.mode(counts) <- "integer"
-  fit_counts <- kappa_counts(counts, method = "available")
-  psi_counts <- stats::influence(fit_counts)
+  fit_counts <- kappa_counts(counts, estimator = "pairwise")
+  psi_counts <- fit_counts$psi
   expect_equal(dim(psi_counts), c(4L, 2L))
   expect_equal(unname(crossprod(psi_counts) / 16), unname(vcov(fit_counts)),
                tolerance = 1e-10)
 
   xc <- matrix(stats::rnorm(40), nrow = 10)
   fit_cont <- kappa_continuous(xc, method = "available", weight = "quadratic")
-  psi_cont <- stats::influence(fit_cont)
+  psi_cont <- fit_cont$psi
   expect_equal(dim(psi_cont), c(10L, 2L))
   expect_equal(unname(crossprod(psi_cont) / 100), unname(vcov(fit_cont)),
                tolerance = 1e-10)
 
   xg <- matrix(c(1, 1, 2, 1, 1, 2, 2, 3, 3), nrow = 3, byrow = TRUE)
   fit_gwise <- kappa_gwise(xg, distance = "nominal")
-  psi_gwise <- stats::influence(fit_gwise)
+  psi_gwise <- fit_gwise$psi
   expect_equal(dim(psi_gwise), c(3L, 2L))
 })
 
@@ -105,8 +105,8 @@ test_that("influence() returns per-subject IFs for FIML counts fits", {
     nrow = 8, byrow = TRUE
   )
   storage.mode(counts) <- "integer"
-  fit <- kappa_counts(counts, method = "fiml", r_total = 4)
-  psi <- stats::influence(fit)
+  fit <- kappa_counts(counts, estimator = "cat_fiml", r_total = 4)
+  psi <- fit$psi
   expect_equal(dim(psi), c(8L, 2L))
   expect_equal(unname(crossprod(psi) / 64), unname(vcov(fit)),
                tolerance = 1e-10)
@@ -122,7 +122,7 @@ test_that("influence() returns per-subject IFs for quadratic fits", {
   xc <- matrix(stats::rnorm(40), nrow = 10)
   values <- c(1, 2, 3, 4, 5)[seq_len(min(ncol(xc), 5))]
   fit_quad <- kappa_quadratic(xc, values = values)
-  psi_quad <- stats::influence(fit_quad)
+  psi_quad <- fit_quad$psi
   expect_equal(dim(psi_quad), c(10L, 3L))
   expect_equal(unname(crossprod(psi_quad) / 100), unname(vcov(fit_quad)),
                tolerance = 1e-10)
@@ -137,8 +137,8 @@ test_that("joint_vcov() assembles a block matrix and recovers per-fit vcov on th
   x[matrix(stats::runif(n * R) < 0.3, n, R)] <- NA
   storage.mode(x) <- "integer"
 
-  ac  <- kappa(x, method = "available")
-  ipw <- kappa(x, method = "ipw")
+  ac  <- estimate_kappa_raw(x, method ="available")
+  ipw <- estimate_kappa_raw(x, method ="ipw")
   V   <- joint_vcov(ac = ac, ipw = ipw)
 
   expect_equal(dim(V), c(6L, 6L))
@@ -162,8 +162,8 @@ test_that("joint_vcov() errors on mismatched n or non-IF fits", {
   storage.mode(x1) <- "integer"
   storage.mode(x2) <- "integer"
 
-  fit1 <- kappa(x1, method = "available")
-  fit2 <- kappa(x2, method = "available")
+  fit1 <- estimate_kappa_raw(x1, method = "available")
+  fit2 <- estimate_kappa_raw(x2, method = "available")
   expect_error(joint_vcov(fit1, fit2), "same number of subjects")
 
   expect_error(joint_vcov(fit1), "at least two")
@@ -188,8 +188,8 @@ test_that("joint_vcov() supports FIML fits", {
     nrow = 12, byrow = TRUE
   )
   storage.mode(x) <- "integer"
-  ac <- kappa(x, method = "available", weight = "quadratic")
-  fiml <- kappa(x, method = "fiml", weight = "quadratic")
+  ac <- estimate_kappa_raw(x, method ="available", weight = "quadratic")
+  fiml <- estimate_kappa_raw(x, method ="fiml", weight = "quadratic")
   V <- joint_vcov(ac = ac, fiml = fiml)
 
   expect_equal(dim(V), c(6L, 6L))
@@ -206,8 +206,8 @@ test_that("Hausman contrast kappa_AC - kappa_IPW agrees between joint_vcov and d
   x[matrix(stats::runif(n * R) < 0.3, n, R)] <- NA
   storage.mode(x) <- "integer"
 
-  ac  <- kappa(x, method = "available")
-  ipw <- kappa(x, method = "ipw")
+  ac  <- estimate_kappa_raw(x, method ="available")
+  ipw <- estimate_kappa_raw(x, method ="ipw")
   V   <- joint_vcov(ac = ac, ipw = ipw)
 
   c_vec <- c(1, 0, 0, -1, 0, 0)
@@ -215,7 +215,7 @@ test_that("Hausman contrast kappa_AC - kappa_IPW agrees between joint_vcov and d
 
   # Directly: Var(kappa_AC.Conger - kappa_IPW.Conger) via the n x 6
   # stacked IF.
-  psi <- cbind(stats::influence(ac), stats::influence(ipw))
+  psi <- cbind(ac$psi, ipw$psi)
   diff_psi <- psi[, 1] - psi[, 4]   # ac.Conger - ipw.Conger
   v_direct <- sum(diff_psi^2) / (n * n)
 
@@ -231,7 +231,7 @@ test_that("wald_test() tests single-fit and joint linear contrasts", {
   x[matrix(stats::runif(n * R) < 0.25, n, R)] <- NA
   storage.mode(x) <- "integer"
 
-  ac <- kappa(x, method = "available")
+  ac <- estimate_kappa_raw(x, method ="available")
   single <- wald_test(ac, contrast = "Conger", value = 0)
   expect_s3_class(single, "htest")
   expect_named(single$statistic, "X-squared")
@@ -239,7 +239,7 @@ test_that("wald_test() tests single-fit and joint linear contrasts", {
   expect_equal(unname(single$parameter), 1)
   expect_true(is.finite(single$p.value))
 
-  ipw <- kappa(x, method = "ipw")
+  ipw <- estimate_kappa_raw(x, method ="ipw")
   joint <- wald_test(
     ac = ac,
     ipw = ipw,
@@ -258,7 +258,7 @@ test_that("wald_test() tests single-fit and joint linear contrasts", {
 test_that("wald_test() validates contrasts and influence-function support", {
   x <- matrix(sample.int(4L, 200, replace = TRUE), 50, 4)
   storage.mode(x) <- "integer"
-  fit <- kappa(x, method = "available")
+  fit <- estimate_kappa_raw(x, method ="available")
 
   expect_error(wald_test(fit, contrast = "Nope"), "Unknown coefficient")
   expect_error(wald_test(fit, contrast = c(1, 0)), "length")

@@ -164,7 +164,7 @@
 #' Coefficient alpha for continuous items under missing data (normal FIML)
 #'
 #' @description
-#' Backend for `alpha(method = "fiml", type = "normal")`. Estimates Cronbach's
+#' Backend for `alpha(estimator = "nt_fiml")`. Estimates Cronbach's
 #' coefficient alpha for a battery of continuous items with missing entries,
 #' via a saturated multivariate-normal covariance fitted by full-information
 #' maximum likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
