@@ -95,9 +95,9 @@ run_cell <- function(dist, mech, Sigma, n, boot, seed) {
 
   d_lav <- NA_real_
   if (has("lavaan")) {
-    Mp <- lavaan:::lav_data_missing_patterns(X)
-    lav <- lavaan:::lav_mvnorm_missing_h1_estimate_moments(
-      Y = X, Mp = Mp, tol = 1e-12, max.iter = 10000L)
+    Mp <- lavaan:::lav_data_mi_patterns(X)
+    lav <- lavaan:::lav_mvn_mi_h1_est_moments(
+      y = X, mp = Mp, tol = 1e-12, max_iter = 10000L)
     d_lav <- max(abs(Sig - lav$Sigma))
   }
   d_mag <- NA_real_

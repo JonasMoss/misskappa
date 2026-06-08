@@ -93,9 +93,9 @@ test_that("saturated EM moments match lavaan's h1 estimator", {
   skip_if_not_installed("lavaan")
   X <- make_data(500L, 6L, miss = 0.2, seed = 6L)
   fit <- alpha_continuous(X)
-  Mp <- lavaan:::lav_data_missing_patterns(X)
-  lav <- lavaan:::lav_mvnorm_missing_h1_estimate_moments(
-    Y = X, Mp = Mp, tol = 1e-12, max.iter = 10000L)
+  Mp <- lavaan:::lav_data_mi_patterns(X)
+  lav <- lavaan:::lav_mvn_mi_h1_est_moments(
+    y = X, mp = Mp, tol = 1e-12, max_iter = 10000L)
   expect_equal(unname(fit$moments$mu), unname(lav$Mu), tolerance = 1e-6)
   expect_equal(unname(fit$moments$Sigma), unname(lav$Sigma), tolerance = 1e-6)
 })
