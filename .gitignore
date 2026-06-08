@@ -41,3 +41,8 @@ docs/doxygen/
 .DS_Store
 
 # Paper build is paper/-local; paper/.gitignore handles its own outputs.
+
+# Quarto render byproducts (README.md is the tracked gfm output)
+/README.html
+/README_files/
+.quarto/
