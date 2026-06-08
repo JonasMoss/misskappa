@@ -1,0 +1,4 @@
+# Keep results/ present; ignore raw overnight output (regenerate via run_experiment.R).
+/summary.csv
+/truth.csv
+/metadata.csv

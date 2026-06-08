@@ -1,0 +1,5 @@
+# Quarto render output + local resources
+/*.html
+/*_files/
+/.quarto/
+/resources/
