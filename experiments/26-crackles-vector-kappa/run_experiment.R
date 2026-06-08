@@ -19,7 +19,7 @@ if (has_flag("--help") || has_flag("-h")) {
       " --mask-prop P   Synthetic cell-missing fraction (default 0.25).\n",
       " --reps N        Number of masking replicates (default 25; smoke 3).\n",
       " --seed-base N   Deterministic seed base (default 26000).\n",
-      " --smoke         Cheap run with 20 masking replicates.\n",
+      " --smoke         Cheap run with 3 masking replicates.\n",
       " --help, -h      This help.\n", sep = "")
   quit("no", status = 0)
 }
@@ -47,6 +47,21 @@ load(data_path)
 d <- CRACKLES
 rating_cols <- setdiff(names(d), c("patient", "UP", "LO"))
 groups <- unique(sub("[0-9]+$", "", rating_cols))
+observer_classes <- data.frame(
+  observer_code = c("ALL", "EXP", "NOR", "RUS", "WAL", "NLD", "PUL", "STU"),
+  observer_class = c(
+    "All observer classes",
+    "International lung-sound experts / researchers",
+    "General practitioners from Norway",
+    "General practitioners from Russia",
+    "General practitioners from Wales",
+    "General practitioners from The Netherlands",
+    "Pulmonologists, University Hospital of North Norway",
+    "Sixth-year medical students in Tromso"
+  ),
+  vanbelle_label = c("All", "EXP", "NOR", "RUS", "WAL", "NLD", "PLN", "STU"),
+  stringsAsFactors = FALSE
+)
 
 ml_cov <- function(Y) {
   n <- nrow(Y)
@@ -62,26 +77,30 @@ make_site_layout <- function(d) {
   }
   S <- unique(n_by_patient)
   site_ord <- ave(seq_len(nrow(d)), d$patient, FUN = seq_along)
-  region <- ifelse(d$UP == 1L, "UP", ifelse(d$LO == 1L, "LO", "ANT"))
-  region_occ <- ave(region, d$patient, region, FUN = seq_along)
+  location_code <- ifelse(d$UP == 1L, "U", ifelse(d$LO == 1L, "L", "A"))
+  location <- ifelse(d$UP == 1L, "upper posterior",
+                     ifelse(d$LO == 1L, "lower posterior", "anterior"))
+  side_index <- ave(location_code, d$patient, location_code, FUN = seq_along)
   data.frame(
     row = seq_len(nrow(d)),
     patient = d$patient,
     site = site_ord,
-    region = region,
-    site_label = paste0(region, region_occ),
+    location_code = location_code,
+    location = location,
+    side_index = side_index,
+    site_label = paste0(location_code, side_index),
     stringsAsFactors = FALSE
   )
 }
 
-pivot_array <- function(d, cols) {
+pivot_array <- function(d, cols, site_labels) {
   patients <- sort(unique(d$patient))
   split_idx <- split(seq_len(nrow(d)), d$patient)
   S <- length(split_idx[[1L]])
   R <- length(cols)
   X <- array(NA_real_, dim = c(length(patients), R, S),
              dimnames = list(patient = patients, rater = cols,
-                             site = paste0("site", seq_len(S))))
+                             site = site_labels))
   for (i in seq_along(patients)) {
     rows <- split_idx[[as.character(patients[i])]]
     X[i, , ] <- t(as.matrix(d[rows, cols]))
@@ -259,26 +278,44 @@ assert_formula_checks <- function() {
 assert_formula_checks()
 
 site_layout <- make_site_layout(d)
-site_summary <- unique(site_layout[, c("site", "region", "site_label")])
+site_summary <- unique(site_layout[, c("site", "location_code", "location",
+                                       "side_index", "site_label")])
 write.csv(site_summary, file.path(results_dir, "site_layout.csv"), row.names = FALSE)
 
 analysis_sets <- c(list(pooled = rating_cols),
                    setNames(lapply(groups, function(g) rating_cols[startsWith(rating_cols, g)]),
                             paste0("panel_", groups)))
+analysis_info <- data.frame(
+  analysis = names(analysis_sets),
+  observer_code = c("ALL", groups),
+  stringsAsFactors = FALSE
+)
+analysis_info <- merge(analysis_info, observer_classes, by = "observer_code",
+                       sort = FALSE)
+analysis_info$analysis_label <- ifelse(
+  analysis_info$observer_code == "ALL",
+  "All observer classes (descriptive)",
+  paste0(analysis_info$observer_code, " - ", analysis_info$observer_class)
+)
+analysis_info <- analysis_info[match(names(analysis_sets), analysis_info$analysis), ]
 
 complete_rows <- list()
 masked_rows <- list()
 set.seed(seed_base)
 for (nm in names(analysis_sets)) {
   cols <- analysis_sets[[nm]]
-  X <- pivot_array(d, cols)
+  info <- analysis_info[analysis_info$analysis == nm, ]
+  X <- pivot_array(d, cols, site_summary$site_label)
   Y <- array_to_matrix(X)
   R <- dim(X)[2L]; S <- dim(X)[3L]
 
   full <- complete_moments(Y)
   k <- vector_kappa(full$mu, full$Sigma, R, S)
   complete_rows[[length(complete_rows) + 1L]] <- cbind(
-    analysis = nm, n_patients = nrow(Y), R = R, S = S, method = "complete",
+    analysis = nm, analysis_label = info$analysis_label,
+    observer_code = info$observer_code, observer_class = info$observer_class,
+    vanbelle_label = info$vanbelle_label,
+    n_patients = nrow(Y), R = R, S = S, method = "complete",
     missing_fraction = mean(is.na(Y)), n_used = full$n_used, k)
 
   for (rep in seq_len(reps)) {
@@ -294,7 +331,10 @@ for (nm in names(analysis_sets)) {
     }
     fits <- fit_methods(Ym, R, S, include_fiml = nm != "pooled")
     masked_rows[[length(masked_rows) + 1L]] <- cbind(
-      analysis = nm, rep = rep, n_patients = nrow(Ym), R = R, S = S,
+      analysis = nm, analysis_label = info$analysis_label,
+      observer_code = info$observer_code, observer_class = info$observer_class,
+      vanbelle_label = info$vanbelle_label,
+      rep = rep, n_patients = nrow(Ym), R = R, S = S,
       missing_fraction = mean(is.na(Ym)), fits)
   }
 }
@@ -320,7 +360,8 @@ masked_join$err_F <- masked_join$kappa_F - masked_join$truth_F
 masked_join$err_C <- masked_join$kappa_C - masked_join$truth_C
 summarise_group <- function(g) {
   vals <- c("kappa_F", "kappa_C", "err_F", "err_C", "missing_fraction", "n_used")
-  out <- g[1L, c("analysis", "method", "R", "S")]
+  out <- g[1L, c("analysis", "analysis_label", "observer_code",
+                 "observer_class", "vanbelle_label", "method", "R", "S")]
   for (v in vals) {
     x <- as.numeric(g[[v]])
     ok <- !is.na(x)
