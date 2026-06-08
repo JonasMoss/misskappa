@@ -22,4 +22,9 @@ subjects, five raters, three categories (`1`--`3`), with some ratings missing
 \examples{
 kappa(dat.klein2018, estimator = "ipw")
 }
+\references{
+Klein, D. (2018). Implementing a general framework for assessing
+  interrater agreement in Stata. \emph{The Stata Journal}, 18(4), 871-901.
+  \doi{10.1177/1536867X1801800408}
+}
 \keyword{datasets}

@@ -37,6 +37,9 @@
 #' @format A 10 x 5 data frame; columns `rater1`--`rater5` hold category codes
 #'   `1`--`3`, with `NA` marking unobserved ratings.
 #' @source Carried over from the legacy `misskappa` package (Klein, 2018).
+#' @references Klein, D. (2018). Implementing a general framework for assessing
+#'   interrater agreement in Stata. \emph{The Stata Journal}, 18(4), 871-901.
+#'   \doi{10.1177/1536867X1801800408}
 #' @examples
 #' kappa(dat.klein2018, estimator = "ipw")
 #' @keywords datasets
