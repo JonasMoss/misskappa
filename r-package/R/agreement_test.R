@@ -94,11 +94,16 @@
 #' @return An `htest` object.
 #'
 #' @examples
-#' set.seed(1)
-#' x1 <- matrix(sample.int(4, 200 * 3, TRUE), 200, 3)
-#' x2 <- matrix(sample.int(4, 200 * 3, TRUE), 200, 3)
-#' kappa_test(g1 = kappa(x1, estimator = "ipw"),
-#'            g2 = kappa(x2, estimator = "ipw"),
+#' # Paired: are two rater pairs equally consistent on the same 50 subjects
+#' # (Zapf 2016)? The dependence is read from the per-subject influence
+#' # functions, so paired = TRUE (the default) is appropriate.
+#' kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
+#'            CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
+#'            coef = "Conger")
+#'
+#' # Independent samples (different subjects in two studies): variances add.
+#' kappa_test(gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
+#'            klein = kappa(dat.klein2018, estimator = "ipw"),
 #'            coef = "Conger", paired = FALSE)
 #'
 #' @export
@@ -125,6 +130,36 @@ kappa_test <- function(..., coef = "Conger", paired = TRUE, value = 0) {
 #'   Default `0`.
 #'
 #' @return An `htest` object.
+#'
+#' @examples
+#' # Do the three Holzinger-Swineford (1939) subscales have equal reliability?
+#' # The same students take all three, so the fits are paired (G-way, df = 2).
+#' subs <- list(visual  = c("x1", "x2", "x3"),
+#'              textual = c("x4", "x5", "x6"),
+#'              speed   = c("x7", "x8", "x9"))
+#' fits <- lapply(subs, function(v)
+#'   alpha(as.matrix(dat.holzinger1939[, v]), estimator = "nt_fiml"))
+#' do.call(alpha_test, c(fits, list(paired = TRUE)))
+#'
+#' @examplesIf requireNamespace("psych", quietly = TRUE)
+#' # Real missing data with groups: psych::bfi. The same 2800 respondents take
+#' # all five Big Five scales; reverse-key the negatively-worded items first.
+#' data(bfi, package = "psych")
+#' neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
+#' bfi[neg] <- 7 - bfi[neg]
+#'
+#' # Dependent: are Neuroticism and Extraversion equally reliable? The same
+#' # respondents answer both, so the estimates are paired.
+#' alpha_test(N = alpha(as.matrix(bfi[, paste0("N", 1:5)]), estimator = "nt_fiml"),
+#'            E = alpha(as.matrix(bfi[, paste0("E", 1:5)]), estimator = "nt_fiml"),
+#'            paired = TRUE)
+#'
+#' # Independent: is Conscientiousness equally reliable across the two genders?
+#' g <- split(seq_len(nrow(bfi)), bfi$gender)
+#' alpha_test(
+#'   men   = alpha(as.matrix(bfi[g[["1"]], paste0("C", 1:5)]), estimator = "nt_fiml"),
+#'   women = alpha(as.matrix(bfi[g[["2"]], paste0("C", 1:5)]), estimator = "nt_fiml"),
+#'   paired = FALSE)
 #'
 #' @export
 alpha_test <- function(..., paired = TRUE, value = 0) {
