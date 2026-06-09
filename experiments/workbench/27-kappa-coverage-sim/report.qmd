@@ -12,23 +12,40 @@ execute:
 ---
 
 ```{r setup}
-results_dir <- "results"
+pick_results_dir <- function() {
+  override <- Sys.getenv("KAPPA_RESULTS_DIR", unset = "")
+  if (nzchar(override)) return(override)
+
+  medium_dirs <- list.dirs("results", full.names = TRUE, recursive = FALSE)
+  medium_dirs <- medium_dirs[grepl("medium-", basename(medium_dirs))]
+  if (length(medium_dirs)) {
+    info <- file.info(file.path(medium_dirs, "summary.csv"))
+    medium_dirs <- medium_dirs[!is.na(info$mtime)]
+    if (length(medium_dirs)) return(medium_dirs[which.max(info$mtime)])
+  }
+  "results"
+}
+
+results_dir <- pick_results_dir()
 summary_path <- file.path(results_dir, "summary.csv")
-replicates_path <- file.path(results_dir, "replicates.csv")
 truth_path <- file.path(results_dir, "truth.csv")
 metadata_path <- file.path(results_dir, "metadata.csv")
+dgps_path <- file.path(results_dir, "dgps.csv")
+mechanisms_path <- file.path(results_dir, "mechanisms.csv")
 
 if (!file.exists(summary_path)) {
   stop(
-    "results/summary.csv not found. Run:\n",
+    "No summary.csv found. Run, for example:\n",
     "  Rscript run_experiment.R --small --progress\n",
-    "from experiments/workbench/27-kappa-coverage-sim first."
+    "or set KAPPA_RESULTS_DIR to a result directory before rendering."
   )
 }
 
 summary <- read.csv(summary_path, stringsAsFactors = FALSE)
 truth <- read.csv(truth_path, stringsAsFactors = FALSE)
 metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+dgps <- read.csv(dgps_path, stringsAsFactors = FALSE)
+mechanisms <- read.csv(mechanisms_path, stringsAsFactors = FALSE)
 meta <- setNames(metadata$value, metadata$key)
 
 fmt <- function(x, digits = 3) {
@@ -37,70 +54,275 @@ fmt <- function(x, digits = 3) {
 fmt_signed <- function(x, digits = 3) {
   ifelse(is.na(x), "", sprintf(paste0("%+.", digits, "f"), x))
 }
+fmt_int <- function(x) formatC(x, format = "d", big.mark = ",")
+
+method_label <- c(
+  ipw_nominal = "IPW",
+  cat_fiml_nominal = "Cat-FIML",
+  ipw_absolute = "IPW",
+  cat_fiml_absolute = "Cat-FIML",
+  ipw_quadratic = "IPW",
+  cat_fiml_quadratic = "Cat-FIML",
+  pairwise_quadratic = "Pairwise",
+  nt_fiml_quadratic = "NT-FIML"
+)
+
+summary$method_label <- unname(method_label[summary$method])
+summary$mechanism_family <- mechanisms$family[match(summary$mechanism, mechanisms$mechanism)]
+summary$abs_bias <- abs(summary$bias)
+
+coef_focus <- "Conger"
+conger <- subset(summary, coefficient == coef_focus)
 ```
 
 ## Question
 
-How do the current public kappa estimators behave for finite-sample MSE and
-Wald coverage under MCAR and clean MAR missingness? The estimator grid is IPW
-and categorical FIML for nominal, absolute, and quadratic loss, plus pairwise
-and normal-theory FIML for the quadratic scored coefficient.
+How do the current public kappa estimators behave for finite-sample MSE,
+standard-error calibration, and Wald coverage under MCAR and clean MAR
+missingness? The grid compares IPW and saturated categorical FIML for nominal,
+absolute, and quadratic loss, plus pairwise deletion and normal-theory FIML for
+the quadratic scored coefficient.
+
+## Run
+
+The report is reading `r results_dir`. Set `KAPPA_RESULTS_DIR` before rendering
+to inspect a different run.
+
+```{r run-summary}
+rep_path <- file.path(results_dir, "replicates.csv")
+replicate_rows <- if (file.exists(rep_path)) {
+  nrow(read.csv(rep_path, stringsAsFactors = FALSE))
+} else {
+  NA_integer_
+}
+
+run_tab <- data.frame(
+  Quantity = c(
+    "Replications per cell",
+    "Sample size",
+    "Truth sample size",
+    "DGPs",
+    "Missingness mechanisms",
+    "Estimator rows",
+    "Summary rows",
+    "Replicate rows",
+    "Failures",
+    "Elapsed minutes"
+  ),
+  Value = c(
+    meta[["reps"]],
+    meta[["n_grid"]],
+    meta[["truth_n"]],
+    meta[["dgps"]],
+    meta[["mechanisms"]],
+    meta[["methods"]],
+    fmt_int(nrow(summary)),
+    if (is.na(replicate_rows)) "not checked" else fmt_int(replicate_rows),
+    fmt_int(sum(summary$failures)),
+    fmt(as.numeric(meta[["elapsed_seconds"]]) / 60, 2)
+  ),
+  check.names = FALSE
+)
+knitr::kable(run_tab, align = "ll")
+```
+
+```{r dgp-table}
+dgp_tab <- dgps[, c("dgp", "C", "R", "support_size", "category_prob", "skill")]
+names(dgp_tab) <- c("DGP", "Categories", "Raters", "Full patterns",
+                    "Category probabilities", "Rater skills")
+knitr::kable(dgp_tab, align = "lrrrll")
+```
+
+The MAR mechanisms are all clean observed-data mechanisms. The anchor variants
+keep rater 1 observed and delete later raters as a function of that observed
+rating. The sequential mechanism deletes each later rater as a function of the
+previous observed rating or missingness status. The MCAR mechanisms include
+ordinary iid deletion, rater-heterogeneous deletion, and subject-clustered
+deletion.
 
 ## Short Answer
 
-This report is a workbench scaffold. Interpret only runs with enough
-replications for Monte Carlo error to be small. The current run used
-`r meta[["mode"]]` mode, `B = r meta[["reps"]]`, sample sizes
-`r meta[["n_grid"]]`, and DGPs `r meta[["dgps"]]`.
+At this pilot size, the qualitative pattern is coherent. Under MCAR the
+quadratic estimators mostly agree. Under MAR in the non-exchangeable and sparse
+DGPs, IPW and pairwise quadratic estimators show clear downward bias because
+they are MCAR estimators. Cat-FIML and NT-FIML largely remove that MAR bias in
+the four-category DGP. In the sparse five-category DGP, Cat-FIML still shows
+finite-sample downward bias, while NT-FIML performs well for the scored
+quadratic target.
 
-## Evidence
+Do not over-read exact coverage percentages from `B = r meta[["reps"]]`; one
+coverage step is `r fmt(1 / as.numeric(meta[["reps"]]), 2)`. The table is good
+for finding regimes to expand, not for final manuscript claims.
 
-```{r headline}
-headline <- subset(summary, coefficient == "Conger" &
-                     mechanism %in% c("mcar30", "mar_anchor30"))
-headline <- headline[order(headline$dgp, headline$mechanism,
-                           headline$weight_label, headline$method), ]
-headline <- head(headline, 48)
-tab <- data.frame(
-  DGP = headline$dgp,
-  Mechanism = headline$mechanism,
-  Method = headline$method,
-  Weight = headline$weight_label,
-  Truth = fmt(headline$truth, 3),
-  Bias = fmt_signed(headline$bias, 3),
-  RMSE = fmt(headline$rmse, 3),
-  `Mean SE` = fmt(headline$mean_se, 3),
-  `SE/SD` = fmt(headline$se_over_sd, 2),
-  Coverage = fmt(headline$coverage95, 2),
-  `Fisher Cov.` = fmt(headline$fisher_coverage95, 2),
-  `Valid` = headline$n_valid,
+## Quadratic Focus
+
+The clearest stress test is Conger's quadratic coefficient in `biased4` and
+`sparse5`. These rows compare the two MCAR routes (`IPW`, `Pairwise`) with the
+two likelihood routes (`Cat-FIML`, `NT-FIML`) under one MCAR mechanism and two
+MAR mechanisms.
+
+```{r quadratic-focus}
+quad <- subset(
+  conger,
+  weight_label == "quadratic" &
+    dgp %in% c("biased4", "sparse5") &
+    mechanism %in% c("mcar30", "mar_anchor30", "mar_shifted30")
+)
+quad$Method <- factor(
+  quad$method_label,
+  levels = c("Cat-FIML", "IPW", "NT-FIML", "Pairwise")
+)
+quad <- quad[order(quad$dgp, quad$mechanism, quad$Method), ]
+quad_tab <- data.frame(
+  DGP = quad$dgp,
+  Mechanism = quad$mechanism,
+  Method = as.character(quad$Method),
+  Bias = fmt_signed(quad$bias, 3),
+  RMSE = fmt(quad$rmse, 3),
+  `Mean SE` = fmt(quad$mean_se, 3),
+  Coverage = fmt(quad$coverage95, 2),
   check.names = FALSE
 )
-knitr::kable(tab, align = "llllrrrrrrr")
+knitr::kable(quad_tab, align = "lllrrrr")
 ```
 
-The full rectangular outputs are:
+The important contrast is not a tiny efficiency difference. It is that the
+MCAR estimators are stable under MCAR and biased under clean MAR. In `biased4`
+with shifted MAR, IPW and pairwise quadratic are around `-0.08` biased, while
+Cat-FIML and NT-FIML are near zero on the same target. In `sparse5`, Cat-FIML
+also improves over IPW and pairwise under MAR, but it retains noticeable
+downward finite-sample bias.
 
-- `results/truth.csv`
-- `results/replicates.csv`
-- `results/summary.csv`
-- `results/mechanisms.csv`
-- `results/dgps.csv`
-- `results/metadata.csv`
+## All-Loss Summary
+
+The next table averages the Conger summaries across all MCAR mechanisms and
+all MAR mechanisms. This is a compression of the full grid, intended to show
+which method classes are worth expanding.
+
+```{r family-summary}
+family_summary <- do.call(rbind, lapply(split(conger, interaction(
+  conger$dgp, conger$mechanism_family, conger$weight_label, conger$method,
+  drop = TRUE
+)), function(g) {
+  data.frame(
+    dgp = g$dgp[[1L]],
+    family = g$mechanism_family[[1L]],
+    weight = g$weight_label[[1L]],
+    method = g$method_label[[1L]],
+    mean_bias = mean(g$bias),
+    mean_abs_bias = mean(abs(g$bias)),
+    mean_rmse = mean(g$rmse),
+    mean_coverage = mean(g$coverage95),
+    stringsAsFactors = FALSE
+  )
+}))
+family_summary <- subset(family_summary, family %in% c("mcar", "mar"))
+family_summary <- family_summary[order(
+  family_summary$dgp, family_summary$family, family_summary$weight,
+  family_summary$method
+), ]
+
+family_tab <- data.frame(
+  DGP = family_summary$dgp,
+  Missingness = toupper(family_summary$family),
+  Weight = family_summary$weight,
+  Method = family_summary$method,
+  `Mean Bias` = fmt_signed(family_summary$mean_bias, 3),
+  `Mean |Bias|` = fmt(family_summary$mean_abs_bias, 3),
+  `Mean RMSE` = fmt(family_summary$mean_rmse, 3),
+  `Mean Coverage` = fmt(family_summary$mean_coverage, 2),
+  check.names = FALSE
+)
+knitr::kable(family_tab, align = "llllrrrr")
+```
+
+For `balanced4`, the MAR and MCAR averages are close because the rating model is
+exchangeable and mild. For `biased4`, the MAR averages separate: IPW and
+pairwise quadratic show larger absolute bias than the likelihood routes. For
+`sparse5`, Cat-FIML does not fully inherit the clean four-category FIML
+behavior, which is consistent with the known sparse-support finite-sample
+issue.
+
+## Worst Coverage Rows
+
+These are the lowest natural-scale Wald coverage rows for Conger. The same
+cells are usually the largest-bias cells, so undercoverage is mostly bias, not
+just a noisy SE estimate.
+
+```{r worst-coverage}
+worst <- conger[order(conger$coverage95, -conger$abs_bias), ]
+worst <- head(worst, 18)
+worst_tab <- data.frame(
+  DGP = worst$dgp,
+  Mechanism = worst$mechanism,
+  Weight = worst$weight_label,
+  Method = worst$method_label,
+  Bias = fmt_signed(worst$bias, 3),
+  RMSE = fmt(worst$rmse, 3),
+  `Mean SE` = fmt(worst$mean_se, 3),
+  Coverage = fmt(worst$coverage95, 2),
+  check.names = FALSE
+)
+knitr::kable(worst_tab, align = "llllrrrr")
+```
+
+## Runtime
+
+The sparse `5^5 = 3125` categorical FIML cells dominate the run. Shifted MAR is
+the slowest sparse mechanism because it combines an observed anchor with
+rater-specific observation shifts, producing a harder observed-pattern mix for
+the saturated EM.
+
+```{r runtime}
+runtime <- subset(summary, coefficient == "Conger")
+runtime <- do.call(rbind, lapply(split(runtime, interaction(
+  runtime$dgp, runtime$mechanism, runtime$method, drop = TRUE
+)), function(g) {
+  data.frame(
+    dgp = g$dgp[[1L]],
+    mechanism = g$mechanism[[1L]],
+    method = g$method_label[[1L]],
+    weight = g$weight_label[[1L]],
+    median_ms = median(g$median_elapsed_ms, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}))
+runtime <- runtime[order(-runtime$median_ms), ]
+runtime <- head(runtime, 18)
+runtime_tab <- data.frame(
+  DGP = runtime$dgp,
+  Mechanism = runtime$mechanism,
+  Weight = runtime$weight,
+  Method = runtime$method,
+  `Median Fit Time (ms)` = fmt(runtime$median_ms, 0),
+  check.names = FALSE
+)
+knitr::kable(runtime_tab, align = "llllr")
+```
 
 ## Caveats
 
-The smoke and small modes are for plumbing, signs, and crude ordering only.
-The big mode is a starting grid, not a final manuscript design. The sparse
-five-category DGP is intentionally included to expose finite-sample saturated
-FIML costs before expanding the grid.
+The run used only `B = r meta[["reps"]]` replications at one sample size. It is
+large enough to find regimes, but not large enough for final coverage
+statements. The next implementation improvement should be checkpointed
+per-cell writes, because one slow sparse cell currently holds the whole run in
+memory until the end. The next statistical pass should expand only the regimes
+that matter: MCAR calibration rows, biased-DGP MAR rows, and the sparse
+Cat-FIML finite-sample cells.
 
 ## Reproduce
 
 ```bash
 cd experiments/workbench/27-kappa-coverage-sim
-Rscript run_experiment.R --smoke --progress
-Rscript run_experiment.R --small --progress
-Rscript run_experiment.R --big --progress
-quarto render report.qmd
+
+Rscript run_experiment.R --big \
+  --reps 50 \
+  --n-grid 200 \
+  --truth-n 100000 \
+  --dgps balanced4,biased4,sparse5 \
+  --mechanisms mcar15,mcar30,mcar_rater30,mcar_subject30,mar_anchor15,mar_anchor30,mar_anchor_nonlinear30,mar_shifted30,mar_sequential30 \
+  --progress \
+  --out-dir results/medium-YYYYMMDD-HHMM
+
+KAPPA_RESULTS_DIR=results/medium-YYYYMMDD-HHMM quarto render report.qmd
 ```
