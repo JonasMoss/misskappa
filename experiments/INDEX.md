@@ -12,8 +12,8 @@ as the source of truth for canonical paths and maintenance status.
 - `archive/pre-redesign/` contains frozen records whose runners are not
   maintained against the current R API.
 
-Legacy root-level paths such as `experiments/studies/03-ac-vs-ipw-efficiency/` are
-README-only aliases. New references should use the canonical path.
+Always reference experiments by their canonical lifecycle path (the table
+below). There are no root-level alias directories.
 
 ## Catalog
 

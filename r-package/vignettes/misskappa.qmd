@@ -16,7 +16,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 Brennan–Prediger) and coefficient alpha when some ratings are **missing**, and
 attaches an asymptotic covariance matrix to every estimate so you get standard
 errors, confidence intervals, and equality tests for free. Each estimator is
-chosen with a single `estimator=` argument; you never have to remember a
+chosen with a single `estimator=` argument. You never have to remember a
 combination of `method` and `type` flags.
 
 ```{r}
@@ -26,8 +26,8 @@ library(misskappa)
 
 ## A first agreement coefficient
 
-`dat.gwet2014` is a small categorical rating matrix --- 20 subjects, five
-raters, four categories --- with some ratings missing (`NA`). The
+`dat.gwet2014` is a small categorical rating matrix (20 subjects, five
+raters, four categories) with some ratings missing (`NA`). The
 inverse-probability-weighted (IPW) estimator is consistent under
 missing-completely-at-random missingness:
 
@@ -46,8 +46,8 @@ sqrt(diag(vcov(fit)))
 
 ### Confidence intervals
 
-`confint()` gives natural-scale Wald intervals, or a variance-stabilising
-Fisher *z* interval that always stays inside `(-1, 1)` --- useful when a
+`confint()` gives natural-scale Wald intervals, or a variance-stabilizing
+Fisher *z* interval that always stays inside `(-1, 1)`, useful when a
 coefficient is close to the boundary:
 
 ```{r}
@@ -67,7 +67,7 @@ The right `estimator=` depends on the data and the missingness assumption:
 | Scored ratings (quadratic) | `"nt_fiml"` | Ignorable, normal-theory |
 
 The scored estimators treat the categories as numbers and use the quadratic
-loss; pass the scores directly, or integer codes together with `values`.
+loss. Pass the scores directly, or integer codes together with `values`.
 
 ```{r}
 kappa(dat.zapf2016, estimator = "pairwise")
@@ -99,9 +99,9 @@ sum(!complete.cases(neuroticism))      # respondents missing at least one item
 alpha(neuroticism, estimator = "nt_fiml")
 ```
 
-## Beyond pairwise: multirater and vector-valued agreement
+## Beyond pairwise: g-wise and vector-valued agreement
 
-The same `kappa()` reaches two generalizations. Set `g > 2` for *multirater*
+The same `kappa()` reaches two generalizations. Set `g > 2` for *g-wise*
 agreement, where the disagreement kernel compares `g` raters at once (`g = 2` is
 ordinary pairwise kappa):
 
@@ -111,22 +111,24 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 
 And when each rating is a *vector*, pass a subjects-by-raters-by-features array.
 `dat.vanbelle2019` holds 28 observers classifying crackles at six chest sites
-for 20 patients; a component loss (`weight`) measures vector disagreement:
+for 20 patients. A component loss (`weight`) measures vector disagreement:
 
 ```{r}
 kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 ```
 
-The [multirater and vector-valued agreement](articles/multirater-and-vector.html)
-article works both out in full.
+The [g-wise agreement](articles/gwise-agreement.html) article develops the
+multirater kernels in full. Vector-valued agreement is **frontier / experimental**
+ongoing research — see the
+[vector-valued agreement](articles/vector-valued-agreement.html) article.
 
 ## Testing whether coefficients are equal
 
 A common question is whether a coefficient is the *same* across two groups, two
 estimators, two timepoints, or several rater pairs. `kappa_test()` and
 `alpha_test()` answer it and return a standard `htest`. Use `paired = TRUE`
-(the default) when the fits share the same subjects --- the dependence is taken
-from the per-subject influence functions --- and `paired = FALSE` for
+(the default) when the fits share the same subjects (the dependence is taken
+from the per-subject influence functions) and `paired = FALSE` for
 independent samples.
 
 ```{r}

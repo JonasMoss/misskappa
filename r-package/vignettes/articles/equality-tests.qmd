@@ -7,17 +7,17 @@ title: "Testing Equality Of Agreement Coefficients"
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-Every `misskappa` estimate carries an asymptotic covariance matrix, and --- for
-the influence-function estimators --- a per-subject influence matrix `fit$psi`
+Every `misskappa` estimate carries an asymptotic covariance matrix, and (for
+the influence-function estimators) a per-subject influence matrix `fit$psi`
 satisfying `vcov == crossprod(psi) / n^2`. That is exactly what a Wald test of a
 linear hypothesis needs, so `kappa_test()` and `alpha_test()` can compare a
 coefficient across fits and return a standard `htest`. Only the way the
 covariance of the contrast is assembled changes between designs:
 
-* **one sample** --- the coefficient's own variance;
-* **independent samples** --- the per-fit variances add (block diagonal);
-* **paired / same-subject** --- the cross-fit dependence is read from the
-  stacked influence functions `fit$psi`.
+* **one sample**: the coefficient's own variance
+* **independent samples**: the per-fit variances add (block diagonal)
+* **paired / same-subject**: the cross-fit dependence is read from the
+  stacked influence functions `fit$psi`
 
 ```{r}
 #| message: false
@@ -35,7 +35,7 @@ kappa_test(kappa(dat.gwet2014, estimator = "ipw"), coef = "Conger", value = 0.5)
 
 ## Independent samples: two studies, different subjects
 
-When the fits come from disjoint sets of subjects, set `paired = FALSE`; the
+When the fits come from disjoint sets of subjects, set `paired = FALSE`. The
 variances add. Here the Conger coefficient is compared between the Gwet (2014)
 and Klein (2018) studies:
 
@@ -50,7 +50,7 @@ kappa_test(
 The same works for coefficient alpha, and `psych::bfi` makes the point on **real
 missing data**: 2800 respondents answer the 25-item Big Five inventory and about
 360 of them skip at least one item. We reverse-key the negatively-worded items
-and treat each five-item scale as a battery; the normal-theory FIML estimator
+and treat each five-item scale as a battery. The normal-theory FIML estimator
 handles the missing responses under ignorable missingness.
 
 ```{r}
@@ -79,8 +79,8 @@ are correlated and ignoring that dependence gives the wrong standard error.
 `paired = TRUE` (the default) takes the dependence from the influence functions.
 
 A clean illustration on **real missing data**: in `dat.mcduff2019`, MTurk judges
-rate smiling images on two attributes --- *smile presence* and *image
-positivity* --- but only about 4% of the item-by-judge grid is observed. Because
+rate smiling images on two attributes (*smile presence* and *image
+positivity*), but only about 4% of the item-by-judge grid is observed. Because
 both coefficients are estimated on the same items, the contrast is dependent.
 
 ```{r}
@@ -143,7 +143,7 @@ do.call(kappa_test, c(pair_fits, list(coef = "Conger", paired = TRUE)))
 ## Under the hood
 
 All four cases are built only on the exported `coef()`, `vcov()`, and `fit$psi`.
-If you need an arbitrary linear hypothesis --- general contrasts with non-zero
-margins across several fits --- the internal `joint_vcov()` and `wald_test()`
+If you need an arbitrary linear hypothesis (general contrasts with non-zero
+margins across several fits), the internal `joint_vcov()` and `wald_test()`
 provide the general engine that `kappa_test()` and `alpha_test()` are
 convenience wrappers around.

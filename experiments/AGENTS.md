@@ -31,8 +31,7 @@ The canonical experiment tree is organized by longevity promise:
 - `archive/pre-redesign/` — frozen records whose runners are not maintained
   against the current R API.
 
-Root-level `experiments/NN-slug/` directories are compatibility landing pages
-only. New references should use the canonical lifecycle path listed in
+Reference experiments by their canonical lifecycle path, listed in
 `experiments/INDEX.md`.
 
 ## Directory shape
@@ -74,8 +73,7 @@ experiments/<lifecycle>/
 Required files: `report.qmd`, `run_experiment.R`, `.gitignore`, and
 `results/.gitignore`. Do not add a per-experiment `README.md` — the
 report is the readable document and `Rscript run_experiment.R --help`
-is the command reference. The exception is root-level legacy stubs, which
-contain only a `README.md` pointing to the canonical path.
+is the command reference.
 
 ## Runners
 

@@ -7,6 +7,7 @@
 # misskappa
 
 [![CI](https://github.com/JonasMoss/misskappa/actions/workflows/ci.yml/badge.svg)](https://github.com/JonasMoss/misskappa/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/JonasMoss/misskappa/graph/badge.svg)](https://codecov.io/gh/JonasMoss/misskappa)
 ![Code: MIT](https://img.shields.io/badge/code-MIT-blue)
 ![Papers: CC BY 4.0](https://img.shields.io/badge/papers-CC_BY_4.0-lightgrey)
 ![missing data: handled](https://img.shields.io/badge/missing%20data-handled%20%F0%9F%98%8E-success)
@@ -14,7 +15,7 @@
 A C++17 library and R package for weighted agreement coefficients with any number of raters,
 arbitrary pairwise loss matrices, and support for missing ratings.
 
-We support weighted variants of Cohen’s kappa ([1960](https://doi.org/10.1177/001316446002000104), [1968](https://doi.org/10.1037/h0026256)), its multirater variant Conger’s kappa ([1980](https://doi.org/10.1037/0033-2909.88.2.322)) Fleiss’ kappa ([1971](https://doi.org/10.1037/h0031619)) and the Brennan–Prediger coefficient ([1981](https://doi.org/10.1177/001316448104100307)).
+We support weighted variants of Cohen’s kappa ([1960](https://doi.org/10.1177/001316446002000104), [1968](https://doi.org/10.1037/h0026256)), its multirater variant Conger’s kappa ([1980](https://doi.org/10.1037/0033-2909.88.2.322)), Fleiss’ kappa ([1971](https://doi.org/10.1037/h0031619)), and the Brennan–Prediger coefficient ([1981](https://doi.org/10.1177/001316448104100307)).
 
 Missing data is handled by several estimators. For categorical data, `Cat-FIML` is efficient under MAR and MCAR assumptions. For quadratic weights, pairwise is consistent under MCAR, while robust `NT-FIML` ([Yuan & Bentler, 2000](https://doi.org/10.1111/0081-1750.00078)) is consistent under MCAR and efficient under MCAR and MAR under normality. For general weights and arbitrary data, IPW is consistent under MCAR.
 
@@ -50,22 +51,24 @@ kappa(dat.klein2018, estimator = "ipw")
 #> Brennan-Prediger   0.4204 0.1136 0.1978 0.6430
 ```
 
-The same `kappa()` also handles *multirater* kernels (`g > 2`) and
-*vector-valued* ratings. `dat.vanbelle2019` records 28 observers classifying
-crackles at six chest sites for 20 patients ([Vanbelle,
-2019](https://doi.org/10.1177/0962280218794733)); each rating is a six-vector,
-and a component loss measures agreement across the four expert observers:
+The same `kappa()` also handles *g-wise* kernels, where the disagreement
+function compares `g > 2` raters at once instead of averaging over pairs:
 
 ``` r
-kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
-#> misskappa: estimator=ipw, weight=hamming
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+#> misskappa: estimator=ipw, weight=nominal, g=3
 #>        estimate     se  lower  upper
-#> Conger   0.5192 0.0794 0.3635 0.6748
-#> Fleiss   0.5150 0.0813 0.3557 0.6743
+#> Conger   0.4369 0.0850 0.2703 0.6034
+#> Fleiss   0.4308 0.0861 0.2620 0.5997
 ```
 
+It additionally has *frontier / experimental* support for **vector-valued**
+ratings (each rating a vector, with component-separable feature weights); this is
+ongoing research and the supporting paper is still in preparation. See the
+[vector-valued agreement article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html).
+
 Coefficient alpha under missing data, on the Neuroticism items of
-[`psych::bfi`](https://CRAN.R-project.org/package=psych) — 2800 respondents
+[`psych::bfi`](https://CRAN.R-project.org/package=psych), 2800 respondents
 from the [SAPA project](https://www.sapa-project.org/) ([Revelle, Wilt &
 Rosenthal, 2010](https://doi.org/10.1007/978-1-4419-1210-7_2)), 106 with at
 least one missing answer. Robust normal-theory FIML uses every respondent:
@@ -108,18 +111,19 @@ The [package website](https://jonasmoss.github.io/misskappa/) has the full
 reference and the worked-example articles:
 
 - [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html)
-- [Multirater and vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/multirater-and-vector.html)
+- [g-wise agreement](https://jonasmoss.github.io/misskappa/articles/gwise-agreement.html)
 - [Agreement coefficients and loss matrices](https://jonasmoss.github.io/misskappa/articles/agreement-coefficients.html)
 - [Missingness and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
 - [Testing equality of agreement coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
 - [Validation strategy](https://jonasmoss.github.io/misskappa/articles/validation.html)
+- [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(frontier / experimental)*
 - [C++ API reference](https://jonasmoss.github.io/misskappa/cpp/)
 
 ## Contents
 
 - **C++17 library** in `include/misskappa/` and `src/`
 - **R package** in `r-package/`, wrapping the library via Rcpp
-- **Manuscripts** in `papers/` --- the completed papers accompanying this package
+- **Manuscripts** in `papers/`, the completed papers accompanying this package
 
 ## Quick build
 

@@ -1,0 +1,138 @@
+---
+title: "g-wise Agreement"
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+#| message: false
+library(misskappa)
+```
+
+Conger's and Fleiss' kappa are already *multirater* coefficients: with more than
+two raters they average a **pairwise** disagreement kernel over every rater pair
+and correct it against a pairwise chance baseline. So "many raters" by itself is
+not a new construction — it is what the pairwise estimators in the
+[getting-started vignette](../misskappa.html) already do.
+
+The genuine generalization is to let the disagreement kernel look at **more than
+two raters at once**. This is *g-wise* agreement: the kernel is a symmetric
+function of `g` ratings, and `g` — its *arity* — is the new knob. The default
+`g = 2` recovers ordinary pairwise kappa; `g > 2` measures how often a whole
+group of `g` raters fails to coincide, which a sequence of pairwise comparisons
+cannot express. The kernels come from the Fréchet / Hubert multirater family
+[Hubert 1977; Moss 2024].
+
+## A first g-wise coefficient
+
+```{r}
+# Pairwise (g = 2) versus triple-wise (g = 3) nominal agreement on the
+# Gwet (2014) categorical data (five raters, some ratings missing).
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal")
+kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+```
+
+The `g = 3` coefficient is not a reweighting of the pairwise one; it asks a
+strictly harder question (do three raters coincide, not just two), so it is a
+different estimand with its own standard error.
+
+## Mathematical description
+
+Fix a symmetric `g`-rater disagreement kernel $d(x_{1},\ldots,x_{g}) \ge 0$ that
+vanishes when all `g` arguments are equal. For a subject with $R$ raters, the
+**observed** disagreement averages this kernel over the $\binom{R}{g}$
+within-subject rater combinations,
+
+$$
+D_{d} \;=\; \binom{R}{g}^{-1} \sum_{j_{1}<\cdots<j_{g}}
+            d\!\left(X_{j_{1}},\ldots,X_{j_{g}}\right).
+$$
+
+Chance correction replaces the *within-subject* raters by raters drawn from
+*independent* subjects, which removes any real agreement and leaves only what the
+rater margins produce by coincidence. The Conger-type baseline keeps the raters
+distinct,
+
+$$
+C_{d} \;=\; \binom{R}{g}^{-1} \sum_{j_{1}<\cdots<j_{g}}
+            \mathbb{E}\, d\!\left(X_{j_{1}}^{(1)},\ldots,X_{j_{g}}^{(g)}\right),
+$$
+
+with each $X^{(t)}$ from an independent copy of the subject; the Fleiss-type
+baseline instead pools the rater margins, averaging over all $R^{g}$ ordered
+rater tuples. The two coefficients are then
+
+$$
+\kappa_{d} \;=\; 1 - \frac{D_{d}}{C_{d}}, \qquad
+\pi_{d} \;=\; 1 - \frac{D_{d}}{F_{d}},
+$$
+
+the Conger ($\kappa_d$) and Fleiss ($\pi_d$) g-wise coefficients reported above.
+For $g = 2$ these are exactly Conger's and Fleiss' kappa.
+
+The kernels themselves are **Fréchet variances** [Moss 2024]. Given a scalar loss
+$l(\mu, x)$, the Fréchet variance of a configuration is the minimal average loss to
+a common point,
+
+$$
+V(l)\!\left[x_{1},\ldots,x_{g}\right]
+  \;=\; \min_{\mu}\; \frac{1}{g}\sum_{t=1}^{g} l\!\left(\mu, x_{t}\right),
+$$
+
+and taking $d = V(l)$ supplies a symmetric multirater kernel for any $l$. With
+$g = 2$ this is half the pairwise loss, so the construction is a genuine
+extension of the loss-matrix picture in the
+[agreement-coefficients article](agreement-coefficients.html). Nominal and
+absolute losses give the `"nominal"` and `"linear"` kernels; the all-raters-equal
+kernel of Hubert (1977) is exposed as `"hubert"`.
+
+## Estimators and weights
+
+The estimator menu carries over from the pairwise case. `"ipw"` reweights for
+missing entries under MCAR, `"cat_fiml"` is the saturated-multinomial FIML for
+categorical ratings under ignorable missingness, and `"pairwise"` is the
+complete-data estimator (it errors if any rating is missing). For `g > 2` the
+supported `weight`s are `"nominal"`, `"linear"`, and `"hubert"` (the
+all-raters-equal kernel, defined only for `g > 2`).
+
+## Quadratic weighting is g-invariant
+
+Quadratic (squared-error) disagreement is special: it decomposes into pairwise
+terms, so the combinatorial constant cancels in the kappa ratio and the g-wise
+coefficient equals the pairwise one for *every* `g`. `kappa()` exploits this —
+with `weight = "quadratic"` the `g` argument is ignored and the cheap closed form
+is used instead of the $g^{\text{th}}$-order enumeration.
+
+```{r}
+g2 <- coef(kappa(dat.gwet2014, estimator = "pairwise", weight = "quadratic"))
+g4 <- coef(kappa(dat.gwet2014, estimator = "pairwise", weight = "quadratic", g = 4))
+rbind(g2 = g2, g4 = g4)
+```
+
+Because the quadratic coefficient is a smooth functional of the rater means and
+covariance, it also admits the normal-theory FIML estimator
+(`estimator = "nt_fiml"`) under ignorable missingness, exactly as in the scalar
+pairwise case — there is no separate g-wise machinery to invoke.
+
+## References
+
+Berry, K. J., Johnston, J. E., & Mielke, P. W. (2008). Weighted kappa for
+multiple raters. *Perceptual and Motor Skills*, 107(3), 837–848.
+
+Conger, A. J. (1980). Integration and generalization of kappas for multiple
+raters. *Psychological Bulletin*, 88(2), 322–328.
+
+Hubert, L. (1977). Kappa revisited. *Psychological Bulletin*, 84(2), 289–297.
+
+Janson, H., & Olsson, U. (2001). A measure of agreement for interval or nominal
+multivariate observations. *Educational and Psychological Measurement*, 61(2),
+277–289.
+
+Mielke, P. W., Berry, K. J., & Johnston, J. E. (2007). The exact variance of
+weighted kappa with multiple raters. *Psychological Reports*, 101(2), 655–660.
+
+Moss, J. (2024). Measures of agreement with multiple raters: Fréchet variances
+and inference. *Psychometrika*. <https://doi.org/10.1007/s11336-023-09945-2>
