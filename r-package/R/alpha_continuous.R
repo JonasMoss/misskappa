@@ -185,9 +185,9 @@
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance. Additional fields: `moments`
-#'   (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag).
-#'   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
-#'   `influence`.
+#'   (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag) and
+#'   `psi` (per-subject influence-function rows). Methods: `print`, `coef`,
+#'   `vcov`, `confint`, and `as.data.frame`.
 #'
 #' @references
 #' Zhang, Z., & Yuan, K.-H. (2016). Robust coefficients alpha and omega and

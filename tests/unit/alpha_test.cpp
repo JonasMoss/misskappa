@@ -183,6 +183,7 @@ TEST_CASE("estimate_alpha_fiml: missing categorical fixture is finite") {
 
   CHECK(std::isfinite(av->estimates(0)));
   CHECK(std::isfinite(ml->estimates(0)));
+  CHECK(std::abs(ml->estimates(0) - 0.89690721644) < 1e-8);
   CHECK(av->vcov(0, 0) >= -1e-12);
   CHECK(ml->vcov(0, 0) >= -1e-12);
   check_influence_reconstructs_vcov(*av, static_cast<int>(x.rows()));

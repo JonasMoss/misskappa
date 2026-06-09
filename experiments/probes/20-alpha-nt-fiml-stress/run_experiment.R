@@ -411,7 +411,7 @@ se_from_fit <- function(fit) {
 }
 
 fit_pairwise <- function(X) {
-  fit <- misskappa::alpha(X, method = "available")
+  fit <- misskappa::alpha(X, estimator = "pairwise")
   list(estimate = as.numeric(stats::coef(fit)[["alpha"]]),
        se = se_from_fit(fit), iter = NA_integer_)
 }
@@ -419,7 +419,7 @@ fit_pairwise <- function(X) {
 fit_cat_fiml <- function(X) {
   fit <- misskappa::alpha(
     X,
-    method = "fiml",
+    estimator = "cat_fiml",
     em_options = list(
       tol = 1e-7,
       max_iter = 20000L,
@@ -434,9 +434,9 @@ fit_cat_fiml <- function(X) {
 
 fit_normal_fiml <- function(X) {
   X_num <- matrix(as.numeric(X), nrow = nrow(X), ncol = ncol(X))
-  fit <- misskappa::alpha_continuous(
+  fit <- misskappa::alpha(
     X_num,
-    se_type = "sandwich",
+    estimator = "nt_fiml",
     em_options = list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5)
   )
   list(
@@ -449,7 +449,7 @@ fit_normal_fiml <- function(X) {
 fit_listwise <- function(X) {
   cc <- stats::complete.cases(X)
   if (sum(cc) < ncol(X)) stop("too few complete rows for listwise alpha.")
-  fit <- misskappa::alpha(X[cc, , drop = FALSE], method = "available")
+  fit <- misskappa::alpha(X[cc, , drop = FALSE], estimator = "pairwise")
   list(estimate = as.numeric(stats::coef(fit)[["alpha"]]),
        se = se_from_fit(fit), iter = NA_integer_)
 }

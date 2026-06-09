@@ -1,4 +1,4 @@
-test_that("influence() returns the per-subject IF for categorical raw fits", {
+test_that("fit$psi returns the per-subject IF for categorical raw fits", {
   set.seed(1)
   n <- 200L
   R <- 4L
@@ -42,7 +42,7 @@ test_that("vcov = (1 / n^2) crossprod(psi) to floating-point noise", {
   }
 })
 
-test_that("influence() returns per-subject IFs for FIML fits", {
+test_that("fit$psi returns per-subject IFs for FIML fits", {
   x <- matrix(
     c(
       1, 1, 1,
@@ -68,7 +68,7 @@ test_that("influence() returns per-subject IFs for FIML fits", {
                tolerance = 1e-10)
 })
 
-test_that("influence() returns per-subject IFs for counts, continuous, and g-wise fits", {
+test_that("fit$psi returns per-subject IFs for counts, continuous, and g-wise fits", {
   counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
   storage.mode(counts) <- "integer"
   fit_counts <- kappa_counts(counts, estimator = "pairwise")
@@ -90,7 +90,7 @@ test_that("influence() returns per-subject IFs for counts, continuous, and g-wis
   expect_equal(dim(psi_gwise), c(3L, 2L))
 })
 
-test_that("influence() returns per-subject IFs for FIML counts fits", {
+test_that("fit$psi returns per-subject IFs for FIML counts fits", {
   counts <- matrix(
     c(
       3, 1, 0,
@@ -112,7 +112,7 @@ test_that("influence() returns per-subject IFs for FIML counts fits", {
                tolerance = 1e-10)
 })
 
-test_that("influence() returns per-subject IFs for quadratic fits", {
+test_that("fit$psi returns per-subject IFs for quadratic fits", {
   x <- matrix(
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),
     nrow = 10, byrow = TRUE

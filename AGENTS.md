@@ -149,9 +149,10 @@ tests deferred):
   The two FIMLs are named distinctly (`cat_fiml` = saturated multinomial,
   `nt_fiml` = robust normal-theory) so one token never denotes two estimators;
   the unweighted loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
-- S3 generics on `misskappa_estimate`: `print`, `coef`, `vcov`, `as.data.frame`,
+- S3 methods on `misskappa_estimate`: `print`, `coef`, `vcov`, `as.data.frame`,
   `confint` (Wald CIs from `vcov`; `transform = "fisher"` gives a delta-method
-  interval on the `atanh` scale), `influence` (per-subject IFs).
+  interval on the `atanh` scale). Per-subject influence-function rows are
+  carried as `fit$psi`; do not expose them through `stats::influence()`.
 - `sim` — a list of simulation closures (`sim$mcar`, `sim$mar_truth`,
   `sim$jsm`). Exposed as a single object so simulation helpers occupy one
   manual entry rather than many.
@@ -167,8 +168,8 @@ g-wise agreement (`kappa_gwise()`) — plus the inference engine `joint_vcov()` 
 dependent/paired case) and the closed-form `kappa_quadratic()`. A `t.test`-style
 `kappa_test()` / `alpha_test()` front door over that engine is the natural next
 addition: one-sample and independent two-sample work for every estimator, and —
-now that `se_type = "normal"` is gone and every estimator exposes influence
-functions — paired works for every estimator too.
+now that `se_type = "normal"` is gone and every estimator carries `fit$psi`
+influence rows — paired works for every estimator too.
 
 ## Namespace layout
 

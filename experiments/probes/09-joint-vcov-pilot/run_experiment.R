@@ -220,7 +220,7 @@ run_uc1 <- function() {
                    silent = TRUE)
         if (inherits(fit, "try-error")) { failed <- TRUE; break }
         point[p_idx] <- as.numeric(coef(fit)[["Conger"]])
-        psi_cols[[p_idx]] <- stats::influence(fit)[, "Conger"]
+        psi_cols[[p_idx]] <- fit$psi[, "Conger"]
       }
       if (failed || !all(is.finite(point))) next
 

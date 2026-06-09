@@ -313,15 +313,20 @@ observed_category_count <- function(x) length(unique(as.vector(x[!is.na(x)])))
 fit_alpha <- function(x, method) {
   start <- proc.time()[["elapsed"]]
   tryCatch({
+    estimator <- switch(method,
+      available = "pairwise",
+      fiml = "cat_fiml",
+      stop("Unknown alpha method: ", method, call. = FALSE)
+    )
     fit <- misskappa::alpha(
       x,
-      method = method,
+      estimator = estimator,
       values = NULL,
       em_options = if (method == "fiml") em_options else list()
     )
     elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
     vc <- stats::vcov(fit)
-    psi <- stats::influence(fit)
+    psi <- fit$psi
     psi_vcov_max_abs_error <- NA_real_
     if (length(psi) > 0L && nrow(psi) > 0L) {
       psi_vc <- crossprod(psi) / (nrow(psi)^2)

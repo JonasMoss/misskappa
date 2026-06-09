@@ -58,8 +58,8 @@ worst_fiml <- if (nrow(fiml_rows)) {
 
 ## Question
 
-Against fixed population alpha truths, how do `alpha(method =
-"available")` and saturated categorical `alpha(method = "fiml")` behave
+Against fixed population alpha truths, how do `alpha(estimator =
+"pairwise")` and saturated categorical `alpha(estimator = "cat_fiml")` behave
 under complete data, MCAR missingness, and an ignorable anchor-item MAR
 mechanism across small `C x R x n` grids?
 

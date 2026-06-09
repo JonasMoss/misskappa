@@ -80,7 +80,7 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       mis-dispatch as an S3 method. One-sample (`theta = theta0`) and
       independent two-sample (variances add) work for any estimator;
       paired/dependent needs stacked IFs via `joint_vcov()` and works for any
-      fit whose `influence()` is non-NULL. Same-data method/weight/coefficient
+      fit whose `fit$psi` is non-NULL. Same-data method/weight/coefficient
       contrasts stay `wald_test()` territory. Exploratory runners:
       `experiments/studies/24-alpha-equal-cocron/`, `experiments/studies/25-kappa-equal-examples/`.
 - [ ] **Measure alpha FIML feasibility before expanding scope.**
@@ -174,10 +174,9 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       follow-ups.
 - [x] **Settle the inference-surface policy.**
       `misskappa_estimate` now has a consistent R-facing inference contract:
-      all estimators with subject-level influence rows expose them through
-      `influence()` for `joint_vcov()` and multi-fit `wald_test()`, while
-      closed-form quadratic estimators intentionally return `NULL` because
-      their covariance is built at the reduced moment-summary level.
+      all estimators with subject-level influence rows carry them in `fit$psi`
+      for `joint_vcov()` and multi-fit `wald_test()`, without registering a
+      `stats::influence()` method.
 - [x] **Expose influence functions for FIML estimators.**
       Raw FIML and counts-format FIML now return per-subject influence
       functions from the same reduced observed-score / Louis-information
