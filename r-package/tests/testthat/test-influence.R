@@ -16,6 +16,34 @@ test_that("fit$psi returns the per-subject IF for categorical raw fits", {
   }
 })
 
+test_that("stats::influence() returns the stored psi matrix", {
+  x <- matrix(
+    c(
+      1, 1, 1,
+      2, 2, NA,
+      3, 3, 3,
+      1, 1, 2,
+      NA, 3, 2,
+      3, 2, 3,
+      1, 2, 1,
+      2, 2, 3,
+      3, 3, 3,
+      1, 1, 1,
+      2, 1, 2,
+      3, 3, 2
+    ),
+    nrow = 12, byrow = TRUE
+  )
+  storage.mode(x) <- "integer"
+
+  fit <- kappa(x, estimator = "cat_fiml", weight = "quadratic")
+  psi <- stats::influence(fit)
+
+  expect_equal(psi, fit$psi)
+  expect_equal(unname(crossprod(psi) / nrow(psi)^2), unname(vcov(fit)),
+               tolerance = 1e-10)
+})
+
 test_that("vcov = (1 / n^2) crossprod(psi) to floating-point noise", {
   set.seed(2)
   n <- 300L

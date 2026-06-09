@@ -31,8 +31,9 @@ any subset.}
 \value{
 An object of class `misskappa_estimate` carrying one coefficient
   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
-  `coef`, `vcov`, `confint`, `as.data.frame`. The object also carries a
-  `psi` component (the n-by-1 matrix of per-subject influence functions).
+  `coef`, `vcov`, `confint`, `as.data.frame`, and `stats::influence`.
+  The object also carries a `psi` component (the n-by-1 matrix of
+  per-subject influence functions).
 }
 \description{
 Estimates Cronbach's coefficient alpha for a subjects-by-items matrix of

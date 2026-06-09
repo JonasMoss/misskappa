@@ -175,8 +175,9 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 - [x] **Settle the inference-surface policy.**
       `misskappa_estimate` now has a consistent R-facing inference contract:
       all estimators with subject-level influence rows carry them in `fit$psi`
-      for `joint_vcov()` and multi-fit `wald_test()`, without registering a
-      `stats::influence()` method.
+      for `joint_vcov()` and multi-fit `wald_test()`, and
+      `stats::influence(fit)` is registered as the public S3 accessor for the
+      same matrix.
 - [x] **Expose influence functions for FIML estimators.**
       Raw FIML and counts-format FIML now return per-subject influence
       functions from the same reduced observed-score / Louis-information

@@ -151,8 +151,8 @@ tests deferred):
   the unweighted loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
 - S3 methods on `misskappa_estimate`: `print`, `coef`, `vcov`, `as.data.frame`,
   `confint` (Wald CIs from `vcov`; `transform = "fisher"` gives a delta-method
-  interval on the `atanh` scale). Per-subject influence-function rows are
-  carried as `fit$psi`; do not expose them through `stats::influence()`.
+  interval on the `atanh` scale), and `stats::influence` (returns the
+  per-subject influence-function rows stored as `fit$psi`).
 - `sim` — a list of simulation closures (`sim$mcar`, `sim$mar_truth`,
   `sim$jsm`). Exposed as a single object so simulation helpers occupy one
   manual entry rather than many.

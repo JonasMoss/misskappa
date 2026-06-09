@@ -31,10 +31,11 @@ through internal entry points but are no longer exported.
 
 ## Inference
 
-* `coef()`, `vcov()`, `confint()`, `print()`, and `as.data.frame()` methods on
-  `misskappa_estimate`. Per-subject influence functions are exposed as the
-  documented `fit$psi` component (an n-by-K matrix satisfying
-  `vcov == crossprod(psi) / n^2`) rather than via an `influence()` method.
+* `coef()`, `vcov()`, `confint()`, `print()`, `as.data.frame()`, and
+  `stats::influence()` methods on `misskappa_estimate`. Per-subject influence
+  functions are stored as the documented `fit$psi` component and returned by
+  `stats::influence(fit)` (an n-by-K matrix satisfying
+  `vcov == crossprod(psi) / n^2`).
 * `confint(transform = "fisher")` returns a delta-method Wald interval on the
   Fisher `atanh` scale, back-transformed with `tanh` (stays within
   (-1, 1); better small-sample coverage near the upper boundary). `print()`

@@ -56,10 +56,11 @@ number of chance tuples enumerated) for `g > 2`.}
 \value{
 An object of class `misskappa_estimate` carrying the named
   coefficient estimates and their asymptotic covariance matrix. Methods:
-  `print`, `coef`, `vcov`, `confint`, `as.data.frame`. The object also
-  carries a `psi` component --- the n-by-K matrix of per-subject influence
-  functions, satisfying `vcov == crossprod(psi) / n^2` --- for power users
-  who want to build their own contrasts or joint tests.
+  `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
+  `stats::influence`. The object also carries a `psi` component --- the
+  n-by-K matrix of per-subject influence functions, satisfying
+  `vcov == crossprod(psi) / n^2` --- for power users who want to build
+  their own contrasts or joint tests.
 }
 \description{
 Estimates Conger / Fleiss / Brennan-Prediger weighted agreement

@@ -82,8 +82,9 @@
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
-#'   `coef`, `vcov`, `confint`, `as.data.frame`. The object also carries a
-#'   `psi` component (the n-by-1 matrix of per-subject influence functions).
+#'   `coef`, `vcov`, `confint`, `as.data.frame`, and `stats::influence`.
+#'   The object also carries a `psi` component (the n-by-1 matrix of
+#'   per-subject influence functions).
 #'
 #' @examples
 #' # Continuous item battery: the textual subscale of the Holzinger-Swineford
@@ -277,10 +278,11 @@ estimate_kappa_raw <- function(x,
 #'
 #' @return An object of class `misskappa_estimate` carrying the named
 #'   coefficient estimates and their asymptotic covariance matrix. Methods:
-#'   `print`, `coef`, `vcov`, `confint`, `as.data.frame`. The object also
-#'   carries a `psi` component --- the n-by-K matrix of per-subject influence
-#'   functions, satisfying `vcov == crossprod(psi) / n^2` --- for power users
-#'   who want to build their own contrasts or joint tests.
+#'   `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
+#'   `stats::influence`. The object also carries a `psi` component --- the
+#'   n-by-K matrix of per-subject influence functions, satisfying
+#'   `vcov == crossprod(psi) / n^2` --- for power users who want to build
+#'   their own contrasts or joint tests.
 #'
 #' @examples
 #' # Categorical ratings with missing entries (Gwet 2014): the
@@ -624,7 +626,8 @@ kappa_quadratic <- function(x, values) {
 #'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
-#'   `Brennan-Prediger` coefficients and the 2x2 vcov.
+#'   `Brennan-Prediger` coefficients, the 2x2 vcov, a `psi` component, and
+#'   the registered `stats::influence` method.
 #'
 #' @examples
 #' # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,

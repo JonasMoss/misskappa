@@ -18,9 +18,9 @@ and `fd_h` (finite-difference step for the information matrix, default
 \value{
 An object of class `misskappa_estimate` carrying one coefficient
   named `alpha` and its asymptotic covariance. Additional fields: `moments`
-  (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag).
-  Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
-  `influence`.
+  (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag) and
+  `psi` (per-subject influence-function rows). Methods: `print`, `coef`,
+  `vcov`, `confint`, `as.data.frame`, and `stats::influence`.
 }
 \description{
 Backend for `alpha(estimator = "nt_fiml")`. Estimates Cronbach's
