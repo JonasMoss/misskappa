@@ -35,12 +35,13 @@ usage <- function(status = 0L) {
     "  --methods CSV       Method ids.\n",
     "  --seed-base N       Base seed. Default: 272700.\n",
     "  --out-dir PATH      Output directory. Default: script-local results/.\n",
+    "  --resume            Reuse existing per-cell checkpoints in --out-dir.\n",
     "  --progress          Print one line per design cell.\n",
     "  --help, -h          Show this help and exit.\n\n",
     "Examples:\n",
     "  Rscript run_experiment.R --smoke --progress\n",
     "  Rscript run_experiment.R --small --progress\n",
-    "  Rscript run_experiment.R --big --reps 1000 --progress\n",
+    "  Rscript run_experiment.R --big --reps 1000 --resume --progress\n",
     "  Rscript run_experiment.R --big --methods cat_fiml_quadratic,cat_fiml_jk5_quadratic --progress\n"
   ))
   quit(save = "no", status = status)
@@ -120,6 +121,7 @@ parse_args <- function(argv) {
   opts$seed_base <- 272700L
   opts$out_dir <- file.path(script_dir, "results")
   opts$progress <- FALSE
+  opts$resume <- FALSE
 
   i <- 1L
   while (i <= length(argv)) {
@@ -131,6 +133,11 @@ parse_args <- function(argv) {
     }
     if (arg == "--progress") {
       opts$progress <- TRUE
+      i <- i + 1L
+      next
+    }
+    if (arg == "--resume") {
+      opts$resume <- TRUE
       i <- i + 1L
       next
     }
@@ -606,6 +613,27 @@ log_progress <- function(...) {
   if (opts$progress) message(format(Sys.time(), "%H:%M:%S"), " ", sprintf(...))
 }
 
+write_csv_atomic <- function(x, path) {
+  tmp <- paste0(path, ".tmp")
+  write.csv(x, tmp, row.names = FALSE)
+  if (file.exists(path)) unlink(path)
+  ok <- file.rename(tmp, path)
+  if (!ok) stop("Failed to move temporary file into place: ", path, call. = FALSE)
+}
+
+checkpoint_file <- function(cell, grid, dir) {
+  file.path(
+    dir,
+    sprintf(
+      "cell-%03d-%s-%s-n%d.csv",
+      cell,
+      grid$dgp[[cell]],
+      grid$mechanism[[cell]],
+      grid$n[[cell]]
+    )
+  )
+}
+
 truth_rows <- do.call(rbind, lapply(seq_along(opts$dgps), function(i) {
   spec <- dgp_defs[[opts$dgps[[i]]]]
   truth_for_dgp(spec, opts$seed_base + 900000L + i, opts$truth_n)
@@ -618,66 +646,7 @@ grid <- expand.grid(
   stringsAsFactors = FALSE
 )
 grid <- grid[order(grid$dgp, grid$mechanism, grid$n), , drop = FALSE]
-
-rep_rows <- list()
-t0 <- Sys.time()
-for (cell in seq_len(nrow(grid))) {
-  spec <- dgp_defs[[grid$dgp[[cell]]]]
-  log_progress(
-    "cell %d/%d: %s %s n=%d reps=%d",
-    cell, nrow(grid), grid$dgp[[cell]], grid$mechanism[[cell]],
-    grid$n[[cell]], opts$reps
-  )
-  for (rep_id in seq_len(opts$reps)) {
-    seed <- opts$seed_base + 1000000L * cell + rep_id
-    set.seed(seed)
-    X_star <- simulate_ratings(grid$n[[cell]], spec)
-    X <- apply_missing(X_star, spec, grid$mechanism[[cell]])
-    observed_fraction <- mean(!is.na(X))
-    empty_rows <- sum(rowSums(!is.na(X)) == 0L)
-    keep <- rowSums(!is.na(X)) > 0L
-    X <- X[keep, , drop = FALSE]
-    subjects_used <- nrow(X)
-    complete_rows <- sum(stats::complete.cases(X))
-    min_pair <- min_pair_count(X)
-
-    for (m in seq_len(nrow(method_defs))) {
-      method_row <- method_defs[m, ]
-      fit <- fit_one(X, spec, method_row)
-      truth_key <- truth_rows$dgp == spec$id &
-        truth_rows$weight_label == method_row$weight_label
-      truth_now <- truth_rows[truth_key, ]
-      fit$truth <- truth_now$truth[match(fit$coefficient, truth_now$coefficient)]
-      fit$covered <- fit$lower <= fit$truth & fit$truth <= fit$upper
-      fit$fisher_covered <- fit$fisher_lower <= fit$truth & fit$truth <= fit$fisher_upper
-
-      rep_rows[[length(rep_rows) + 1L]] <- data.frame(
-        dgp = spec$id,
-        dgp_label = spec$label,
-        C = spec$C,
-        R = spec$R,
-        mechanism = grid$mechanism[[cell]],
-        n = grid$n[[cell]],
-        rep = rep_id,
-        seed = seed,
-        method = method_row$method,
-        estimator = method_row$estimator,
-        weight = method_row$weight,
-        weight_label = method_row$weight_label,
-        fit,
-        observed_fraction = observed_fraction,
-        subjects_used = subjects_used,
-        empty_rows = empty_rows,
-        complete_rows = complete_rows,
-        min_pair_count = min_pair,
-        stringsAsFactors = FALSE
-      )
-    }
-  }
-}
-
-replicates <- if (length(rep_rows)) do.call(rbind, rep_rows) else data.frame()
-summary <- summarize_replicates(replicates)
+grid$cell <- seq_len(nrow(grid))
 
 mechanisms_out <- data.frame(
   mechanism = valid_mechanisms,
@@ -713,17 +682,106 @@ dgp_rows <- do.call(rbind, lapply(dgp_defs[opts$dgps], function(spec) {
 }))
 
 dir.create(opts$out_dir, recursive = TRUE, showWarnings = FALSE)
-write.csv(truth_rows, file.path(opts$out_dir, "truth.csv"), row.names = FALSE)
-write.csv(replicates, file.path(opts$out_dir, "replicates.csv"), row.names = FALSE)
-write.csv(summary, file.path(opts$out_dir, "summary.csv"), row.names = FALSE)
-write.csv(mechanisms_out, file.path(opts$out_dir, "mechanisms.csv"), row.names = FALSE)
-write.csv(dgp_rows, file.path(opts$out_dir, "dgps.csv"), row.names = FALSE)
+checkpoint_dir <- file.path(opts$out_dir, "checkpoints")
+dir.create(checkpoint_dir, recursive = TRUE, showWarnings = FALSE)
+write_csv_atomic(truth_rows, file.path(opts$out_dir, "truth.csv"))
+write_csv_atomic(grid[, c("cell", "dgp", "mechanism", "n")],
+                 file.path(opts$out_dir, "cell_plan.csv"))
+write_csv_atomic(mechanisms_out, file.path(opts$out_dir, "mechanisms.csv"))
+write_csv_atomic(dgp_rows, file.path(opts$out_dir, "dgps.csv"))
+
+checkpoint_files <- character(nrow(grid))
+t0 <- Sys.time()
+for (cell in seq_len(nrow(grid))) {
+  spec <- dgp_defs[[grid$dgp[[cell]]]]
+  checkpoint_files[[cell]] <- checkpoint_file(cell, grid, checkpoint_dir)
+  if (opts$resume && file.exists(checkpoint_files[[cell]])) {
+    log_progress(
+      "cell %d/%d: reusing %s",
+      cell, nrow(grid), basename(checkpoint_files[[cell]])
+    )
+    next
+  }
+
+  cell_rows <- list()
+  log_progress(
+    "cell %d/%d: %s %s n=%d reps=%d",
+    cell, nrow(grid), grid$dgp[[cell]], grid$mechanism[[cell]],
+    grid$n[[cell]], opts$reps
+  )
+  for (rep_id in seq_len(opts$reps)) {
+    seed <- opts$seed_base + 1000000L * cell + rep_id
+    set.seed(seed)
+    X_star <- simulate_ratings(grid$n[[cell]], spec)
+    X <- apply_missing(X_star, spec, grid$mechanism[[cell]])
+    observed_fraction <- mean(!is.na(X))
+    empty_rows <- sum(rowSums(!is.na(X)) == 0L)
+    keep <- rowSums(!is.na(X)) > 0L
+    X <- X[keep, , drop = FALSE]
+    subjects_used <- nrow(X)
+    complete_rows <- sum(stats::complete.cases(X))
+    min_pair <- min_pair_count(X)
+
+    for (m in seq_len(nrow(method_defs))) {
+      method_row <- method_defs[m, ]
+      fit <- fit_one(X, spec, method_row)
+      truth_key <- truth_rows$dgp == spec$id &
+        truth_rows$weight_label == method_row$weight_label
+      truth_now <- truth_rows[truth_key, ]
+      fit$truth <- truth_now$truth[match(fit$coefficient, truth_now$coefficient)]
+      fit$covered <- fit$lower <= fit$truth & fit$truth <= fit$upper
+      fit$fisher_covered <- fit$fisher_lower <= fit$truth & fit$truth <= fit$fisher_upper
+
+      cell_rows[[length(cell_rows) + 1L]] <- data.frame(
+        dgp = spec$id,
+        dgp_label = spec$label,
+        C = spec$C,
+        R = spec$R,
+        mechanism = grid$mechanism[[cell]],
+        n = grid$n[[cell]],
+        rep = rep_id,
+        seed = seed,
+        method = method_row$method,
+        estimator = method_row$estimator,
+        weight = method_row$weight,
+        weight_label = method_row$weight_label,
+        fit,
+        observed_fraction = observed_fraction,
+        subjects_used = subjects_used,
+        empty_rows = empty_rows,
+        complete_rows = complete_rows,
+        min_pair_count = min_pair,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  cell_replicates <- if (length(cell_rows)) do.call(rbind, cell_rows) else data.frame()
+  write_csv_atomic(cell_replicates, checkpoint_files[[cell]])
+  log_progress(
+    "cell %d/%d: wrote %s (%d rows)",
+    cell, nrow(grid), basename(checkpoint_files[[cell]]), nrow(cell_replicates)
+  )
+}
+
+missing_checkpoints <- checkpoint_files[!file.exists(checkpoint_files)]
+if (length(missing_checkpoints)) {
+  stop("Missing checkpoint(s): ", paste(missing_checkpoints, collapse = ", "),
+       call. = FALSE)
+}
+replicates <- do.call(rbind, lapply(checkpoint_files, function(path) {
+  read.csv(path, stringsAsFactors = FALSE)
+}))
+summary <- summarize_replicates(replicates)
+
+write_csv_atomic(replicates, file.path(opts$out_dir, "replicates.csv"))
+write_csv_atomic(summary, file.path(opts$out_dir, "summary.csv"))
 
 cmd <- paste(commandArgs(FALSE), collapse = " ")
 metadata <- data.frame(
   key = c("generated_at", "script", "command", "mode", "reps", "n_grid",
           "truth_n", "dgps", "mechanisms", "methods", "seed_base",
-          "elapsed_seconds", "misskappa_version", "r_version"),
+          "resume", "checkpoint_dir", "elapsed_seconds",
+          "misskappa_version", "r_version"),
   value = c(
     format(Sys.time(), "%Y-%m-%d %H:%M:%S %z"),
     normalizePath(file.path(script_dir, "run_experiment.R"), mustWork = FALSE),
@@ -736,19 +794,22 @@ metadata <- data.frame(
     paste(opts$mechanisms, collapse = ","),
     paste(opts$methods, collapse = ","),
     as.character(opts$seed_base),
+    as.character(opts$resume),
+    normalizePath(checkpoint_dir, mustWork = FALSE),
     as.character(round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 3)),
     as.character(utils::packageVersion("misskappa")),
     R.version.string
   ),
   stringsAsFactors = FALSE
 )
-write.csv(metadata, file.path(opts$out_dir, "metadata.csv"), row.names = FALSE)
+write_csv_atomic(metadata, file.path(opts$out_dir, "metadata.csv"))
 
 cat("Wrote:\n")
-for (name in c("truth.csv", "replicates.csv", "summary.csv", "mechanisms.csv",
-               "dgps.csv", "metadata.csv")) {
+for (name in c("truth.csv", "cell_plan.csv", "replicates.csv", "summary.csv",
+               "mechanisms.csv", "dgps.csv", "metadata.csv")) {
   cat("  ", normalizePath(file.path(opts$out_dir, name), mustWork = FALSE), "\n", sep = "")
 }
+cat("  ", normalizePath(checkpoint_dir, mustWork = FALSE), "/\n", sep = "")
 
 headline <- summary[summary$coefficient == "Conger" &
                       summary$n == min(summary$n) &
