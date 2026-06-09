@@ -94,7 +94,11 @@ Repo-root `justfile` wraps the common loops: `just build`, `just test`
 (`dev` build + ctest), `just opt`, `just test-opt`, `just r-install`,
 `just r-check` (reinstall + R-level tests), `just paper <slug>` (delegates
 to `papers/<slug>/justfile`, e.g. `just paper ipw pdf`), and
-`just regen-oracle` (regenerates `tests/fixtures/`). Documentation recipes are
+`just regen-oracle` (regenerates `tests/fixtures/`). Coverage recipes are
+`just cpp-cov` (clang source-based instrumentation + `llvm-cov` over the
+doctest suite; per-file summary plus HTML under `build-cov/coverage-html/`),
+`just r-cov` (`covr` over the testthat suite, which also reports the vendored
+C++ as hit through Rcpp), and `just cov` for both. Documentation recipes are
 `just docs-r` (pkgdown), `just docs-cpp` (Doxygen), `just docs` (combined
 local site), and `just docs-clean`. `just` with no recipe lists them.
 

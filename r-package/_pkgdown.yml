@@ -39,10 +39,14 @@ articles:
     navbar: How-to
     contents:
       - articles/equality-tests
-      - articles/multirater-and-vector
+      - articles/gwise-agreement
   - title: Mathematical Guides
     navbar: Mathematical Guides
     contents:
       - articles/agreement-coefficients
       - articles/missingness-estimators
       - articles/validation
+  - title: Frontier / experimental
+    navbar: Frontier
+    contents:
+      - articles/vector-valued-agreement

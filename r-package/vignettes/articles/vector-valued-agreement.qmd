@@ -1,0 +1,171 @@
+---
+title: "Vector-Valued Agreement"
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+::: {.callout-warning}
+## Frontier / experimental
+
+Vector-valued agreement with **component-separable feature weights**, and its
+missing-data estimators, is our own ongoing research rather than settled, published
+methodology. The interface shown here may change, some routes are internal, and the
+supporting manuscript is in preparation. Treat results as exploratory. The general
+Fréchet framework for multirater agreement (Moss 2024; the multirater /
+vector-valued-data paper) is the loose anchor, but it does **not** cover the
+separable-weight construction below — that is new here.
+:::
+
+```{r}
+#| message: false
+library(misskappa)
+```
+
+Sometimes a single rating is itself a vector. In the CRACKLES auscultation study
+shipped as `dat.vanbelle2019`, each of 28 observers classifies the presence of
+crackles (`0`/`1`) at six chest sites per patient, so one observer's verdict on one
+patient is a six-component vector. The data are a subjects-by-raters-by-features
+**array**, and an array keeps its labels on every axis:
+
+```{r}
+dim(dat.vanbelle2019)
+dimnames(dat.vanbelle2019)$site
+dat.vanbelle2019["1", "EXP1", ]   # patient 1, observer EXP1, the six sites
+```
+
+Pass the array and `kappa()` takes the vector-valued path automatically.
+
+## Mathematical description
+
+Write a rater's vector rating on feature $\ell$ as $x_\ell$, with non-negative
+feature weights $v_\ell$. The disagreement between two rater vectors $x$ and $y$ is
+a **component-separable** loss
+
+$$
+D(x, y) \;=\; h\!\left(
+  \frac{\sum_{\ell=1}^{p} v_\ell\, d_\ell(x_\ell, y_\ell)}
+       {\sum_{\ell=1}^{p} v_\ell}
+\right),
+$$
+
+a weighted average of per-component losses $d_\ell$ passed through a scalar
+transform $h$. The `weight` argument selects the component loss: `"nominal"` is
+Hamming (count of disagreeing sites, $d_\ell = \mathbf 1[x_\ell \neq y_\ell]$,
+$h(t)=t$), `"linear"` is absolute difference, and `"quadratic"` is squared
+difference; passing `loss = "rms"` keeps the squared component loss but sets
+$h(t)=\sqrt t$. Per-component weights enter through `feature_weights`, e.g. to
+down-weight some sites.
+
+The Conger and Fleiss coefficients are then the usual $\kappa = 1 - D_o/D_e$, with
+observed disagreement, distinct-rater-pair chance, and pooled-margin chance all
+built from these component losses. The separability is deliberate: because
+disagreement is a sum over features, a *missing component* simply drops that
+feature from the affected rater pair, and the estimator stays a ratio of
+feature-level moments — which is what makes the missing-data estimators below
+tractable. The closest published precedent is the single-loss multivariate
+agreement coefficient of Janson & Olsson (2001); the weighted separable family and
+its missing-data theory are the new part, sketched in the proto-paper note under
+the project's `dev/notes/`.
+
+## The expert panel
+
+```{r}
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+```
+
+The Conger coefficient by observer group reproduces the kind of breakdown
+Vanbelle (2019) reports, with experts and pulmonologists agreeing most and students
+least:
+
+```{r}
+groups <- c("EXP", "NOR", "RUS", "WAL", "NLD", "PUL", "STU")
+conger <- sapply(groups, function(grp) {
+  cols <- paste0(grp, 1:4)
+  coef(kappa(dat.vanbelle2019[, cols, ], estimator = "pairwise"))["Conger"]
+})
+round(sort(conger, decreasing = TRUE), 3)
+```
+
+For missing components, use `estimator = "ipw"`, which reweights by the
+per-rater-feature observation rates. Two knobs ride along through `...`:
+`feature_weights` (non-negative per-site weights) and `loss = "rms"` (the
+root-mean-square component loss). On the complete CRACKLES data IPW agrees with the
+pairwise estimator:
+
+```{r}
+kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw",
+      feature_weights = c(1, 1, 1, 1, 0.5, 0.5))
+```
+
+## The quadratic case
+
+With the squared component loss the construction generalizes further. Allow a
+**full** symmetric positive-semidefinite feature-weight matrix $W$, so that
+features may be *coupled* rather than weighted one at a time,
+
+$$
+D(x, y) \;=\; (x - y)^{\top} W (x - y),
+$$
+
+which reduces to the separable squared loss when $W$ is diagonal. As in the scalar
+quadratic kappa, the coefficient is then a smooth function of the stacked rater mean
+$\mu$ and covariance $\Sigma$: with
+$B_W = \sum_{j,k}\operatorname{tr}(W\Sigma_{jk})$,
+$T_W = \sum_{j}\operatorname{tr}(W\Sigma_{jj})$, and
+$G_W = \sum_{j}(\mu_j-\bar\mu)^{\top} W (\mu_j-\bar\mu)$,
+
+$$
+\kappa_{C}^{W} = \frac{B_W - T_W}{(R-1)\,T_W + R\,G_W}, \qquad
+\kappa_{F}^{W} = \frac{B_W - T_W - G_W}{(R-1)\,(T_W + G_W)}.
+$$
+
+Because the estimand depends on the data only through $(\mu, \Sigma)$, it admits a
+**FIML** estimator: fit the saturated normal mean and covariance by EM and use every
+partially observed vector, exactly as the scalar `nt_fiml` quadratic kappa does. This
+is the vector analogue of `kappa_quadratic_fiml()`.
+
+The publicly supported vector path uses *diagonal* weights, so the squared-loss
+coefficient with per-feature weights is reachable directly:
+
+```{r}
+kappa(dat.vanbelle2019[, 1:4, ], weight = "quadratic", estimator = "pairwise")
+```
+
+The **full-matrix-$W$** quadratic estimators — including the FIML route — currently
+live in an internal backend, `kappa_vector_quadratic()`, and are *not* exposed
+through `kappa()`. They are experimental: the normal-theory FIML path inverts
+per-pattern covariance blocks and is singular when a feature has no within-pattern
+variation (which the complete binary CRACKLES data triggers). The call shape, for
+reference only, is
+
+```{r}
+#| eval: false
+# Experimental, internal, may fail to converge on degenerate data — not part of
+# the public API. Shown only to document the full-W / FIML route.
+fit <- misskappa:::kappa_vector_quadratic(
+  dat.vanbelle2019[, 1:4, ],
+  method = "nt_fiml",            # or "pairwise"
+  W = diag(6)                    # full symmetric PSD feature-weight matrix
+)
+coef(fit)
+```
+
+See the proto-paper note in the project's `dev/notes/` for the estimands, the
+delta-method derivations, and the open problems (categorical full-profile FIML,
+nonregular RMS at perfect agreement, FIML on degenerate data).
+
+## References
+
+Janson, H., & Olsson, U. (2001). A measure of agreement for interval or nominal
+multivariate observations. *Educational and Psychological Measurement*, 61(2),
+277–289.
+
+Moss, J. (2024). Measures of agreement with multiple raters: Fréchet variances and
+inference. *Psychometrika*. <https://doi.org/10.1007/s11336-023-09945-2>
+
+Vanbelle, S. (2019). Asymptotic variability of (multilevel) multirater kappa
+coefficients. *Statistical Methods in Medical Research*, 28(10–11), 3012–3026.
+<https://doi.org/10.1177/0962280218794733>

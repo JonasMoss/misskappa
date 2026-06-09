@@ -27,7 +27,7 @@ Fleiss-style component averages over pooled marginal category frequencies.
 Brennan-Prediger uses a uniform chance distribution over categories.
 
 The C++ side accepts agreement weights $W$ because that is the convention
-used by `irrCAC`; internally the estimators work with $L = 1 - W$.
+used by `irrCAC`. Internally the estimators work with $L = 1 - W$.
 The R side exposes the same choice as `weight`, with `"identity"` for nominal
 agreement and `"linear"` or `"quadratic"` for ordered or scored categories.
 
