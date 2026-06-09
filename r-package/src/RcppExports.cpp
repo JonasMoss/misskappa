@@ -80,22 +80,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_fiml_grouped_jackknife
-Rcpp::List rcpp_fiml_grouped_jackknife(const Rcpp::IntegerMatrix& x, std::string weight_type, Rcpp::Nullable<Rcpp::NumericVector> values, int groups, bool hot_start, Rcpp::List em_options);
-RcppExport SEXP _misskappa_rcpp_fiml_grouped_jackknife(SEXP xSEXP, SEXP weight_typeSEXP, SEXP valuesSEXP, SEXP groupsSEXP, SEXP hot_startSEXP, SEXP em_optionsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Rcpp::IntegerMatrix& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< std::string >::type weight_type(weight_typeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type values(valuesSEXP);
-    Rcpp::traits::input_parameter< int >::type groups(groupsSEXP);
-    Rcpp::traits::input_parameter< bool >::type hot_start(hot_startSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_fiml_grouped_jackknife(x, weight_type, values, groups, hot_start, em_options));
-    return rcpp_result_gen;
-END_RCPP
-}
 // rcpp_kappa_quadratic
 Rcpp::List rcpp_kappa_quadratic(const Rcpp::NumericMatrix& x, Rcpp::NumericVector values);
 RcppExport SEXP _misskappa_rcpp_kappa_quadratic(SEXP xSEXP, SEXP valuesSEXP) {
@@ -187,7 +171,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_alpha_available_continuous", (DL_FUNC) &_misskappa_rcpp_alpha_available_continuous, 1},
     {"_misskappa_rcpp_kappa_fiml_counts", (DL_FUNC) &_misskappa_rcpp_kappa_fiml_counts, 5},
     {"_misskappa_rcpp_fiml_louis_spectrum", (DL_FUNC) &_misskappa_rcpp_fiml_louis_spectrum, 4},
-    {"_misskappa_rcpp_fiml_grouped_jackknife", (DL_FUNC) &_misskappa_rcpp_fiml_grouped_jackknife, 6},
     {"_misskappa_rcpp_kappa_quadratic", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic, 2},
     {"_misskappa_rcpp_kappa_counts", (DL_FUNC) &_misskappa_rcpp_kappa_counts, 3},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_continuous, 3},

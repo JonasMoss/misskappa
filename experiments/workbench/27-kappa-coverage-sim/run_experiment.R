@@ -11,9 +11,9 @@
 #   pairwise / nt_fiml   x quadratic only
 #
 # The optional cat_fiml_jk5_* and cat_fiml_jk10_* rows are experiment-side
-# grouped-jackknife diagnostics. Plain JK rows use cold-start delete refits to
-# preserve the ordinary Cat-FIML estimator; *_hot_* rows hot-start delete refits
-# from the full-data EM solution as a separate speed/sensitivity diagnostic.
+# grouped-jackknife diagnostics. They refit Cat-FIML after deleting
+# deterministic folds and replace the point estimate by the delete-group
+# jackknife bias correction.
 
 suppressPackageStartupMessages({
   library(misskappa)
@@ -325,33 +325,26 @@ method_defs <- data.frame(
              "ipw_absolute", "cat_fiml_absolute",
              "cat_fiml_jk5_absolute", "cat_fiml_jk10_absolute",
              "ipw_quadratic", "cat_fiml_quadratic",
-             "cat_fiml_jk5_quadratic", "cat_fiml_jk5_hot_quadratic",
-             "cat_fiml_jk10_quadratic", "cat_fiml_jk10_hot_quadratic",
+             "cat_fiml_jk5_quadratic", "cat_fiml_jk10_quadratic",
              "pairwise_quadratic", "nt_fiml_quadratic"),
   estimator = c("ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk10",
                 "ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk10",
-                "ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk5_hot",
-                "cat_fiml_jk10", "cat_fiml_jk10_hot",
+                "ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk10",
                 "pairwise", "nt_fiml"),
   base_estimator = c("ipw", "cat_fiml", "cat_fiml", "cat_fiml",
                      "ipw", "cat_fiml", "cat_fiml", "cat_fiml",
                      "ipw", "cat_fiml", "cat_fiml", "cat_fiml",
-                     "cat_fiml", "cat_fiml",
                      "pairwise", "nt_fiml"),
   weight = c("nominal", "nominal", "nominal", "nominal",
              "linear", "linear", "linear", "linear",
              "quadratic", "quadratic", "quadratic", "quadratic",
-             "quadratic", "quadratic",
              "quadratic", "quadratic"),
   weight_label = c("nominal", "nominal", "nominal", "nominal",
                    "absolute", "absolute", "absolute", "absolute",
                    "quadratic", "quadratic", "quadratic", "quadratic",
-                   "quadratic", "quadratic",
                    "quadratic", "quadratic"),
   jackknife_groups = c(0L, 0L, 5L, 10L, 0L, 0L, 5L, 10L,
-                       0L, 0L, 5L, 5L, 10L, 10L, 0L, 0L),
-  jackknife_hot_start = c(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
-                          FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE),
+                       0L, 0L, 5L, 10L, 0L, 0L),
   stringsAsFactors = FALSE
 )
 
@@ -416,44 +409,38 @@ fit_kappa <- function(X, spec, estimator, weight) {
   )
 }
 
-cpp_weight <- function(weight) {
-  if (weight == "nominal") return("identity")
-  weight
-}
-
 fit_one <- function(X, spec, method_row) {
   start <- proc.time()[["elapsed"]]
   out <- tryCatch({
+    fit <- fit_kappa(X, spec, method_row$base_estimator, method_row$weight)
+    est_raw <- stats::coef(fit)
+    se <- se_vector(fit, coef_names)
+
+    est <- est_raw
     jk_bias <- rep(NA_real_, length(coef_names)); names(jk_bias) <- coef_names
     jk_refits <- 0L
     jk_groups <- as.integer(method_row$jackknife_groups)
     if (jk_groups > 0L) {
       jk_groups <- min(jk_groups, nrow(X) - 1L)
       if (jk_groups < 2L) stop("Grouped jackknife needs at least two folds.", call. = FALSE)
-      if (method_row$base_estimator != "cat_fiml") {
-        stop("Grouped jackknife is implemented only for Cat-FIML.", call. = FALSE)
-      }
 
-      jk <- misskappa:::rcpp_fiml_grouped_jackknife(
-        x = X,
-        weight_type = cpp_weight(method_row$weight),
-        values = seq(0, spec$C - 1L),
-        groups = jk_groups,
-        hot_start = method_row$jackknife_hot_start,
-        em_options = em_options_for("cat_fiml")
+      fold_id <- ((seq_len(nrow(X)) - 1L) %% jk_groups) + 1L
+      fold_rows <- split(seq_len(nrow(X)), fold_id)
+      delete_est <- matrix(
+        NA_real_,
+        nrow = length(fold_rows),
+        ncol = length(coef_names),
+        dimnames = list(NULL, coef_names)
       )
-      all_coef <- c("Conger", "Fleiss", "Brennan-Prediger")
-      est_raw <- setNames(as.numeric(jk$full_estimates), all_coef)
-      est <- setNames(as.numeric(jk$corrected_estimates), all_coef)
-      jk_bias <- setNames(as.numeric(jk$jackknife_bias), all_coef)[coef_names]
-      se <- setNames(sqrt(diag(jk$full_vcov)), all_coef)[coef_names]
-      jk_refits <- as.integer(jk$refits)
-      jk_groups <- as.integer(jk$groups)
-    } else {
-      fit <- fit_kappa(X, spec, method_row$base_estimator, method_row$weight)
-      est_raw <- stats::coef(fit)
-      se <- se_vector(fit, coef_names)
-      est <- est_raw
+      for (g in seq_along(fold_rows)) {
+        fit_g <- fit_kappa(X[-fold_rows[[g]], , drop = FALSE],
+                           spec, method_row$base_estimator, method_row$weight)
+        delete_est[g, ] <- stats::coef(fit_g)[coef_names]
+      }
+      jk_refits <- length(fold_rows)
+      delete_mean <- colMeans(delete_est)
+      jk_bias <- (jk_refits - 1) * (delete_mean - est_raw[coef_names])
+      est[coef_names] <- est_raw[coef_names] - jk_bias
     }
 
     rows <- lapply(coef_names, function(coef) {

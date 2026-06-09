@@ -30,25 +30,6 @@ struct FimlLouisDiagnostic {
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(
     IntMatView ratings, RealMatView weights, EmOptions opts);
 
-struct FimlGroupedJackknifeDiagnostic {
-  RealVec full_estimates;       // Full-sample Cat-FIML estimates.
-  RealMat full_vcov;            // Full-sample Cat-FIML covariance.
-  RealMat delete_estimates;     // G x 3 delete-group estimates.
-  RealVec jackknife_bias;       // (G - 1) * (mean(delete) - full).
-  RealVec corrected_estimates;  // full - jackknife_bias.
-  RealVec delete_iterations;    // EM iterations used by each delete refit.
-  int groups = 0;
-  int refits = 0;
-  int full_iterations = 0;
-  bool hot_start = true;
-  std::size_t n_subjects = 0;
-  std::size_t n_patterns = 0;
-};
-
-Result<FimlGroupedJackknifeDiagnostic> diagnose_fiml_grouped_jackknife(
-    IntMatView ratings, RealMatView weights, EmOptions opts,
-    int groups, bool hot_start = true);
-
 }  // namespace misskappa
 
 #endif  // MISSKAPPA_DIAGNOSTICS_HPP
