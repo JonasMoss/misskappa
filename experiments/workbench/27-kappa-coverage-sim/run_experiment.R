@@ -9,6 +9,11 @@
 # The public estimator grid is:
 #   ipw / cat_fiml       x nominal, absolute(linear), quadratic
 #   pairwise / nt_fiml   x quadratic only
+#
+# The optional cat_fiml_jk5_* and cat_fiml_jk10_* rows are experiment-side
+# grouped-jackknife diagnostics. They refit Cat-FIML after deleting
+# deterministic folds and replace the point estimate by the delete-group
+# jackknife bias correction.
 
 suppressPackageStartupMessages({
   library(misskappa)
@@ -35,7 +40,8 @@ usage <- function(status = 0L) {
     "Examples:\n",
     "  Rscript run_experiment.R --smoke --progress\n",
     "  Rscript run_experiment.R --small --progress\n",
-    "  Rscript run_experiment.R --big --reps 1000 --progress\n"
+    "  Rscript run_experiment.R --big --reps 1000 --progress\n",
+    "  Rscript run_experiment.R --big --methods cat_fiml_quadratic,cat_fiml_jk5_quadratic --progress\n"
   ))
   quit(save = "no", status = status)
 }
@@ -315,15 +321,30 @@ apply_missing <- function(X, spec, mechanism) {
 
 method_defs <- data.frame(
   method = c("ipw_nominal", "cat_fiml_nominal",
+             "cat_fiml_jk5_nominal", "cat_fiml_jk10_nominal",
              "ipw_absolute", "cat_fiml_absolute",
+             "cat_fiml_jk5_absolute", "cat_fiml_jk10_absolute",
              "ipw_quadratic", "cat_fiml_quadratic",
+             "cat_fiml_jk5_quadratic", "cat_fiml_jk10_quadratic",
              "pairwise_quadratic", "nt_fiml_quadratic"),
-  estimator = c("ipw", "cat_fiml", "ipw", "cat_fiml",
-                "ipw", "cat_fiml", "pairwise", "nt_fiml"),
-  weight = c("nominal", "nominal", "linear", "linear",
-             "quadratic", "quadratic", "quadratic", "quadratic"),
-  weight_label = c("nominal", "nominal", "absolute", "absolute",
-                   "quadratic", "quadratic", "quadratic", "quadratic"),
+  estimator = c("ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk10",
+                "ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk10",
+                "ipw", "cat_fiml", "cat_fiml_jk5", "cat_fiml_jk10",
+                "pairwise", "nt_fiml"),
+  base_estimator = c("ipw", "cat_fiml", "cat_fiml", "cat_fiml",
+                     "ipw", "cat_fiml", "cat_fiml", "cat_fiml",
+                     "ipw", "cat_fiml", "cat_fiml", "cat_fiml",
+                     "pairwise", "nt_fiml"),
+  weight = c("nominal", "nominal", "nominal", "nominal",
+             "linear", "linear", "linear", "linear",
+             "quadratic", "quadratic", "quadratic", "quadratic",
+             "quadratic", "quadratic"),
+  weight_label = c("nominal", "nominal", "nominal", "nominal",
+                   "absolute", "absolute", "absolute", "absolute",
+                   "quadratic", "quadratic", "quadratic", "quadratic",
+                   "quadratic", "quadratic"),
+  jackknife_groups = c(0L, 0L, 5L, 10L, 0L, 0L, 5L, 10L,
+                       0L, 0L, 5L, 10L, 0L, 0L),
   stringsAsFactors = FALSE
 )
 
@@ -367,31 +388,70 @@ fisher_interval <- function(est, se) {
   c(lower = tanh(g - z975 * se_z), upper = tanh(g + z975 * se_z))
 }
 
+em_options_for <- function(estimator) {
+  if (estimator == "cat_fiml") {
+    return(list(tol = 1e-7, max_iter = 12000L, prune_tol = 1e-10,
+                start_alpha = 0.1, info_rcond = 1e-4))
+  }
+  if (estimator == "nt_fiml") {
+    return(list(tol = 1e-8, max_iter = 12000L, fd_h = 1e-5))
+  }
+  list()
+}
+
+fit_kappa <- function(X, spec, estimator, weight) {
+  misskappa::kappa(
+    X,
+    estimator = estimator,
+    weight = weight,
+    values = seq(0, spec$C - 1L),
+    em_options = em_options_for(estimator)
+  )
+}
+
 fit_one <- function(X, spec, method_row) {
   start <- proc.time()[["elapsed"]]
-  values <- seq(0, spec$C - 1L)
   out <- tryCatch({
-    fit <- misskappa::kappa(
-      X,
-      estimator = method_row$estimator,
-      weight = method_row$weight,
-      values = values,
-      em_options = if (method_row$estimator == "cat_fiml") {
-        list(tol = 1e-7, max_iter = 12000L, prune_tol = 1e-10,
-             start_alpha = 0.1, info_rcond = 1e-4)
-      } else if (method_row$estimator == "nt_fiml") {
-        list(tol = 1e-8, max_iter = 12000L, fd_h = 1e-5)
-      } else {
-        list()
-      }
-    )
-    est <- stats::coef(fit)
+    fit <- fit_kappa(X, spec, method_row$base_estimator, method_row$weight)
+    est_raw <- stats::coef(fit)
     se <- se_vector(fit, coef_names)
+
+    est <- est_raw
+    jk_bias <- rep(NA_real_, length(coef_names)); names(jk_bias) <- coef_names
+    jk_refits <- 0L
+    jk_groups <- as.integer(method_row$jackknife_groups)
+    if (jk_groups > 0L) {
+      jk_groups <- min(jk_groups, nrow(X) - 1L)
+      if (jk_groups < 2L) stop("Grouped jackknife needs at least two folds.", call. = FALSE)
+
+      fold_id <- ((seq_len(nrow(X)) - 1L) %% jk_groups) + 1L
+      fold_rows <- split(seq_len(nrow(X)), fold_id)
+      delete_est <- matrix(
+        NA_real_,
+        nrow = length(fold_rows),
+        ncol = length(coef_names),
+        dimnames = list(NULL, coef_names)
+      )
+      for (g in seq_along(fold_rows)) {
+        fit_g <- fit_kappa(X[-fold_rows[[g]], , drop = FALSE],
+                           spec, method_row$base_estimator, method_row$weight)
+        delete_est[g, ] <- stats::coef(fit_g)[coef_names]
+      }
+      jk_refits <- length(fold_rows)
+      delete_mean <- colMeans(delete_est)
+      jk_bias <- (jk_refits - 1) * (delete_mean - est_raw[coef_names])
+      est[coef_names] <- est_raw[coef_names] - jk_bias
+    }
+
     rows <- lapply(coef_names, function(coef) {
       fci <- fisher_interval(est[[coef]], se[[coef]])
       data.frame(
         coefficient = coef,
         estimate = unname(est[[coef]]),
+        estimate_raw = unname(est_raw[[coef]]),
+        jackknife_bias = unname(jk_bias[[coef]]),
+        jackknife_groups = jk_groups,
+        jackknife_refits = jk_refits,
         se = unname(se[[coef]]),
         lower = unname(est[[coef]] - z975 * se[[coef]]),
         upper = unname(est[[coef]] + z975 * se[[coef]]),
@@ -406,6 +466,10 @@ fit_one <- function(X, spec, method_row) {
     data.frame(
       coefficient = coef_names,
       estimate = NA_real_,
+      estimate_raw = NA_real_,
+      jackknife_bias = NA_real_,
+      jackknife_groups = as.integer(method_row$jackknife_groups),
+      jackknife_refits = NA_integer_,
       se = NA_real_,
       lower = NA_real_,
       upper = NA_real_,
@@ -474,7 +538,13 @@ summarize_replicates <- function(df) {
   pieces <- lapply(split(df, split_keys(df, keys)), function(g) {
     ok <- is.finite(g$estimate)
     se_ok <- ok & is.finite(g$se) & g$se > 0
+    raw_est <- if ("estimate_raw" %in% names(g)) g$estimate_raw else g$estimate
+    raw_ok <- is.finite(raw_est)
+    jk_bias <- if ("jackknife_bias" %in% names(g)) g$jackknife_bias else rep(NA_real_, nrow(g))
+    jk_refits <- if ("jackknife_refits" %in% names(g)) g$jackknife_refits else rep(NA_integer_, nrow(g))
+    jk_groups <- if ("jackknife_groups" %in% names(g)) g$jackknife_groups else rep(0L, nrow(g))
     err <- g$estimate - g$truth
+    raw_err <- raw_est - g$truth
     nat_cover <- se_ok & is.finite(g$lower) & is.finite(g$upper) &
       g$lower <= g$truth & g$truth <= g$upper
     fish_cover <- se_ok & is.finite(g$fisher_lower) & is.finite(g$fisher_upper) &
@@ -495,7 +565,10 @@ summarize_replicates <- function(df) {
       failures = sum(!ok),
       truth = g$truth[[1L]],
       mean_estimate = if (any(ok)) mean(g$estimate[ok]) else NA_real_,
+      mean_raw_estimate = if (any(raw_ok)) mean(raw_est[raw_ok]) else NA_real_,
       bias = if (any(ok)) mean(err[ok]) else NA_real_,
+      raw_bias = if (any(raw_ok)) mean(raw_err[raw_ok]) else NA_real_,
+      mean_jackknife_bias = if (any(is.finite(jk_bias))) mean(jk_bias, na.rm = TRUE) else NA_real_,
       sd_estimate = if (sum(ok) > 1L) stats::sd(g$estimate[ok]) else NA_real_,
       mc_se_bias = if (sum(ok) > 1L) stats::sd(g$estimate[ok]) / sqrt(sum(ok)) else NA_real_,
       mse = if (any(ok)) mean(err[ok]^2) else NA_real_,
@@ -512,6 +585,8 @@ summarize_replicates <- function(df) {
       } else NA_real_,
       mean_elapsed_ms = mean(g$elapsed_ms, na.rm = TRUE),
       median_elapsed_ms = stats::median(g$elapsed_ms, na.rm = TRUE),
+      mean_jackknife_refits = if (any(is.finite(jk_refits))) mean(jk_refits, na.rm = TRUE) else NA_real_,
+      mean_jackknife_groups = if (any(is.finite(jk_groups))) mean(jk_groups, na.rm = TRUE) else NA_real_,
       mean_observed_fraction = mean(g$observed_fraction, na.rm = TRUE),
       mean_subjects_used = mean(g$subjects_used, na.rm = TRUE),
       mean_empty_rows = mean(g$empty_rows, na.rm = TRUE),
