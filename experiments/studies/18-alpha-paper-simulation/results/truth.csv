@@ -1,4 +1,0 @@
-"dgp","dgp_label","family","p","categories","scores","category_probs","truth_alpha","score_mean","score_var","min_latent_cor","max_latent_cor","min_score_cov","max_score_cov","truth_method"
-"ordinal_tau6","Tau-equivalent ordinal, 6 items","tau_equivalent",6,3,"0,1,2","0.2,0.5,0.3",0.830494726795803,1.1,0.49,0.55,0.55,0.220263387637804,0.220263387637804,"exact scored covariance from ordinal Gaussian copula"
-"ordinal_congeneric6","Congeneric ordinal, 6 items","congeneric",6,3,"0,1,2","0.2,0.5,0.3",0.707836900907317,1.1,0.49,0.1575,0.6375,0.0621550268775695,0.256741255708394,"exact scored covariance from ordinal Gaussian copula"
-"ordinal_twofactor6","Two-factor ordinal, 6 items","twofactor",6,3,"0,1,2","0.2,0.5,0.3",0.685889660325719,1.1,0.49,0.18,0.55,0.0710655249328291,0.220263387637804,"exact scored covariance from ordinal Gaussian copula"

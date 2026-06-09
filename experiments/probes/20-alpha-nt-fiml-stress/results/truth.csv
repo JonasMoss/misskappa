@@ -1,5 +1,0 @@
-"dgp","dgp_label","family","p","categories","truth_alpha","min_score_cov","max_score_cov","min_sigma_eigen","dgp_note"
-"gauss_balanced","Gaussian copula, balanced ordinal margins","gaussian_copula",6,3,0.707836900907317,0.0621550268775695,0.256741255708394,0.226698749401386,"Thresholded congeneric Gaussian copula, margins 0.2/0.5/0.3"
-"gauss_skew","Gaussian copula, skewed ordinal margins","gaussian_copula_skewed",6,3,0.678321197683783,0.048651806488336,0.223246529373541,0.218427627471353,"Thresholded congeneric Gaussian copula, margins 0.65/0.25/0.1"
-"class_skew","Latent class, skewed ordinal margins","latent_class_skewed",6,3,0.716986543977516,0.15351,0.19551,0.381708379500798,"Two-class ordinal mixture, conditionally independent items within class"
-"anchor_heterocov","Anchor-group mixture, heterogeneous target covariance","anchor_heterocov",6,3,0.856068874340184,0.289879117575726,0.29375,0.290621097964813,"Item 1 indexes groups with different target-item means and target covariance"
