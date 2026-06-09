@@ -93,7 +93,8 @@
 #'   `Fleiss` coefficients and their 2x2 asymptotic covariance. Additional
 #'   fields: `moments` (the fitted `mu`, `Sigma`, EM `iterations`, and
 #'   `converged` flag) and `psi` (per-subject influence-function rows).
-#'   Methods: `print`, `coef`, `vcov`, `confint`, and `as.data.frame`.
+#'   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
+#'   `stats::influence`.
 #'
 #' @keywords internal
 kappa_quadratic_fiml <- function(x, em_options = list()) {

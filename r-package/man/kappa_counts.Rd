@@ -40,7 +40,8 @@ have varying totals.}
 }
 \value{
 A `misskappa_estimate` object with `Fleiss` and
-  `Brennan-Prediger` coefficients and the 2x2 vcov.
+  `Brennan-Prediger` coefficients, the 2x2 vcov, a `psi` component, and
+  the registered `stats::influence` method.
 }
 \description{
 Estimates Fleiss and Brennan-Prediger weighted agreement coefficients

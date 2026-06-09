@@ -3,6 +3,7 @@
 S3method(as.data.frame,misskappa_estimate)
 S3method(coef,misskappa_estimate)
 S3method(confint,misskappa_estimate)
+S3method(influence,misskappa_estimate)
 S3method(print,misskappa_estimate)
 S3method(vcov,misskappa_estimate)
 export(alpha)

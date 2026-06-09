@@ -17,9 +17,9 @@ behind it (so they are not relitigated), and the open items.
 - **Equality-test verbs.** `kappa_test()` / `alpha_test()` return an `htest`;
   cover one-sample, independent two-sample, paired (same-subject), and G-way
   homogeneity. Built only on `coef`/`vcov`/`fit$psi`.
-- **Influence functions exposed as `fit$psi`** (documented component;
-  `vcov == crossprod(psi)/n^2`). The `influence()` S3 method was **removed**
-  (clashes with `stats::influence` diagnostics; clutters the reference index).
+- **Influence functions exposed as `fit$psi` and `stats::influence(fit)`**
+  (documented component and registered S3 adapter;
+  `vcov == crossprod(psi)/n^2`).
 - **Internal-only (kept for sims, reachable via `misskappa:::`):** `joint_vcov()`
   + `wald_test()` (the arbitrary-contrast engine), `kappa_quadratic()`,
   `kappa_continuous()`, `kappa_gwise()`, `estimate_kappa_raw()` (the latter
@@ -49,8 +49,8 @@ Public surface: `alpha`, `kappa`, `kappa_counts`, `kappa_test`, `alpha_test`,
 - Dropped from the public surface (kept internal for sims): Gwet, available-case
   for *categorical* `kappa`, `kappa_gwise`, the full `kappa_continuous` dispatch.
 - `se_type="normal"` not exposed (sandwich strictly dominates).
-- IFs are the `fit$psi` component, **not** an `influence()` function
-  ("exposed, not named"). The `rownames`-on-`$psi` alignment guard was
+- IFs are stored as the `fit$psi` component and are also available through
+  `stats::influence(fit)`. The `rownames`-on-`$psi` alignment guard was
   **declined** (subject ids on rating matrices are rare; equal-`n` + documented
   same-row-order is enough).
 - Two thin verbs (`kappa_test`/`alpha_test`) over one internal worker — kept for

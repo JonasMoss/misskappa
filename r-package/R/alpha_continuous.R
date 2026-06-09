@@ -187,7 +187,7 @@
 #'   named `alpha` and its asymptotic covariance. Additional fields: `moments`
 #'   (the fitted `mu`, `Sigma`, EM `iterations`, and `converged` flag) and
 #'   `psi` (per-subject influence-function rows). Methods: `print`, `coef`,
-#'   `vcov`, `confint`, and `as.data.frame`.
+#'   `vcov`, `confint`, `as.data.frame`, and `stats::influence`.
 #'
 #' @references
 #' Zhang, Z., & Yuan, K.-H. (2016). Robust coefficients alpha and omega and

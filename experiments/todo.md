@@ -209,7 +209,7 @@ Four sub-questions:
   Useful weight-sensitivity demo.
 
 Pilot motivated the influence-function exposure that now ships as `fit$psi`
-and internal `joint_vcov()` machinery for the
+and `stats::influence(fit)`, plus internal `joint_vcov()` machinery for the
 categorical raw estimators.
 
 ### `10-louis-spectrum`
