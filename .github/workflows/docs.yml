@@ -62,7 +62,7 @@ jobs:
         working-directory: r-package
         run: |
           roxygen2::roxygenise()
-          pkgdown::build_site()
+          pkgdown::build_site(quiet = FALSE)
         shell: Rscript {0}
 
       - name: Build C++ documentation
