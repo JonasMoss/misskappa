@@ -56,7 +56,7 @@ to `values` before estimation.
 \examples{
 # Continuous item battery: the textual subscale of the Holzinger-Swineford
 # (1939) data. Normal-theory FIML alpha, valid under ignorable missingness.
-textual <- as.matrix(dat.holzinger1939[, c("x4", "x5", "x6")])
+textual <- dat.holzinger1939[, c("x4", "x5", "x6")]
 fit <- alpha(textual, estimator = "nt_fiml")
 coef(fit)
 confint(fit)
@@ -66,6 +66,7 @@ confint(fit)
 # (2800 respondents, ~360 with at least one missing item). The FIML
 # estimator is valid under ignorable missingness.
 data(bfi, package = "psych")
-alpha(as.matrix(bfi[, paste0("N", 1:5)]), estimator = "nt_fiml")
+N <- paste0("N", 1:5)
+alpha(bfi[, N], estimator = "nt_fiml")
 \dontshow{\}) # examplesIf}
 }

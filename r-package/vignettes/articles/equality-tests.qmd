@@ -57,7 +57,7 @@ handles the missing responses under ignorable missingness.
 data(bfi, package = "psych")
 neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
 bfi[neg] <- 7 - bfi[neg]
-scale_items <- function(letter) as.matrix(bfi[, paste0(letter, 1:5)])
+scale_items <- function(letter) bfi[, paste0(letter, 1:5)]
 ```
 
 Is the Conscientiousness scale equally reliable for men and women? Different

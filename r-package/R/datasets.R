@@ -127,7 +127,7 @@
 #'   \doi{10.18637/jss.v048.i02}
 #' @examples
 #' # Coefficient alpha for the textual subscale (continuous items).
-#' alpha(as.matrix(dat.holzinger1939[, c("x4", "x5", "x6")]), estimator = "nt_fiml")
+#' alpha(dat.holzinger1939[, c("x4", "x5", "x6")], estimator = "nt_fiml")
 #' @keywords datasets
 "dat.holzinger1939"
 

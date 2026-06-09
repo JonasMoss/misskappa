@@ -40,7 +40,7 @@ The data are factual 1939 measurements and are in the public domain.
 }
 \examples{
 # Coefficient alpha for the textual subscale (continuous items).
-alpha(as.matrix(dat.holzinger1939[, c("x4", "x5", "x6")]), estimator = "nt_fiml")
+alpha(dat.holzinger1939[, c("x4", "x5", "x6")], estimator = "nt_fiml")
 }
 \references{
 Holzinger, K. J., & Swineford, F. (1939). \emph{A study in factor analysis:
