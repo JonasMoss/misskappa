@@ -25,6 +25,10 @@ rcpp_fiml_grouped_jackknife <- function(x, weight_type, values, groups, hot_star
     .Call(`_misskappa_rcpp_fiml_grouped_jackknife`, x, weight_type, values, groups, hot_start, em_options)
 }
 
+rcpp_fiml_penalized <- function(x, weight_type, values, penalty_target, lambda, variance_groups, em_options) {
+    .Call(`_misskappa_rcpp_fiml_penalized`, x, weight_type, values, penalty_target, lambda, variance_groups, em_options)
+}
+
 rcpp_kappa_quadratic <- function(x, values) {
     .Call(`_misskappa_rcpp_kappa_quadratic`, x, values)
 }
