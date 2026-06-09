@@ -14,9 +14,6 @@
 # grouped-jackknife diagnostics. Plain JK rows use cold-start delete refits to
 # preserve the ordinary Cat-FIML estimator; *_hot_* rows hot-start delete refits
 # from the full-data EM solution as a separate speed/sensitivity diagnostic.
-#
-# The optional cat_fiml_pen_* rows use penalized saturated Cat-FIML for the
-# quadratic coefficient with delete-group jackknife standard errors.
 
 suppressPackageStartupMessages({
   library(misskappa)
@@ -44,8 +41,7 @@ usage <- function(status = 0L) {
     "  Rscript run_experiment.R --smoke --progress\n",
     "  Rscript run_experiment.R --small --progress\n",
     "  Rscript run_experiment.R --big --reps 1000 --progress\n",
-    "  Rscript run_experiment.R --big --methods cat_fiml_quadratic,cat_fiml_jk5_quadratic --progress\n",
-    "  Rscript run_experiment.R --big --methods cat_fiml_quadratic,cat_fiml_pen_unif5_jk10_quadratic,cat_fiml_pen_ind5_jk10_quadratic --progress\n"
+    "  Rscript run_experiment.R --big --methods cat_fiml_quadratic,cat_fiml_jk5_quadratic --progress\n"
   ))
   quit(save = "no", status = status)
 }
@@ -358,38 +354,6 @@ method_defs <- data.frame(
                           FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE),
   stringsAsFactors = FALSE
 )
-method_defs$penalty_target <- ""
-method_defs$penalty_lambda <- 0
-method_defs$penalty_groups <- 0L
-
-penalty_grid <- expand.grid(
-  penalty_target = c("uniform", "independence"),
-  penalty_lambda = c(1, 5, 20),
-  stringsAsFactors = FALSE
-)
-penalty_grid$target_code <- ifelse(penalty_grid$penalty_target == "uniform", "unif", "ind")
-penalty_rows <- data.frame(
-  method = sprintf(
-    "cat_fiml_pen_%s%d_jk10_quadratic",
-    penalty_grid$target_code,
-    penalty_grid$penalty_lambda
-  ),
-  estimator = sprintf(
-    "cat_fiml_pen_%s%d_jk10",
-    penalty_grid$target_code,
-    penalty_grid$penalty_lambda
-  ),
-  base_estimator = "cat_fiml_penalized",
-  weight = "quadratic",
-  weight_label = "quadratic",
-  jackknife_groups = 0L,
-  jackknife_hot_start = FALSE,
-  penalty_target = penalty_grid$penalty_target,
-  penalty_lambda = penalty_grid$penalty_lambda,
-  penalty_groups = 10L,
-  stringsAsFactors = FALSE
-)
-method_defs <- rbind(method_defs, penalty_rows)
 
 valid_dgps <- names(dgp_defs)
 valid_mechanisms <- c("complete", "mcar15", "mcar30", "mcar_rater30",
@@ -436,10 +400,6 @@ em_options_for <- function(estimator) {
     return(list(tol = 1e-7, max_iter = 12000L, prune_tol = 1e-10,
                 start_alpha = 0.1, info_rcond = 1e-4))
   }
-  if (estimator == "cat_fiml_penalized") {
-    return(list(tol = 1e-6, max_iter = 50000L, prune_tol = 1e-10,
-                start_alpha = 0.1, info_rcond = 1e-4))
-  }
   if (estimator == "nt_fiml") {
     return(list(tol = 1e-8, max_iter = 12000L, fd_h = 1e-5))
   }
@@ -467,23 +427,7 @@ fit_one <- function(X, spec, method_row) {
     jk_bias <- rep(NA_real_, length(coef_names)); names(jk_bias) <- coef_names
     jk_refits <- 0L
     jk_groups <- as.integer(method_row$jackknife_groups)
-    if (method_row$base_estimator == "cat_fiml_penalized") {
-      pen <- misskappa:::rcpp_fiml_penalized(
-        x = X,
-        weight_type = cpp_weight(method_row$weight),
-        values = seq(0, spec$C - 1L),
-        penalty_target = method_row$penalty_target,
-        lambda = as.numeric(method_row$penalty_lambda),
-        variance_groups = as.integer(method_row$penalty_groups),
-        em_options = em_options_for("cat_fiml_penalized")
-      )
-      all_coef <- c("Conger", "Fleiss", "Brennan-Prediger")
-      est_raw <- setNames(as.numeric(pen$estimates), all_coef)
-      est <- est_raw
-      se <- setNames(sqrt(diag(pen$vcov)), all_coef)[coef_names]
-      jk_refits <- as.integer(pen$refits)
-      jk_groups <- as.integer(pen$groups)
-    } else if (jk_groups > 0L) {
+    if (jk_groups > 0L) {
       jk_groups <- min(jk_groups, nrow(X) - 1L)
       if (jk_groups < 2L) stop("Grouped jackknife needs at least two folds.", call. = FALSE)
       if (method_row$base_estimator != "cat_fiml") {
@@ -603,8 +547,7 @@ split_keys <- function(data, keys) {
 
 summarize_replicates <- function(df) {
   keys <- c("dgp", "dgp_label", "C", "R", "mechanism", "n", "method",
-            "estimator", "weight_label", "penalty_target", "penalty_lambda",
-            "penalty_groups", "coefficient")
+            "estimator", "weight_label", "coefficient")
   pieces <- lapply(split(df, split_keys(df, keys)), function(g) {
     ok <- is.finite(g$estimate)
     se_ok <- ok & is.finite(g$se) & g$se > 0
@@ -629,9 +572,6 @@ summarize_replicates <- function(df) {
       method = g$method[[1L]],
       estimator = g$estimator[[1L]],
       weight_label = g$weight_label[[1L]],
-      penalty_target = g$penalty_target[[1L]],
-      penalty_lambda = g$penalty_lambda[[1L]],
-      penalty_groups = g$penalty_groups[[1L]],
       coefficient = g$coefficient[[1L]],
       reps = length(unique(g$rep)),
       n_valid = sum(ok),
@@ -737,9 +677,6 @@ for (cell in seq_len(nrow(grid))) {
         estimator = method_row$estimator,
         weight = method_row$weight,
         weight_label = method_row$weight_label,
-        penalty_target = method_row$penalty_target,
-        penalty_lambda = method_row$penalty_lambda,
-        penalty_groups = method_row$penalty_groups,
         fit,
         observed_fraction = observed_fraction,
         subjects_used = subjects_used,

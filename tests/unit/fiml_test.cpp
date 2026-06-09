@@ -360,38 +360,6 @@ TEST_CASE("diagnose_fiml_grouped_jackknife: full fit and correction algebra") {
             .cwiseAbs().maxCoeff() < 1e-12);
 }
 
-TEST_CASE("diagnose_fiml_penalized: zero penalty and grouped variance") {
-  IntMat x = twelve_subject_3rater_3cat();
-  RealVec v(3);
-  v << 1.0, 2.0, 3.0;
-  auto W = ms::loss::quadratic_weights(3, v);
-  REQUIRE(W.has_value());
-
-  EmOptions opts{};
-  opts.tol = 1e-9;
-  auto full = ms::estimate_fiml(x, *W, opts);
-  auto zero = ms::diagnose_fiml_penalized(
-      x, *W, opts, ms::FimlPenaltyTarget::uniform, 0.0, 0);
-  REQUIRE(full.has_value());
-  REQUIRE(zero.has_value());
-  CHECK((zero->estimates - full->estimates).cwiseAbs().maxCoeff() < 1e-8);
-  CHECK(zero->vcov.rows() == 3);
-  CHECK(zero->vcov.cols() == 3);
-  CHECK(zero->refits == 0);
-
-  auto penalized = ms::diagnose_fiml_penalized(
-      x, *W, opts, ms::FimlPenaltyTarget::independence, 2.0, 3);
-  REQUIRE(penalized.has_value());
-  CHECK(penalized->groups == 3);
-  CHECK(penalized->refits == 3);
-  CHECK(penalized->delete_estimates.rows() == 3);
-  CHECK(penalized->delete_estimates.cols() == 3);
-  CHECK(penalized->delete_iterations.size() == 3);
-  CHECK(penalized->estimates.array().isFinite().all());
-  CHECK((penalized->vcov - penalized->vcov.transpose()).cwiseAbs().maxCoeff() < 1e-12);
-  CHECK(penalized->vcov.diagonal().minCoeff() >= -1e-12);
-}
-
 TEST_CASE("diagnose_fiml_louis: rejects degenerate input") {
   auto W = ms::loss::identity_weights(2);
   REQUIRE(W.has_value());

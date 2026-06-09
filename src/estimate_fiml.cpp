@@ -294,9 +294,7 @@ struct EmIterStatus {
 };
 
 EmIterStatus run_em_iterations(
-    Eigen::VectorXd& theta, const EmInput& in, EmOptions opts,
-    const Eigen::VectorXd* penalty_target = nullptr,
-    double penalty_lambda = 0.0) {
+    Eigen::VectorXd& theta, const EmInput& in, EmOptions opts) {
   EmIterStatus status;
   std::size_t n_total_subjects = 0;
   for (std::uint32_t s : in.group_n_subjects) n_total_subjects += s;
@@ -304,9 +302,6 @@ EmIterStatus run_em_iterations(
     status.converged = true;
     return status;
   }
-  const bool penalized =
-      penalty_target != nullptr && penalty_lambda > 0.0
-      && penalty_target->size() == theta.size();
   Eigen::VectorXd expected = Eigen::VectorXd::Zero(theta.size());
   for (int it = 0; it < opts.max_iter; ++it) {
     status.iterations = it + 1;
@@ -327,14 +322,7 @@ EmIterStatus run_em_iterations(
         expected(idx) += scale * theta(idx);
       }
     }
-    Eigen::VectorXd new_theta;
-    if (penalized) {
-      new_theta =
-          (expected + penalty_lambda * (*penalty_target))
-          / (static_cast<double>(n_total_subjects) + penalty_lambda);
-    } else {
-      new_theta = expected / static_cast<double>(n_total_subjects);
-    }
+    Eigen::VectorXd new_theta = expected / static_cast<double>(n_total_subjects);
     const double max_change = (new_theta - theta).cwiseAbs().maxCoeff();
     if (max_change < opts.tol) {
       theta = std::move(new_theta);
@@ -453,9 +441,7 @@ RealMat em_variance(
 
 Result<EmRunResult> run_em_preprocessed(
     const EmInput& in, int c, EmOptions opts, bool compute_vcov,
-    const Eigen::VectorXd* start_theta = nullptr,
-    const Eigen::VectorXd* penalty_target = nullptr,
-    double penalty_lambda = 0.0) {
+    const Eigen::VectorXd* start_theta = nullptr) {
   EmRunResult out;
   out.c = c;
   out.R = in.R;
@@ -468,28 +454,7 @@ Result<EmRunResult> run_em_preprocessed(
   Eigen::VectorXd theta = start_theta == nullptr
                               ? initialise_theta(in, opts.start_alpha)
                               : initialise_theta_from_start(in, *start_theta, opts.start_alpha);
-  if (penalty_target != nullptr || penalty_lambda > 0.0) {
-    if (penalty_target == nullptr || penalty_lambda < 0.0
-        || penalty_target->size() != theta.size()) {
-      return misskappa::unexpected(Error::invalid_argument);
-    }
-    for (Eigen::Index i = 0; i < penalty_target->size(); ++i) {
-      if (!std::isfinite((*penalty_target)(i)) || (*penalty_target)(i) < 0.0) {
-        return misskappa::unexpected(Error::invalid_argument);
-      }
-    }
-    if (penalty_lambda > 0.0 && penalty_target->sum() <= zero_tol) {
-      return misskappa::unexpected(Error::invalid_argument);
-    }
-  }
-  Eigen::VectorXd normalised_target;
-  const Eigen::VectorXd* target_ptr = penalty_target;
-  if (penalty_target != nullptr && penalty_lambda > 0.0) {
-    normalised_target = *penalty_target / penalty_target->sum();
-    target_ptr = &normalised_target;
-  }
-  const EmIterStatus status =
-      run_em_iterations(theta, in, opts, target_ptr, penalty_lambda);
+  const EmIterStatus status = run_em_iterations(theta, in, opts);
   out.iterations = status.iterations;
   out.converged = status.converged;
   if (!out.converged) return misskappa::unexpected(Error::not_converged);
@@ -631,109 +596,6 @@ KappaEval evaluate_kappa(const EmRunResult& em, RealMatView weights) {
     out.jacobian.row(2) = -grad_pd.transpose() / m.d_bp;
   }
   return out;
-}
-
-RealVec evaluate_kappa_estimates_full(
-    const Eigen::VectorXd& theta, int c, int R, RealMatView weights) {
-  const int C = static_cast<int>(weights.rows());
-  const RealMat L = RealMat::Constant(C, C, 1.0) - weights;
-  const double n_pairs = static_cast<double>(R) * (R - 1.0) / 2.0;
-
-  RealMat marginals = RealMat::Zero(R, C);
-  double pd = 0.0;
-  for (Eigen::Index idx = 0; idx < theta.size(); ++idx) {
-    const double p = theta(idx);
-    if (p <= 0.0) continue;
-    const auto row = unrank_tuple(static_cast<std::uint64_t>(idx), R, c);
-    for (int r = 0; r < R; ++r) {
-      marginals(r, row[static_cast<std::size_t>(r)]) += p;
-    }
-    double within = 0.0;
-    for (int r1 = 0; r1 < R - 1; ++r1) {
-      for (int r2 = r1 + 1; r2 < R; ++r2) {
-        within += L(row[static_cast<std::size_t>(r1)],
-                    row[static_cast<std::size_t>(r2)]);
-      }
-    }
-    pd += p * within / n_pairs;
-  }
-
-  double pec = 0.0;
-  for (int r1 = 0; r1 < R - 1; ++r1) {
-    for (int r2 = r1 + 1; r2 < R; ++r2) {
-      pec += (marginals.row(r1) * L * marginals.row(r2).transpose()).value();
-    }
-  }
-  pec /= n_pairs;
-
-  const RealVec pooled = marginals.colwise().mean().transpose();
-  const double pef = (pooled.transpose() * L * pooled).value();
-  const double d_bp = L.sum() / (static_cast<double>(C) * static_cast<double>(C));
-
-  RealVec estimates(3);
-  estimates(0) = (std::abs(pec) > singular_tol)
-                     ? 1.0 - pd / pec
-                     : std::numeric_limits<double>::quiet_NaN();
-  estimates(1) = (std::abs(pef) > singular_tol)
-                     ? 1.0 - pd / pef
-                     : std::numeric_limits<double>::quiet_NaN();
-  estimates(2) = (std::abs(d_bp) > singular_tol)
-                     ? 1.0 - pd / d_bp
-                     : std::numeric_limits<double>::quiet_NaN();
-  return estimates;
-}
-
-Eigen::VectorXd uniform_penalty_target(std::size_t n_patterns) {
-  Eigen::VectorXd target = Eigen::VectorXd::Constant(
-      static_cast<Eigen::Index>(n_patterns), 1.0 / static_cast<double>(n_patterns));
-  return target;
-}
-
-Eigen::VectorXd independence_penalty_target(
-    IntMatView ratings, int C, int fold, int groups) {
-  const int R = static_cast<int>(ratings.cols());
-  RealMat marginals = RealMat::Constant(R, C, 0.5);
-  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    if (fold >= 0
-        && static_cast<int>(static_cast<std::size_t>(i) % static_cast<std::size_t>(groups))
-               == fold) {
-      continue;
-    }
-    for (int r = 0; r < R; ++r) {
-      const int v = ratings(i, r);
-      if (v == na_code) continue;
-      if (v >= 0 && v < C) marginals(r, v) += 1.0;
-    }
-  }
-  for (int r = 0; r < R; ++r) {
-    const double row_sum = marginals.row(r).sum();
-    if (row_sum > zero_tol) marginals.row(r) /= row_sum;
-  }
-
-  std::uint64_t n_patterns = 1;
-  for (int r = 0; r < R; ++r) n_patterns *= static_cast<std::uint64_t>(C);
-  Eigen::VectorXd target = Eigen::VectorXd::Zero(static_cast<Eigen::Index>(n_patterns));
-  for (Eigen::Index idx = 0; idx < target.size(); ++idx) {
-    const auto row = unrank_tuple(static_cast<std::uint64_t>(idx), R, C);
-    double p = 1.0;
-    for (int r = 0; r < R; ++r) {
-      p *= marginals(r, row[static_cast<std::size_t>(r)]);
-    }
-    target(idx) = p;
-  }
-  const double s = target.sum();
-  if (s > zero_tol) target /= s;
-  return target;
-}
-
-Eigen::VectorXd make_penalty_target(
-    IntMatView ratings, int C, FimlPenaltyTarget target, int fold, int groups) {
-  std::uint64_t n_patterns = 1;
-  for (int r = 0; r < ratings.cols(); ++r) n_patterns *= static_cast<std::uint64_t>(C);
-  if (target == FimlPenaltyTarget::independence) {
-    return independence_penalty_target(ratings, C, fold, groups);
-  }
-  return uniform_penalty_target(static_cast<std::size_t>(n_patterns));
 }
 
 EmInput delete_fold_input(const EmInput& in, int fold, int groups) {
@@ -1054,76 +916,6 @@ Result<FimlGroupedJackknifeDiagnostic> diagnose_fiml_grouped_jackknife(
   out.jackknife_bias =
       static_cast<double>(actual_groups - 1) * (delete_mean - out.full_estimates);
   out.corrected_estimates = out.full_estimates - out.jackknife_bias;
-  return out;
-}
-
-Result<FimlPenalizedDiagnostic> diagnose_fiml_penalized(
-    IntMatView ratings, RealMatView weights, EmOptions opts,
-    FimlPenaltyTarget target, double lambda, int variance_groups) {
-  const int n = static_cast<int>(ratings.rows());
-  const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
-  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
-  if (!std::isfinite(lambda) || lambda < 0.0) {
-    return misskappa::unexpected(Error::invalid_argument);
-  }
-  if (variance_groups < 0) return misskappa::unexpected(Error::invalid_argument);
-  const int C = static_cast<int>(weights.rows());
-  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
-  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
-
-  auto in_res = preprocess_raw(ratings, C);
-  if (!in_res) return misskappa::unexpected(in_res.error());
-  Eigen::VectorXd full_target = make_penalty_target(ratings, C, target, -1, 0);
-  auto full_em = run_em_preprocessed(
-      *in_res, C, opts, false, nullptr, &full_target, lambda);
-  if (!full_em) return misskappa::unexpected(full_em.error());
-  if (full_em->theta_full.size() == 0) return misskappa::unexpected(Error::numerical_error);
-
-  FimlPenalizedDiagnostic out;
-  out.estimates = evaluate_kappa_estimates_full(full_em->theta_full, C, R, weights);
-  out.vcov = RealMat::Zero(3, 3);
-  out.delete_estimates = RealMat::Zero(0, 3);
-  out.delete_iterations = RealVec::Zero(0);
-  out.lambda = lambda;
-  out.target = target;
-  out.full_iterations = full_em->iterations;
-  out.n_subjects = full_em->n_subjects;
-  out.n_patterns = static_cast<std::size_t>(full_em->theta_hat.size());
-
-  if (variance_groups < 2) return out;
-  if (n < 2) return misskappa::unexpected(Error::invalid_argument);
-
-  const int actual_groups = std::min(variance_groups, n);
-  out.groups = actual_groups;
-  out.refits = actual_groups;
-  out.delete_estimates = RealMat::Zero(actual_groups, 3);
-  out.delete_iterations = RealVec::Zero(actual_groups);
-
-  for (int fold = 0; fold < actual_groups; ++fold) {
-    const EmInput delete_in = delete_fold_input(*in_res, fold, actual_groups);
-    Eigen::VectorXd delete_target =
-        make_penalty_target(ratings, C, target, fold, actual_groups);
-    auto delete_em = run_em_preprocessed(
-        delete_in, C, opts, false, nullptr, &delete_target, lambda);
-    if (!delete_em) return misskappa::unexpected(delete_em.error());
-    if (delete_em->theta_full.size() == 0) {
-      return misskappa::unexpected(Error::numerical_error);
-    }
-
-    out.delete_estimates.row(fold) =
-        evaluate_kappa_estimates_full(delete_em->theta_full, C, R, weights).transpose();
-    out.delete_iterations(fold) = static_cast<double>(delete_em->iterations);
-  }
-
-  const RealVec delete_mean = out.delete_estimates.colwise().mean().transpose();
-  RealMat centered = out.delete_estimates;
-  for (int g = 0; g < actual_groups; ++g) {
-    centered.row(g) -= delete_mean.transpose();
-  }
-  out.vcov =
-      (static_cast<double>(actual_groups - 1) / static_cast<double>(actual_groups))
-      * centered.transpose() * centered;
   return out;
 }
 

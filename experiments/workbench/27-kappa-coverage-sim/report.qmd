@@ -71,12 +71,6 @@ method_label <- c(
   cat_fiml_jk5_hot_quadratic = "Cat-FIML JK5 hot",
   cat_fiml_jk10_quadratic = "Cat-FIML JK10",
   cat_fiml_jk10_hot_quadratic = "Cat-FIML JK10 hot",
-  cat_fiml_pen_unif1_jk10_quadratic = "Cat-FIML pen uniform 1",
-  cat_fiml_pen_unif5_jk10_quadratic = "Cat-FIML pen uniform 5",
-  cat_fiml_pen_unif20_jk10_quadratic = "Cat-FIML pen uniform 20",
-  cat_fiml_pen_ind1_jk10_quadratic = "Cat-FIML pen independence 1",
-  cat_fiml_pen_ind5_jk10_quadratic = "Cat-FIML pen independence 5",
-  cat_fiml_pen_ind20_jk10_quadratic = "Cat-FIML pen independence 20",
   pairwise_quadratic = "Pairwise",
   nt_fiml_quadratic = "NT-FIML"
 )
@@ -189,9 +183,6 @@ quad$Method <- factor(
   quad$method_label,
   levels = c("Cat-FIML", "Cat-FIML JK5", "Cat-FIML JK5 hot",
              "Cat-FIML JK10", "Cat-FIML JK10 hot",
-             "Cat-FIML pen uniform 1", "Cat-FIML pen uniform 5",
-             "Cat-FIML pen uniform 20", "Cat-FIML pen independence 1",
-             "Cat-FIML pen independence 5", "Cat-FIML pen independence 20",
              "IPW", "NT-FIML", "Pairwise")
 )
 quad <- quad[order(quad$dgp, quad$mechanism, quad$Method), ]
@@ -386,38 +377,6 @@ if (!nrow(jk)) {
     check.names = FALSE
   )
   knitr::kable(jk_tab, align = "llllrrrrrrrr")
-}
-```
-
-## Penalized Cat-FIML
-
-The optional `cat_fiml_pen_*` rows shrink the saturated full-response
-distribution during EM by adding `lambda` pseudocounts toward either a uniform
-full-pattern target or an independence target built from observed rater
-marginals. Their intervals use a delete-group jackknife covariance for the
-penalized estimator itself, not the ordinary Cat-FIML Louis covariance.
-
-```{r penalized-cat-fiml}
-pen <- subset(conger, grepl("^cat_fiml_pen_", method))
-if (!nrow(pen)) {
-  cat("No penalized Cat-FIML rows are present in this run.")
-} else {
-  pen <- pen[order(pen$dgp, pen$mechanism, pen$method_label), ]
-  pen_tab <- data.frame(
-    DGP = pen$dgp,
-    Mechanism = pen$mechanism,
-    Method = pen$method_label,
-    Bias = fmt_signed(pen$bias, 3),
-    RMSE = fmt(pen$rmse, 3),
-    `Mean SE` = fmt(pen$mean_se, 3),
-    `SE/SD` = fmt(pen$se_over_sd, 2),
-    `Wald Cov.` = fmt(pen$coverage95, 2),
-    `Fisher Cov.` = fmt(pen$fisher_coverage95, 2),
-    `Mean Refits` = fmt(pen$mean_jackknife_refits, 1),
-    `Mean Fit Time (s)` = fmt(pen$mean_elapsed_ms / 1000, 2),
-    check.names = FALSE
-  )
-  knitr::kable(pen_tab, align = "lllrrrrrrrr")
 }
 ```
 
