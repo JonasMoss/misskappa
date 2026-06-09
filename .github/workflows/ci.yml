@@ -60,8 +60,13 @@ jobs:
             exit 1
           fi
 
-      - name: Install local irrCAC smoke oracle
-        run: R CMD INSTALL --preclean dev/irrcacsmoke
+      - name: Install local irrCAC smoke oracle (kept local; optional)
+        run: |
+          if [ -d dev/irrcacsmoke ]; then
+            R CMD INSTALL --preclean dev/irrcacsmoke
+          else
+            echo "dev/irrcacsmoke not present (kept local, gitignored); irrCAC parity tests self-skip."
+          fi
 
       - name: Generate R documentation
         shell: Rscript {0}

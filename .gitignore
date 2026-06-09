@@ -49,3 +49,10 @@ docs/doxygen/
 
 # Private WIP papers (separate private repo, nested here for workflow)
 papers/00_wip/
+
+# Local-only dev material — NEVER push (third-party copyrighted PDFs, the
+# vendored irrCAC smoke oracle, and raw datasets). Kept on disk for local
+# work; purged from history on 2026-06-09.
+dev/refs/
+dev/irrcacsmoke/
+dev/dat/
