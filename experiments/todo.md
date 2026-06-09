@@ -17,9 +17,9 @@ not touch entries other agents are working on.
 
 ## Paper mapping
 
-The combined `kappa-missing.tex` draft (deleted 2026-06-02, in git
-history) was split into three papers (see `papers/split-plan.md`). Each
-`report.qmd` should annotate which paper(s) it feeds.
+The combined `kappa-missing.tex` draft was split into a family of companion
+papers, which live in a separate private repository. Each `report.qmd` should
+annotate which paper(s) it feeds.
 
 - `01-coverage-iif-louis` — IPW coverage feeds **Paper A**; Louis-SE
   conservatism finding feeds **Paper B** (needs resolution before
