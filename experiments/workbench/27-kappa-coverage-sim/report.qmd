@@ -1,0 +1,106 @@
+---
+title: "Kappa MSE and Coverage Pilot"
+subtitle: "Experiment 27"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+results_dir <- "results"
+summary_path <- file.path(results_dir, "summary.csv")
+replicates_path <- file.path(results_dir, "replicates.csv")
+truth_path <- file.path(results_dir, "truth.csv")
+metadata_path <- file.path(results_dir, "metadata.csv")
+
+if (!file.exists(summary_path)) {
+  stop(
+    "results/summary.csv not found. Run:\n",
+    "  Rscript run_experiment.R --small --progress\n",
+    "from experiments/workbench/27-kappa-coverage-sim first."
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+truth <- read.csv(truth_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+}
+fmt_signed <- function(x, digits = 3) {
+  ifelse(is.na(x), "", sprintf(paste0("%+.", digits, "f"), x))
+}
+```
+
+## Question
+
+How do the current public kappa estimators behave for finite-sample MSE and
+Wald coverage under MCAR and clean MAR missingness? The estimator grid is IPW
+and categorical FIML for nominal, absolute, and quadratic loss, plus pairwise
+and normal-theory FIML for the quadratic scored coefficient.
+
+## Short Answer
+
+This report is a workbench scaffold. Interpret only runs with enough
+replications for Monte Carlo error to be small. The current run used
+`r meta[["mode"]]` mode, `B = r meta[["reps"]]`, sample sizes
+`r meta[["n_grid"]]`, and DGPs `r meta[["dgps"]]`.
+
+## Evidence
+
+```{r headline}
+headline <- subset(summary, coefficient == "Conger" &
+                     mechanism %in% c("mcar30", "mar_anchor30"))
+headline <- headline[order(headline$dgp, headline$mechanism,
+                           headline$weight_label, headline$method), ]
+headline <- head(headline, 48)
+tab <- data.frame(
+  DGP = headline$dgp,
+  Mechanism = headline$mechanism,
+  Method = headline$method,
+  Weight = headline$weight_label,
+  Truth = fmt(headline$truth, 3),
+  Bias = fmt_signed(headline$bias, 3),
+  RMSE = fmt(headline$rmse, 3),
+  `Mean SE` = fmt(headline$mean_se, 3),
+  `SE/SD` = fmt(headline$se_over_sd, 2),
+  Coverage = fmt(headline$coverage95, 2),
+  `Fisher Cov.` = fmt(headline$fisher_coverage95, 2),
+  `Valid` = headline$n_valid,
+  check.names = FALSE
+)
+knitr::kable(tab, align = "llllrrrrrrr")
+```
+
+The full rectangular outputs are:
+
+- `results/truth.csv`
+- `results/replicates.csv`
+- `results/summary.csv`
+- `results/mechanisms.csv`
+- `results/dgps.csv`
+- `results/metadata.csv`
+
+## Caveats
+
+The smoke and small modes are for plumbing, signs, and crude ordering only.
+The big mode is a starting grid, not a final manuscript design. The sparse
+five-category DGP is intentionally included to expose finite-sample saturated
+FIML costs before expanding the grid.
+
+## Reproduce
+
+```bash
+cd experiments/workbench/27-kappa-coverage-sim
+Rscript run_experiment.R --smoke --progress
+Rscript run_experiment.R --small --progress
+Rscript run_experiment.R --big --progress
+quarto render report.qmd
+```

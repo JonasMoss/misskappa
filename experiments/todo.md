@@ -54,6 +54,9 @@ annotate which paper(s) it feeds.
 - `18-alpha-paper-simulation` — standalone alpha-missing paper
   simulation study once normal-FIML alpha and the pairwise SE surface are
   ready.
+- `27-kappa-coverage-sim` — cross-paper kappa coverage / MSE pilot for
+  IPW, categorical FIML, pairwise quadratic, and NT-FIML under a shared
+  current-API simulation grid.
 
 For canonical paths and current/frozen runner status, use
 `experiments/INDEX.md`.
@@ -133,6 +136,27 @@ alpha-missing paper. It avoids Enders's parallel-only limitation while
 still borrowing his missingness-rate framing, and it keeps the saturated
 categorical FIML story honest after experiment 16 showed real
 high-dimensional finite-sample bias.
+
+### `27-kappa-coverage-sim` — owner: codex; feeds Papers A/B/C
+
+**Question.** Under the current public R API, how do IPW, categorical
+FIML, pairwise quadratic, and normal-theory FIML compare for finite-sample
+MSE, SE calibration, and Wald coverage across nominal, absolute, and
+quadratic kappa losses?
+
+**Approach.** Workbench runner at
+`experiments/workbench/27-kappa-coverage-sim/`. The initial grid mirrors
+the alpha-missing simulation shape: replicate-level CSVs, complete-data
+Monte Carlo truths, MCAR mechanisms with iid, rater-heterogeneous, and
+subject-clustered deletion, plus clean MAR mechanisms using an observed
+anchor, nonlinear anchor effects, shifted rater effects, and sequential
+observed-history deletion. Modes `--smoke`, `--small`, and `--big` keep
+the plumbing cheap while preserving a route to a larger run.
+
+**Why it matters.** This gives one shared current-API experiment for the
+kappa family instead of reviving frozen pre-redesign scripts one at a
+time. It should identify which MAR and sparse-support cells are worth
+expanding into paper-facing simulations.
 
 ## Done
 
