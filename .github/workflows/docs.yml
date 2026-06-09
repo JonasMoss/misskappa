@@ -58,11 +58,16 @@ jobs:
           cmake --preset opt
           cmake --build --preset opt --parallel
 
+      - name: Install the misskappa package
+        # The R-executing articles call library(misskappa), so the package must
+        # be installed for pkgdown's Quarto render sessions.
+        run: R CMD INSTALL r-package
+
       - name: Build R documentation
         working-directory: r-package
         run: |
           roxygen2::roxygenise()
-          pkgdown::build_site(quiet = FALSE)
+          pkgdown::build_site()
         shell: Rscript {0}
 
       - name: Build C++ documentation
