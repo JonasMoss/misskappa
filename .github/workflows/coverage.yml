@@ -64,9 +64,12 @@ jobs:
 
       - name: Install R dependencies
         shell: Rscript {0}
+        # lavaan is intentionally omitted: one test compares against a lavaan
+        # *internal* (lav_data_mi_patterns) that varies across lavaan versions.
+        # Without lavaan it self-skips (skip_if_not_installed), matching ci.yml.
         run: |
           install.packages(c("Rcpp", "RcppEigen", "roxygen2", "testthat",
-                             "covr", "psych", "lavaan"))
+                             "covr", "psych"))
 
       - name: Vendor C++ into the R package
         run: dev/vendor-cpp.sh
