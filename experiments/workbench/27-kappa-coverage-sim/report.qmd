@@ -16,12 +16,11 @@ pick_results_dir <- function() {
   override <- Sys.getenv("KAPPA_RESULTS_DIR", unset = "")
   if (nzchar(override)) return(override)
 
-  medium_dirs <- list.dirs("results", full.names = TRUE, recursive = FALSE)
-  medium_dirs <- medium_dirs[grepl("medium-", basename(medium_dirs))]
-  if (length(medium_dirs)) {
-    info <- file.info(file.path(medium_dirs, "summary.csv"))
-    medium_dirs <- medium_dirs[!is.na(info$mtime)]
-    if (length(medium_dirs)) return(medium_dirs[which.max(info$mtime)])
+  result_dirs <- list.dirs("results", full.names = TRUE, recursive = FALSE)
+  if (length(result_dirs)) {
+    info <- file.info(file.path(result_dirs, "summary.csv"))
+    result_dirs <- result_dirs[!is.na(info$mtime)]
+    if (length(result_dirs)) return(result_dirs[which.max(info$mtime)])
   }
   "results"
 }
@@ -47,6 +46,10 @@ metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
 dgps <- read.csv(dgps_path, stringsAsFactors = FALSE)
 mechanisms <- read.csv(mechanisms_path, stringsAsFactors = FALSE)
 meta <- setNames(metadata$value, metadata$key)
+meta_value <- function(key, default = "") {
+  val <- meta[[key]]
+  if (is.null(val) || length(val) == 0L || is.na(val)) default else val
+}
 
 fmt <- function(x, digits = 3) {
   ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
@@ -113,6 +116,7 @@ run_tab <- data.frame(
     "Estimator rows",
     "Summary rows",
     "Replicate rows",
+    "Checkpoint dir",
     "Failures",
     "Elapsed minutes"
   ),
@@ -125,6 +129,7 @@ run_tab <- data.frame(
     meta[["methods"]],
     fmt_int(nrow(summary)),
     if (is.na(replicate_rows)) "not checked" else fmt_int(replicate_rows),
+    meta_value("checkpoint_dir", "not recorded"),
     fmt_int(sum(summary$failures)),
     fmt(as.numeric(meta[["elapsed_seconds"]]) / 60, 2)
   ),
@@ -438,11 +443,12 @@ knitr::kable(runtime_tab, align = "llllr")
 
 The run used only `B = r meta[["reps"]]` replications at one sample size. It is
 large enough to find regimes, but not large enough for final coverage
-statements. The next implementation improvement should be checkpointed
-per-cell writes, because one slow sparse cell currently holds the whole run in
-memory until the end. The next statistical pass should expand only the regimes
-that matter: MCAR calibration rows, biased-DGP MAR rows, and the sparse
-Cat-FIML finite-sample cells.
+statements. The runner writes one checkpoint CSV per design cell and rebuilds
+the final `replicates.csv` and `summary.csv` from those checkpoints, so an
+interrupted overnight pass can be restarted with `--resume` against the same
+arguments. The next statistical pass should expand only the regimes that
+matter: MCAR calibration rows, biased-DGP MAR rows, and the sparse Cat-FIML
+finite-sample cells.
 
 ## Reproduce
 
@@ -450,13 +456,14 @@ Cat-FIML finite-sample cells.
 cd experiments/workbench/27-kappa-coverage-sim
 
 Rscript run_experiment.R --big \
-  --reps 50 \
-  --n-grid 200 \
+  --reps 500 \
+  --n-grid 200,600 \
   --truth-n 100000 \
   --dgps balanced4,biased4,sparse5 \
   --mechanisms mcar15,mcar30,mcar_rater30,mcar_subject30,mar_anchor15,mar_anchor30,mar_anchor_nonlinear30,mar_shifted30,mar_sequential30 \
+  --resume \
   --progress \
-  --out-dir results/medium-YYYYMMDD-HHMM
+  --out-dir results/nightly-YYYYMMDD-HHMM
 
-KAPPA_RESULTS_DIR=results/medium-YYYYMMDD-HHMM quarto render report.qmd
+KAPPA_RESULTS_DIR=results/nightly-YYYYMMDD-HHMM quarto render report.qmd
 ```
