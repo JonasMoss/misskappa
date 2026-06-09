@@ -68,9 +68,7 @@ method_label <- c(
   ipw_quadratic = "IPW",
   cat_fiml_quadratic = "Cat-FIML",
   cat_fiml_jk5_quadratic = "Cat-FIML JK5",
-  cat_fiml_jk5_hot_quadratic = "Cat-FIML JK5 hot",
   cat_fiml_jk10_quadratic = "Cat-FIML JK10",
-  cat_fiml_jk10_hot_quadratic = "Cat-FIML JK10 hot",
   pairwise_quadratic = "Pairwise",
   nt_fiml_quadratic = "NT-FIML"
 )
@@ -181,8 +179,7 @@ quad <- subset(
 )
 quad$Method <- factor(
   quad$method_label,
-  levels = c("Cat-FIML", "Cat-FIML JK5", "Cat-FIML JK5 hot",
-             "Cat-FIML JK10", "Cat-FIML JK10 hot",
+  levels = c("Cat-FIML", "Cat-FIML JK5", "Cat-FIML JK10",
              "IPW", "NT-FIML", "Pairwise")
 )
 quad <- quad[order(quad$dgp, quad$mechanism, quad$Method), ]
@@ -345,16 +342,13 @@ issue.
 ## Grouped Jackknife
 
 The optional `cat_fiml_jk5_*` and `cat_fiml_jk10_*` rows use delete-group
-jackknife corrections as experiment-side bias diagnostics. Plain JK rows use
-cold-start delete refits, matching the ordinary Cat-FIML estimator. Rows with
-`_hot_` in the method name hot-start the delete refits from the full-data EM
-solution and should be read as a speed/sensitivity diagnostic. The reported
+jackknife corrections as experiment-side bias diagnostics. The reported
 interval keeps the full-fit Cat-FIML standard error and recenters it at the
 bias-corrected estimate, so this section isolates whether recentring helps
 before treating jackknife variance as a separate problem.
 
 ```{r grouped-jackknife}
-jk <- subset(conger, grepl("^cat_fiml_jk[0-9]+(_hot)?_", method))
+jk <- subset(conger, grepl("^cat_fiml_jk[0-9]+_", method))
 if (!nrow(jk)) {
   cat("No grouped jackknife rows are present in this run.")
 } else {

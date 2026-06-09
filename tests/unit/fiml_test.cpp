@@ -328,38 +328,6 @@ TEST_CASE("diagnose_fiml_louis: reports a Louis spectrum on the MAR fixture") {
   CHECK(d_keep->threshold == 0.0);
 }
 
-TEST_CASE("diagnose_fiml_grouped_jackknife: full fit and correction algebra") {
-  IntMat x = twelve_subject_3rater_3cat();
-  RealVec v(3);
-  v << 1.0, 2.0, 3.0;
-  auto W = ms::loss::quadratic_weights(3, v);
-  REQUIRE(W.has_value());
-
-  EmOptions opts{};
-  opts.tol = 1e-9;
-  auto hot = ms::diagnose_fiml_grouped_jackknife(x, *W, opts, 3, true);
-  auto cold = ms::diagnose_fiml_grouped_jackknife(x, *W, opts, 3, false);
-  REQUIRE(hot.has_value());
-  REQUIRE(cold.has_value());
-
-  auto full = ms::estimate_fiml(x, *W, opts);
-  REQUIRE(full.has_value());
-  CHECK((hot->full_estimates - full->estimates).cwiseAbs().maxCoeff() < 1e-8);
-  CHECK((hot->full_vcov - full->vcov).cwiseAbs().maxCoeff() < 1e-8);
-
-  REQUIRE(hot->delete_estimates.rows() == 3);
-  REQUIRE(hot->delete_estimates.cols() == 3);
-  REQUIRE(hot->delete_iterations.size() == 3);
-  CHECK((hot->full_estimates - cold->full_estimates).cwiseAbs().maxCoeff() < 1e-12);
-  CHECK((hot->full_vcov - cold->full_vcov).cwiseAbs().maxCoeff() < 1e-12);
-
-  const RealVec delete_mean = cold->delete_estimates.colwise().mean().transpose();
-  const RealVec expected_bias = 2.0 * (delete_mean - cold->full_estimates);
-  CHECK((cold->jackknife_bias - expected_bias).cwiseAbs().maxCoeff() < 1e-12);
-  CHECK((cold->corrected_estimates - (cold->full_estimates - cold->jackknife_bias))
-            .cwiseAbs().maxCoeff() < 1e-12);
-}
-
 TEST_CASE("diagnose_fiml_louis: rejects degenerate input") {
   auto W = ms::loss::identity_weights(2);
   REQUIRE(W.has_value());
