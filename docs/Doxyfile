@@ -1,5 +1,5 @@
 PROJECT_NAME           = "misskappa"
-PROJECT_BRIEF          = "C++23 agreement coefficients with missing data"
+PROJECT_BRIEF          = "C++17 agreement coefficients with missing data"
 OUTPUT_DIRECTORY       = docs/site/cpp
 HTML_OUTPUT            = .
 GENERATE_HTML          = YES

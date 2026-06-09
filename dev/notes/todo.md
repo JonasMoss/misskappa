@@ -1,9 +1,9 @@
 # misskappa repo TODO
 
-Active repo-level backlog. Paper-specific TODOs live at
-`papers/<slug>/dev/todo.md` (one per paper); the split decision and
-section mapping live at `papers/split-plan.md`. The port
-plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
+Active repo-level backlog for the public library + R package. Paper-specific
+TODOs and the split/section mapping live in the separate private papers repo,
+not here. The port plan with the eight-step roadmap is at
+`dev/notes/port-plan.md`.
 
 ## Roadmap status
 
@@ -14,56 +14,33 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
 - [x] Step 5: FIML / EM.
 - [x] Step 6: inference consolidation.
 - [x] Step 7: R package wiring (Rcpp glue + S3 + sim list).
-- [ ] Step 8: paper conversion (LyX -> .tex) + scripts wiring.
+- [x] Step 8: paper conversion (LyX -> .tex) + scripts wiring — moved to the
+  separate private papers repo; out of scope for this public tree.
 
 ## Active backlog
 
-- [ ] **R package release (GitHub-first): finish the unified-API refactor.**
-      Decided 2026-06-06: ship a clean *estimators + CIs* surface, defer
-      hypothesis tests, release on GitHub first (CRAN later). The public
-      surface is narrowed to one entry point per input shape driven by a shared
-      `estimator =` selector; the engine builds + runs (smoke-tested all six
-      paths). State is mid-refactor — code works, tests/docs lag.
-
-      *Done (mostly committed; `NAMESPACE` + `R/kappa.R` still dirty):*
-      shared `estimator` vocabulary `pairwise | ipw | cat_fiml | nt_fiml` on
-      `alpha()`, `kappa()`, `kappa_counts()`; `se_type` dropped (sandwich SE
-      only); available-case + Gwet pulled from public `kappa()` (reachable for
-      sims via internal `estimate_kappa_raw()`); default weight `identity` ->
-      `nominal`; `kappa_continuous()` + `kappa_gwise()` demoted to internal
-      (so public estimators are just `alpha`/`kappa`/`kappa_counts`);
-      `kappa_quadratic_counts()` removed; `kappa_quadratic()` simplified to
-      `(x, values)` empirical-IF only (normal/elliptical modes dropped, C++
-      glue regenerated to 2-arg) and now returns IFs; new
-      `kappa_quadratic_fiml()` (robust NT-FIML, quadratic kernel) backs
-      `estimator = "nt_fiml"`; `confint(transform = "fisher")` delta-method CI
-      + `print()` CI columns; `joint_vcov()`/`wald_test()` kept internal.
-
-      *Open, next session, in order:*
-      1. **Update the test suite to the new API** — ~31 old-API call sites in
-         `test-kappa.R`, `test-influence.R`, `test-parity-irrcacsmoke.R`,
-         `test-kappa-quadratic-fiml.R`: `method=` -> `estimator=`; drop
-         `se_type` / `vcov=` / `relative_kurtosis`; route dropped public
-         `available`/`gwet` through internal `estimate_kappa_raw()`; weight
-         default is now `nominal`. R CMD check tests currently fail on these.
-      2. **Fix stale roxygen cross-refs**, then re-roxygenise with the
-         `pkgload` loader (bare `roxygenise()` chokes on the dataset string
-         docs): `alpha_cat_fiml`/`alpha_continuous`/`kappa_quadratic`/
-         `kappa_counts` descriptions still say `alpha(method=, type=)` /
-         `kappa(method="available")`.
-      3. **Sync `_pkgdown.yml`** — Estimators list still names now-internal
-         `kappa_continuous` + `kappa_gwise`; reduce to `alpha`/`kappa`/
-         `kappa_counts`.
-      4. `just r-check` to confirm `R CMD check` is clean; commit
-         `NAMESPACE` + `R/kappa.R` + doc fixes.
-      5. Version decision: pre-1.0 reset (`0.5.0`) vs keep legacy `2.0.0`.
+- [x] **R package release (GitHub-first): unified-API refactor shipped at v1.0.0.**
+      Decided 2026-06-06, landed and committed check-clean as `v1.0.0`. The
+      public surface is one entry point per input shape driven by a shared
+      `estimator =` selector `pairwise | ipw | cat_fiml | nt_fiml` on `alpha()`,
+      `kappa()`, `kappa_counts()`; `se_type` dropped (sandwich SE only);
+      available-case + Gwet pulled from public `kappa()` but reachable for sims
+      via internal `estimate_kappa_raw()`; default weight is `nominal`;
+      `kappa_continuous()` + `kappa_gwise()` demoted to internal (public
+      estimators are just `alpha`/`kappa`/`kappa_counts`); `kappa_quadratic()`
+      simplified to `(x, values)` empirical-IF and now returns IFs;
+      `kappa_quadratic_fiml()` (robust NT-FIML) backs `estimator = "nt_fiml"`;
+      `confint(transform = "fisher")` delta-method CI + `print()` CI columns.
+      The test suite, roxygen cross-refs, and `_pkgdown.yml` were resynced to
+      the new API and `R CMD check` is clean. Hypothesis tests are no longer
+      deferred — see the shipped front-door item below.
 
 - [x] **GitHub-installability: vendor the C++ library into the R package.**
       `dev/vendor-cpp.sh` (= `just vendor`) copies the canonical `src/*.cpp`,
       `src/*.hpp`, and `include/misskappa/*.hpp` into `r-package/src/`, each
       stamped with a `@generated` banner (and cleaned up by that banner on the
       next run, so renames/deletes don't leave stale copies). `Makevars` is now
-      self-contained — `PKG_CPPFLAGS = -I. -DEIGEN_NO_EXCEPTIONS`, C++23, no
+      self-contained — `PKG_CPPFLAGS = -I. -Imisskappa -DEIGEN_NO_EXCEPTIONS`, C++17, no
       `PKG_LIBS`, no `../../include` — and R compiles every vendored `.cpp`.
       Eigen comes from `LinkingTo: RcppEigen`. Dropped `-fno-exceptions/-rtti`
       (Rcpp needs exceptions; the library never throws, so it's a no-op). The R
@@ -73,9 +50,10 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       `MISSKAPPA_*` env scrubbed: `alpha()`/`kappa()` run, full testthat suite
       201/201. `opt`/`test-opt` still build the static lib for the C++ ctest.
 
-- [ ] **Hypothesis-testing front door (deferred from the release).**
-      `t.test`-style `kappa_test()` / `alpha_test()` returning `htest` over the
-      already-built `joint_vcov()` / `wald_test()` engine. Use snake_case, not
+- [x] **Hypothesis-testing front door (shipped).**
+      `t.test`-style `kappa_test()` / `alpha_test()` return `htest` over the
+      already-built `joint_vcov()` / `wald_test()` engine, exported in v1.0.0.
+      Use snake_case, not
       dotted names: `base::kappa` is a generic, so `kappa.test` would
       mis-dispatch as an S3 method. One-sample (`theta = theta0`) and
       independent two-sample (variances add) work for any estimator;
@@ -117,9 +95,10 @@ plan with the eight-step roadmap is at `dev/notes/port-plan.md`.
       Zhang-Yuan's congeneric cell, add stronger congeneric and two-factor
       non-congeneric cells, borrow Enders/Savalei missingness rates, and use
       clean observed-anchor MAR rather than truth-dependent missingness.
-- [ ] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
-      Continue the manuscript split/wiring work under the paper-local todo
-      files once the current manuscript tree noise is settled.
+- [x] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
+      Moved out of this repo: the manuscripts now live in the separate private
+      papers repo, each with its own paper-local todo. Nothing paper-side
+      remains in the public tree.
 
 ## Deferred
 
