@@ -119,10 +119,13 @@ jobs:
         run: |
           library(testthat)
           library(misskappa)
+          # test_dir() chdir's into the test folder, so a relative reporter
+          # path lands there, not at the repo root. Pin it absolutely.
+          out <- file.path(getwd(), "r-junit.xml")
           results <- test_dir(
             "r-package/tests/testthat",
             package = "misskappa",
-            reporter = JunitReporter$new(file = "r-junit.xml"),
+            reporter = JunitReporter$new(file = out),
             load_package = "installed",
             stop_on_failure = FALSE
           )
