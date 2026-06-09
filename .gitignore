@@ -56,3 +56,9 @@ papers/00_wip/
 dev/refs/
 dev/irrcacsmoke/
 dev/dat/
+
+# Experiment result data — regenerated from the seeded runners. Each
+# experiment's runner + report.qmd is tracked (the recipe); the CSV outputs
+# are not, keeping the public tree lean. Each results/ dir keeps its own
+# .gitignore so the directory persists.
+experiments/**/results/*.csv
