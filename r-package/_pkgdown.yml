@@ -27,6 +27,7 @@ reference:
   - title: Inference
     contents:
       - confint.misskappa_estimate
+      - influence.misskappa_estimate
   - title: Simulation helpers
     contents:
       - sim
