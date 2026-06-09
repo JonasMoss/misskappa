@@ -68,9 +68,15 @@ jobs:
         run: roxygen2::roxygenise("r-package")
 
       - name: Check R package
+        # This job stays lightweight: the Quarto vignette engine and the
+        # heavier Suggests (lavaan, psych, quarto) are not installed here --
+        # they are exercised by the Docs workflow. Skip building vignettes and
+        # treat absent Suggests as a NOTE rather than an error.
+        env:
+          _R_CHECK_FORCE_SUGGESTS_: "false"
         run: |
           cleanup() { rm -f misskappa_*.tar.gz; }
           cleanup
           trap cleanup EXIT
-          R CMD build r-package
-          R CMD check --no-manual misskappa_*.tar.gz
+          R CMD build r-package --no-build-vignettes
+          R CMD check --no-manual --no-build-vignettes misskappa_*.tar.gz
