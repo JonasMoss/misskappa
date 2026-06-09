@@ -3,6 +3,7 @@
 #include "misskappa/loss.hpp"
 
 #include <cmath>
+#include <limits>
 
 using misskappa::Error;
 using misskappa::RealMat;
@@ -175,4 +176,145 @@ TEST_CASE("Continuous: zero-range collapses to identity behaviour") {
   REQUIRE(r.has_value());
   CHECK(r->compute(1.0, 1.0, r->min_val, r->max_val) == 0.0);
   CHECK(r->compute(1.0, 2.0, r->min_val, r->max_val) == 1.0);
+}
+
+// --- Validation guards on the metric weight factories ---
+
+TEST_CASE("Metric weight factories reject non-positive c") {
+  const RealVec v = values_1_to_n(3);
+  CHECK(loss::linear_weights(0, v).error() == Error::invalid_argument);
+  CHECK(loss::quadratic_weights(-1, v).error() == Error::invalid_argument);
+  CHECK(loss::ordinal_weights(0).error() == Error::invalid_argument);
+  CHECK(loss::radical_weights(0, v).error() == Error::invalid_argument);
+  CHECK(loss::ratio_weights(0, v).error() == Error::invalid_argument);
+  CHECK(loss::circular_weights(0, v).error() == Error::invalid_argument);
+  CHECK(loss::bipolar_weights(-2, v).error() == Error::invalid_argument);
+}
+
+TEST_CASE("Metric weight factories reject a mismatched value-vector length") {
+  RealVec v2(2);
+  v2 << 1.0, 2.0;
+  CHECK(loss::quadratic_weights(3, v2).error() == Error::dimension_mismatch);
+  CHECK(loss::radical_weights(3, v2).error() == Error::dimension_mismatch);
+  CHECK(loss::ratio_weights(3, v2).error() == Error::dimension_mismatch);
+  CHECK(loss::circular_weights(3, v2).error() == Error::dimension_mismatch);
+  CHECK(loss::bipolar_weights(3, v2).error() == Error::dimension_mismatch);
+}
+
+// --- Degenerate value vectors collapse to the identity matrix ---
+
+TEST_CASE("ratio / circular / bipolar collapse to identity on flat scores") {
+  const RealMat I3 = RealMat::Identity(3, 3);
+  RealVec flat(3);
+  flat << 2.0, 2.0, 2.0;
+  CHECK((*loss::ratio_weights(3, flat) - I3).cwiseAbs().maxCoeff() < tol);
+  CHECK((*loss::circular_weights(3, flat) - I3).cwiseAbs().maxCoeff() < tol);
+  CHECK((*loss::bipolar_weights(3, flat) - I3).cwiseAbs().maxCoeff() < tol);
+}
+
+TEST_CASE("ratio_weights collapses to identity when scores are antisymmetric") {
+  const RealMat I3 = RealMat::Identity(3, 3);
+  RealVec antisym(3);
+  antisym << -1.0, 0.0, 1.0;  // v_max + v_min == 0
+  CHECK((*loss::ratio_weights(3, antisym) - I3).cwiseAbs().maxCoeff() < tol);
+}
+
+TEST_CASE("ordinal_weights collapses to identity for a single category") {
+  auto r = loss::ordinal_weights(1);
+  REQUIRE(r.has_value());
+  CHECK(std::abs((*r)(0, 0) - 1.0) < tol);
+}
+
+// --- Special-case branches inside the ratio / bipolar kernels ---
+
+TEST_CASE("ratio_weights special-cases a zero-sum category pair") {
+  RealVec v(3);
+  v << -1.0, 1.0, 2.0;  // pair (0, 1) sums to zero
+  auto r = loss::ratio_weights(3, v);
+  REQUIRE(r.has_value());
+  CHECK(std::abs((*r)(0, 1) - 1.0) < tol);
+}
+
+TEST_CASE("bipolar_weights handles a zero-denominator pair") {
+  RealVec v(3);
+  v << 1.0, 1.0, 3.0;  // categories 0 and 1 tie at the minimum -> den == 0
+  auto r = loss::bipolar_weights(3, v);
+  REQUIRE(r.has_value());
+  CHECK(is_symmetric(*r));
+  CHECK(std::abs((*r)(0, 1) - 1.0) < tol);  // skipped pair keeps raw weight 0
+}
+
+// --- Continuous radical / ratio loss kernels ---
+
+TEST_CASE("radical_loss: known values for [0, 4]") {
+  auto r = loss::radical_loss(0.0, 4.0);
+  REQUIRE(r.has_value());
+  CHECK(std::abs(r->compute(0.0, 0.0, r->min_val, r->max_val) - 0.0) < tol);
+  CHECK(std::abs(r->compute(0.0, 1.0, r->min_val, r->max_val) - 0.5) < tol);
+  CHECK(std::abs(r->compute(0.0, 4.0, r->min_val, r->max_val) - 1.0) < tol);
+}
+
+TEST_CASE("radical_loss: zero range collapses to identity") {
+  auto r = loss::radical_loss(2.0, 2.0);
+  REQUIRE(r.has_value());
+  CHECK(r->compute(2.0, 2.0, r->min_val, r->max_val) == 0.0);
+  CHECK(r->compute(2.0, 5.0, r->min_val, r->max_val) == 1.0);
+}
+
+TEST_CASE("ratio_loss: known values for [1, 3]") {
+  auto r = loss::ratio_loss(1.0, 3.0);
+  REQUIRE(r.has_value());
+  CHECK(std::abs(r->compute(2.0, 2.0, r->min_val, r->max_val) - 0.0) < tol);
+  CHECK(std::abs(r->compute(1.0, 3.0, r->min_val, r->max_val) - 1.0) < tol);
+  CHECK(r->compute(0.0, 0.0, r->min_val, r->max_val) == 0.0);  // a + b == 0
+}
+
+TEST_CASE("ratio_loss: degenerate parameters collapse to identity") {
+  auto r1 = loss::ratio_loss(-1.0, 1.0);  // v_max + v_min == 0
+  REQUIRE(r1.has_value());
+  CHECK(r1->compute(1.0, 1.0, r1->min_val, r1->max_val) == 0.0);
+  CHECK(r1->compute(1.0, 2.0, r1->min_val, r1->max_val) == 1.0);
+
+  auto r2 = loss::ratio_loss(2.0, 2.0);  // zero range -> den_sq == 0
+  REQUIRE(r2.has_value());
+  CHECK(r2->compute(2.0, 2.0, r2->min_val, r2->max_val) == 0.0);
+  CHECK(r2->compute(2.0, 9.0, r2->min_val, r2->max_val) == 1.0);
+}
+
+TEST_CASE("quadratic_loss: zero range collapses to identity") {
+  auto r = loss::quadratic_loss(1.0, 1.0);
+  REQUIRE(r.has_value());
+  CHECK(r->compute(1.0, 1.0, r->min_val, r->max_val) == 0.0);
+  CHECK(r->compute(1.0, 2.0, r->min_val, r->max_val) == 1.0);
+}
+
+// --- Component-separable vector loss guards ---
+
+TEST_CASE("make_vector_loss rejects degenerate feature weights") {
+  RealVec empty(0);
+  CHECK(loss::hamming_vector_loss(empty).error() == Error::invalid_argument);
+
+  RealVec negative(2);
+  negative << 1.0, -1.0;
+  CHECK(loss::absolute_vector_loss(negative).error() == Error::invalid_argument);
+
+  RealVec nan_weight(2);
+  nan_weight << 1.0, std::numeric_limits<double>::quiet_NaN();
+  CHECK(loss::squared_vector_loss(nan_weight).error() == Error::invalid_argument);
+
+  RealVec all_zero(2);
+  all_zero << 0.0, 0.0;
+  CHECK(loss::rms_vector_loss(all_zero).error() == Error::invalid_argument);
+}
+
+TEST_CASE("rms_vector_loss transform handles non-positive arguments") {
+  RealVec fw(2);
+  fw << 1.0, 1.0;
+  auto r = loss::rms_vector_loss(fw);
+  REQUIRE(r.has_value());
+  CHECK(r->transform(0.0) == 0.0);
+  CHECK(r->transform(-3.0) == 0.0);
+  CHECK(std::abs(r->transform(4.0) - 2.0) < tol);
+  CHECK(r->transform_derivative(0.0) == 0.0);
+  CHECK(std::abs(r->transform_derivative(4.0) - 0.25) < tol);
 }

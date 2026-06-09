@@ -1,5 +1,6 @@
 #include "doctest.h"
 
+#include "misskappa/diagnostics.hpp"
 #include "misskappa/estimate.hpp"
 #include "misskappa/loss.hpp"
 
@@ -276,4 +277,74 @@ TEST_CASE("estimate_fiml: out-of-range category -> invalid_argument") {
   auto r = ms::estimate_fiml(x, *W, EmOptions{});
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::invalid_argument);
+}
+
+TEST_CASE("diagnose_fiml_louis: reports a Louis spectrum on the MAR fixture") {
+  IntMat x = twelve_subject_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+  REQUIRE(W.has_value());
+
+  auto d = ms::diagnose_fiml_louis(x, *W, EmOptions{});
+  REQUIRE(d.has_value());
+
+  CHECK(d->c == 3);
+  CHECK(d->R == 3);
+  CHECK(d->n_subjects > 0u);
+  CHECK(d->n_patterns > 0u);
+
+  // Conger's kappa from the diagnostic matches the FIML estimator's Conger.
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(r.has_value());
+  CHECK(std::abs(d->kappa_conger - r->estimates(0)) < 1e-6);
+
+  // Spectrum shape: eigenvalues descending; the parallel arrays line up.
+  REQUIRE(d->eigenvalues.size() == d->gradient_projection.size());
+  REQUIRE(d->eigenvalues.size() == d->variance_contribution.size());
+  REQUIRE(d->eigenvalues.size() > 0);
+  CHECK(std::abs(d->lambda_max - d->eigenvalues(0)) < tol);
+  for (Eigen::Index i = 1; i < d->eigenvalues.size(); ++i) {
+    CHECK(d->eigenvalues(i) <= d->eigenvalues(i - 1) + tol);
+  }
+  CHECK(d->variance >= -tol);
+  CHECK(d->retained_rank >= 0);
+  CHECK(d->retained_rank <= static_cast<int>(d->eigenvalues.size()));
+
+  // A positive rcond prunes small eigenvalues: positive threshold, no more
+  // retained directions than the unpruned run.
+  EmOptions pruned{};
+  pruned.info_rcond = 0.5;
+  auto d_pruned = ms::diagnose_fiml_louis(x, *W, pruned);
+  REQUIRE(d_pruned.has_value());
+  CHECK(d_pruned->threshold > 0.0);
+  CHECK(d_pruned->retained_rank <= d->retained_rank);
+
+  // rcond of zero disables pruning: threshold is exactly zero.
+  EmOptions keep_all{};
+  keep_all.info_rcond = 0.0;
+  auto d_keep = ms::diagnose_fiml_louis(x, *W, keep_all);
+  REQUIRE(d_keep.has_value());
+  CHECK(d_keep->threshold == 0.0);
+}
+
+TEST_CASE("diagnose_fiml_louis: rejects degenerate input") {
+  auto W = ms::loss::identity_weights(2);
+  REQUIRE(W.has_value());
+
+  IntMat one_rater(3, 1);
+  one_rater << 0, 1, 0;
+  CHECK(ms::diagnose_fiml_louis(one_rater, *W, EmOptions{}).error()
+        == ms::Error::invalid_argument);  // R < 2
+
+  RealMat nonsquare(2, 3);
+  nonsquare.setZero();
+  CHECK(ms::diagnose_fiml_louis(ten_subject_2rater(), nonsquare, EmOptions{}).error()
+        == ms::Error::dimension_mismatch);  // weights not square
+
+  IntMat out_of_range(3, 2);
+  out_of_range << 0, 1,
+                  5, 0,
+                  0, 1;
+  CHECK(!ms::diagnose_fiml_louis(out_of_range, *W, EmOptions{}).has_value());
 }

@@ -35,6 +35,19 @@ opt:
 test-opt: opt
   @ctest --preset opt
 
+# C++ test coverage (clang source-based instrumentation + llvm-cov).
+# Prints a per-file summary; full HTML lands in build-cov/coverage-html/.
+cpp-cov:
+  @dev/cpp-coverage.sh
+
+# R package test coverage (covr over the testthat suite). Vendors first so the
+# package's C++ is fresh; covr also reports that C++ as hit through Rcpp.
+r-cov: vendor
+  @Rscript dev/r-coverage.R
+
+# Both coverage suites.
+cov: cpp-cov r-cov
+
 # Vendor the canonical C++ (src/ + include/) into r-package/src/ so the package
 # is self-contained. Run after any C++ change — the R recipes below depend on it,
 # so `just r-install` / `r-check` always build against fresh-vendored sources.
