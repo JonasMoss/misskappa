@@ -101,7 +101,7 @@ least one answer. Robust normal-theory FIML keeps every respondent:
 ``` r
 data(bfi, package = "psych")
 N <- paste0("N", 1:5)
-alpha(as.matrix(bfi[, N]), estimator = "nt_fiml")
+alpha(bfi[, N], estimator = "nt_fiml")
 #> misskappa: estimator=nt_fiml, weight=score
 #>       estimate    se lower  upper
 #> alpha   0.8138 0.006 0.802 0.8256
@@ -115,8 +115,8 @@ Different people answer in each group, so the samples are independent again:
 ``` r
 g <- split(seq_len(nrow(bfi)), bfi$gender)
 alpha_test(
-  men   = alpha(as.matrix(bfi[g[["1"]], N]), estimator = "nt_fiml"),
-  women = alpha(as.matrix(bfi[g[["2"]], N]), estimator = "nt_fiml"),
+  men   = alpha(bfi[g[["1"]], N], estimator = "nt_fiml"),
+  women = alpha(bfi[g[["2"]], N], estimator = "nt_fiml"),
   paired = FALSE)
 #> 
 #>  Independent-sample test of equal alpha across 2 fits

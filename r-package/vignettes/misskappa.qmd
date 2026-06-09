@@ -94,7 +94,7 @@ estimator handles the missing responses under ignorable missingness:
 ```{r}
 #| eval: !expr requireNamespace("psych", quietly = TRUE)
 data(bfi, package = "psych")
-neuroticism <- as.matrix(bfi[, paste0("N", 1:5)])
+neuroticism <- bfi[, paste0("N", 1:5)]
 sum(!complete.cases(neuroticism))      # respondents missing at least one item
 alpha(neuroticism, estimator = "nt_fiml")
 ```

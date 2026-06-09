@@ -32,7 +32,7 @@ subs <- list(visual  = c("x1", "x2", "x3"),
              textual = c("x4", "x5", "x6"),
              speed   = c("x7", "x8", "x9"))
 fits <- lapply(subs, function(v)
-  alpha(as.matrix(dat.holzinger1939[, v]), estimator = "nt_fiml"))
+  alpha(dat.holzinger1939[, v], estimator = "nt_fiml"))
 do.call(alpha_test, c(fits, list(paired = TRUE)))
 
 \dontshow{if (requireNamespace("psych", quietly = TRUE)) withAutoprint(\{ # examplesIf}
@@ -44,15 +44,18 @@ bfi[neg] <- 7 - bfi[neg]
 
 # Dependent: are Neuroticism and Extraversion equally reliable? The same
 # respondents answer both, so the estimates are paired.
-alpha_test(N = alpha(as.matrix(bfi[, paste0("N", 1:5)]), estimator = "nt_fiml"),
-           E = alpha(as.matrix(bfi[, paste0("E", 1:5)]), estimator = "nt_fiml"),
+N <- paste0("N", 1:5)
+E <- paste0("E", 1:5)
+alpha_test(N = alpha(bfi[, N], estimator = "nt_fiml"),
+           E = alpha(bfi[, E], estimator = "nt_fiml"),
            paired = TRUE)
 
 # Independent: is Conscientiousness equally reliable across the two genders?
 g <- split(seq_len(nrow(bfi)), bfi$gender)
+C <- paste0("C", 1:5)
 alpha_test(
-  men   = alpha(as.matrix(bfi[g[["1"]], paste0("C", 1:5)]), estimator = "nt_fiml"),
-  women = alpha(as.matrix(bfi[g[["2"]], paste0("C", 1:5)]), estimator = "nt_fiml"),
+  men   = alpha(bfi[g[["1"]], C], estimator = "nt_fiml"),
+  women = alpha(bfi[g[["2"]], C], estimator = "nt_fiml"),
   paired = FALSE)
 \dontshow{\}) # examplesIf}
 }
