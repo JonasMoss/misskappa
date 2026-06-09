@@ -138,8 +138,8 @@ Tables in reports are presentation objects, not data dumps.
 - Prefer one clear plot over several near-duplicates.
 
 For style of tables / figures / math / prose in *any* misskappa write-up,
-follow `papers/ipw/STYLE.md` (cloned into each `papers/<slug>/STYLE.md`)
-to the extent it fits a report.
+follow the shared write-up style guide kept with the manuscripts (in the
+separate private papers repository) to the extent it fits a report.
 
 ## Style
 

@@ -11,18 +11,13 @@ audience is methods developers. The R package under `r-package/` is a thin
 Rcpp wrapper over the prebuilt static library, intended for empirical examples
 and the accompanying manuscripts under `papers/`.
 
-The combined draft was split into three papers (see
-`papers/split-plan.md`) and then deleted on 2026-06-02 once fully
-migrated (recoverable from git history):
-`papers/ipw/` (Psychometrika; IPW + AC/Gwet comparison),
-`papers/fiml/` (Psychometrika or Biometrika; FIML / semiparametric efficiency
-under MAR), and `papers/quadratic/` (Biometrics; closed-form quadratic =
-Lin's CCC on pairwise-available data).
-
-The three spinoffs are intended as a simultaneous submission family, not
-strictly sequential papers. Cross-references among Papers A/B/C are allowed and
-expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
-"companion paper") until final titles, names, and bibliography keys are chosen.
+The combined draft was split into a family of companion papers — IPW + AC/Gwet
+comparison, FIML / semiparametric efficiency under MAR, and the closed-form
+quadratic = Lin's CCC route — plus standalone papers on the AC1 guessing model
+and on coefficient alpha under missing data. These manuscripts live in a
+separate private repository and are out of scope for this public tree; use
+stable provisional labels ("Paper A", "Paper B", "Paper C", or "companion
+paper") in notes that reference them.
 
 ## Non-negotiables
 
@@ -58,18 +53,11 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
 - `tests/tools/` — maintainer-only fixture-generation scripts (R).
 - `r-package/` — Rcpp bindings; consumes the prebuilt `libmisskappa.a`,
   separate from and not part of the C++ build.
-- `papers/` — research manuscripts. `papers/ipw/`, `papers/fiml/`,
-  `papers/quadratic/` are the three spinoffs (plus the independent
-  `papers/ac1-paper/` and `papers/alpha-missing/`). Each carries its own
-  `AGENTS.md`, `STYLE.md`, `justfile`, bibliography, figures, tables,
-  scripts, and results. The cross-paper plan and section mapping live in
-  `papers/split-plan.md`; cross-paper todos in `papers/todo.md`. The
-  combined draft they were split from was deleted on 2026-06-02
-  (recoverable from git history). `papers/alpha-missing/` is a standalone
-  paper on inference for coefficient alpha under item-level missing data
-  (Psychometrika; pairwise-available covariance, multinomial EM, normal
-  FIML), a cousin to the kappa family that shares the missing-data
-  machinery but not the split.
+- `papers/` — the completed, published manuscripts that ship with this repo
+  (`papers/guessing/` and `papers/kappa-sd/`), each with its own sources,
+  bibliography, figures, tables, and reproduction scripts. Work-in-progress
+  manuscripts (the kappa companion papers and the standalone coefficient-alpha
+  paper) live in a separate private repository, not here.
 - `docs/` — repo-level documentation assets, including shared artwork such as
   the project logo. Generated docs output is under `docs/site/` and is ignored;
   do not commit generated HTML.

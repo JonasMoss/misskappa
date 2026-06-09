@@ -165,4 +165,5 @@ under MAR, and whether FIML buys enough efficiency/coverage to justify its cost.
    continuous runner first.
 3. Add the ordinal/categorical arm after the continuous smoke is stable.
 4. Run the capped paper pass, render the report, then migrate the paper-worthy
-   CSVs/tables into `papers/alpha-missing/` once that scaffold is committed.
+   CSVs/tables into the (private) alpha-missing paper repo once that scaffold
+   is committed.
