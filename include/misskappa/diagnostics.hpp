@@ -48,29 +48,6 @@ Result<FimlGroupedJackknifeDiagnostic> diagnose_fiml_grouped_jackknife(
     IntMatView ratings, RealMatView weights, EmOptions opts,
     int groups, bool hot_start = true);
 
-enum class FimlPenaltyTarget {
-  uniform,
-  independence,
-};
-
-struct FimlPenalizedDiagnostic {
-  RealVec estimates;          // Full-sample penalized Cat-FIML estimates.
-  RealMat vcov;               // Delete-group jackknife covariance if groups >= 2.
-  RealMat delete_estimates;   // G x 3 delete-group estimates.
-  RealVec delete_iterations;  // EM iterations used by each delete refit.
-  double lambda = 0.0;
-  FimlPenaltyTarget target = FimlPenaltyTarget::uniform;
-  int groups = 0;
-  int refits = 0;
-  int full_iterations = 0;
-  std::size_t n_subjects = 0;
-  std::size_t n_patterns = 0;
-};
-
-Result<FimlPenalizedDiagnostic> diagnose_fiml_penalized(
-    IntMatView ratings, RealMatView weights, EmOptions opts,
-    FimlPenaltyTarget target, double lambda, int variance_groups = 0);
-
 }  // namespace misskappa
 
 #endif  // MISSKAPPA_DIAGNOSTICS_HPP
