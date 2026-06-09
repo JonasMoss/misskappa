@@ -7,8 +7,7 @@
 kappa_counts(
   x,
   estimator = c("pairwise", "cat_fiml"),
-  weight = c("nominal", "linear", "quadratic", "ordinal", "radical", "ratio", "circular",
-    "bipolar"),
+  weight = c("nominal", "linear", "quadratic"),
   values = NULL,
   r_total = NULL,
   em_options = list()
@@ -24,9 +23,8 @@ two agree exactly when every row of `x` sums to `r_total`; with partial
 counts (some `r_i < r_total`) the `"cat_fiml"` estimator can be more
 efficient.}
 
-\item{weight}{Weighting scheme: `"nominal"` (default), `"linear"`,
-`"quadratic"`, `"ordinal"`, `"radical"`, `"ratio"`, `"circular"`, or
-`"bipolar"`.}
+\item{weight}{Weighting scheme: `"nominal"` (default), `"linear"`, or
+`"quadratic"`.}
 
 \item{values}{Optional length-C numeric vector of category scores used
 by the metric weightings. Defaults to `1:C`.}
@@ -58,6 +56,13 @@ Conger is not reported (raters are not identified in this input format),
 and neither IPW nor Gwet are meaningful (per-rater observation rates are
 aggregated away by the counts representation).
 }
+\details{
+Older Krippendorff / irrCAC-style categorical schemes (`"ordinal"`,
+`"radical"`, `"ratio"`, `"circular"`, `"bipolar"`) remain available only
+through unsupported internal helpers and the C++ `misskappa::loss` factories;
+they are retained for validation and parity work, not as part of the
+recommended R interface.
+}
 \examples{
 # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
 # in counts format (one row per subject, one column per category).
@@ -66,4 +71,10 @@ kappa_counts(dat.fleiss1971, estimator = "pairwise")
 # Treat the categories as ordered scores with a quadratic loss.
 kappa_counts(dat.fleiss1971, estimator = "pairwise", weight = "quadratic")
 
+}
+\references{
+Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
+
+Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
+coefficients among raters.
 }

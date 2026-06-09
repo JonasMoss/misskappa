@@ -133,7 +133,7 @@ test_that("kappa() errors clearly on unsupported g > 2 combinations", {
   ), nrow = 4, byrow = TRUE)
 
   expect_error(kappa(x, estimator = "ipw", weight = "ordinal", g = 3L),
-               "g-wise")
+               "should be one of")
   expect_error(kappa(x, estimator = "ipw", weight = "hubert", g = 2L),
                "g > 2")
 })

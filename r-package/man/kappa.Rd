@@ -7,8 +7,7 @@
 kappa(
   x,
   estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml"),
-  weight = c("nominal", "linear", "quadratic", "ordinal", "radical", "ratio", "circular",
-    "bipolar", "hubert"),
+  weight = c("nominal", "linear", "quadratic", "hubert"),
   g = 2L,
   values = NULL,
   em_options = list(),
@@ -28,8 +27,7 @@ g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
 `"ipw"` only.}
 
 \item{weight}{Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
-default), `"linear"`, `"quadratic"`, `"ordinal"`, `"radical"`, `"ratio"`,
-`"circular"`, or `"bipolar"`. `"pairwise"` / `"nt_fiml"` require
+default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"nt_fiml"` require
 `"quadratic"`. For `g > 2` only `"nominal"`, `"linear"`, `"hubert"`, and
 `"quadratic"` are defined, where `"hubert"` is the all-raters-equal
 multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
@@ -78,7 +76,8 @@ coefficients for raw ratings with missing entries. Pick the estimator with
     weighted coefficient under ignorable missingness.
 }
 
-`"ipw"` and `"cat_fiml"` take integer category codes and any `weight`.
+`"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
+linear, or quadratic `weight`.
 `"pairwise"` and `"nt_fiml"` are quadratic by construction: they treat `x`
 as numeric scores (pass scores directly, or integer codes with `values`)
 and require `weight = "quadratic"`.
@@ -89,6 +88,15 @@ Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
 subjects-by-raters-by-features array to score vector-valued ratings with a
 component-separable loss. See the arguments for the estimator / weight
 combinations supported in each mode.
+}
+\details{
+The public R API deliberately exposes only the main weighting schemes used in
+current agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
+`"hubert"` g-wise kernel for `g > 2`). Older Krippendorff / irrCAC-style
+categorical schemes (`"ordinal"`, `"radical"`, `"ratio"`, `"circular"`,
+`"bipolar"`) remain in the internal C++ layer and Rcpp glue for validation
+and parity work, but are unsupported and not part of the recommended R
+interface.
 }
 \examples{
 # Categorical ratings with missing entries (Gwet 2014): the
@@ -107,4 +115,10 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 # is a six-vector; the default Hamming loss counts disagreeing sites.
 kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
 
+}
+\references{
+Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
+
+Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
+coefficients among raters.
 }
