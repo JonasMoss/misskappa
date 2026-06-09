@@ -52,31 +52,48 @@ remotes::install_github("JonasMoss/misskappa", subdir = "r-package")
 library(misskappa)
 ```
 
-Weighted kappa for five raters and three categories, with some ratings
-missing ([Klein, 2018](https://doi.org/10.1177/1536867X1801800408)). The IPW
-estimator is consistent under MCAR:
+### Basic agreement
+
+The workhorse is `kappa()`. Here five raters sort subjects into three categories,
+and some of the ratings are missing ([Klein,
+2018](https://doi.org/10.1177/1536867X1801800408)). The IPW estimator stays
+consistent under MCAR:
 
 ```{r}
 kappa(dat.klein2018, estimator = "ipw")
 ```
 
-The same `kappa()` also handles *g-wise* kernels, where the disagreement
-function compares `g > 2` raters at once instead of averaging over pairs:
+You get back the weighted Conger, Fleiss, and Brennan--Prediger coefficients,
+each with a standard error. (With two raters you would get Cohen's kappa
+instead of its multirater cousin Conger.)
+
+Want to know whether two studies agree to the same degree? `kappa_test()` checks
+it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
+so the two samples are independent and we set `paired = FALSE`:
+
+```{r}
+kappa_test(
+  gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
+  klein = kappa(dat.klein2018, estimator = "ipw"),
+  coef = "Conger", paired = FALSE
+)
+```
+
+`kappa()` also does *g-wise* kernels, where the disagreement function compares
+`g > 2` raters at once instead of averaging over pairs:
 
 ```{r}
 kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 ```
 
-It additionally has *frontier / experimental* support for **vector-valued**
-ratings (each rating a vector, with component-separable feature weights); this is
-ongoing research and the supporting paper is still in preparation. See the
-[vector-valued agreement article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html).
+### Coefficient alpha
 
-Coefficient alpha under missing data, on the Neuroticism items of
-[`psych::bfi`](https://CRAN.R-project.org/package=psych), 2800 respondents
-from the [SAPA project](https://www.sapa-project.org/) ([Revelle, Wilt &
-Rosenthal, 2010](https://doi.org/10.1007/978-1-4419-1210-7_2)), 106 with at
-least one missing answer. Robust normal-theory FIML uses every respondent:
+misskappa estimates Cronbach's alpha under missing data too. Here it runs on the
+Neuroticism items of [`psych::bfi`](https://CRAN.R-project.org/package=psych).
+That is 2800 respondents from the [SAPA project](https://www.sapa-project.org/)
+([Revelle, Wilt & Rosenthal,
+2010](https://doi.org/10.1007/978-1-4419-1210-7_2)), and 106 of them skipped at
+least one answer. Robust normal-theory FIML keeps every respondent:
 
 ```{r}
 data(bfi, package = "psych")
@@ -84,9 +101,10 @@ N <- paste0("N", 1:5)
 alpha(as.matrix(bfi[, N]), estimator = "nt_fiml")
 ```
 
-`alpha_test()` compares reliabilities. Is the Neuroticism scale equally
-reliable for men and women? The two groups are different respondents, so the
-samples are independent (`paired = FALSE`):
+`alpha_test()` compares reliabilities the same way `kappa_test()` compares
+agreement. Is the Neuroticism scale equally reliable for men and women?
+
+Different people answer in each group, so the samples are independent again:
 
 ```{r}
 g <- split(seq_len(nrow(bfi)), bfi$gender)
@@ -96,8 +114,18 @@ alpha_test(
   paired = FALSE)
 ```
 
-Each result is a `misskappa_estimate` object with the estimates and their
-covariance matrix. Extract them with `coef()`, `vcov()`, and `confint()`.
+### Frontier / experimental
+
+There is early support for **vector-valued** ratings, where each rating is a
+vector and the weights act one component at a time. This part is still active
+research and the paper is in preparation, so expect the surface to shift. The
+[vector-valued agreement
+article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html)
+walks through it.
+
+Every result is a `misskappa_estimate` object holding the estimates and their
+covariance matrix. Reach for `coef()`, `vcov()`, and `confint()` when you want
+the pieces.
 
 ## Documentation
 
