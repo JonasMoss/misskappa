@@ -59,15 +59,22 @@ fmt_int <- function(x) formatC(x, format = "d", big.mark = ",")
 method_label <- c(
   ipw_nominal = "IPW",
   cat_fiml_nominal = "Cat-FIML",
+  cat_fiml_jk5_nominal = "Cat-FIML JK5",
+  cat_fiml_jk10_nominal = "Cat-FIML JK10",
   ipw_absolute = "IPW",
   cat_fiml_absolute = "Cat-FIML",
+  cat_fiml_jk5_absolute = "Cat-FIML JK5",
+  cat_fiml_jk10_absolute = "Cat-FIML JK10",
   ipw_quadratic = "IPW",
   cat_fiml_quadratic = "Cat-FIML",
+  cat_fiml_jk5_quadratic = "Cat-FIML JK5",
+  cat_fiml_jk10_quadratic = "Cat-FIML JK10",
   pairwise_quadratic = "Pairwise",
   nt_fiml_quadratic = "NT-FIML"
 )
 
 summary$method_label <- unname(method_label[summary$method])
+summary$method_label[is.na(summary$method_label)] <- summary$method[is.na(summary$method_label)]
 summary$mechanism_family <- mechanisms$family[match(summary$mechanism, mechanisms$mechanism)]
 summary$abs_bias <- abs(summary$bias)
 
@@ -172,7 +179,8 @@ quad <- subset(
 )
 quad$Method <- factor(
   quad$method_label,
-  levels = c("Cat-FIML", "IPW", "NT-FIML", "Pairwise")
+  levels = c("Cat-FIML", "Cat-FIML JK5", "Cat-FIML JK10",
+             "IPW", "NT-FIML", "Pairwise")
 )
 quad <- quad[order(quad$dgp, quad$mechanism, quad$Method), ]
 quad_tab <- data.frame(
@@ -330,6 +338,41 @@ pairwise quadratic show larger absolute bias than the likelihood routes. For
 `sparse5`, Cat-FIML does not fully inherit the clean four-category FIML
 behavior, which is consistent with the known sparse-support finite-sample
 issue.
+
+## Grouped Jackknife
+
+The optional `cat_fiml_jk5_*` and `cat_fiml_jk10_*` rows use delete-group
+jackknife corrections as experiment-side bias diagnostics. The reported
+interval keeps the full-fit Cat-FIML standard error and recenters it at the
+bias-corrected estimate, so this section isolates whether recentring helps
+before treating jackknife variance as a separate problem.
+
+```{r grouped-jackknife}
+jk <- subset(conger, grepl("^cat_fiml_jk[0-9]+_", method))
+if (!nrow(jk)) {
+  cat("No grouped jackknife rows are present in this run.")
+} else {
+  jk$raw_bias_display <- if ("raw_bias" %in% names(jk)) jk$raw_bias else NA_real_
+  jk$correction <- jk$bias - jk$raw_bias_display
+  jk <- jk[order(jk$dgp, jk$mechanism, jk$weight_label), ]
+  jk_tab <- data.frame(
+    DGP = jk$dgp,
+    Mechanism = jk$mechanism,
+    Weight = jk$weight_label,
+    Method = jk$method_label,
+    `Raw Bias` = fmt_signed(jk$raw_bias_display, 3),
+    `JK Bias` = fmt_signed(jk$bias, 3),
+    `Correction` = fmt_signed(jk$correction, 3),
+    RMSE = fmt(jk$rmse, 3),
+    `Wald Cov.` = fmt(jk$coverage95, 2),
+    `Mean SE` = fmt(jk$mean_se, 3),
+    `Mean Refits` = fmt(jk$mean_jackknife_refits, 1),
+    `Mean Fit Time (s)` = fmt(jk$mean_elapsed_ms / 1000, 2),
+    check.names = FALSE
+  )
+  knitr::kable(jk_tab, align = "llllrrrrrrrr")
+}
+```
 
 ## Worst Coverage Rows
 
