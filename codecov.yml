@@ -1,0 +1,34 @@
+# Codecov configuration. Two flags are uploaded by .github/workflows/coverage.yml:
+#   cpp -- C++ doctest coverage of src/ + include/ (authoritative for the library)
+#   r   -- R testthat coverage of r-package/ (R code + Rcpp glue, plus the
+#          vendored C++ as exercised through Rcpp)
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true   # report only; do not fail PRs (relax once stable)
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true
+
+flag_management:
+  individual_flags:
+    - name: cpp
+      paths:
+        - src/
+        - include/
+    - name: r
+      paths:
+        - r-package/
+
+# Coverage of test code itself and third-party vendored headers is not meaningful.
+ignore:
+  - "tests/**"
+  - "r-package/tests/**"
+  - "**/third_party/**"
+  - "build-*/**"

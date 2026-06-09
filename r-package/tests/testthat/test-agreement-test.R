@@ -47,3 +47,30 @@ test_that("test front doors validate inputs", {
   k <- kappa(x, estimator = "ipw")
   expect_error(kappa_test(k, k, coef = "Nope"), "not found")
 })
+
+test_that("equality tests reject non-fits, empty calls, and broken pairing", {
+  set.seed(4)
+  k1 <- kappa(matrix(sample.int(4, 200 * 3, TRUE), 200, 3), estimator = "pairwise")
+  k2 <- kappa(matrix(sample.int(4, 200 * 3, TRUE), 200, 3), estimator = "pairwise")
+
+  # non-'misskappa_estimate' inputs and empty calls
+  expect_error(kappa_test(1, 2), "misskappa_estimate")
+  expect_error(kappa_test(), "at least one fit")
+  expect_error(alpha_test(), "at least one fit")
+
+  # paired requires influence functions
+  k2_nopsi <- k2
+  k2_nopsi$psi <- NULL
+  expect_error(kappa_test(k1, k2_nopsi, paired = TRUE), "influence functions")
+
+  # paired fits must share the subject count
+  small <- kappa(matrix(sample.int(4, 120 * 3, TRUE), 120, 3), estimator = "pairwise")
+  expect_error(kappa_test(k1, small, paired = TRUE), "same number of subjects")
+
+  # paired fits must be row-aligned when subject ids are present
+  k1_id <- k1
+  k2_id <- k2
+  rownames(k1_id$psi) <- as.character(seq_len(nrow(k1_id$psi)))
+  rownames(k2_id$psi) <- as.character(nrow(k2_id$psi) + seq_len(nrow(k2_id$psi)))
+  expect_error(kappa_test(k1_id, k2_id, paired = TRUE), "row-aligned")
+})
