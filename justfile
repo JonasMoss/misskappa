@@ -86,9 +86,19 @@ regen-oracle:
   @Rscript tests/tools/regen_oracle.R
 
 # Build pkgdown site. Requires the R packages pkgdown and quarto; vendors first
-# because pkgdown installs/loads the R package.
+# because pkgdown installs/loads the R package. If Pandoc is only available via
+# Quarto, expose Quarto's bundled copy to rmarkdown/pkgdown.
 docs-r: vendor
-  @cd r-package && Rscript -e 'roxygen2::roxygenise(); pkgdown::build_site()'
+  @cd r-package && \
+    if [[ -z "${RSTUDIO_PANDOC:-}" ]] && ! command -v pandoc >/dev/null 2>&1 && command -v quarto >/dev/null 2>&1; then \
+      quarto_bin="$(readlink -f "$(command -v quarto)")"; \
+      quarto_root="$(dirname "$(dirname "$quarto_bin")")"; \
+      quarto_pandoc="$quarto_root/bin/tools/x86_64"; \
+      if [[ -x "$quarto_pandoc/pandoc" ]]; then \
+        export RSTUDIO_PANDOC="$quarto_pandoc"; \
+      fi; \
+    fi; \
+    Rscript -e 'roxygen2::roxygenise(); pkgdown::build_site()'
 
 # Build C++ API reference into the pkgdown output tree. Requires doxygen.
 docs-cpp:
