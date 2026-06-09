@@ -128,11 +128,11 @@ legend("topright", legend = methods, pch = 16, col = cols[methods], bty = "n")
 - This is the scored-ordinal arm only, capped to six three-category items so the
   saturated categorical FIML state space stays small enough for repeated fits.
 - Pairwise coverage uses the package's overlap-subsample SE from
-  `alpha(method = "available")`.
+  `alpha(estimator = "pairwise")`.
 - `cat_em` is the saturated categorical FIML estimator from
-  `alpha(method = "fiml")`; listwise is retained only as a sanity check.
+  `alpha(estimator = "cat_fiml")`; listwise is retained only as a sanity check.
 - `normal_fiml` treats the scored ordinal categories as continuous and uses
-  `alpha_continuous(se_type = "sandwich")`.
+  `alpha(estimator = "nt_fiml")`.
 - Smoke results are not paper evidence. Use them to catch implementation and
   design problems before the `B = 500` or larger pass.
 

@@ -167,10 +167,6 @@ opts <- parse_args(commandArgs(trailingOnly = TRUE))
 if (!exists("alpha", asNamespace("misskappa"), mode = "function")) {
   stop("misskappa::alpha() unavailable; install misskappa first.", call. = FALSE)
 }
-if (!"type" %in% names(formals(misskappa::alpha))) {
-  stop("misskappa::alpha() has no 'type' argument; update to a build that ",
-       "dispatches normal vs categorical FIML via type=.", call. = FALSE)
-}
 
 # ---------------------------------------------------------------------
 # Margins: scores, category probabilities, latent thresholds per
@@ -368,13 +364,13 @@ se_from_fit <- function(fit) {
 }
 
 fit_pairwise <- function(X) {
-  fit <- misskappa::alpha(X, method = "available")
+  fit <- misskappa::alpha(X, estimator = "pairwise")
   list(estimate = as.numeric(stats::coef(fit)[["alpha"]]), se = se_from_fit(fit), iter = NA_integer_)
 }
 
 fit_cat_em <- function(X) {
   fit <- misskappa::alpha(
-    X, method = "fiml", type = "categorical",
+    X, estimator = "cat_fiml",
     em_options = list(tol = 1e-7, max_iter = 20000L, prune_tol = 1e-10,
                       start_alpha = 0.1, info_rcond = 1e-4)
   )
@@ -384,7 +380,7 @@ fit_cat_em <- function(X) {
 fit_normal_fiml <- function(X) {
   X_num <- matrix(as.numeric(X), nrow = nrow(X), ncol = ncol(X))
   fit <- misskappa::alpha(
-    X_num, method = "fiml", type = "normal", se_type = "sandwich",
+    X_num, estimator = "nt_fiml",
     em_options = list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5)
   )
   it <- tryCatch(fit$moments$iterations, error = function(e) NA_integer_)
@@ -395,7 +391,7 @@ fit_normal_fiml <- function(X) {
 fit_listwise <- function(X) {
   cc <- stats::complete.cases(X)
   if (sum(cc) < ncol(X)) stop("too few complete rows for listwise alpha.")
-  fit <- misskappa::alpha(X[cc, , drop = FALSE], method = "available")
+  fit <- misskappa::alpha(X[cc, , drop = FALSE], estimator = "pairwise")
   list(estimate = as.numeric(stats::coef(fit)[["alpha"]]), se = se_from_fit(fit), iter = NA_integer_)
 }
 

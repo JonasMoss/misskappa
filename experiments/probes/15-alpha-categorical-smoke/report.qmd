@@ -54,8 +54,8 @@ main_tab <- main_tab[order(main_tab$profile_label, main_tab$mechanism, main_tab$
 Do the new categorical coefficient-alpha estimators behave mechanically
 as expected on small ordinal item batteries?
 
-The runner compares `misskappa::alpha(method = "available")` and
-`misskappa::alpha(method = "fiml")` against each replicate's
+The runner compares `misskappa::alpha(estimator = "pairwise")` and
+`misskappa::alpha(estimator = "cat_fiml")` against each replicate's
 complete-data alpha under three mechanisms: complete data, MCAR item
 missingness, and an anchor-item MAR mechanism. It also records small
 `C^R` timing cells for the saturated categorical EM. This feeds the

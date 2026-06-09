@@ -208,8 +208,8 @@ Four sub-questions:
   despite joint correlation ≈ 0.94 between linear and quadratic.
   Useful weight-sensitivity demo.
 
-Pilot motivated the influence-function exposure that now ships in
-`misskappa::influence()` and `misskappa::joint_vcov()` for the
+Pilot motivated the influence-function exposure that now ships as `fit$psi`
+and internal `joint_vcov()` machinery for the
 categorical raw estimators.
 
 ### `10-louis-spectrum`

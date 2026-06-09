@@ -92,8 +92,8 @@
 #' @return An object of class `misskappa_estimate` carrying the `Conger` and
 #'   `Fleiss` coefficients and their 2x2 asymptotic covariance. Additional
 #'   fields: `moments` (the fitted `mu`, `Sigma`, EM `iterations`, and
-#'   `converged` flag). Methods: `print`, `coef`, `vcov`, `confint`,
-#'   `as.data.frame`, and `influence`.
+#'   `converged` flag) and `psi` (per-subject influence-function rows).
+#'   Methods: `print`, `coef`, `vcov`, `confint`, and `as.data.frame`.
 #'
 #' @keywords internal
 kappa_quadratic_fiml <- function(x, em_options = list()) {
