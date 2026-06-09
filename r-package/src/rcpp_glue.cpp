@@ -152,6 +152,13 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
   return opts;
 }
 
+misskappa::FimlPenaltyTarget parse_penalty_target(const std::string& target) {
+  if (target == "uniform") return misskappa::FimlPenaltyTarget::uniform;
+  if (target == "independence") return misskappa::FimlPenaltyTarget::independence;
+  Rcpp::stop("Unknown penalty target: " + target);
+  return misskappa::FimlPenaltyTarget::uniform;
+}
+
 Rcpp::NumericVector to_numeric_vector(const Eigen::VectorXd& x) {
   Rcpp::NumericVector out(x.size());
   for (Eigen::Index i = 0; i < x.size(); ++i) out[i] = x(i);
@@ -322,6 +329,34 @@ Rcpp::List rcpp_fiml_grouped_jackknife(
       Rcpp::Named("refits") = r.refits,
       Rcpp::Named("full_iterations") = r.full_iterations,
       Rcpp::Named("hot_start") = r.hot_start,
+      Rcpp::Named("n_subjects") = static_cast<double>(r.n_subjects),
+      Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_fiml_penalized(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    std::string penalty_target,
+    double lambda,
+    int variance_groups,
+    Rcpp::List em_options) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values);
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = unwrap(misskappa::diagnose_fiml_penalized(
+      in.ratings_indexed, in.weights, opts,
+      parse_penalty_target(penalty_target), lambda, variance_groups));
+  return Rcpp::List::create(
+      Rcpp::Named("estimates") = to_numeric_vector(r.estimates),
+      Rcpp::Named("vcov") = to_numeric_matrix(r.vcov),
+      Rcpp::Named("delete_estimates") = to_numeric_matrix(r.delete_estimates),
+      Rcpp::Named("delete_iterations") = to_numeric_vector(r.delete_iterations),
+      Rcpp::Named("lambda") = r.lambda,
+      Rcpp::Named("target") = penalty_target,
+      Rcpp::Named("groups") = r.groups,
+      Rcpp::Named("refits") = r.refits,
+      Rcpp::Named("full_iterations") = r.full_iterations,
       Rcpp::Named("n_subjects") = static_cast<double>(r.n_subjects),
       Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns));
 }
