@@ -4,7 +4,7 @@ Working rules for coding agents in the misskappa repo.
 
 ## What misskappa is
 
-A C++23 library for **agreement coefficients** — Cohen / Fleiss / Brennan-Prediger
+A C++17 library for **agreement coefficients** — Cohen / Fleiss / Brennan-Prediger
 and friends — with arbitrary numbers of raters, arbitrary pairwise loss matrices,
 and support for missing categorical ratings under MCAR and MAR. The primary
 audience is methods developers. The R package under `r-package/` is a thin
@@ -26,11 +26,13 @@ expected; use stable provisional labels ("Paper A", "Paper B", "Paper C" or
 
 ## Non-negotiables
 
-- **C++23**, built with `-fno-exceptions -fno-rtti`. Eigen is included under
-  `EIGEN_NO_EXCEPTIONS`. Failures are values: `std::expected<T, Error>` aliased
-  as `Result<T>` in `include/misskappa/result.hpp`. The C++23 floor is carried
-  by exactly that one feature — `std::expected` is the error model — a
-  deliberate single-feature dependency (GCC 13 / Clang 17).
+- **C++17.** The library target builds with `-fno-exceptions -fno-rtti`
+  (applied to the library only, so the R package's Rcpp glue still compiles with
+  the exceptions R expects); Eigen is included under `EIGEN_NO_EXCEPTIONS`.
+  Failures are values: a hand-rolled `Result<T>` in
+  `include/misskappa/result.hpp` stands in for `std::expected<T, Error>` (which
+  is C++23), keeping the floor at C++17 so the package builds on the widest
+  toolchain range.
 - **No virtual functions, no `concept`/`requires`, no inheritance hierarchies
   on the hot path.** Extension is via free function templates over duck-typed
   callables (e.g., the loss function). Plain aggregate structs for data
