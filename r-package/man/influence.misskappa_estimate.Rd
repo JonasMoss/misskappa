@@ -19,8 +19,7 @@ A numeric matrix of per-subject influence-function rows.
 stored in `fit$psi`. Rows are subjects and columns are coefficients, with
 scaling
 \deqn{\mathrm{vcov}(\hat\theta) = n^{-2} \Psi^\top \Psi.}
-}
-\details{
+
 This is the public S3 adapter for R's `stats::influence()` generic; `fit$psi`
 remains the stored component used internally by `joint_vcov()` and the
 equality-test helpers.
