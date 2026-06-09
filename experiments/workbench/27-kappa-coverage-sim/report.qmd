@@ -148,7 +148,9 @@ DGPs, IPW and pairwise quadratic estimators show clear downward bias because
 they are MCAR estimators. Cat-FIML and NT-FIML largely remove that MAR bias in
 the four-category DGP. In the sparse five-category DGP, Cat-FIML still shows
 finite-sample downward bias, while NT-FIML performs well for the scored
-quadratic target.
+quadratic target. Fisher intervals were recorded, but they barely move the
+coverage story here because the estimates are not near the boundary; the
+problem cells are biased-center cells, not transformed-scale length cells.
 
 Do not over-read exact coverage percentages from `B = r meta[["reps"]]`; one
 coverage step is `r fmt(1 / as.numeric(meta[["reps"]]), 2)`. The table is good
@@ -180,10 +182,13 @@ quad_tab <- data.frame(
   Bias = fmt_signed(quad$bias, 3),
   RMSE = fmt(quad$rmse, 3),
   `Mean SE` = fmt(quad$mean_se, 3),
-  Coverage = fmt(quad$coverage95, 2),
+  `Wald Cov.` = fmt(quad$coverage95, 2),
+  `Fisher Cov.` = fmt(quad$fisher_coverage95, 2),
+  `Wald Len.` = fmt(quad$mean_ci_length, 3),
+  `Fisher Len.` = fmt(quad$mean_fisher_length, 3),
   check.names = FALSE
 )
-knitr::kable(quad_tab, align = "lllrrrr")
+knitr::kable(quad_tab, align = "lllrrrrrr")
 ```
 
 The important contrast is not a tiny efficiency difference. It is that the
@@ -236,6 +241,89 @@ family_tab <- data.frame(
 knitr::kable(family_tab, align = "llllrrrr")
 ```
 
+## Interval Behavior
+
+Fisher intervals were kept as `fisher_coverage95` and
+`mean_fisher_length`. They are nearly identical to the natural-scale Wald
+intervals in this run. Averaged over Conger rows, Fisher coverage differs from
+natural coverage by less than one percentage point for every method-weight
+combination, and Fisher lengths are usually within one percent of Wald lengths.
+
+```{r interval-summary}
+interval_summary <- aggregate(
+  cbind(coverage95, fisher_coverage95, mean_ci_length, mean_fisher_length) ~
+    method + method_label + weight_label,
+  conger,
+  mean
+)
+interval_summary$cov_diff <- interval_summary$fisher_coverage95 -
+  interval_summary$coverage95
+interval_summary$len_ratio <- interval_summary$mean_fisher_length /
+  interval_summary$mean_ci_length
+interval_summary <- interval_summary[order(
+  interval_summary$weight_label, interval_summary$method_label
+), ]
+interval_tab <- data.frame(
+  Weight = interval_summary$weight_label,
+  Method = interval_summary$method_label,
+  `Wald Cov.` = fmt(interval_summary$coverage95, 3),
+  `Fisher Cov.` = fmt(interval_summary$fisher_coverage95, 3),
+  `Cov. Diff` = fmt_signed(interval_summary$cov_diff, 3),
+  `Wald Len.` = fmt(interval_summary$mean_ci_length, 3),
+  `Fisher Len.` = fmt(interval_summary$mean_fisher_length, 3),
+  `Length Ratio` = fmt(interval_summary$len_ratio, 3),
+  check.names = FALSE
+)
+knitr::kable(interval_tab, align = "llrrrrrr")
+```
+
+For this grid, Fisher transformation is not a rescue method. The bad rows are
+not high-agreement boundary rows with distorted endpoint behavior. They are
+mostly MAR rows where the point estimator is shifted away from the full-data
+target.
+
+## Cat-FIML Undercoverage
+
+Cat-FIML looks better here than in the alpha-missing simulations because most
+of this grid is much lower-dimensional. The four-category kappa DGPs have
+`4^4 = 256` full rating patterns; the sparse stress DGP has `5^5 = 3125`
+patterns. The alpha-missing categorical paper grid includes six-item response
+spaces, including larger support cells, and the coefficient is a covariance
+functional over item batteries rather than an agreement functional over raters.
+
+The remaining Cat-FIML undercoverage is mainly finite-sample bias. In the
+sparse DGP, the Cat-FIML standard errors are not obviously too small: the
+`se_over_sd` ratios are often near or above one. Coverage is poor because the
+intervals are centered too low.
+
+```{r cat-fiml-diagnostics}
+cf <- subset(conger, estimator == "cat_fiml")
+cf$bias_over_se <- cf$bias / cf$mean_se
+cf$abs_bias_over_se <- abs(cf$bias_over_se)
+cf_worst <- cf[order(cf$coverage95, -cf$abs_bias_over_se), ]
+cf_worst <- head(cf_worst, 14)
+cf_tab <- data.frame(
+  DGP = cf_worst$dgp,
+  Mechanism = cf_worst$mechanism,
+  Weight = cf_worst$weight_label,
+  Bias = fmt_signed(cf_worst$bias, 3),
+  `Bias/SE` = fmt_signed(cf_worst$bias_over_se, 2),
+  `SE/SD` = fmt(cf_worst$se_over_sd, 2),
+  `Wald Cov.` = fmt(cf_worst$coverage95, 2),
+  `Fisher Cov.` = fmt(cf_worst$fisher_coverage95, 2),
+  `Wald Len.` = fmt(cf_worst$mean_ci_length, 3),
+  `Fisher Len.` = fmt(cf_worst$mean_fisher_length, 3),
+  check.names = FALSE
+)
+knitr::kable(cf_tab, align = "lllrrrrrrr")
+```
+
+This points to the same sparse-saturated-likelihood story as the alpha work,
+but in a milder form. The fitted saturated distribution has enough unobserved
+or thinly observed cells to bias the plug-in moments downward at `n = 200`.
+The Wald variance is roughly measuring sampling spread around that biased
+center, so the nominal interval misses the full-data target.
+
 For `balanced4`, the MAR and MCAR averages are close because the rating model is
 exchangeable and mild. For `biased4`, the MAR averages separate: IPW and
 pairwise quadratic show larger absolute bias than the likelihood routes. For
@@ -260,10 +348,13 @@ worst_tab <- data.frame(
   Bias = fmt_signed(worst$bias, 3),
   RMSE = fmt(worst$rmse, 3),
   `Mean SE` = fmt(worst$mean_se, 3),
-  Coverage = fmt(worst$coverage95, 2),
+  `Wald Cov.` = fmt(worst$coverage95, 2),
+  `Fisher Cov.` = fmt(worst$fisher_coverage95, 2),
+  `Wald Len.` = fmt(worst$mean_ci_length, 3),
+  `Fisher Len.` = fmt(worst$mean_fisher_length, 3),
   check.names = FALSE
 )
-knitr::kable(worst_tab, align = "llllrrrr")
+knitr::kable(worst_tab, align = "llllrrrrrr")
 ```
 
 ## Runtime
