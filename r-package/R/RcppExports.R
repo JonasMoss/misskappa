@@ -21,6 +21,10 @@ rcpp_fiml_louis_spectrum <- function(x, weight_type, values, em_options) {
     .Call(`_misskappa_rcpp_fiml_louis_spectrum`, x, weight_type, values, em_options)
 }
 
+rcpp_fiml_grouped_jackknife <- function(x, weight_type, values, groups, hot_start, em_options) {
+    .Call(`_misskappa_rcpp_fiml_grouped_jackknife`, x, weight_type, values, groups, hot_start, em_options)
+}
+
 rcpp_kappa_quadratic <- function(x, values) {
     .Call(`_misskappa_rcpp_kappa_quadratic`, x, values)
 }

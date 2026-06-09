@@ -158,6 +158,14 @@ Rcpp::NumericVector to_numeric_vector(const Eigen::VectorXd& x) {
   return out;
 }
 
+Rcpp::NumericMatrix to_numeric_matrix(const Eigen::MatrixXd& x) {
+  Rcpp::NumericMatrix out(x.rows(), x.cols());
+  for (Eigen::Index i = 0; i < x.rows(); ++i) {
+    for (Eigen::Index j = 0; j < x.cols(); ++j) out(i, j) = x(i, j);
+  }
+  return out;
+}
+
 }  // namespace
 
 // [[Rcpp::export]]
@@ -289,6 +297,33 @@ Rcpp::List rcpp_fiml_louis_spectrum(
       Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns),
       Rcpp::Named("C") = r.c,
       Rcpp::Named("R") = r.R);
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_fiml_grouped_jackknife(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    int groups,
+    bool hot_start,
+    Rcpp::List em_options) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values);
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = unwrap(misskappa::diagnose_fiml_grouped_jackknife(
+      in.ratings_indexed, in.weights, opts, groups, hot_start));
+  return Rcpp::List::create(
+      Rcpp::Named("full_estimates") = to_numeric_vector(r.full_estimates),
+      Rcpp::Named("full_vcov") = to_numeric_matrix(r.full_vcov),
+      Rcpp::Named("delete_estimates") = to_numeric_matrix(r.delete_estimates),
+      Rcpp::Named("jackknife_bias") = to_numeric_vector(r.jackknife_bias),
+      Rcpp::Named("corrected_estimates") = to_numeric_vector(r.corrected_estimates),
+      Rcpp::Named("delete_iterations") = to_numeric_vector(r.delete_iterations),
+      Rcpp::Named("groups") = r.groups,
+      Rcpp::Named("refits") = r.refits,
+      Rcpp::Named("full_iterations") = r.full_iterations,
+      Rcpp::Named("hot_start") = r.hot_start,
+      Rcpp::Named("n_subjects") = static_cast<double>(r.n_subjects),
+      Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns));
 }
 
 // [[Rcpp::export]]

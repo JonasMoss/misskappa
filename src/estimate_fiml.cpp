@@ -46,6 +46,7 @@ struct EmInput {
 };
 
 struct EmRunResult {
+  Eigen::VectorXd theta_full;   // unpruned, normalised full C^R simplex
   Eigen::VectorXd theta_hat;    // pruned, normalised
   RealMat vcov;                 // covariance of theta_hat
   std::vector<std::uint64_t> pattern_indices;  // ranks of surviving patterns
@@ -260,6 +261,32 @@ Eigen::VectorXd initialise_theta(const EmInput& in, double start_alpha) {
   return theta;
 }
 
+Eigen::VectorXd initialise_theta_from_start(
+    const EmInput& in, const Eigen::VectorXd& start, double start_alpha) {
+  if (start.size() != static_cast<Eigen::Index>(in.n_total_patterns)) {
+    return initialise_theta(in, start_alpha);
+  }
+
+  Eigen::VectorXd theta(start.size());
+  for (Eigen::Index i = 0; i < start.size(); ++i) {
+    const double v = start(i);
+    theta(i) = (std::isfinite(v) && v > 0.0) ? v : 0.0;
+  }
+  const double s = theta.sum();
+  if (s <= zero_tol) return initialise_theta(in, start_alpha);
+  theta /= s;
+
+  // Keep a tiny cold-start background so a warm start never hard-excludes a
+  // compatible completion because the full-data fit rounded it to zero.
+  Eigen::VectorXd cold = initialise_theta(in, start_alpha);
+  constexpr double cold_weight = 1e-3;
+  theta = (1.0 - cold_weight) * theta + cold_weight * cold;
+  const double blended_sum = theta.sum();
+  if (blended_sum <= zero_tol) return initialise_theta(in, start_alpha);
+  theta /= blended_sum;
+  return theta;
+}
+
 // In-place EM iteration; returns final iterations + convergence flag.
 struct EmIterStatus {
   int iterations = 0;
@@ -413,7 +440,8 @@ RealMat em_variance(
 }
 
 Result<EmRunResult> run_em_preprocessed(
-    const EmInput& in, int c, EmOptions opts, bool compute_vcov) {
+    const EmInput& in, int c, EmOptions opts, bool compute_vcov,
+    const Eigen::VectorXd* start_theta = nullptr) {
   EmRunResult out;
   out.c = c;
   out.R = in.R;
@@ -423,11 +451,14 @@ Result<EmRunResult> run_em_preprocessed(
     out.converged = true;
     return out;
   }
-  Eigen::VectorXd theta = initialise_theta(in, opts.start_alpha);
+  Eigen::VectorXd theta = start_theta == nullptr
+                              ? initialise_theta(in, opts.start_alpha)
+                              : initialise_theta_from_start(in, *start_theta, opts.start_alpha);
   const EmIterStatus status = run_em_iterations(theta, in, opts);
   out.iterations = status.iterations;
   out.converged = status.converged;
   if (!out.converged) return misskappa::unexpected(Error::not_converged);
+  out.theta_full = theta;
 
   // Prune patterns with negligible probability mass.
   std::vector<std::uint64_t> pruned_ranks;
@@ -523,6 +554,58 @@ KappaMap build_kappa_map(const EmRunResult& em, RealMatView weights) {
 
   (void)n_pairs_full;
   return m;
+}
+
+struct KappaEval {
+  RealVec estimates;
+  RealMat jacobian;
+};
+
+KappaEval evaluate_kappa(const EmRunResult& em, RealMatView weights) {
+  const KappaMap m = build_kappa_map(em, weights);
+  const Eigen::VectorXd& theta = em.theta_hat;
+  const double pd  = m.d_vec.dot(theta);
+  const double pec = (theta.transpose() * m.Qed_conger * theta).value();
+  const double pef = (theta.transpose() * m.Qed_fleiss * theta).value();
+
+  KappaEval out;
+  out.estimates = RealVec(3);
+  out.estimates(0) = (std::abs(pec) > singular_tol)
+                         ? 1.0 - pd / pec
+                         : std::numeric_limits<double>::quiet_NaN();
+  out.estimates(1) = (std::abs(pef) > singular_tol)
+                         ? 1.0 - pd / pef
+                         : std::numeric_limits<double>::quiet_NaN();
+  out.estimates(2) = (std::abs(m.d_bp) > singular_tol)
+                         ? 1.0 - pd / m.d_bp
+                         : std::numeric_limits<double>::quiet_NaN();
+
+  out.jacobian = RealMat::Zero(3, theta.size());
+  const Eigen::VectorXd grad_pd = m.d_vec;
+  if (std::abs(pec) > singular_tol) {
+    const RealMat sym = 0.5 * (m.Qed_conger + m.Qed_conger.transpose());
+    const Eigen::VectorXd grad_pec = 2.0 * sym * theta;
+    out.jacobian.row(0) = (-(grad_pd * pec - pd * grad_pec).transpose()) / (pec * pec);
+  }
+  if (std::abs(pef) > singular_tol) {
+    const RealMat sym = 0.5 * (m.Qed_fleiss + m.Qed_fleiss.transpose());
+    const Eigen::VectorXd grad_pef = 2.0 * sym * theta;
+    out.jacobian.row(1) = (-(grad_pd * pef - pd * grad_pef).transpose()) / (pef * pef);
+  }
+  if (std::abs(m.d_bp) > singular_tol) {
+    out.jacobian.row(2) = -grad_pd.transpose() / m.d_bp;
+  }
+  return out;
+}
+
+EmInput delete_fold_input(const EmInput& in, int fold, int groups) {
+  EmInput out = in;
+  for (std::size_t i = 0; i < in.subject_groups.size(); ++i) {
+    if (static_cast<int>(i % static_cast<std::size_t>(groups)) != fold) continue;
+    const std::uint32_t g = in.subject_groups[i];
+    if (out.group_n_subjects[g] > 0) out.group_n_subjects[g] -= 1;
+  }
+  return out;
 }
 
 template <typename ProbAtPos>
@@ -765,48 +848,14 @@ Result<Estimation> estimate_fiml(
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
-  const KappaMap m = build_kappa_map(*em, weights);
-
-  const Eigen::VectorXd& theta = em->theta_hat;
-  const double pd  = m.d_vec.dot(theta);
-  const double pec = (theta.transpose() * m.Qed_conger * theta).value();
-  const double pef = (theta.transpose() * m.Qed_fleiss * theta).value();
-
-  RealVec estimates(3);
-  estimates(0) = (std::abs(pec) > singular_tol)
-                     ? 1.0 - pd / pec
-                     : std::numeric_limits<double>::quiet_NaN();
-  estimates(1) = (std::abs(pef) > singular_tol)
-                     ? 1.0 - pd / pef
-                     : std::numeric_limits<double>::quiet_NaN();
-  estimates(2) = (std::abs(m.d_bp) > singular_tol)
-                     ? 1.0 - pd / m.d_bp
-                     : std::numeric_limits<double>::quiet_NaN();
-
-  // Jacobian of (kappa_C, kappa_F, kappa_BP) wrt theta.
-  RealMat jacobian = RealMat::Zero(3, theta.size());
-  const Eigen::VectorXd grad_pd = m.d_vec;
-  if (std::abs(pec) > singular_tol) {
-    const RealMat sym = 0.5 * (m.Qed_conger + m.Qed_conger.transpose());
-    const Eigen::VectorXd grad_pec = 2.0 * sym * theta;
-    jacobian.row(0) = (-(grad_pd * pec - pd * grad_pec).transpose()) / (pec * pec);
-  }
-  if (std::abs(pef) > singular_tol) {
-    const RealMat sym = 0.5 * (m.Qed_fleiss + m.Qed_fleiss.transpose());
-    const Eigen::VectorXd grad_pef = 2.0 * sym * theta;
-    jacobian.row(1) = (-(grad_pd * pef - pd * grad_pef).transpose()) / (pef * pef);
-  }
-  if (std::abs(m.d_bp) > singular_tol) {
-    jacobian.row(2) = -grad_pd.transpose() / m.d_bp;
-  }
-
-  RealMat vcov = jacobian * em->vcov * jacobian.transpose();
+  const KappaEval eval = evaluate_kappa(*em, weights);
+  RealMat vcov = eval.jacobian * em->vcov * eval.jacobian.transpose();
   RealMat psi = RealMat::Zero(n, 3);
   const LouisReducedInfo info =
       build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
-    const RealMat jacobian_reduced = jacobian * info.jacobian;
+    const RealMat jacobian_reduced = eval.jacobian * info.jacobian;
     const RealMat group_psi =
         static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
@@ -815,7 +864,59 @@ Result<Estimation> estimate_fiml(
     }
   }
 
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{eval.estimates, std::move(vcov), std::move(psi)};
+}
+
+Result<FimlGroupedJackknifeDiagnostic> diagnose_fiml_grouped_jackknife(
+    IntMatView ratings, RealMatView weights, EmOptions opts,
+    int groups, bool hot_start) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  if (n < 2) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
+  if (groups < 2) return misskappa::unexpected(Error::invalid_argument);
+  const int C = static_cast<int>(weights.rows());
+  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
+
+  const int actual_groups = std::min(groups, n);
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return misskappa::unexpected(in_res.error());
+  auto full_em = run_em_preprocessed(*in_res, C, opts, true);
+  if (!full_em) return misskappa::unexpected(full_em.error());
+  if (full_em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+
+  const KappaEval full_eval = evaluate_kappa(*full_em, weights);
+
+  FimlGroupedJackknifeDiagnostic out;
+  out.full_estimates = full_eval.estimates;
+  out.full_vcov = full_eval.jacobian * full_em->vcov * full_eval.jacobian.transpose();
+  out.delete_estimates = RealMat::Zero(actual_groups, 3);
+  out.delete_iterations = RealVec::Zero(actual_groups);
+  out.groups = actual_groups;
+  out.refits = actual_groups;
+  out.full_iterations = full_em->iterations;
+  out.hot_start = hot_start;
+  out.n_subjects = full_em->n_subjects;
+  out.n_patterns = static_cast<std::size_t>(full_em->theta_hat.size());
+
+  const Eigen::VectorXd* start = hot_start ? &full_em->theta_full : nullptr;
+  for (int fold = 0; fold < actual_groups; ++fold) {
+    const EmInput delete_in = delete_fold_input(*in_res, fold, actual_groups);
+    auto delete_em = run_em_preprocessed(delete_in, C, opts, false, start);
+    if (!delete_em) return misskappa::unexpected(delete_em.error());
+    if (delete_em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+
+    const KappaEval delete_eval = evaluate_kappa(*delete_em, weights);
+    out.delete_estimates.row(fold) = delete_eval.estimates.transpose();
+    out.delete_iterations(fold) = static_cast<double>(delete_em->iterations);
+  }
+
+  const RealVec delete_mean = out.delete_estimates.colwise().mean().transpose();
+  out.jackknife_bias =
+      static_cast<double>(actual_groups - 1) * (delete_mean - out.full_estimates);
+  out.corrected_estimates = out.full_estimates - out.jackknife_bias;
+  return out;
 }
 
 Result<Estimation> estimate_fiml_gwise(
