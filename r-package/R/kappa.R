@@ -233,7 +233,8 @@ estimate_kappa_raw <- function(x,
 #'     weighted coefficient under ignorable missingness.
 #' }
 #'
-#' `"ipw"` and `"cat_fiml"` take integer category codes and any `weight`.
+#' `"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
+#' linear, or quadratic `weight`.
 #' `"pairwise"` and `"nt_fiml"` are quadratic by construction: they treat `x`
 #' as numeric scores (pass scores directly, or integer codes with `values`)
 #' and require `weight = "quadratic"`.
@@ -255,8 +256,7 @@ estimate_kappa_raw <- function(x,
 #'   g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
 #'   `"ipw"` only.
 #' @param weight Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
-#'   default), `"linear"`, `"quadratic"`, `"ordinal"`, `"radical"`, `"ratio"`,
-#'   `"circular"`, or `"bipolar"`. `"pairwise"` / `"nt_fiml"` require
+#'   default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"nt_fiml"` require
 #'   `"quadratic"`. For `g > 2` only `"nominal"`, `"linear"`, `"hubert"`, and
 #'   `"quadratic"` are defined, where `"hubert"` is the all-raters-equal
 #'   multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
@@ -275,6 +275,21 @@ estimate_kappa_raw <- function(x,
 #' @param ... Mode-specific extras: `feature_weights` and `loss` (e.g.
 #'   `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the
 #'   number of chance tuples enumerated) for `g > 2`.
+#'
+#' @details
+#' The public R API deliberately exposes only the main weighting schemes used in
+#' current agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
+#' `"hubert"` g-wise kernel for `g > 2`). Older Krippendorff / irrCAC-style
+#' categorical schemes (`"ordinal"`, `"radical"`, `"ratio"`, `"circular"`,
+#' `"bipolar"`) remain in the internal C++ layer and Rcpp glue for validation
+#' and parity work, but are unsupported and not part of the recommended R
+#' interface.
+#'
+#' @references
+#' Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
+#'
+#' Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
+#' coefficients among raters.
 #'
 #' @return An object of class `misskappa_estimate` carrying the named
 #'   coefficient estimates and their asymptotic covariance matrix. Methods:
@@ -304,9 +319,7 @@ estimate_kappa_raw <- function(x,
 #' @export
 kappa <- function(x,
                   estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml"),
-                  weight = c("nominal", "linear", "quadratic", "ordinal",
-                             "radical", "ratio", "circular", "bipolar",
-                             "hubert"),
+                  weight = c("nominal", "linear", "quadratic", "hubert"),
                   g = 2L,
                   values = NULL,
                   em_options = list(),
@@ -614,9 +627,8 @@ kappa_quadratic <- function(x, values) {
 #'   two agree exactly when every row of `x` sums to `r_total`; with partial
 #'   counts (some `r_i < r_total`) the `"cat_fiml"` estimator can be more
 #'   efficient.
-#' @param weight Weighting scheme: `"nominal"` (default), `"linear"`,
-#'   `"quadratic"`, `"ordinal"`, `"radical"`, `"ratio"`, `"circular"`, or
-#'   `"bipolar"`.
+#' @param weight Weighting scheme: `"nominal"` (default), `"linear"`, or
+#'   `"quadratic"`.
 #' @param values Optional length-C numeric vector of category scores used
 #'   by the metric weightings. Defaults to `1:C`.
 #' @param r_total Total number of raters per subject. Defaults to the
@@ -624,6 +636,19 @@ kappa_quadratic <- function(x, values) {
 #'   have varying totals.
 #' @param em_options Named list of EM options for `estimator = "cat_fiml"`:
 #'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
+#'
+#' @details
+#' Older Krippendorff / irrCAC-style categorical schemes (`"ordinal"`,
+#' `"radical"`, `"ratio"`, `"circular"`, `"bipolar"`) remain available only
+#' through unsupported internal helpers and the C++ `misskappa::loss` factories;
+#' they are retained for validation and parity work, not as part of the
+#' recommended R interface.
+#'
+#' @references
+#' Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
+#'
+#' Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
+#' coefficients among raters.
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
 #'   `Brennan-Prediger` coefficients, the 2x2 vcov, a `psi` component, and
@@ -640,8 +665,7 @@ kappa_quadratic <- function(x, values) {
 #' @export
 kappa_counts <- function(x,
                          estimator = c("pairwise", "cat_fiml"),
-                         weight = c("nominal", "linear", "quadratic",
-                                    "ordinal", "radical", "ratio", "circular", "bipolar"),
+                         weight = c("nominal", "linear", "quadratic"),
                          values = NULL,
                          r_total = NULL,
                          em_options = list()) {
