@@ -113,7 +113,7 @@ reference and the worked-example articles:
 
 - **C++17 library** in `include/misskappa/` and `src/`
 - **R package** in `r-package/`, wrapping the library via Rcpp
-- **Manuscripts** in `papers/`, WIP papers building on this package
+- **Manuscripts** in `papers/` --- the completed papers accompanying this package
 
 ## Quick build
 

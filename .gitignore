@@ -46,3 +46,6 @@ docs/doxygen/
 /README.html
 /README_files/
 .quarto/
+
+# Private WIP papers (separate private repo, nested here for workflow)
+papers/00_wip/
