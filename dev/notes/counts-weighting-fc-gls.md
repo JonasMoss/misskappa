@@ -1,8 +1,9 @@
 # Counts Weighting: F&C, GLS, Pooled Pairs, and irrCAC
 
-Context: `kappa_counts(estimator = "pairwise")` currently uses a pooled-pairs
-moment estimator. That is not the Fleiss--Cuzick unequal-judges convention and
-should not be described as the principled count-data analogue.
+Context: `kappa_counts(estimator = "fleiss_cuzick")` is the public count-format
+moment estimator. It uses the Fleiss--Cuzick unequal-judges convention; the old
+pooled-pairs interpretation should not be described as the principled count-data
+analogue.
 
 ## Estimators
 
@@ -20,7 +21,7 @@ The competing count moment estimators mainly differ by row weight:
 | Subject-wise / irrCAC | `1` | Average each subject's pair ratio equally. |
 | Fleiss--Cuzick (F&C) | `r_i - 1` | Unequal interchangeable judges; binary kappa = one-way random-effects ICC. |
 | GLS / IVW heuristic | approximately `r_i` | Row-level precision grows roughly linearly in the number of ratings. |
-| Pooled pairs (current C++) | `r_i (r_i - 1)` | Treat every observed within-subject pair as a datum. |
+| Pooled pairs (removed public path) | `r_i (r_i - 1)` | Treat every observed within-subject pair as a datum. |
 
 When all row sums are constant these collapse to the same point estimate. When
 row sums vary, pooled pairs over-weights long rows because pairs within a
@@ -151,10 +152,11 @@ selection-weighted estimand. That is where the counts FIML model belongs.
 
 ## Implementation Decision
 
-- Add C++ support for both F&C (`r_i - 1`) and GLS/`r_i` count weighting.
-- Make the R-package public default F&C.
-- Keep pooled pairs only as a legacy/internal comparison if needed; do not
-  present it as the principled count estimator.
+- C++ supports F&C (`r_i - 1`) as `CountWeighting::fleiss_cuzick` and keeps a
+  unit-weighted comparator for parity studies.
+- The R-package public count moment estimator is `estimator = "fleiss_cuzick"`.
+- Pooled pairs has no public path; do not present it as the principled count
+  estimator.
 - Validate balanced-count parity against `irrCAC` / Fleiss 1971, and add an
   unequal-row test showing F&C differs from both current pooled pairs and
   `irrCAC` subject-wise.

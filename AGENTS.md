@@ -139,7 +139,7 @@ tests deferred):
     scored coefficient (these treat `x` as numeric scores and require
     `weight = "quadratic"`). Absorbs the former `kappa_continuous`.
   - `kappa_counts(x, estimator, weight, ...)` — counts-format input;
-    `estimator` is `"pairwise"` or `"cat_fiml"`.
+    `estimator` is `"fleiss_cuzick"` or `"cat_fiml"`.
   - `alpha(x, estimator, values, ...)` — coefficient alpha; `estimator` is
     `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`. `alpha_continuous()` /
     `alpha_cat_fiml()` are its internal backends.

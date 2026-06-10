@@ -710,8 +710,7 @@ kappa_quadratic <- function(x, values) {
 #' to category `k`. Row sums (number of raters per subject) need not be
 #' uniform across subjects.
 #'
-#' The `"pairwise"` estimator name is retained for API consistency, but the
-#' count-format moment estimator follows the Fleiss-Cuzick unequal-judges
+#' The count-format moment estimator follows the Fleiss-Cuzick unequal-judges
 #' convention: observed row disagreement is weighted by `r_i - 1`, and chance
 #' disagreement uses the pooled rating-token margin. This differs from the
 #' unit-weighted distribution/count convention used by some software; the
@@ -730,8 +729,8 @@ kappa_quadratic <- function(x, values) {
 #' aggregated away by the counts representation).
 #'
 #' @param x A subjects-by-categories non-negative integer matrix.
-#' @param estimator Either `"pairwise"` (the Fleiss-Cuzick count-format moment
-#'   estimator) or `"cat_fiml"` (EM over the composition simplex with
+#' @param estimator Either `"fleiss_cuzick"` (the Fleiss-Cuzick count-format
+#'   moment estimator) or `"cat_fiml"` (EM over the composition simplex with
 #'   multivariate hypergeometric weights for completing partial counts). The
 #'   two agree exactly when every row of `x` sums to `r_total`; with partial
 #'   counts (some `r_i < r_total`) the `"cat_fiml"` estimator can be more
@@ -766,18 +765,20 @@ kappa_quadratic <- function(x, values) {
 #' @examples
 #' # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
 #' # in counts format (one row per subject, one column per category).
-#' kappa_counts(dat.fleiss1971, estimator = "pairwise")
+#' kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 #'
 #' # Treat the categories as ordered scores with a quadratic loss.
-#' kappa_counts(dat.fleiss1971, estimator = "pairwise", weight = "quadratic")
+#' kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
 #'
 #' @export
 kappa_counts <- function(x,
-                         estimator = c("pairwise", "cat_fiml"),
+                         estimator = c("fleiss_cuzick", "cat_fiml"),
                          weight = c("nominal", "linear", "quadratic"),
                          values = NULL,
                          r_total = NULL,
                          em_options = list()) {
+  # Backward-compatible local alias; not documented as a public option.
+  if (identical(estimator, "pairwise")) estimator <- "fleiss_cuzick"
   estimator <- match.arg(estimator)
   weight <- match.arg(weight)
   cpp_weight <- if (weight == "nominal") "identity" else weight
@@ -788,7 +789,7 @@ kappa_counts <- function(x,
   if (!is.numeric(x_mat)) stop("'x' must be numeric.")
   storage.mode(x_mat) <- "integer"
 
-  if (estimator == "pairwise") {
+  if (estimator == "fleiss_cuzick") {
     out <- rcpp_kappa_counts(x = x_mat, weight_type = cpp_weight, values = values)
   } else {
     if (is.null(r_total)) r_total <- as.integer(max(rowSums(x_mat)))

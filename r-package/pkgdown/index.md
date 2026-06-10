@@ -13,8 +13,8 @@ Each estimator is selected with a single `estimator=` argument:
   (pairwise-available moment) and `"nt_fiml"` (robust normal-theory FIML) for the
   quadratically weighted, scored coefficient.
 * `alpha()` — item batteries. `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`.
-* `kappa_counts()` — counts-format input (subjects × categories). `"pairwise"` or
-  `"cat_fiml"`.
+* `kappa_counts()` — counts-format input (subjects × categories).
+  `"fleiss_cuzick"` or `"cat_fiml"`.
 
 The MCAR estimators (`"pairwise"`, `"ipw"`) are distribution-free; the FIML
 estimators (`"cat_fiml"`, `"nt_fiml"`) are valid under ignorable missingness.

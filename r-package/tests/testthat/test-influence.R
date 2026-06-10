@@ -99,7 +99,7 @@ test_that("fit$psi returns per-subject IFs for FIML fits", {
 test_that("fit$psi returns per-subject IFs for counts, continuous, and g-wise fits", {
   counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
   storage.mode(counts) <- "integer"
-  fit_counts <- kappa_counts(counts, estimator = "pairwise")
+  fit_counts <- kappa_counts(counts, estimator = "fleiss_cuzick")
   psi_counts <- fit_counts$psi
   expect_equal(dim(psi_counts), c(4L, 2L))
   expect_equal(unname(crossprod(psi_counts) / 16), unname(vcov(fit_counts)),

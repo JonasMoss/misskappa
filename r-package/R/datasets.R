@@ -8,7 +8,7 @@
 #' @source Fleiss, J. L. (1971). Measuring nominal scale agreement among many
 #'   raters. \emph{Psychological Bulletin}, 76(5), 378-382.
 #' @examples
-#' kappa_counts(dat.fleiss1971, estimator = "pairwise")
+#' kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 #' @keywords datasets
 "dat.fleiss1971"
 

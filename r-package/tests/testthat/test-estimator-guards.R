@@ -151,6 +151,6 @@ test_that("kappa() g-wise paths require every requested rater tuple", {
 test_that("kappa_counts is the exchangeable representation and is not gated", {
   # Complete counts (Fleiss 1971): rater identity is discarded, so the
   # complete-graph condition is vacuous and no guard fires.
-  expect_s3_class(kappa_counts(dat.fleiss1971, estimator = "pairwise"),
+  expect_s3_class(kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick"),
                   "misskappa_estimate")
 })
