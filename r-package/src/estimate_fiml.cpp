@@ -67,6 +67,7 @@ struct LouisReducedInfo {
 struct FimlVarianceCache {
   RealMat theta_vcov;
   RealMat var_star;
+  RealMat info_star;
   RealMat theta_jacobian;
   RealMat group_scores;
 };
@@ -426,6 +427,7 @@ FimlVarianceCache build_fiml_variance_cache(
   const Eigen::Index n_final = em.theta_hat.size();
   cache.theta_vcov = RealMat::Zero(n_final, n_final);
   cache.var_star = RealMat::Zero(0, 0);
+  cache.info_star = RealMat::Zero(0, 0);
   cache.theta_jacobian = RealMat::Zero(n_final, 0);
   cache.group_scores = RealMat::Zero(
       static_cast<Eigen::Index>(in.group_n_subjects.size()), 0);
@@ -435,11 +437,53 @@ FimlVarianceCache build_fiml_variance_cache(
   const LouisReducedInfo info =
       build_louis_reduced_info(em.theta_hat, em.pattern_indices, in);
   cache.var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+  cache.info_star = info.info_star;
   cache.theta_jacobian = info.jacobian;
   cache.group_scores = info.group_scores;
   cache.theta_vcov =
       cache.theta_jacobian * cache.var_star * cache.theta_jacobian.transpose();
   return cache;
+}
+
+Result<void> assert_reduced_gradient_identified(
+    const RealMat& info_star, const RealMat& jacobian_reduced) {
+  if (jacobian_reduced.cols() == 0 || jacobian_reduced.rows() == 0) return {};
+  if (info_star.rows() != jacobian_reduced.cols()
+      || info_star.cols() != jacobian_reduced.cols()) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+
+  Eigen::SelfAdjointEigenSolver<RealMat> es(0.5 * (info_star + info_star.transpose()));
+  if (es.info() != Eigen::Success) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+
+  const RealVec& evals = es.eigenvalues();
+  const RealMat& evecs = es.eigenvectors();
+  const double lambda_max = evals.maxCoeff();
+  const double rank_scale = static_cast<double>(std::max<Eigen::Index>(1, evals.size()));
+  const double threshold =
+      (std::isfinite(lambda_max) && lambda_max > 0.0)
+          ? std::numeric_limits<double>::epsilon() * rank_scale * lambda_max
+          : 0.0;
+
+  for (Eigen::Index row = 0; row < jacobian_reduced.rows(); ++row) {
+    const Eigen::VectorXd grad = jacobian_reduced.row(row).transpose();
+    const double projection_tol =
+        std::sqrt(std::numeric_limits<double>::epsilon())
+        * std::max(1.0, grad.norm());
+    for (Eigen::Index k = 0; k < evals.size(); ++k) {
+      if (evals(k) > threshold) continue;
+      const double projection = evecs.col(k).dot(grad);
+      if (!std::isfinite(projection)) {
+        return misskappa::unexpected(Error::numerical_error);
+      }
+      if (std::abs(projection) > projection_tol) {
+        return misskappa::unexpected(Error::not_identified);
+      }
+    }
+  }
+  return {};
 }
 
 Result<EmRunResult> run_em_preprocessed(
@@ -777,7 +821,7 @@ AlphaMap build_alpha_map(const EmRunResult& em, const RealVec& values) {
   return out;
 }
 
-Estimation map_fiml_kappa(
+Result<Estimation> map_fiml_kappa(
     const EmInput& in, const EmRunResult& em, RealMatView weights,
     const FimlVarianceCache& cache) {
   const int n = static_cast<int>(in.subject_groups.size());
@@ -816,10 +860,13 @@ Estimation map_fiml_kappa(
     jacobian.row(2) = -grad_pd.transpose() / m.d_bp;
   }
 
+  const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
+  auto identified = assert_reduced_gradient_identified(cache.info_star, jacobian_reduced);
+  if (!identified) return misskappa::unexpected(identified.error());
+
   RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
   RealMat psi = RealMat::Zero(n, 3);
   if (cache.var_star.rows() > 0) {
-    const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
     const RealMat group_psi =
         static_cast<double>(n) * cache.group_scores * cache.var_star
         * jacobian_reduced.transpose();
@@ -880,7 +927,9 @@ Result<std::vector<Estimation>> estimate_fiml_many(
   std::vector<Estimation> out;
   out.reserve(weights.size());
   for (const auto& W : weights) {
-    out.push_back(map_fiml_kappa(*in_res, *em, W, cache));
+    auto est = map_fiml_kappa(*in_res, *em, W, cache);
+    if (!est) return misskappa::unexpected(est.error());
+    out.push_back(std::move(*est));
   }
   return out;
 }
