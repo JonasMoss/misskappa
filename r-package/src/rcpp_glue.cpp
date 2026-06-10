@@ -10,6 +10,9 @@
 
 #include <cmath>
 #include <limits>
+#include <map>
+#include <set>
+#include <vector>
 
 #include "misskappa/estimate.hpp"
 #include "misskappa/diagnostics.hpp"
@@ -50,6 +53,29 @@ struct PreparedInputs {
   Eigen::VectorXd values;
   int C;
 };
+
+Eigen::MatrixXd make_agreement_weights(
+    int C, const std::string& weight_type, const Eigen::VectorXd& values) {
+  if (weight_type == "identity" || weight_type == "unweighted") {
+    return unwrap(misskappa::loss::identity_weights(C));
+  } else if (weight_type == "linear") {
+    return unwrap(misskappa::loss::linear_weights(C, values));
+  } else if (weight_type == "quadratic") {
+    return unwrap(misskappa::loss::quadratic_weights(C, values));
+  } else if (weight_type == "ordinal") {
+    return unwrap(misskappa::loss::ordinal_weights(C));
+  } else if (weight_type == "radical") {
+    return unwrap(misskappa::loss::radical_weights(C, values));
+  } else if (weight_type == "ratio") {
+    return unwrap(misskappa::loss::ratio_weights(C, values));
+  } else if (weight_type == "circular") {
+    return unwrap(misskappa::loss::circular_weights(C, values));
+  } else if (weight_type == "bipolar") {
+    return unwrap(misskappa::loss::bipolar_weights(C, values));
+  }
+  Rcpp::stop("Unknown weight type: " + weight_type);
+  return Eigen::MatrixXd();
+}
 
 PreparedInputs prepare_inputs(
     const Rcpp::IntegerMatrix& x,
@@ -92,26 +118,7 @@ PreparedInputs prepare_inputs(
     for (int i = 0; i < C; ++i) v(i) = static_cast<double>(cats[i]);
   }
 
-  Eigen::MatrixXd W;
-  if (weight_type == "identity" || weight_type == "unweighted") {
-    W = unwrap(misskappa::loss::identity_weights(C));
-  } else if (weight_type == "linear") {
-    W = unwrap(misskappa::loss::linear_weights(C, v));
-  } else if (weight_type == "quadratic") {
-    W = unwrap(misskappa::loss::quadratic_weights(C, v));
-  } else if (weight_type == "ordinal") {
-    W = unwrap(misskappa::loss::ordinal_weights(C));
-  } else if (weight_type == "radical") {
-    W = unwrap(misskappa::loss::radical_weights(C, v));
-  } else if (weight_type == "ratio") {
-    W = unwrap(misskappa::loss::ratio_weights(C, v));
-  } else if (weight_type == "circular") {
-    W = unwrap(misskappa::loss::circular_weights(C, v));
-  } else if (weight_type == "bipolar") {
-    W = unwrap(misskappa::loss::bipolar_weights(C, v));
-  } else {
-    Rcpp::stop("Unknown weight type: " + weight_type);
-  }
+  Eigen::MatrixXd W = make_agreement_weights(C, weight_type, v);
 
   return {std::move(mapped), std::move(W), std::move(v), C};
 }
@@ -183,6 +190,37 @@ Rcpp::List rcpp_kappa_raw(
     Rcpp::stop("Unknown method: " + method);
   }
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_fiml_multi(
+    const Rcpp::IntegerMatrix& x,
+    Rcpp::CharacterVector weight_types,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::List em_options) {
+  if (weight_types.size() < 1) Rcpp::stop("'weight_types' must be non-empty.");
+  const std::string first_weight = Rcpp::as<std::string>(weight_types[0]);
+  PreparedInputs in = prepare_inputs(x, first_weight, values);
+
+  std::vector<Eigen::MatrixXd> weights;
+  weights.reserve(static_cast<std::size_t>(weight_types.size()));
+  Rcpp::CharacterVector names(weight_types.size());
+  for (int i = 0; i < weight_types.size(); ++i) {
+    const std::string wt = Rcpp::as<std::string>(weight_types[i]);
+    weights.push_back(make_agreement_weights(in.C, wt, in.values));
+    names[i] = wt;
+  }
+
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto fits = unwrap(misskappa::estimate_fiml_many(
+      in.ratings_indexed, weights, opts));
+
+  Rcpp::List out(fits.size());
+  for (std::size_t i = 0; i < fits.size(); ++i) {
+    out[static_cast<R_xlen_t>(i)] = estimation_to_list(fits[i]);
+  }
+  out.attr("names") = names;
+  return out;
 }
 
 // [[Rcpp::export]]

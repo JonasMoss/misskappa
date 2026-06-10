@@ -105,6 +105,39 @@ test_that("FIML matches available on complete data, identity weight", {
                tolerance = 1e-6)
 })
 
+test_that("multi-weight FIML helper matches repeated FIML fits", {
+  x <- matrix(c(
+    0, 0, 1, 1,
+    1, 1, 1, 0,
+    2, 2, 1, 2,
+    0, NA, 0, 1,
+    1, 2, NA, 2,
+    2, 1, 2, NA,
+    0, 0, 0, 0,
+    2, 2, 2, 1
+  ), nrow = 8, byrow = TRUE)
+
+  multi <- estimate_kappa_fiml_multi(
+    x,
+    weights = c("identity", "linear", "quadratic"),
+    values = c(0, 1, 2)
+  )
+  expect_named(multi, c("identity", "linear", "quadratic"))
+
+  for (w in names(multi)) {
+    single <- estimate_kappa_raw(x, method = "fiml", weight = w,
+                                 values = c(0, 1, 2))
+    expect_equal(unname(multi[[w]]$estimates), unname(single$estimates),
+                 tolerance = 1e-10)
+    expect_equal(unname(multi[[w]]$vcov), unname(single$vcov),
+                 tolerance = 1e-10)
+    expect_equal(unname(multi[[w]]$psi), unname(single$psi),
+                 tolerance = 1e-10)
+    expect_equal(multi[[w]]$method, "fiml")
+    expect_equal(multi[[w]]$weight, w)
+  }
+})
+
 test_that("sim$mcar produces an n x R matrix with the right missingness rate", {
   set.seed(7)
   x <- sim$mcar(n = 500, R = 4, C = 3, p = c(0.4, 0.4, 0.2),
