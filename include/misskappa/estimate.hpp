@@ -65,10 +65,20 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
 // rater identity is not preserved, so IPW / Gwet (which need rater-specific
 // observation rates) are not meaningful here.
 //
+// Count-data moment weighting. The public R counts estimator uses
+// fleiss_cuzick. unit_weighted is kept in the C++ surface for parity studies
+// against software that averages each subject's row agreement equally.
+enum class CountWeighting {
+  fleiss_cuzick,  // row disagreement weight r_i - 1; F&C unequal-judges convention.
+  unit_weighted,  // row disagreement weight 1; irrCAC distribution/count convention.
+};
+
 // Estimates returned: (Fleiss, Brennan-Prediger). Conger requires identified
-// raters and is not in scope for counts. FIML for counts (with the multi-
-// variate hypergeometric weights needed when row sums vary) is a future
-// addition; see dev/notes/todo.md.
+// raters and is not in scope for counts. `estimate_available_counts` is the
+// Fleiss--Cuzick count moment estimator; use `estimate_counts(...,
+// CountWeighting::unit_weighted)` only for comparator/oracle studies.
+Result<Estimation> estimate_counts(
+    IntMatView counts, RealMatView weights, CountWeighting weighting);
 Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights);
 
 // FIML / EM counterpart of estimate_available_counts. Models the full

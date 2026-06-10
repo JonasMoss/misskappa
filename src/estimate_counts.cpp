@@ -1,13 +1,13 @@
-// Counts-format available-case estimator.
+// Counts-format moment estimators.
 //
 // Input is n x C of non-negative integer counts: counts(i, k) is the number
 // of raters who assigned subject i to category k. r_i = sum_k counts(i, k)
 // is the number of raters for subject i (may vary across subjects).
 //
-// Same moment-based pipeline as estimate_raw / estimate_continuous, but
-// with closed-form U/V-statistic kernels that exploit the count structure:
-// the within-subject pair sum becomes 0.5 * (N_u^T L N_u - diag(L) . N_u)
-// and the chance kernel between subjects is N_u^T L N_v.
+// The observed disagreement is a weighted average of each row's
+// pair-disagreement proportion. The default/public weighting is
+// Fleiss--Cuzick: row weight r_i - 1. The unit-weighted variant is kept in
+// the C++ API for comparisons with irrCAC's distribution/count convention.
 //
 // Returned coefficients: (Fleiss, Brennan-Prediger). No Conger (raters are
 // not identified in this input format). No IPW / Gwet (per-rater
@@ -24,9 +24,20 @@ namespace {
 
 constexpr double zero_tol = 1e-9;
 
+double observed_row_weight(double row_sum, CountWeighting weighting) {
+  switch (weighting) {
+    case CountWeighting::fleiss_cuzick:
+      return row_sum - 1.0;
+    case CountWeighting::unit_weighted:
+      return 1.0;
+  }
+  return 0.0;
+}
+
 }  // namespace
 
-Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights) {
+Result<Estimation> estimate_counts(
+    IntMatView counts, RealMatView weights, CountWeighting weighting) {
   const int n = static_cast<int>(counts.rows());
   const int C = static_cast<int>(counts.cols());
   if (n < 1) return misskappa::unexpected(Error::invalid_argument);
@@ -34,7 +45,7 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
     return misskappa::unexpected(Error::dimension_mismatch);
   }
   if (C < 1) return misskappa::unexpected(Error::invalid_argument);
-  // Validate non-negative integer counts.
+
   for (Eigen::Index i = 0; i < counts.rows(); ++i) {
     for (Eigen::Index k = 0; k < counts.cols(); ++k) {
       if (counts(i, k) < 0) return misskappa::unexpected(Error::invalid_argument);
@@ -44,43 +55,78 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
   // Agreement convention on input; work on disagreement L = 1 - W.
   const RealMat L = RealMat::Constant(C, C, 1.0) - weights;
 
-  // counts as doubles for the linear algebra.
-  RealMat N = counts.cast<double>();        // n x C
-  RealVec r = N.rowwise().sum();            // n; r(i) = total raters on subject i.
+  RealMat N = counts.cast<double>();
+  RealVec r = N.rowwise().sum();
   RealVec L_diag = L.diagonal();
-  RealVec category_totals = N.colwise().sum().transpose();
-
-  // --- Per-subject U-statistic for observed disagreement ---
-  // h_dN(i) = 0.5 * (N_i^T L N_i - diag(L) . N_i)  ; number of within-subject
-  //                                                 rater-pair disagreement
-  // h_dD(i) = r(i) * (r(i) - 1) / 2                ; number of rater pairs
   RealMat NL = N * L;
-  RealVec h_dN(n);
-  RealVec h_dD(n);
+
+  // --- Per-subject moment for observed disagreement -----------------------
+  //
+  // d_i = (N_i' L N_i - diag(L)' N_i) / {r_i (r_i - 1)}.
+  //
+  // Fleiss--Cuzick combines d_i with row weight r_i - 1. The unit-weighted
+  // comparator uses row weight 1, matching irrCAC's count/distribution path.
+  // Rows with fewer than two ratings do not identify within-subject
+  // disagreement and receive zero observed-disagreement weight.
+  RealVec h_dN = RealVec::Zero(n);
+  RealVec h_dD = RealVec::Zero(n);
   for (int i = 0; i < n; ++i) {
-    h_dN(i) = 0.5 * (NL.row(i).dot(N.row(i)) - L_diag.dot(N.row(i).transpose()));
-    h_dD(i) = r(i) * (r(i) - 1.0) / 2.0;
+    const double ri = r(i);
+    if (ri < 2.0) continue;
+
+    const double ordered_disagreement =
+        NL.row(i).dot(N.row(i)) - L_diag.dot(N.row(i).transpose());
+    const double d_i = ordered_disagreement / (ri * (ri - 1.0));
+    const double wi = observed_row_weight(ri, weighting);
+
+    h_dN(i) = wi * d_i;
+    h_dD(i) = wi;
   }
+
   const double psi_dN_hat = h_dN.mean();
   const double psi_dD_hat = h_dD.mean();
+  if (psi_dD_hat <= zero_tol) return misskappa::unexpected(Error::invalid_argument);
 
-  // --- V-statistic kernels (chance disagreement) ---
-  // kernel_FN(i, ip) = N_i^T L N_ip
-  // kernel_FD(i, ip) = r(i) * r(ip)
+  // --- V-statistic kernels for chance disagreement ------------------------
+  //
+  // F&C uses the pooled rating-token margin: kernel_FN(i, ip) = N_i' L N_ip
+  // and kernel_FD(i, ip) = r_i r_ip.
+  //
+  // The unit-weighted comparator uses the average row-normalized margin:
+  // kernel_FN(i, ip) = p_i' L p_ip and kernel_FD(i, ip) = 1 for rows with
+  // r_i > 0, where p_i = N_i / r_i. This matches irrCAC's count/distribution
+  // convention when every row has at least one rating.
+  RealMat chance_rows = RealMat::Zero(n, C);
+  RealVec chance_den = RealVec::Zero(n);
+  for (int i = 0; i < n; ++i) {
+    const double ri = r(i);
+    if (ri <= zero_tol) continue;
+    if (weighting == CountWeighting::unit_weighted) {
+      chance_rows.row(i) = N.row(i) / ri;
+      chance_den(i) = 1.0;
+    } else {
+      chance_rows.row(i) = N.row(i);
+      chance_den(i) = ri;
+    }
+  }
+
   const double inv_n = 1.0 / static_cast<double>(n);
   const double n_sq = static_cast<double>(n) * n;
-  const RealVec row_sum_FN = NL * category_totals;
-  const RealVec col_sum_FN = (N * L.transpose()) * category_totals;
+  const RealVec chance_totals = chance_rows.colwise().sum().transpose();
+  const RealMat chance_L = chance_rows * L;
+  const RealVec row_sum_FN = chance_L * chance_totals;
+  const RealVec col_sum_FN = (chance_rows * L.transpose()) * chance_totals;
   const double psi_FN_hat = row_sum_FN.sum() / n_sq;
 
-  const double total_r = r.sum();
-  const RealVec row_sum_FD = r * total_r;
-  const double psi_FD_hat = (total_r * total_r) / n_sq;
+  const double total_chance_den = chance_den.sum();
+  if (total_chance_den <= zero_tol) return misskappa::unexpected(Error::invalid_argument);
+  const RealVec row_sum_FD = chance_den * total_chance_den;
+  const double psi_FD_hat = (total_chance_den * total_chance_den) / n_sq;
 
-  // --- Point estimates ---
-  const double d_hat   = (psi_dD_hat > zero_tol) ? psi_dN_hat / psi_dD_hat : 0.0;
+  // --- Point estimates -----------------------------------------------------
+  const double d_hat = psi_dN_hat / psi_dD_hat;
   const double d_F_hat = (psi_FD_hat > zero_tol) ? psi_FN_hat / psi_FD_hat : 0.0;
-  const double d_BP    = L.sum() / (static_cast<double>(C) * C);
+  const double d_BP = L.sum() / (static_cast<double>(C) * C);
 
   RealVec estimates(2);
   estimates(0) = (d_F_hat > zero_tol)
@@ -90,7 +136,7 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
                      ? 1.0 - d_hat / d_BP
                      : std::numeric_limits<double>::quiet_NaN();
 
-  // --- Influence functions ---
+  // --- Influence functions -------------------------------------------------
   RealVec phi_dN = h_dN.array() - psi_dN_hat;
   RealVec phi_dD = h_dD.array() - psi_dD_hat;
 
@@ -105,17 +151,13 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
   phi_matrix.col(3) = phi_FD;
   RealMat Gamma_hat = (phi_matrix.transpose() * phi_matrix) / static_cast<double>(n);
 
-  // --- Delta method ---
   RealMat J_d = RealMat::Zero(2, 4);
-  if (psi_dD_hat > zero_tol) {
-    J_d(0, 0) = 1.0 / psi_dD_hat;
-    J_d(0, 1) = -psi_dN_hat / (psi_dD_hat * psi_dD_hat);
-  }
+  J_d(0, 0) = 1.0 / psi_dD_hat;
+  J_d(0, 1) = -psi_dN_hat / (psi_dD_hat * psi_dD_hat);
   if (psi_FD_hat > zero_tol) {
     J_d(1, 2) = 1.0 / psi_FD_hat;
     J_d(1, 3) = -psi_FN_hat / (psi_FD_hat * psi_FD_hat);
   }
-  RealMat Sigma_hat = J_d * Gamma_hat * J_d.transpose();
 
   RealMat J_kappa = RealMat::Zero(2, 2);
   if (d_F_hat > zero_tol) {
@@ -125,11 +167,17 @@ Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weig
   if (d_BP > zero_tol) {
     J_kappa(1, 0) = -1.0 / d_BP;
   }
+
   const RealMat J_combined = J_kappa * J_d;
-  RealMat kappa_cov = (J_combined * Gamma_hat * J_combined.transpose()) / static_cast<double>(n);
+  RealMat kappa_cov = (J_combined * Gamma_hat * J_combined.transpose()) /
+                       static_cast<double>(n);
   RealMat psi_kappa = build_psi_from_phi(phi_matrix, J_combined);
 
   return Estimation{std::move(estimates), std::move(kappa_cov), std::move(psi_kappa)};
+}
+
+Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights) {
+  return estimate_counts(counts, weights, CountWeighting::fleiss_cuzick);
 }
 
 }  // namespace misskappa
