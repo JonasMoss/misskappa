@@ -112,7 +112,7 @@ TEST_CASE("estimate_quadratic raw: singleton rows contribute to marginal moments
   CHECK(std::abs(r->vcov(2, 2) - 0.053811909239969126) < 1e-12);
 }
 
-TEST_CASE("estimate_quadratic raw: too few overlapping pairs -> invalid_argument") {
+TEST_CASE("estimate_quadratic raw: no co-observed pair -> not_identified") {
   RealMat x(2, 3);
   x << 1, na_d, na_d,
        na_d, 2, na_d;
@@ -120,6 +120,5 @@ TEST_CASE("estimate_quadratic raw: too few overlapping pairs -> invalid_argument
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
   auto r = ms::estimate_quadratic(x, v);
   REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::invalid_argument);
+  CHECK(r.error() == ms::Error::not_identified);
 }
-

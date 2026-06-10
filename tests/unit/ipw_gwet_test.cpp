@@ -198,7 +198,7 @@ TEST_CASE("IPW rejects a rater with zero observations") {
   auto W = ms::loss::identity_weights(2);
   auto r = ms::estimate_ipw(x, *W);
   REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::singular_weight);
+  CHECK(r.error() == ms::Error::not_identified);
 }
 
 TEST_CASE("Gwet rejects a rater with zero observations") {
@@ -211,5 +211,26 @@ TEST_CASE("Gwet rejects a rater with zero observations") {
   auto W = ms::loss::identity_weights(2);
   auto r = ms::estimate_gwet(x, *W);
   REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::singular_weight);
+  CHECK(r.error() == ms::Error::not_identified);
+}
+
+TEST_CASE("Raw moment estimators reject incomplete rater co-observation graph") {
+  IntMat x(6, 3);
+  x << 0, 0, na_code,
+       0, 1, na_code,
+       1, 0, na_code,
+       na_code, 0, 0,
+       na_code, 0, 1,
+       na_code, 1, 1;
+  auto W = ms::loss::identity_weights(2);
+
+  auto available = ms::estimate_available(x, *W);
+  auto ipw = ms::estimate_ipw(x, *W);
+  auto gwet = ms::estimate_gwet(x, *W);
+  REQUIRE(!available.has_value());
+  REQUIRE(!ipw.has_value());
+  REQUIRE(!gwet.has_value());
+  CHECK(available.error() == ms::Error::not_identified);
+  CHECK(ipw.error() == ms::Error::not_identified);
+  CHECK(gwet.error() == ms::Error::not_identified);
 }

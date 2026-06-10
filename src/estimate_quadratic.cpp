@@ -7,6 +7,7 @@
 // three summaries used by the quadratic coefficients, avoiding the full
 // fourth-moment tensor.
 
+#include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
@@ -28,18 +29,6 @@ struct AcovResults {
   RealMat sigma_hat; // R x R per-rater-pair covariances
   int R = 0;
 };
-
-// Build mask, M(i, j) = 1 if x(i, j) is finite, else 0.
-Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
-build_finite_mask(RealMatView x) {
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m(x.rows(), x.cols());
-  for (Eigen::Index i = 0; i < x.rows(); ++i) {
-    for (Eigen::Index j = 0; j < x.cols(); ++j) {
-      m(i, j) = std::isfinite(x(i, j)) ? 1 : 0;
-    }
-  }
-  return m;
-}
 
 // Heavy-lifter: from raw real-valued ratings + finiteness mask, compute the
 // 3x3 covariance of (t1 = sum(sigma_hat), t2 = trace(sigma_hat),
@@ -144,7 +133,10 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   // Brennan-Prediger constant: 2 / C^2 * (C * sum(v^2) - sum(v)^2).
   const double c1 = (2.0 / (C * C)) * (C * values.squaredNorm() - std::pow(values.sum(), 2));
 
-  const auto M_full = build_finite_mask(ratings);
+  const auto M_full = detail::finite_mask(ratings);
+  auto identified = detail::require_complete_pair_observation(M_full);
+  if (!identified) return misskappa::unexpected(identified.error());
+
   RealMat x_all = ratings;
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());

@@ -91,7 +91,7 @@ test_that("IPW rejects a rater with zero observations cleanly", {
   x <- matrix(c(0, 0, NA, 1, 1, NA, 0, 1, NA, 1, 0, NA, 0, 0, NA),
               nrow = 5, byrow = TRUE)
   expect_error(kappa(x, estimator = "ipw"),
-               regexp = "singular")
+               regexp = "every rater must be observed")
 })
 
 test_that("FIML matches available on complete data, identity weight", {
@@ -106,27 +106,26 @@ test_that("FIML matches available on complete data, identity weight", {
 })
 
 test_that("multi-weight FIML helper matches repeated FIML fits", {
-  x <- matrix(c(
-    0, 0, 1, 1,
-    1, 1, 1, 0,
-    2, 2, 1, 2,
+  complete_support <- as.matrix(expand.grid(
+    r1 = 0:1, r2 = 0:1, r3 = 0:1, r4 = 0:1
+  ))
+  missing_rows <- matrix(c(
     0, NA, 0, 1,
-    1, 2, NA, 2,
-    2, 1, 2, NA,
-    0, 0, 0, 0,
-    2, 2, 2, 1
-  ), nrow = 8, byrow = TRUE)
+    1, 0, NA, 0,
+    1, 1, 1, NA
+  ), ncol = 4, byrow = TRUE)
+  x <- rbind(complete_support, missing_rows)
 
   multi <- estimate_kappa_fiml_multi(
     x,
     weights = c("identity", "linear", "quadratic"),
-    values = c(0, 1, 2)
+    values = c(0, 1)
   )
   expect_named(multi, c("identity", "linear", "quadratic"))
 
   for (w in names(multi)) {
     single <- estimate_kappa_raw(x, method = "fiml", weight = w,
-                                 values = c(0, 1, 2))
+                                 values = c(0, 1))
     expect_equal(unname(multi[[w]]$estimates), unname(single$estimates),
                  tolerance = 1e-10)
     expect_equal(unname(multi[[w]]$vcov), unname(single$vcov),

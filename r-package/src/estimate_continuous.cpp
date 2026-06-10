@@ -14,6 +14,7 @@
 
 #include "detail_inverse_weights.hpp"
 #include "detail_kernel_moments.hpp"
+#include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
@@ -25,17 +26,6 @@ namespace {
 
 constexpr double zero_tol = 1e-9;
 
-Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
-build_finite_mask(RealMatView ratings) {
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m(ratings.rows(), ratings.cols());
-  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
-      m(i, j) = std::isfinite(ratings(i, j)) ? 1 : 0;
-    }
-  }
-  return m;
-}
-
 Result<Estimation> estimate_continuous(
     RealMatView ratings, loss::ContinuousLoss loss, detail::Reweighting mode) {
   const int n = static_cast<int>(ratings.rows());
@@ -43,9 +33,11 @@ Result<Estimation> estimate_continuous(
   if (n < 1) return misskappa::unexpected(Error::invalid_argument);
   if (R < 2) return misskappa::unexpected(Error::invalid_argument);
 
-  const auto mask = build_finite_mask(ratings);
+  const auto mask = detail::finite_mask(ratings);
   bool any_observed = mask.sum() > 0;
   if (!any_observed) return misskappa::unexpected(Error::invalid_argument);
+  auto identified = detail::require_complete_pair_observation(mask);
+  if (!identified) return misskappa::unexpected(identified.error());
 
   auto wres = detail::compute_inverse_weights(mask, n, R, mode);
   if (!wres) return misskappa::unexpected(wres.error());

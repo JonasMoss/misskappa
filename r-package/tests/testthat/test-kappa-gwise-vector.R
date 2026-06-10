@@ -51,16 +51,16 @@ test_that("kappa() routes g > 2 categorical kernels and labels Conger/Fleiss", {
 })
 
 test_that("kappa() g > 2 with NAs: ipw/cat_fiml work, pairwise errors", {
-  x <- matrix(c(
-    1, 1, 2, 1, 1,
-    1, 2, 3, 2, 2,
-    2, 1, 1, 1, 1,
-    2, 3, 4, 4, 5,
-    1, 1, 1, 2, 1,
-    3, 3, 2, 3, 3
-  ), nrow = 6, byrow = TRUE)
-  x[1, 2] <- NA
-  x[4, 5] <- NA
+  complete_support <- as.matrix(expand.grid(
+    r1 = 1:2, r2 = 1:2, r3 = 1:2, r4 = 1:2, r5 = 1:2
+  ))
+  missing_rows <- matrix(c(
+    1, NA, 2, 1, 1,
+    2, 1, NA, 2, 2,
+    1, 2, 1, NA, 1,
+    2, 2, 2, 1, NA
+  ), ncol = 5, byrow = TRUE)
+  x <- rbind(complete_support, missing_rows)
 
   fit_ipw <- kappa(x, estimator = "ipw", weight = "nominal", g = 3L)
   expect_true(all(is.finite(fit_ipw$estimates)))

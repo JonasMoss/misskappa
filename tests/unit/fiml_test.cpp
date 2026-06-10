@@ -274,8 +274,18 @@ TEST_CASE("estimate_fiml_gwise: g=2 nominal matches categorical FIML") {
   CHECK((gwise->vcov - pairwise->vcov.block(0, 0, 2, 2)).cwiseAbs().maxCoeff() < 1e-6);
 }
 
+TEST_CASE("estimate_fiml_gwise: missing requested rater tuple errors") {
+  IntMat x = pairwise_only_3rater_2cat();
+  auto distance = ms::loss::frechet_nominal_distance(2);
+  REQUIRE(distance.has_value());
+
+  auto r = ms::estimate_fiml_gwise(x, *distance, EmOptions{}, ms::GwiseOptions{3});
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::not_identified);
+}
+
 TEST_CASE("estimate_fiml_gwise: variance is symmetric PSD and psi reconstructs it") {
-  IntMat x = twelve_subject_3rater_3cat();
+  IntMat x = identified_missing_3rater_3cat();
   auto distance = ms::loss::hubert_categorical_distance(3);
   REQUIRE(distance.has_value());
 

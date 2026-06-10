@@ -45,6 +45,6 @@ test_that("raw FIML backend errors on coefficient non-identification", {
   expect_error(
     misskappa:::estimate_kappa_raw(chain_missing_pair_3rater_2cat(),
                                    method = "fiml", weight = "identity"),
-    "not identified from the Louis information"
+    "not identified"
   )
 })

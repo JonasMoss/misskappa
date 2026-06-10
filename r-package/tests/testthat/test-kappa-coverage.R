@@ -85,7 +85,7 @@ test_that("alpha() validates input and maps values=", {
                "unique observed categories")
   expect_error(alpha(matrix(NA_real_, 5, 3), estimator = "pairwise",
                      values = c(1, 2, 3)),
-               "all item responses are missing")
+               "every item must be observed")
 })
 
 test_that("alpha(estimator = 'cat_fiml') runs and validates", {

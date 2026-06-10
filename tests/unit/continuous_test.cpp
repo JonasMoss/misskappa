@@ -195,5 +195,26 @@ TEST_CASE("Continuous IPW rejects a rater with zero observations") {
   auto loss = ms::loss::quadratic_loss(1.0, 3.0);
   auto r = ms::estimate_ipw_continuous(x, *loss);
   REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::singular_weight);
+  CHECK(r.error() == ms::Error::not_identified);
+}
+
+TEST_CASE("Continuous estimators reject incomplete rater co-observation graph") {
+  RealMat x(6, 3);
+  x << 1.0, 1.0, na_d,
+       1.0, 2.0, na_d,
+       2.0, 1.0, na_d,
+       na_d, 1.0, 1.0,
+       na_d, 1.0, 2.0,
+       na_d, 2.0, 2.0;
+  auto loss = ms::loss::quadratic_loss(1.0, 2.0);
+
+  auto available = ms::estimate_available_continuous(x, *loss);
+  auto ipw = ms::estimate_ipw_continuous(x, *loss);
+  auto gwet = ms::estimate_gwet_continuous(x, *loss);
+  REQUIRE(!available.has_value());
+  REQUIRE(!ipw.has_value());
+  REQUIRE(!gwet.has_value());
+  CHECK(available.error() == ms::Error::not_identified);
+  CHECK(ipw.error() == ms::Error::not_identified);
+  CHECK(gwet.error() == ms::Error::not_identified);
 }

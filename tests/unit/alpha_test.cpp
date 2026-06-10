@@ -37,6 +37,36 @@ IntMat missing_items() {
   return x;
 }
 
+IntMat identified_missing_items() {
+  IntMat x(36, 3);
+  Eigen::Index row = 0;
+  for (int a = 0; a < 3; ++a) {
+    for (int b = 0; b < 3; ++b) {
+      for (int c = 0; c < 3; ++c) {
+        x(row, 0) = a;
+        x(row, 1) = b;
+        x(row, 2) = c;
+        ++row;
+      }
+    }
+  }
+  for (int a = 0; a < 3; ++a) {
+    x(row, 0) = a;
+    x(row, 1) = na_code;
+    x(row, 2) = (a + 1) % 3;
+    ++row;
+    x(row, 0) = na_code;
+    x(row, 1) = a;
+    x(row, 2) = (a + 2) % 3;
+    ++row;
+    x(row, 0) = a;
+    x(row, 1) = (a + 1) % 3;
+    x(row, 2) = na_code;
+    ++row;
+  }
+  return x;
+}
+
 RealVec three_scores() {
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
@@ -173,20 +203,28 @@ TEST_CASE("estimate_alpha_fiml: complete data matches available alpha") {
   check_influence_reconstructs_vcov(*ml, static_cast<int>(x.rows()));
 }
 
-TEST_CASE("estimate_alpha_fiml: missing categorical fixture is finite") {
+TEST_CASE("estimate_alpha_fiml: sparse missing categorical fixture reports non-identification") {
   const IntMat x = missing_items();
   const RealVec values = three_scores();
   auto av = ms::estimate_alpha_available(x, values);
   REQUIRE(av.has_value());
   auto ml = ms::estimate_alpha_fiml(x, values, EmOptions{});
-  REQUIRE(ml.has_value());
+  REQUIRE(!ml.has_value());
 
   CHECK(std::isfinite(av->estimates(0)));
-  CHECK(std::isfinite(ml->estimates(0)));
-  CHECK(std::abs(ml->estimates(0) - 0.89690721644) < 1e-8);
   CHECK(av->vcov(0, 0) >= -1e-12);
-  CHECK(ml->vcov(0, 0) >= -1e-12);
+  CHECK(ml.error() == ms::Error::not_identified);
   check_influence_reconstructs_vcov(*av, static_cast<int>(x.rows()));
+}
+
+TEST_CASE("estimate_alpha_fiml: identified missing categorical fixture is finite") {
+  const IntMat x = identified_missing_items();
+  const RealVec values = three_scores();
+  auto ml = ms::estimate_alpha_fiml(x, values, EmOptions{});
+  REQUIRE(ml.has_value());
+
+  CHECK(std::isfinite(ml->estimates(0)));
+  CHECK(ml->vcov(0, 0) >= -1e-12);
   check_influence_reconstructs_vcov(*ml, static_cast<int>(x.rows()));
 }
 
@@ -204,4 +242,32 @@ TEST_CASE("estimate_alpha: invalid inputs are rejected") {
   auto out_of_range = ms::estimate_alpha_fiml(bad, values, EmOptions{});
   REQUIRE(!out_of_range.has_value());
   CHECK(out_of_range.error() == ms::Error::invalid_argument);
+}
+
+TEST_CASE("estimate_alpha: incomplete item co-observation graph is not identified") {
+  const RealVec values = three_scores();
+  IntMat categorical(6, 3);
+  categorical << 0, 0, na_code,
+                 0, 1, na_code,
+                 1, 0, na_code,
+                 na_code, 0, 0,
+                 na_code, 0, 1,
+                 na_code, 1, 1;
+  RealMat continuous(6, 3);
+  continuous << 1.0, 1.0, std::numeric_limits<double>::quiet_NaN(),
+                1.0, 2.0, std::numeric_limits<double>::quiet_NaN(),
+                2.0, 1.0, std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN(), 1.0, 1.0,
+                std::numeric_limits<double>::quiet_NaN(), 1.0, 2.0,
+                std::numeric_limits<double>::quiet_NaN(), 2.0, 2.0;
+
+  auto cat_av = ms::estimate_alpha_available(categorical, values);
+  auto cat_ml = ms::estimate_alpha_fiml(categorical, values, EmOptions{});
+  auto con_av = ms::estimate_alpha_available_continuous(continuous);
+  REQUIRE(!cat_av.has_value());
+  REQUIRE(!cat_ml.has_value());
+  REQUIRE(!con_av.has_value());
+  CHECK(cat_av.error() == ms::Error::not_identified);
+  CHECK(cat_ml.error() == ms::Error::not_identified);
+  CHECK(con_av.error() == ms::Error::not_identified);
 }
