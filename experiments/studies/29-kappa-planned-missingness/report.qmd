@@ -1,0 +1,197 @@
+---
+title: "Kappa Planned-Missingness Smoke"
+subtitle: "Experiment 29"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+pick_results_dir <- function() {
+  override <- Sys.getenv("KAPPA29_RESULTS_DIR", unset = "")
+  if (nzchar(override)) return(override)
+  result_dirs <- list.dirs("results", full.names = TRUE, recursive = FALSE)
+  if (length(result_dirs)) {
+    info <- file.info(file.path(result_dirs, "summary.csv"))
+    result_dirs <- result_dirs[!is.na(info$mtime)]
+    if (length(result_dirs)) return(result_dirs[which.max(info$mtime)])
+  }
+  "results"
+}
+
+results_dir <- pick_results_dir()
+summary_path <- file.path(results_dir, "summary.csv")
+metadata_path <- file.path(results_dir, "metadata.csv")
+dgps_path <- file.path(results_dir, "dgps.csv")
+mechanisms_path <- file.path(results_dir, "mechanisms.csv")
+
+if (!file.exists(summary_path)) {
+  stop(
+    "No summary.csv found. Run, for example:\n",
+    "  Rscript run_experiment.R --smoke --progress\n",
+    "or set KAPPA29_RESULTS_DIR to a result directory before rendering."
+  )
+}
+
+summary <- read.csv(summary_path, stringsAsFactors = FALSE)
+metadata <- read.csv(metadata_path, stringsAsFactors = FALSE)
+dgps <- read.csv(dgps_path, stringsAsFactors = FALSE)
+mechanisms <- read.csv(mechanisms_path, stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+meta_value <- function(key, default = "") {
+  val <- meta[[key]]
+  if (is.null(val) || length(val) == 0L || is.na(val)) default else val
+}
+fmt <- function(x, digits = 3) ifelse(is.na(x), "", formatC(x, format = "f", digits = digits))
+fmt_signed <- function(x, digits = 3) ifelse(is.na(x), "", sprintf(paste0("%+.", digits, "f"), x))
+fmt_int <- function(x) formatC(x, format = "d", big.mark = ",")
+
+method_label <- c(
+  ipw_nominal = "IPW",
+  cat_fiml_nominal = "Cat-FIML",
+  listwise_nominal = "Listwise",
+  ipw_absolute = "IPW",
+  cat_fiml_absolute = "Cat-FIML",
+  listwise_absolute = "Listwise",
+  ipw_quadratic = "IPW",
+  cat_fiml_quadratic = "Cat-FIML",
+  pairwise_quadratic = "Pairwise",
+  nt_fiml_quadratic = "NT-FIML",
+  listwise_quadratic = "Listwise"
+)
+summary$method_label <- unname(method_label[summary$method])
+summary$method_label[is.na(summary$method_label)] <- summary$method[is.na(summary$method_label)]
+summary$abs_bias <- abs(summary$bias)
+```
+
+## Question
+
+This study is the first paper-facing screen for kappa under accidental MCAR,
+clean observed MAR, and planned missing ratings. It adds small sample sizes,
+planned rater-subset designs, listwise deletion, high-agreement Moss-style
+cells, ordinal normal-copula ratings, and Dawid-Skene-style severity raters.
+
+The planned-missingness framing is anchored in Graham et al. (2006), Little and
+Rhemtulla (2013), Raghunathan and Grizzle (1995), Fleiss (1981), and Zhang and
+Sackett (2023).
+
+## Run
+
+The report is reading `r results_dir`.
+
+```{r run-summary}
+rep_path <- file.path(results_dir, "replicates.csv")
+replicate_rows <- if (file.exists(rep_path)) nrow(read.csv(rep_path)) else NA_integer_
+
+run_tab <- data.frame(
+  Quantity = c(
+    "Mode",
+    "Replications requested",
+    "Replications in shard",
+    "Sample size",
+    "Truth sample size",
+    "DGPs",
+    "Missingness mechanisms",
+    "Estimator rows",
+    "Summary rows",
+    "Replicate rows",
+    "Failures",
+    "Elapsed seconds"
+  ),
+  Value = c(
+    meta_value("mode"),
+    meta_value("reps"),
+    meta_value("reps_in_shard"),
+    meta_value("n_grid"),
+    meta_value("truth_n"),
+    meta_value("dgps"),
+    meta_value("mechanisms"),
+    meta_value("methods"),
+    fmt_int(nrow(summary)),
+    if (is.na(replicate_rows)) "not checked" else fmt_int(replicate_rows),
+    fmt_int(sum(summary$failures[summary$interval == "wald_t"])),
+    fmt(as.numeric(meta_value("elapsed_seconds", NA)), 2)
+  ),
+  check.names = FALSE
+)
+knitr::kable(run_tab, align = "ll")
+```
+
+```{r dgp-table}
+dgp_tab <- dgps[, c("dgp", "family", "C", "R", "support_size", "category_prob", "details")]
+names(dgp_tab) <- c("DGP", "Family", "Categories", "Raters", "Full patterns",
+                    "Category probabilities", "Details")
+knitr::kable(dgp_tab, align = "llrrrll")
+```
+
+```{r mechanism-table}
+mech_tab <- mechanisms[mechanisms$mechanism %in% unique(summary$mechanism),
+                       c("mechanism", "family", "description")]
+names(mech_tab) <- c("Mechanism", "Family", "Description")
+knitr::kable(mech_tab, align = "lll")
+```
+
+## Smoke Diagnostics
+
+The smoke run is meant to catch mechanical failures and rough timing problems.
+Coverage at this replication count is not interpretable.
+
+```{r quadratic-smoke}
+quad <- subset(summary, coefficient == "Conger" &
+                 weight_label == "quadratic" &
+                 interval == "wald_t")
+quad <- quad[order(quad$dgp, quad$mechanism, quad$method_label), ]
+quad_tab <- data.frame(
+  DGP = quad$dgp,
+  Mechanism = quad$mechanism,
+  Method = quad$method_label,
+  Valid = quad$n_valid,
+  Failures = quad$failures,
+  Bias = fmt_signed(quad$bias, 3),
+  RMSE = fmt(quad$rmse, 3),
+  `Mean SE` = fmt(quad$mean_se, 3),
+  `Mean n_eff` = fmt(quad$mean_n_eff, 1),
+  `Fit ms` = fmt(quad$median_elapsed_ms, 0),
+  check.names = FALSE
+)
+knitr::kable(quad_tab, align = "lllrrrrrrr")
+```
+
+## Interval Check
+
+```{r interval-check}
+int <- subset(summary, coefficient == "Conger" & weight_label == "quadratic")
+int <- aggregate(
+  cbind(coverage95, mean_ci_length, miss_below, miss_above) ~ interval + method_label,
+  int,
+  mean,
+  na.rm = TRUE
+)
+int <- int[order(int$method_label, int$interval), ]
+int_tab <- data.frame(
+  Method = int$method_label,
+  Interval = int$interval,
+  Coverage = fmt(int$coverage95, 2),
+  Length = fmt(int$mean_ci_length, 3),
+  `Miss Below` = fmt(int$miss_below, 2),
+  `Miss Above` = fmt(int$miss_above, 2),
+  check.names = FALSE
+)
+knitr::kable(int_tab, align = "llrrrr")
+```
+
+## Reproduce
+
+```bash
+cd experiments/studies/29-kappa-planned-missingness
+
+Rscript run_experiment.R --smoke --reps 5 --progress \
+  --out-dir results/smoke-YYYYMMDD-HHMM
+
+KAPPA29_RESULTS_DIR=results/smoke-YYYYMMDD-HHMM quarto render report.qmd
+```
