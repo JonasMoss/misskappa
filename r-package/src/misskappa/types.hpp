@@ -30,6 +30,14 @@ struct Estimation {
   RealVec estimates;
   RealMat vcov;
   RealMat psi;
+  // Per-coefficient fraction of the delta-method gradient lying in the
+  // truncated null space of the (reduced) Louis information, in [0, 1].
+  // 0 means the coefficient is an estimable function of the identified
+  // nuisance directions; values away from 0 flag that the point estimate
+  // depends on which maximizer of a flat likelihood the EM selected and that
+  // the pseudo-inverse SE omits the truncated directions. Empty for
+  // estimators where the check does not apply.
+  RealVec null_frac;
 };
 
 // psi_i = J * phi_i  =>  psi = phi * J^T. Centralised so estimators that

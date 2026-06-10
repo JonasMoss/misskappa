@@ -27,19 +27,49 @@
   X
 }
 
-.alpha_from_cpp <- function(out, method) {
+# Surface the FIML null-space diagnostic: `null_frac` is, per coefficient,
+# the fraction of the delta-method gradient lying in the truncated null space
+# of the Louis information. Zero means the coefficient is an estimable
+# function of the identified directions; larger values mean the saturated
+# nuisance fit is selection-dependent along directions the coefficient
+# touches, so warn once and keep the estimate.
+.warn_null_frac <- function(null_frac, em_options = list(), threshold = 0.01) {
+  if (is.null(null_frac) || length(null_frac) == 0L) return(invisible(NULL))
+  # With flattening the posterior mode is unique, so the selection-dependence
+  # half of the message no longer applies; the diagnostic stays available in
+  # the returned object either way.
+  flatten <- em_options[["flatten"]]
+  if (!is.null(flatten) && is.finite(flatten) && flatten > 0) {
+    return(invisible(NULL))
+  }
+  mx <- max(c(null_frac, 0), na.rm = TRUE)
+  if (is.finite(mx) && mx > threshold) {
+    warning(sprintf(paste0(
+      "The saturated joint distribution is not uniquely identified from the ",
+      "observed missing-data patterns (null-space gradient fraction %.3f). ",
+      "The coefficient is still identified, but the point estimate depends ",
+      "on which likelihood maximizer the EM selected, and the SE uses a ",
+      "rank-truncated pseudo-inverse. Pass em_options = list(flatten = 0.1) ",
+      "to select a unique interior posterior mode."), mx), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+.alpha_from_cpp <- function(out, method, em_options = list()) {
   estimates <- as.numeric(out$estimates)
   names(estimates) <- "alpha"
   vcov_mat <- out$vcov
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
   psi_mat <- out$psi
   if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+  .warn_null_frac(out$null_frac, em_options)
 
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
       psi = psi_mat,
+      null_frac = out$null_frac,
       method = method,
       weight = "score"
     ),
@@ -83,8 +113,12 @@
 #' @param em_options Named list tuning the EM fit for the likelihood
 #'   estimators. For `"nt_fiml"`: `tol`, `max_iter`, `fd_h`. For `"cat_fiml"`:
 #'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond` (the relative
-#'   eigenvalue cutoff used when inverting Louis' observed information). Pass
-#'   any subset.
+#'   eigenvalue cutoff used when inverting Louis' observed information), and
+#'   `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
+#'   table; any positive value makes the fitted table the unique interior
+#'   posterior mode when the saturated likelihood is flat, at the cost of
+#'   shrinking it toward uniform with weight `flatten / (n + flatten)`;
+#'   `0`, the default, is strict ML). Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
@@ -151,7 +185,7 @@ alpha <- function(x,
 #' @param values Optional numeric vector of category scores. Defaults to the
 #'   sorted unique observed categories.
 #' @param em_options Named list of options for the categorical EM fit:
-#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`, `flatten`.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix.
@@ -172,7 +206,7 @@ alpha_cat_fiml <- function(x, values = NULL, em_options = list()) {
     em_options = em_options
   )
 
-  .alpha_from_cpp(out, method = "alpha-cat-fiml")
+  .alpha_from_cpp(out, method = "alpha-cat-fiml", em_options = em_options)
 }
 
 # Build a numeric score matrix from raw ratings. With values = NULL the input
@@ -223,8 +257,11 @@ estimate_kappa_raw <- function(x,
   dimnames(vcov_mat) <- list(names(estimates), names(estimates))
   psi_mat <- out$psi
   if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+  null_frac <- out$null_frac
+  if (length(null_frac) == length(estimates)) names(null_frac) <- names(estimates)
+  .warn_null_frac(null_frac, em_options)
   structure(list(estimates = estimates, vcov = vcov_mat, psi = psi_mat,
-                 method = method, weight = weight),
+                 null_frac = null_frac, method = method, weight = weight),
             class = "misskappa_estimate")
 }
 
@@ -281,9 +318,12 @@ estimate_kappa_fiml_multi <- function(x,
     dimnames(vcov_mat) <- list(names(estimates), names(estimates))
     psi_mat <- raw[[i]]$psi
     if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+    null_frac <- raw[[i]]$null_frac
+    if (length(null_frac) == length(estimates)) names(null_frac) <- names(estimates)
+    if (i == 1L) .warn_null_frac(null_frac, em_options)
     structure(
       list(estimates = estimates, vcov = vcov_mat, psi = psi_mat,
-           method = "fiml", weight = weights[[i]]),
+           null_frac = null_frac, method = "fiml", weight = weights[[i]]),
       class = "misskappa_estimate"
     )
   })
@@ -355,7 +395,13 @@ estimate_kappa_fiml_multi <- function(x,
 #'   integer codes to scores). Defaults to the sorted unique observed
 #'   categories.
 #' @param em_options Named list of EM options for the likelihood estimators
-#'   (`"cat_fiml"`, `"nt_fiml"`). Pass any subset.
+#'   (`"cat_fiml"`, `"nt_fiml"`). For `"cat_fiml"`: `tol`, `max_iter`,
+#'   `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total Dirichlet
+#'   pseudo-mass spread over the complete pattern table; any positive value
+#'   selects the unique interior posterior mode when the saturated likelihood
+#'   is flat, shrinking the fitted table toward uniform with weight
+#'   `flatten / (n + flatten)`; `0`, the default, is strict ML). Pass any
+#'   subset.
 #' @param ... Mode-specific extras: `feature_weights` and `loss` (e.g.
 #'   `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the
 #'   number of chance tuples enumerated) for `g > 2`.
@@ -743,7 +789,9 @@ kappa_quadratic <- function(x, values) {
 #'   maximum observed row sum. Required for `estimator = "cat_fiml"` when rows
 #'   have varying totals.
 #' @param em_options Named list of EM options for `estimator = "cat_fiml"`:
-#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.
+#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`. The
+#'   raw-data `flatten` option does not apply here: the count-data FIML fits
+#'   a low-dimensional composition model, not the saturated joint.
 #'
 #' @details
 #' Older Krippendorff / irrCAC-style categorical schemes (`"ordinal"`,

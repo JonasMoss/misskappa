@@ -150,14 +150,63 @@ TEST_CASE("estimate_fiml: complete data, identity weights matches Cohen") {
   CHECK(std::abs(r->estimates(2) - 0.4) < 1e-9);                // BP
 }
 
-TEST_CASE("estimate_fiml: sparse MAR fixture reports coefficient non-identification") {
+TEST_CASE("estimate_fiml: sparse MAR fixture succeeds with null-frac diagnostic") {
+  // All rater pairs are co-observed, so the coefficients are estimable even
+  // though the saturated 3^3 nuisance is far from identified at n = 12. The
+  // former hard not_identified gate is now the null_frac diagnostic.
   IntMat x = twelve_subject_3rater_3cat();
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
   auto r = ms::estimate_fiml(x, *W, EmOptions{});
-  REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::not_identified);
+  REQUIRE(r.has_value());
+
+  CHECK(r->estimates.array().isFinite().all());
+  CHECK(r->vcov.array().isFinite().all());
+  REQUIRE(r->null_frac.size() == 3);
+  CHECK(r->null_frac.minCoeff() >= 0.0);
+  CHECK(r->null_frac.maxCoeff() <= 1.0);
+  // Sample information is rank-deficient along directions the coefficients
+  // touch; the diagnostic must say so.
+  CHECK(r->null_frac.maxCoeff() > 1e-3);
+}
+
+TEST_CASE("estimate_fiml: complete data has zero null-frac diagnostic") {
+  IntMat x = ten_subject_2rater();
+  auto W = ms::loss::identity_weights(2);
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(r.has_value());
+  REQUIRE(r->null_frac.size() == 3);
+  CHECK(r->null_frac.maxCoeff() < 1e-6);
+}
+
+TEST_CASE("estimate_fiml: flatten selects a unique nearby posterior mode") {
+  IntMat x = twelve_subject_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+
+  auto strict = ms::estimate_fiml(x, *W, EmOptions{});
+  EmOptions flat_opts;
+  flat_opts.flatten = 0.1;
+  auto flat = ms::estimate_fiml(x, *W, flat_opts);
+  REQUIRE(strict.has_value());
+  REQUIRE(flat.has_value());
+
+  CHECK(flat->estimates.array().isFinite().all());
+  CHECK(flat->vcov.array().isFinite().all());
+  // Total pseudo-mass 0.1 against n = 12 shrinks the fitted table toward
+  // uniform with weight ~ 0.1 / 12.1, so the kappas move a little but stay
+  // close to the strict-ML face.
+  CHECK((flat->estimates - strict->estimates).cwiseAbs().maxCoeff() < 0.1);
+
+  // The flattened start is independent of start_alpha: the posterior mode is
+  // unique, so two different starts agree far beyond face width.
+  EmOptions other_start = flat_opts;
+  other_start.start_alpha = 1.0;
+  auto flat2 = ms::estimate_fiml(x, *W, other_start);
+  REQUIRE(flat2.has_value());
+  CHECK((flat->estimates - flat2->estimates).cwiseAbs().maxCoeff() < 1e-5);
 }
 
 TEST_CASE("estimate_fiml: identified missing fixture returns finite estimates") {

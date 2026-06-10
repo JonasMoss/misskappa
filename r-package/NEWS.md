@@ -1,3 +1,23 @@
+# misskappa (development version)
+
+## Raw cat_fiml: identification guard relaxed, flattening added
+
+* The saturated raw-data FIML estimators (`kappa(estimator = "cat_fiml")`,
+  `alpha(estimator = "cat_fiml")`, and the g-wise variant) no longer hard-fail
+  when the saturated joint distribution is not uniquely identified but the
+  coefficient itself is. With every rater pair co-observed the coefficients
+  are estimable functions of the identified pattern margins, so the fit now
+  succeeds and reports a `null_frac` diagnostic (per-coefficient fraction of
+  the delta-method gradient in the truncated null space of the Louis
+  information), warning when it exceeds 0.01. The design-level guard — every
+  rater pair must be co-observed by at least one subject — still errors.
+* New `em_options$flatten` for the raw categorical FIML: total Dirichlet
+  pseudo-mass spread over the complete pattern table. Any positive value
+  makes the fitted table the unique interior posterior mode (the analytic
+  center of the flat maximum-likelihood face), shrinking it toward uniform
+  with weight `flatten / (n + flatten)`. Default `0` keeps strict ML and the
+  legacy deterministic-start behaviour.
+
 # misskappa 1.0.0
 
 Initial release: estimation and inference for weighted agreement coefficients

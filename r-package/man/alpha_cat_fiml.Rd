@@ -14,7 +14,7 @@ indicate missing entries.}
 sorted unique observed categories.}
 
 \item{em_options}{Named list of options for the categorical EM fit:
-`tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.}
+`tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`, `flatten`.}
 }
 \value{
 An object of class `misskappa_estimate` carrying one coefficient

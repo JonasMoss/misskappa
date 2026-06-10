@@ -16,6 +16,15 @@ struct EmOptions {
   double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
   double start_alpha = 0.1;  // smoothing on initial theta; small positive.
   double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.
+  // Total Dirichlet pseudo-mass spread uniformly over the full C^R pattern
+  // table (delta = flatten / C^R added to each cell's expected count in the
+  // M-step). With incomplete co-observation of the saturated joint the MLE is
+  // a face of the simplex; any flatten > 0 makes the posterior mode unique
+  // (the analytic center of that face as flatten -> 0) at the cost of
+  // shrinking the fitted table toward uniform with weight
+  // flatten / (n + flatten). 0 = strict ML (legacy behaviour, point on the
+  // face determined by the deterministic start).
+  double flatten = 0.0;
 };
 
 struct GwiseOptions {

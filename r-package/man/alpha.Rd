@@ -25,8 +25,12 @@ in `x`.}
 \item{em_options}{Named list tuning the EM fit for the likelihood
 estimators. For `"nt_fiml"`: `tol`, `max_iter`, `fd_h`. For `"cat_fiml"`:
 `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond` (the relative
-eigenvalue cutoff used when inverting Louis' observed information). Pass
-any subset.}
+eigenvalue cutoff used when inverting Louis' observed information), and
+`flatten` (total Dirichlet pseudo-mass spread over the complete pattern
+table; any positive value makes the fitted table the unique interior
+posterior mode when the saturated likelihood is flat, at the cost of
+shrinking it toward uniform with weight `flatten / (n + flatten)`;
+`0`, the default, is strict ML). Pass any subset.}
 }
 \value{
 An object of class `misskappa_estimate` carrying one coefficient
