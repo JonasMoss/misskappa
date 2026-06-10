@@ -638,6 +638,50 @@ fit_kappa <- function(X, spec, estimator, weight) {
   )
 }
 
+fit_result_rows <- function(fit, n_eff) {
+  est <- stats::coef(fit)
+  se <- se_vector(fit, coef_names)
+  rows <- lapply(coef_names, function(coef) {
+    ci <- make_intervals(est[[coef]], se[[coef]], n_eff)
+    data.frame(
+      coefficient = coef,
+      estimate = unname(est[[coef]]),
+      se = unname(se[[coef]]),
+      n_eff = n_eff,
+      wald_z_lower = ci["wald_z", "lower"],
+      wald_z_upper = ci["wald_z", "upper"],
+      wald_t_lower = ci["wald_t", "lower"],
+      wald_t_upper = ci["wald_t", "upper"],
+      fisher_t_lower = ci["fisher_t", "lower"],
+      fisher_t_upper = ci["fisher_t", "upper"],
+      asin_t_lower = ci["asin_t", "lower"],
+      asin_t_upper = ci["asin_t", "upper"],
+      error = "",
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+fit_error_rows <- function(message) {
+  data.frame(
+    coefficient = coef_names,
+    estimate = NA_real_,
+    se = NA_real_,
+    n_eff = NA_integer_,
+    wald_z_lower = NA_real_,
+    wald_z_upper = NA_real_,
+    wald_t_lower = NA_real_,
+    wald_t_upper = NA_real_,
+    fisher_t_lower = NA_real_,
+    fisher_t_upper = NA_real_,
+    asin_t_lower = NA_real_,
+    asin_t_upper = NA_real_,
+    error = message,
+    stringsAsFactors = FALSE
+  )
+}
+
 fit_one <- function(X, spec, method_row) {
   start <- proc.time()[["elapsed"]]
   out <- tryCatch({
@@ -647,49 +691,51 @@ fit_one <- function(X, spec, method_row) {
       if (nrow(X_fit) < 2L) stop("Listwise deletion left fewer than two complete rows.", call. = FALSE)
     }
     fit <- fit_kappa(X_fit, spec, method_row$base_estimator, method_row$weight)
-    est <- stats::coef(fit)
-    se <- se_vector(fit, coef_names)
-    n_eff <- nrow(X_fit)
-
-    rows <- lapply(coef_names, function(coef) {
-      ci <- make_intervals(est[[coef]], se[[coef]], n_eff)
-      data.frame(
-        coefficient = coef,
-        estimate = unname(est[[coef]]),
-        se = unname(se[[coef]]),
-        n_eff = n_eff,
-        wald_z_lower = ci["wald_z", "lower"],
-        wald_z_upper = ci["wald_z", "upper"],
-        wald_t_lower = ci["wald_t", "lower"],
-        wald_t_upper = ci["wald_t", "upper"],
-        fisher_t_lower = ci["fisher_t", "lower"],
-        fisher_t_upper = ci["fisher_t", "upper"],
-        asin_t_lower = ci["asin_t", "lower"],
-        asin_t_upper = ci["asin_t", "upper"],
-        error = "",
-        stringsAsFactors = FALSE
-      )
-    })
-    do.call(rbind, rows)
+    fit_result_rows(fit, nrow(X_fit))
   }, error = function(e) {
-    data.frame(
-      coefficient = coef_names,
-      estimate = NA_real_,
-      se = NA_real_,
-      n_eff = NA_integer_,
-      wald_z_lower = NA_real_,
-      wald_z_upper = NA_real_,
-      wald_t_lower = NA_real_,
-      wald_t_upper = NA_real_,
-      fisher_t_lower = NA_real_,
-      fisher_t_upper = NA_real_,
-      asin_t_lower = NA_real_,
-      asin_t_upper = NA_real_,
-      error = conditionMessage(e),
-      stringsAsFactors = FALSE
-    )
+    fit_error_rows(conditionMessage(e))
   })
   out$elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
+  out
+}
+
+cat_fiml_multi <- get0(
+  "estimate_kappa_fiml_multi",
+  envir = asNamespace("misskappa"),
+  inherits = FALSE
+)
+
+fit_cat_fiml_cache <- function(X, method_defs) {
+  start <- proc.time()[["elapsed"]]
+  cat_rows <- method_defs[method_defs$base_estimator == "cat_fiml", , drop = FALSE]
+  requested <- unique(cat_rows$weight)
+  helper_weights <- ifelse(requested == "nominal", "identity", requested)
+  out <- tryCatch({
+    fits <- cat_fiml_multi(
+      X,
+      weights = helper_weights,
+      values = score_values(X),
+      em_options = em_options_for("cat_fiml")
+    )
+    elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
+    cache <- list()
+    for (i in seq_along(requested)) {
+      fit <- fits[[helper_weights[[i]]]]
+      rows <- fit_result_rows(fit, nrow(X))
+      rows$elapsed_ms <- elapsed_ms / length(requested)
+      cache[[requested[[i]]]] <- rows
+    }
+    cache
+  }, error = function(e) {
+    elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
+    cache <- list()
+    for (weight in requested) {
+      rows <- fit_error_rows(conditionMessage(e))
+      rows$elapsed_ms <- elapsed_ms / max(1L, length(requested))
+      cache[[weight]] <- rows
+    }
+    cache
+  })
   out
 }
 
@@ -982,11 +1028,20 @@ for (cell in seq_len(nrow(grid))) {
     complete_rows <- sum(stats::complete.cases(X))
     min_pair <- min_pair_count(X)
     observed_patterns <- observed_pattern_count(X)
+    cat_fiml_cache <- NULL
 
     for (m in seq_len(nrow(method_defs))) {
       method_row <- method_defs[m, ]
       if (!method_is_applicable(spec, method_row)) next
-      fit <- fit_one(X, spec, method_row)
+      if (method_row$base_estimator == "cat_fiml" && !is.null(cat_fiml_multi)) {
+        if (is.null(cat_fiml_cache)) {
+          cat_fiml_cache <- fit_cat_fiml_cache(X, method_defs)
+        }
+        fit <- cat_fiml_cache[[method_row$weight]]
+        if (is.null(fit)) fit <- fit_one(X, spec, method_row)
+      } else {
+        fit <- fit_one(X, spec, method_row)
+      }
       truth_key <- truth_rows$dgp == spec$id &
         truth_rows$weight_label == method_row$weight_label
       truth_now <- truth_rows[truth_key, ]

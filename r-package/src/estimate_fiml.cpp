@@ -64,6 +64,13 @@ struct LouisReducedInfo {
   Eigen::Index ref = 0;
 };
 
+struct FimlVarianceCache {
+  RealMat theta_vcov;
+  RealMat var_star;
+  RealMat theta_jacobian;
+  RealMat group_scores;
+};
+
 // --- Encoding / decoding of categorical patterns as base-c integers ---
 
 std::uint64_t rank_tuple(const std::vector<int>& row, int c) {
@@ -413,6 +420,28 @@ RealMat em_variance(
   return info.jacobian * var_star * info.jacobian.transpose();
 }
 
+FimlVarianceCache build_fiml_variance_cache(
+    const EmRunResult& em, const EmInput& in, const EmOptions& opts) {
+  FimlVarianceCache cache;
+  const Eigen::Index n_final = em.theta_hat.size();
+  cache.theta_vcov = RealMat::Zero(n_final, n_final);
+  cache.var_star = RealMat::Zero(0, 0);
+  cache.theta_jacobian = RealMat::Zero(n_final, 0);
+  cache.group_scores = RealMat::Zero(
+      static_cast<Eigen::Index>(in.group_n_subjects.size()), 0);
+
+  if (n_final <= 1) return cache;
+
+  const LouisReducedInfo info =
+      build_louis_reduced_info(em.theta_hat, em.pattern_indices, in);
+  cache.var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
+  cache.theta_jacobian = info.jacobian;
+  cache.group_scores = info.group_scores;
+  cache.theta_vcov =
+      cache.theta_jacobian * cache.var_star * cache.theta_jacobian.transpose();
+  return cache;
+}
+
 Result<EmRunResult> run_em_preprocessed(
     const EmInput& in, int c, EmOptions opts, bool compute_vcov) {
   EmRunResult out;
@@ -748,27 +777,13 @@ AlphaMap build_alpha_map(const EmRunResult& em, const RealVec& values) {
   return out;
 }
 
-}  // namespace
+Estimation map_fiml_kappa(
+    const EmInput& in, const EmRunResult& em, RealMatView weights,
+    const FimlVarianceCache& cache) {
+  const int n = static_cast<int>(in.subject_groups.size());
+  const KappaMap m = build_kappa_map(em, weights);
 
-Result<Estimation> estimate_fiml(
-    IntMatView ratings, RealMatView weights, EmOptions opts) {
-  const int n = static_cast<int>(ratings.rows());
-  const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
-  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
-  const int C = static_cast<int>(weights.rows());
-  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
-  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
-
-  auto in_res = preprocess_raw(ratings, C);
-  if (!in_res) return misskappa::unexpected(in_res.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, true);
-  if (!em) return misskappa::unexpected(em.error());
-  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
-
-  const KappaMap m = build_kappa_map(*em, weights);
-
-  const Eigen::VectorXd& theta = em->theta_hat;
+  const Eigen::VectorXd& theta = em.theta_hat;
   const double pd  = m.d_vec.dot(theta);
   const double pec = (theta.transpose() * m.Qed_conger * theta).value();
   const double pef = (theta.transpose() * m.Qed_fleiss * theta).value();
@@ -801,22 +816,73 @@ Result<Estimation> estimate_fiml(
     jacobian.row(2) = -grad_pd.transpose() / m.d_bp;
   }
 
-  RealMat vcov = jacobian * em->vcov * jacobian.transpose();
+  RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
   RealMat psi = RealMat::Zero(n, 3);
-  const LouisReducedInfo info =
-      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
-  if (info.info_star.rows() > 0) {
-    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
-    const RealMat jacobian_reduced = jacobian * info.jacobian;
+  if (cache.var_star.rows() > 0) {
+    const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
     const RealMat group_psi =
-        static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
+        static_cast<double>(n) * cache.group_scores * cache.var_star
+        * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
       psi.row(i) = group_psi.row(
-          static_cast<Eigen::Index>(in_res->subject_groups[static_cast<std::size_t>(i)]));
+          static_cast<Eigen::Index>(in.subject_groups[static_cast<std::size_t>(i)]));
     }
   }
 
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+}
+
+}  // namespace
+
+Result<Estimation> estimate_fiml(
+    IntMatView ratings, RealMatView weights, EmOptions opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
+  const int C = static_cast<int>(weights.rows());
+  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
+
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return misskappa::unexpected(in_res.error());
+  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+
+  FimlVarianceCache cache = build_fiml_variance_cache(*em, *in_res, opts);
+  return map_fiml_kappa(*in_res, *em, weights, cache);
+}
+
+Result<std::vector<Estimation>> estimate_fiml_many(
+    IntMatView ratings, const std::vector<RealMat>& weights, EmOptions opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
+  if (weights.empty()) return misskappa::unexpected(Error::invalid_argument);
+
+  const int C = static_cast<int>(weights.front().rows());
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
+  for (const auto& W : weights) {
+    if (W.rows() != C || W.cols() != C) {
+      return misskappa::unexpected(Error::dimension_mismatch);
+    }
+  }
+
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return misskappa::unexpected(in_res.error());
+  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  if (!em) return misskappa::unexpected(em.error());
+  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+
+  FimlVarianceCache cache = build_fiml_variance_cache(*em, *in_res, opts);
+  std::vector<Estimation> out;
+  out.reserve(weights.size());
+  for (const auto& W : weights) {
+    out.push_back(map_fiml_kappa(*in_res, *em, W, cache));
+  }
+  return out;
 }
 
 Result<Estimation> estimate_fiml_gwise(

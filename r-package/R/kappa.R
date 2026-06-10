@@ -216,6 +216,65 @@ estimate_kappa_raw <- function(x,
             class = "misskappa_estimate")
 }
 
+#' Multi-weight saturated categorical FIML kappa (internal)
+#'
+#' @description
+#' Fits the saturated multinomial FIML model once, then maps the fitted
+#' distribution to several agreement-weight functionals. This is intended for
+#' simulations and validation code that need nominal, linear, and quadratic
+#' Cat-FIML coefficients for the same data matrix. The public [kappa()] API
+#' deliberately keeps one `weight` per call.
+#'
+#' @param x A subjects-by-raters matrix of integer category codes; `NA`s
+#'   indicate missing entries.
+#' @param weights Character vector containing any of `"identity"`,
+#'   `"nominal"`, `"linear"`, or `"quadratic"`. `"nominal"` is an alias for
+#'   `"identity"`.
+#' @param values Optional numeric category scores for metric weights.
+#' @param em_options Named list of categorical EM options.
+#'
+#' @return A named list of `misskappa_estimate` objects.
+#'
+#' @keywords internal
+estimate_kappa_fiml_multi <- function(x,
+                                      weights = c("identity", "linear", "quadratic"),
+                                      values = NULL,
+                                      em_options = list()) {
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' must be a matrix or data frame.")
+  }
+  x_mat <- as.matrix(x)
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  storage.mode(x_mat) <- "integer"
+
+  choices <- c("identity", "nominal", "linear", "quadratic")
+  weights <- match.arg(weights, choices, several.ok = TRUE)
+  weights <- unique(ifelse(weights == "nominal", "identity", weights))
+
+  raw <- rcpp_kappa_fiml_multi(
+    x = x_mat,
+    weight_types = weights,
+    values = values,
+    em_options = em_options
+  )
+
+  out <- lapply(seq_along(raw), function(i) {
+    estimates <- as.numeric(raw[[i]]$estimates)
+    names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
+    vcov_mat <- raw[[i]]$vcov
+    dimnames(vcov_mat) <- list(names(estimates), names(estimates))
+    psi_mat <- raw[[i]]$psi
+    if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+    structure(
+      list(estimates = estimates, vcov = vcov_mat, psi = psi_mat,
+           method = "fiml", weight = weights[[i]]),
+      class = "misskappa_estimate"
+    )
+  })
+  names(out) <- weights
+  out
+}
+
 #' Weighted agreement coefficients with missing data
 #'
 #' @description
