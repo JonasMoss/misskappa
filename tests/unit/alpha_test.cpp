@@ -203,17 +203,24 @@ TEST_CASE("estimate_alpha_fiml: complete data matches available alpha") {
   check_influence_reconstructs_vcov(*ml, static_cast<int>(x.rows()));
 }
 
-TEST_CASE("estimate_alpha_fiml: sparse missing categorical fixture reports non-identification") {
+TEST_CASE("estimate_alpha_fiml: sparse missing categorical fixture succeeds with diagnostic") {
+  // Every item pair is co-observed, so alpha is estimable; the saturated
+  // nuisance rank deficiency surfaces through null_frac instead of the
+  // former hard not_identified gate.
   const IntMat x = missing_items();
   const RealVec values = three_scores();
   auto av = ms::estimate_alpha_available(x, values);
   REQUIRE(av.has_value());
   auto ml = ms::estimate_alpha_fiml(x, values, EmOptions{});
-  REQUIRE(!ml.has_value());
+  REQUIRE(ml.has_value());
 
   CHECK(std::isfinite(av->estimates(0)));
   CHECK(av->vcov(0, 0) >= -1e-12);
-  CHECK(ml.error() == ms::Error::not_identified);
+  CHECK(std::isfinite(ml->estimates(0)));
+  CHECK(ml->vcov(0, 0) >= -1e-12);
+  REQUIRE(ml->null_frac.size() == 1);
+  CHECK(ml->null_frac(0) >= 0.0);
+  CHECK(ml->null_frac(0) <= 1.0);
   check_influence_reconstructs_vcov(*av, static_cast<int>(x.rows()));
 }
 

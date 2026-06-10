@@ -34,7 +34,9 @@ maximum observed row sum. Required for `estimator = "cat_fiml"` when rows
 have varying totals.}
 
 \item{em_options}{Named list of EM options for `estimator = "cat_fiml"`:
-`tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`.}
+`tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`. The
+raw-data `flatten` option does not apply here: the count-data FIML fits
+a low-dimensional composition model, not the saturated joint.}
 }
 \value{
 A `misskappa_estimate` object with `Fleiss` and

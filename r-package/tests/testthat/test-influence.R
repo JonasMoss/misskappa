@@ -36,7 +36,7 @@ test_that("stats::influence() returns the stored psi matrix", {
   )
   storage.mode(x) <- "integer"
 
-  fit <- kappa(x, estimator = "cat_fiml", weight = "quadratic")
+  fit <- suppressWarnings(kappa(x, estimator = "cat_fiml", weight = "quadratic"))
   psi <- stats::influence(fit)
 
   expect_equal(psi, fit$psi)
@@ -89,7 +89,7 @@ test_that("fit$psi returns per-subject IFs for FIML fits", {
     nrow = 12, byrow = TRUE
   )
   storage.mode(x) <- "integer"
-  fit <- estimate_kappa_raw(x, method ="fiml", weight = "quadratic")
+  fit <- suppressWarnings(estimate_kappa_raw(x, method ="fiml", weight = "quadratic"))
   psi <- fit$psi
   expect_equal(dim(psi), c(12L, 3L))
   expect_equal(unname(crossprod(psi) / 144), unname(vcov(fit)),
@@ -217,7 +217,7 @@ test_that("joint_vcov() supports FIML fits", {
   )
   storage.mode(x) <- "integer"
   ac <- estimate_kappa_raw(x, method ="available", weight = "quadratic")
-  fiml <- estimate_kappa_raw(x, method ="fiml", weight = "quadratic")
+  fiml <- suppressWarnings(estimate_kappa_raw(x, method ="fiml", weight = "quadratic"))
   V <- joint_vcov(ac = ac, fiml = fiml)
 
   expect_equal(dim(V), c(6L, 6L))

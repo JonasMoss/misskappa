@@ -45,7 +45,13 @@ integer codes to scores). Defaults to the sorted unique observed
 categories.}
 
 \item{em_options}{Named list of EM options for the likelihood estimators
-(`"cat_fiml"`, `"nt_fiml"`). Pass any subset.}
+(`"cat_fiml"`, `"nt_fiml"`). For `"cat_fiml"`: `tol`, `max_iter`,
+`prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total Dirichlet
+pseudo-mass spread over the complete pattern table; any positive value
+selects the unique interior posterior mode when the saturated likelihood
+is flat, shrinking the fitted table toward uniform with weight
+`flatten / (n + flatten)`; `0`, the default, is strict ML). Pass any
+subset.}
 
 \item{...}{Mode-specific extras: `feature_weights` and `loss` (e.g.
 `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the

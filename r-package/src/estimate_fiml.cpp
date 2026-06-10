@@ -71,6 +71,9 @@ struct FimlVarianceCache {
   RealMat info_star;
   RealMat theta_jacobian;
   RealMat group_scores;
+  double info_rcond = 5e-5;  // truncation used for var_star, reused by the
+                             // null-fraction diagnostic so both agree on what
+                             // counts as a null direction.
 };
 
 // --- Encoding / decoding of categorical patterns as base-c integers ---
@@ -285,8 +288,34 @@ EmIterStatus run_em_iterations(
     status.converged = true;
     return status;
   }
+  const double n_subj = static_cast<double>(n_total_subjects);
+  // Dirichlet flattening: each cell gains delta = flatten / C^R pseudo-count
+  // in the M-step, turning EM into posterior-mode iteration. Likelihood-flat
+  // directions then contract only at rate ~ n / (n + flatten) per iteration.
+  // Two adjustments keep that drift phase from tripping not_converged:
+  // the iteration cap scales with (n + flatten) / flatten (bounded so
+  // runaway fits stay finite), and the convergence tolerance is floored at
+  // the per-iteration step a face-position error of face_tol produces —
+  // the analytic-center position only needs resolving to face_tol, since
+  // identified functionals are flat (to face-width order) along those
+  // directions. flatten = 0 leaves strict ML and the user's settings
+  // untouched.
+  const double flatten = (opts.flatten > 0.0) ? opts.flatten : 0.0;
+  const double delta =
+      (flatten > 0.0 && theta.size() > 0)
+          ? flatten / static_cast<double>(theta.size())
+          : 0.0;
+  int iter_cap = opts.max_iter;
+  double tol = opts.tol;
+  if (flatten > 0.0) {
+    const double scaled = 300.0 * (n_subj + flatten) / flatten;
+    const double capped = std::min(scaled, 1.0e6);
+    iter_cap = std::max(iter_cap, static_cast<int>(capped));
+    constexpr double face_tol = 1e-4;
+    tol = std::max(tol, face_tol * flatten / (n_subj + flatten));
+  }
   Eigen::VectorXd expected = Eigen::VectorXd::Zero(theta.size());
-  for (int it = 0; it < opts.max_iter; ++it) {
+  for (int it = 0; it < iter_cap; ++it) {
     status.iterations = it + 1;
     expected.setZero();
     for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
@@ -305,9 +334,10 @@ EmIterStatus run_em_iterations(
         expected(idx) += scale * theta(idx);
       }
     }
-    Eigen::VectorXd new_theta = expected / static_cast<double>(n_total_subjects);
+    Eigen::VectorXd new_theta =
+        (expected.array() + delta).matrix() / (n_subj + flatten);
     const double max_change = (new_theta - theta).cwiseAbs().maxCoeff();
-    if (max_change < opts.tol) {
+    if (max_change < tol) {
       theta = std::move(new_theta);
       status.converged = true;
       return status;
@@ -437,6 +467,7 @@ FimlVarianceCache build_fiml_variance_cache(
 
   const LouisReducedInfo info =
       build_louis_reduced_info(em.theta_hat, em.pattern_indices, in);
+  cache.info_rcond = opts.info_rcond;
   cache.var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
   cache.info_star = info.info_star;
   cache.theta_jacobian = info.jacobian;
@@ -446,9 +477,19 @@ FimlVarianceCache build_fiml_variance_cache(
   return cache;
 }
 
-Result<void> assert_reduced_gradient_identified(
-    const RealMat& info_star, const RealMat& jacobian_reduced) {
-  if (jacobian_reduced.cols() == 0 || jacobian_reduced.rows() == 0) return {};
+// Per-row fraction of the delta-method gradient lying in the truncated null
+// space of the reduced Louis information (the directions pseudo_inverse_psd
+// drops at the same rcond). This is a diagnostic, not a gate: when every
+// rater pair is co-observed the coefficients are estimable functions of the
+// identified pattern margins, so the saturated nuisance being flat does not
+// break the point estimate; a fraction away from zero flags that the sample
+// information is rank-deficient along directions the coefficient touches
+// (sparse support), making the point estimate selection-dependent and the
+// truncated SE optimistic about those directions.
+Result<RealVec> reduced_gradient_null_fraction(
+    const RealMat& info_star, const RealMat& jacobian_reduced, double rcond) {
+  RealVec frac = RealVec::Zero(jacobian_reduced.rows());
+  if (jacobian_reduced.cols() == 0 || jacobian_reduced.rows() == 0) return frac;
   if (info_star.rows() != jacobian_reduced.cols()
       || info_star.cols() != jacobian_reduced.cols()) {
     return misskappa::unexpected(Error::numerical_error);
@@ -462,29 +503,26 @@ Result<void> assert_reduced_gradient_identified(
   const RealVec& evals = es.eigenvalues();
   const RealMat& evecs = es.eigenvectors();
   const double lambda_max = evals.maxCoeff();
-  const double rank_scale = static_cast<double>(std::max<Eigen::Index>(1, evals.size()));
+  const double rc = (std::isfinite(rcond) && rcond > 0.0) ? rcond : 0.0;
   const double threshold =
-      (std::isfinite(lambda_max) && lambda_max > 0.0)
-          ? std::numeric_limits<double>::epsilon() * rank_scale * lambda_max
-          : 0.0;
+      (std::isfinite(lambda_max) && lambda_max > 0.0) ? rc * lambda_max : 0.0;
 
   for (Eigen::Index row = 0; row < jacobian_reduced.rows(); ++row) {
     const Eigen::VectorXd grad = jacobian_reduced.row(row).transpose();
-    const double projection_tol =
-        std::sqrt(std::numeric_limits<double>::epsilon())
-        * std::max(1.0, grad.norm());
+    const double norm_sq = grad.squaredNorm();
+    if (!(norm_sq > 0.0) || !std::isfinite(norm_sq)) continue;
+    double null_sq = 0.0;
     for (Eigen::Index k = 0; k < evals.size(); ++k) {
       if (evals(k) > threshold) continue;
       const double projection = evecs.col(k).dot(grad);
       if (!std::isfinite(projection)) {
         return misskappa::unexpected(Error::numerical_error);
       }
-      if (std::abs(projection) > projection_tol) {
-        return misskappa::unexpected(Error::not_identified);
-      }
+      null_sq += projection * projection;
     }
+    frac(row) = std::sqrt(std::min(1.0, null_sq / norm_sq));
   }
-  return {};
+  return frac;
 }
 
 Result<EmRunResult> run_em_preprocessed(
@@ -504,13 +542,24 @@ Result<EmRunResult> run_em_preprocessed(
   out.converged = status.converged;
   if (!out.converged) return misskappa::unexpected(Error::not_converged);
 
-  // Prune patterns with negligible probability mass.
+  // Prune patterns with negligible probability mass. With flattening every
+  // cell sits at or above the prior floor delta / (n + flatten), so the
+  // threshold moves just above that floor: cells whose mass is essentially
+  // all prior (no data support) drop out and the variance machinery keeps
+  // working on the data-supported cells only. The pruned prior mass totals
+  // about flatten / (n + flatten), the same order as the flattening shift.
+  double prune_threshold = opts.prune_tol;
+  if (opts.flatten > 0.0 && theta.size() > 0) {
+    const double floor = (opts.flatten / static_cast<double>(theta.size()))
+                         / (static_cast<double>(out.n_subjects) + opts.flatten);
+    prune_threshold = std::max(prune_threshold, 2.0 * floor);
+  }
   std::vector<std::uint64_t> pruned_ranks;
   std::vector<double> pruned_theta;
   pruned_ranks.reserve(static_cast<std::size_t>(theta.size()));
   pruned_theta.reserve(static_cast<std::size_t>(theta.size()));
   for (Eigen::Index i = 0; i < theta.size(); ++i) {
-    if (theta(i) > opts.prune_tol) {
+    if (theta(i) > prune_threshold) {
       pruned_ranks.push_back(static_cast<std::uint64_t>(i));
       pruned_theta.push_back(theta(i));
     }
@@ -862,8 +911,9 @@ Result<Estimation> map_fiml_kappa(
   }
 
   const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
-  auto identified = assert_reduced_gradient_identified(cache.info_star, jacobian_reduced);
-  if (!identified) return misskappa::unexpected(identified.error());
+  auto null_frac = reduced_gradient_null_fraction(
+      cache.info_star, jacobian_reduced, cache.info_rcond);
+  if (!null_frac) return misskappa::unexpected(null_frac.error());
 
   RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
   RealMat psi = RealMat::Zero(n, 3);
@@ -877,7 +927,8 @@ Result<Estimation> map_fiml_kappa(
     }
   }
 
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi),
+                    std::move(*null_frac)};
 }
 
 }  // namespace
@@ -989,13 +1040,16 @@ Result<Estimation> estimate_fiml_gwise(
 
   RealMat vcov = jacobian * em->vcov * jacobian.transpose();
   RealMat psi = RealMat::Zero(n, 2);
+  RealVec null_frac;
   const LouisReducedInfo info =
       build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, em_opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
-    auto identified = assert_reduced_gradient_identified(info.info_star, jacobian_reduced);
-    if (!identified) return misskappa::unexpected(identified.error());
+    auto frac = reduced_gradient_null_fraction(
+        info.info_star, jacobian_reduced, em_opts.info_rcond);
+    if (!frac) return misskappa::unexpected(frac.error());
+    null_frac = std::move(*frac);
     const RealMat group_psi =
         static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
@@ -1004,7 +1058,8 @@ Result<Estimation> estimate_fiml_gwise(
     }
   }
 
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi),
+                    std::move(null_frac)};
 }
 
 Result<Estimation> estimate_alpha_fiml(
@@ -1035,13 +1090,16 @@ Result<Estimation> estimate_alpha_fiml(
   RealMat vcov = jacobian * em->vcov * jacobian.transpose();
 
   RealMat psi = RealMat::Zero(n, 1);
+  RealVec null_frac;
   const LouisReducedInfo info =
       build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
-    auto identified = assert_reduced_gradient_identified(info.info_star, jacobian_reduced);
-    if (!identified) return misskappa::unexpected(identified.error());
+    auto frac = reduced_gradient_null_fraction(
+        info.info_star, jacobian_reduced, opts.info_rcond);
+    if (!frac) return misskappa::unexpected(frac.error());
+    null_frac = std::move(*frac);
     const RealMat group_psi =
         static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
@@ -1050,7 +1108,8 @@ Result<Estimation> estimate_alpha_fiml(
     }
   }
 
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi),
+                    std::move(null_frac)};
 }
 
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(

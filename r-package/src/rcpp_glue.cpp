@@ -139,10 +139,18 @@ Rcpp::List estimation_to_list(const misskappa::Estimation& e) {
   for (Eigen::Index i = 0; i < e.psi.rows(); ++i) {
     for (Eigen::Index j = 0; j < e.psi.cols(); ++j) psi(i, j) = e.psi(i, j);
   }
+  // null_frac is the per-coefficient null-space gradient fraction reported
+  // by the FIML estimators; estimators without the diagnostic leave it
+  // empty, which round-trips as numeric(0).
+  Rcpp::NumericVector null_frac(e.null_frac.size());
+  for (Eigen::Index i = 0; i < e.null_frac.size(); ++i) {
+    null_frac[i] = e.null_frac(i);
+  }
   return Rcpp::List::create(
       Rcpp::Named("estimates") = est,
       Rcpp::Named("vcov") = vcov,
-      Rcpp::Named("psi") = psi);
+      Rcpp::Named("psi") = psi,
+      Rcpp::Named("null_frac") = null_frac);
 }
 
 misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
@@ -157,6 +165,8 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     opts.start_alpha = Rcpp::as<double>(em_options["start_alpha"]);
   if (em_options.containsElementNamed("info_rcond"))
     opts.info_rcond = Rcpp::as<double>(em_options["info_rcond"]);
+  if (em_options.containsElementNamed("flatten"))
+    opts.flatten = Rcpp::as<double>(em_options["flatten"]);
   return opts;
 }
 
