@@ -199,3 +199,36 @@ TEST_CASE("Counts: varying row sums work (partial counts)") {
     CHECK(std::isfinite(r->estimates(i)));
   }
 }
+
+TEST_CASE("Counts: F&C and unit-weighted conventions differ when row sums vary") {
+  IntMat x(3, 3);
+  x << 10, 0, 0,  // long row, perfect agreement
+       1, 1, 0,
+       1, 1, 0;
+  auto W = ms::loss::identity_weights(3);
+
+  auto fc = ms::estimate_available_counts(x, *W);
+  REQUIRE(fc.has_value());
+  CHECK(std::abs(fc->estimates(0) - 17.0 / 66.0) < tol);
+  CHECK(std::abs(fc->estimates(1) - 8.0 / 11.0) < tol);
+
+  auto unit = ms::estimate_counts(x, *W, ms::CountWeighting::unit_weighted);
+  REQUIRE(unit.has_value());
+  CHECK(std::abs(unit->estimates(0) + 0.5) < tol);
+  CHECK(std::abs(unit->estimates(1) - 0.0) < tol);
+
+  const RealMat unit_vcov =
+      (unit->psi.transpose() * unit->psi) / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((unit_vcov - unit->vcov).cwiseAbs().maxCoeff() < 1e-12);
+}
+
+TEST_CASE("Counts: no row with two ratings -> invalid_argument") {
+  IntMat x(3, 3);
+  x << 1, 0, 0,
+       0, 1, 0,
+       0, 0, 1;
+  auto W = ms::loss::identity_weights(3);
+  auto r = ms::estimate_available_counts(x, *W);
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::invalid_argument);
+}
