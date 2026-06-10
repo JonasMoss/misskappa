@@ -1,6 +1,8 @@
 ---
 title: "Kappa Planned-Missingness Smoke"
 subtitle: "Experiment 29"
+bibliography: report.bib
+link-citations: true
 format:
   html:
     toc: true
@@ -76,9 +78,39 @@ clean observed MAR, and planned missing ratings. It adds small sample sizes,
 planned rater-subset designs, listwise deletion, high-agreement Moss-style
 cells, ordinal normal-copula ratings, and Dawid-Skene-style severity raters.
 
-The planned-missingness framing is anchored in Graham et al. (2006), Little and
-Rhemtulla (2013), Raghunathan and Grizzle (1995), Fleiss (1981), and Zhang and
-Sackett (2023).
+The generic planned-missingness framing follows the idea that measurement burden
+can be deliberately distributed over subjects while preserving ignorable
+observed-data likelihoods [@Graham2006PlannedMissingness].
+
+The design additions here are narrower and more agreement-specific than the
+generic planned-missingness literature. The ICC planned-missingness papers treat
+ratings as exchangeable and ask how to spend a fixed rating budget across
+subjects, raters, and overlap patterns [@vanDerArkJorgensenTenHove2023Planned;
+@tenHoveJorgensenVanDerArk2025ICC]. We therefore include a random two-rater
+assignment (`designed_random2`) and a block assignment (`designed_block2`) to
+separate ordinary loss of information from the fixed-rater identifiability
+problem created by disconnected co-observation graphs. Fanshawe et al.'s breast
+cancer grading application makes the same graph-connectivity issue visible for
+latent-trait agreement models [@Fanshawe2008AgreementMissing], so the runner also
+includes a sparse connected ring (`designed_ring2`) where every rater is linked
+but many rater pairs are never co-observed.
+
+The kappa-native planned design is the balanced incomplete block idea in
+Abraira and Perez de Vargas [@AbrairaPerezDeVargas1999KappaIncomplete]:
+`designed_bib3` assigns three raters per subject, and with six raters uses ten
+blocks in which every rater pair appears exactly twice. The form and anchor
+mechanisms riff on the three-form and anchor-rater designs discussed for
+planned incomplete reliability data [@Graham2006PlannedMissingness;
+@tenHoveJorgensenVanDerArk2025ICC]. `designed_forms4` cycles four-rater
+subsets corresponding to two of three rater-form groups; `designed_anchor3`
+keeps rater 1 on every subject and rotates two additional raters; and
+`designed_two_phase` adds periodic fully rated calibration subjects to the
+anchor design. These are planned and ignorable by construction, unlike the
+accidental MCAR/MAR mechanisms in the same grid. Schouten's fixed-versus-varying
+observer distinction [@Schouten1986NominalAgreement] and the modern deletion
+comparisons by De Raadt et al. and Warrens et al. motivate keeping listwise
+deletion and accidental missingness in the same study
+[@DeRaadt2019KappaMissing; @Warrens2025WeightedKappaMissing].
 
 ## Run
 
@@ -130,10 +162,12 @@ knitr::kable(dgp_tab, align = "llrrrll")
 ```
 
 ```{r mechanism-table}
+mech_cols <- intersect(c("mechanism", "family", "description", "source"),
+                       names(mechanisms))
 mech_tab <- mechanisms[mechanisms$mechanism %in% unique(summary$mechanism),
-                       c("mechanism", "family", "description")]
-names(mech_tab) <- c("Mechanism", "Family", "Description")
-knitr::kable(mech_tab, align = "lll")
+                       mech_cols]
+names(mech_tab) <- c("Mechanism", "Family", "Description", "Source")[seq_along(mech_cols)]
+knitr::kable(mech_tab, align = paste(rep("l", length(mech_cols)), collapse = ""))
 ```
 
 ## Smoke Diagnostics

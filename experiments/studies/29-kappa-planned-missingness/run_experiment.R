@@ -75,6 +75,7 @@ mode_defaults <- function(mode) {
       dgps = c("balanced4", "skill5x6_sparse", "moss5x5_k80",
                "copula5x6_high", "ds5x6_severity"),
       mechanisms = c("complete", "mcar30", "mar_anchor30",
+                     "designed_random2", "designed_block2",
                      "designed_bib3", "designed_two_phase"),
       methods = quadratic_methods
     ))
@@ -93,7 +94,8 @@ mode_defaults <- function(mode) {
       mechanisms = c("complete", "mcar15", "mcar30", "mcar_rater30",
                      "mcar_subject30", "mar_anchor15", "mar_anchor30",
                      "mar_anchor_nonlinear30", "mar_shifted30",
-                     "designed_bib3", "designed_forms4",
+                     "designed_random2", "designed_block2",
+                     "designed_ring2", "designed_bib3", "designed_forms4",
                      "designed_anchor3", "designed_two_phase"),
       methods = all_methods
     ))
@@ -107,7 +109,9 @@ mode_defaults <- function(mode) {
       dgps = c("skill5x6_sparse", "moss5x5_k80", "moss5x5_k90",
                "copula5x6_high", "ds5x6_severity"),
       mechanisms = c("complete", "mcar30", "mar_anchor30",
-                     "designed_bib3", "designed_anchor3",
+                     "designed_random2", "designed_block2",
+                     "designed_ring2", "designed_bib3",
+                     "designed_anchor3",
                      "designed_two_phase"),
       methods = all_methods
     ))
@@ -479,12 +483,56 @@ apply_patterns <- function(X, patterns) {
   out
 }
 
+apply_designed_random <- function(X, k = 2L) {
+  R <- ncol(X)
+  k <- min(max(1L, k), R)
+  if (k >= R) return(X)
+  patterns <- lapply(seq_len(nrow(X)), function(i) sort(sample.int(R, k)))
+  apply_patterns(X, patterns)
+}
+
+block_patterns <- function(R, k = 2L) {
+  k <- min(max(1L, k), R)
+  starts <- seq.int(1L, R, by = k)
+  patterns <- lapply(starts, function(s) seq.int(s, min(R, s + k - 1L)))
+  last <- length(patterns)
+  if (last > 1L && length(patterns[[last]]) == 1L) {
+    patterns[[last - 1L]] <- c(patterns[[last - 1L]], patterns[[last]])
+    patterns <- patterns[-last]
+  }
+  patterns
+}
+
+apply_designed_block <- function(X, k = 2L) {
+  apply_patterns(X, block_patterns(ncol(X), k))
+}
+
+apply_designed_ring2 <- function(X) {
+  R <- ncol(X)
+  if (R <= 2L) return(X)
+  patterns <- lapply(seq_len(R), function(j) c(j, if (j == R) 1L else j + 1L))
+  apply_patterns(X, patterns)
+}
+
+bib_patterns <- function(R, k = 3L) {
+  k <- min(k, R)
+  if (k >= R) return(list(seq_len(R)))
+  if (R == 6L && k == 3L) {
+    return(list(
+      c(1L, 2L, 3L), c(1L, 2L, 4L), c(1L, 3L, 5L),
+      c(1L, 4L, 6L), c(1L, 5L, 6L), c(2L, 3L, 6L),
+      c(2L, 4L, 5L), c(2L, 5L, 6L), c(3L, 4L, 5L),
+      c(3L, 4L, 6L)
+    ))
+  }
+  combn(seq_len(R), k, simplify = FALSE)
+}
+
 apply_designed_bib <- function(X, k = 3L) {
   R <- ncol(X)
   k <- min(k, R)
   if (k >= R) return(X)
-  patterns <- combn(seq_len(R), k, simplify = FALSE)
-  apply_patterns(X, patterns)
+  apply_patterns(X, bib_patterns(R, k))
 }
 
 apply_designed_forms4 <- function(X) {
@@ -528,6 +576,9 @@ apply_missing <- function(X, spec, mechanism) {
     return(apply_anchor_mar(X, spec$C, 0.30, shifted = TRUE))
   }
   if (mechanism == "mar_sequential30") return(apply_sequential_mar(X, spec$C, 0.30))
+  if (mechanism == "designed_random2") return(apply_designed_random(X, 2L))
+  if (mechanism == "designed_block2") return(apply_designed_block(X, 2L))
+  if (mechanism == "designed_ring2") return(apply_designed_ring2(X))
   if (mechanism == "designed_bib3") return(apply_designed_bib(X, 3L))
   if (mechanism == "designed_forms4") return(apply_designed_forms4(X))
   if (mechanism == "designed_anchor3") return(apply_designed_anchor3(X))
@@ -558,7 +609,9 @@ valid_dgps <- names(dgp_defs)
 valid_mechanisms <- c("complete", "mcar15", "mcar30", "mcar_rater30",
                       "mcar_subject30", "mar_anchor15", "mar_anchor30",
                       "mar_anchor_nonlinear30", "mar_shifted30",
-                      "mar_sequential30", "designed_bib3", "designed_forms4",
+                      "mar_sequential30", "designed_random2",
+                      "designed_block2", "designed_ring2",
+                      "designed_bib3", "designed_forms4",
                       "designed_anchor3", "designed_two_phase")
 valid_methods <- method_defs$method
 
@@ -922,6 +975,9 @@ mechanism_families <- c(
   mar_anchor_nonlinear30 = "mar",
   mar_shifted30 = "mar",
   mar_sequential30 = "mar",
+  designed_random2 = "planned",
+  designed_block2 = "planned",
+  designed_ring2 = "planned",
   designed_bib3 = "planned",
   designed_forms4 = "planned",
   designed_anchor3 = "planned",
@@ -939,10 +995,33 @@ mechanism_descriptions <- c(
   mar_anchor_nonlinear30 = "Clean nonlinear anchor MAR: later deletion is highest at extreme rater 1 categories, target 30 percent.",
   mar_shifted30 = "Clean shifted anchor MAR: anchor dependence plus rater-specific deletion shifts, target 30 percent on average.",
   mar_sequential30 = "Sequential MAR: later deletion depends on the previous observed rating or its missingness status, target 30 percent.",
-  designed_bib3 = "Planned balanced incomplete block style: each subject receives exactly three raters when possible.",
-  designed_forms4 = "Planned overlapping forms: fixed four-rater subsets cycle across subjects.",
-  designed_anchor3 = "Planned anchor design: rater 1 plus two rotating additional raters.",
-  designed_two_phase = "Planned two-phase design: anchor-three sparse phase plus every fifth subject fully rated."
+  designed_random2 = "Planned random-overlap design: each subject receives two randomly sampled raters, approximating fixed-budget random rater assignment.",
+  designed_block2 = "Planned block design: subjects cycle through disjoint two-rater teams, exposing disconnected fixed-rater co-observation graphs.",
+  designed_ring2 = "Planned connected sparse design: subjects cycle through adjacent two-rater pairs in a rater ring, retaining graph connectivity while leaving many pairs unobserved.",
+  designed_bib3 = "Planned balanced incomplete block design: each subject receives three raters; for six raters the ten blocks make every rater pair co-occur twice.",
+  designed_forms4 = "Planned three-form analogue: fixed four-rater subsets cycle so each subject receives two of three rater-form groups.",
+  designed_anchor3 = "Planned anchor design: rater 1 is always observed with two rotating additional raters.",
+  designed_two_phase = "Planned two-phase design: the anchor-three design is augmented by a fully rated calibration subject every fifth row."
+)
+
+mechanism_sources <- c(
+  complete = "Complete-data baseline.",
+  mcar15 = "Accidental MCAR deletion baseline.",
+  mcar30 = "Accidental MCAR deletion baseline.",
+  mcar_rater30 = "Rater-heterogeneous MCAR deletion baseline.",
+  mcar_subject30 = "Subject-clustered MCAR deletion baseline.",
+  mar_anchor15 = "Clean fixed-rater MAR stress cell.",
+  mar_anchor30 = "Clean fixed-rater MAR stress cell.",
+  mar_anchor_nonlinear30 = "Clean fixed-rater MAR stress cell.",
+  mar_shifted30 = "Clean fixed-rater MAR stress cell.",
+  mar_sequential30 = "Clean fixed-rater MAR stress cell.",
+  designed_random2 = "van der Ark, Jorgensen, and ten Hove (2023); ten Hove, Jorgensen, and van der Ark (2025).",
+  designed_block2 = "van der Ark, Jorgensen, and ten Hove (2023); Fanshawe et al. (2008).",
+  designed_ring2 = "Fanshawe et al. (2008).",
+  designed_bib3 = "Abraira and Perez de Vargas (1999).",
+  designed_forms4 = "Graham et al. (2006); ten Hove, Jorgensen, and van der Ark (2025).",
+  designed_anchor3 = "ten Hove, Jorgensen, and van der Ark (2025).",
+  designed_two_phase = "ten Hove, Jorgensen, and van der Ark (2025); Graham et al. (2006)."
 )
 
 truth_rows <- do.call(rbind, lapply(seq_along(opts$dgps), function(i) {
@@ -963,6 +1042,7 @@ mechanisms_out <- data.frame(
   mechanism = valid_mechanisms,
   family = unname(mechanism_families[valid_mechanisms]),
   description = unname(mechanism_descriptions[valid_mechanisms]),
+  source = unname(mechanism_sources[valid_mechanisms]),
   stringsAsFactors = FALSE
 )
 
