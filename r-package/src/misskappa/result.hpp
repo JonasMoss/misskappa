@@ -13,6 +13,7 @@ enum class Error {
   dimension_mismatch,
   singular_weight,
   numerical_error,
+  not_identified,
   not_supported,
   not_converged,
 };

@@ -6,6 +6,7 @@
 
 #include <Eigen/Eigenvalues>
 #include <cmath>
+#include <vector>
 
 using misskappa::EmOptions;
 using misskappa::IntMat;
@@ -54,12 +55,83 @@ IntMat twelve_subject_3rater_3cat() {
   return x;
 }
 
+IntMat identified_missing_3rater_3cat() {
+  IntMat x(36, 3);
+  Eigen::Index row = 0;
+  for (int a = 0; a < 3; ++a) {
+    for (int b = 0; b < 3; ++b) {
+      for (int c = 0; c < 3; ++c) {
+        x(row, 0) = a;
+        x(row, 1) = b;
+        x(row, 2) = c;
+        ++row;
+      }
+    }
+  }
+  for (int a = 0; a < 3; ++a) {
+    x(row, 0) = a;
+    x(row, 1) = na_code;
+    x(row, 2) = (a + 1) % 3;
+    ++row;
+    x(row, 0) = na_code;
+    x(row, 1) = a;
+    x(row, 2) = (a + 2) % 3;
+    ++row;
+    x(row, 0) = a;
+    x(row, 1) = (a + 1) % 3;
+    x(row, 2) = na_code;
+    ++row;
+  }
+  return x;
+}
+
 IntMat frechet_fixture_int() {
   IntMat x(4, 5);
   x << 0, 0, 1, 0, 0,
        0, 1, 2, 1, 1,
        1, 0, 0, 0, 0,
        1, 2, 3, 3, 4;
+  return x;
+}
+
+IntMat pairwise_only_3rater_2cat() {
+  IntMat x(36, 3);
+  Eigen::Index row = 0;
+  for (int rep = 0; rep < 3; ++rep) {
+    for (int a = 0; a < 2; ++a) {
+      for (int b = 0; b < 2; ++b) {
+        x(row, 0) = a;
+        x(row, 1) = b;
+        x(row, 2) = na_code;
+        ++row;
+        x(row, 0) = a;
+        x(row, 1) = na_code;
+        x(row, 2) = b;
+        ++row;
+        x(row, 0) = na_code;
+        x(row, 1) = a;
+        x(row, 2) = b;
+        ++row;
+      }
+    }
+  }
+  return x;
+}
+
+IntMat chain_missing_pair_3rater_2cat() {
+  IntMat x(12, 3);
+  x << 0, 0, na_code,
+       0, 0, na_code,
+       0, 0, na_code,
+       1, 1, na_code,
+       1, 1, na_code,
+       0, 1, na_code,
+       na_code, 0, 0,
+       na_code, 0, 0,
+       na_code, 1, 1,
+       na_code, 1, 1,
+       na_code, 1, 0,
+       na_code, 0, 1;
   return x;
 }
 
@@ -78,28 +150,31 @@ TEST_CASE("estimate_fiml: complete data, identity weights matches Cohen") {
   CHECK(std::abs(r->estimates(2) - 0.4) < 1e-9);                // BP
 }
 
-TEST_CASE("estimate_fiml: 3-rater MAR fixture matches legacy") {
+TEST_CASE("estimate_fiml: sparse MAR fixture reports coefficient non-identification") {
   IntMat x = twelve_subject_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::not_identified);
+}
+
+TEST_CASE("estimate_fiml: identified missing fixture returns finite estimates") {
+  IntMat x = identified_missing_3rater_3cat();
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
   auto r = ms::estimate_fiml(x, *W, EmOptions{});
   REQUIRE(r.has_value());
 
-  // Frozen against the dev/legacy/misskappa kappa_raw(method="ml") build.
-  CHECK(std::abs(r->estimates(0) - 0.6778523464560615) < 1e-6);  // Conger
-  CHECK(std::abs(r->estimates(1) - 0.6767676743661067) < 1e-6);  // Fleiss
-  CHECK(std::abs(r->estimates(2) - 0.6666666647950232) < 1e-6);  // BP
-
-  // Diagonal variance entries should match to a looser tolerance (EM SE is
-  // sensitive to the pruning threshold and tol settings).
-  CHECK(std::abs(r->vcov(0, 0) - 0.02971461597182125) < 1e-5);
-  CHECK(std::abs(r->vcov(1, 1) - 0.02976059214783952) < 1e-5);
-  CHECK(std::abs(r->vcov(2, 2) - 0.02387152699792634) < 1e-5);
+  CHECK(r->estimates.array().isFinite().all());
+  CHECK(r->vcov.array().isFinite().all());
+  CHECK(r->vcov.diagonal().minCoeff() >= -1e-10);
 }
 
 TEST_CASE("estimate_fiml: variance is symmetric and PSD") {
-  IntMat x = twelve_subject_3rater_3cat();
+  IntMat x = identified_missing_3rater_3cat();
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
@@ -113,7 +188,7 @@ TEST_CASE("estimate_fiml: variance is symmetric and PSD") {
 }
 
 TEST_CASE("estimate_fiml: influence functions reconstruct Louis vcov") {
-  IntMat x = twelve_subject_3rater_3cat();
+  IntMat x = identified_missing_3rater_3cat();
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
@@ -125,6 +200,42 @@ TEST_CASE("estimate_fiml: influence functions reconstruct Louis vcov") {
   const RealMat psi_vcov =
       (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(x.rows()), 2);
   CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
+TEST_CASE("estimate_fiml: benign nuisance non-identification succeeds") {
+  IntMat x = pairwise_only_3rater_2cat();
+  auto W = ms::loss::identity_weights(2);
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(r.has_value());
+
+  CHECK(r->estimates.size() == 3);
+  CHECK(r->estimates.array().isFinite().all());
+  CHECK(r->vcov.array().isFinite().all());
+  CHECK((r->vcov - r->vcov.transpose()).cwiseAbs().maxCoeff() < 1e-10);
+
+  Eigen::SelfAdjointEigenSolver<RealMat> es(r->vcov);
+  REQUIRE(es.info() == Eigen::Success);
+  CHECK(es.eigenvalues().minCoeff() > -1e-8);
+
+  REQUIRE(r->psi.rows() == x.rows());
+  REQUIRE(r->psi.cols() == 3);
+  const RealMat psi_vcov =
+      (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(x.rows()), 2);
+  CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
+TEST_CASE("estimate_fiml: missing rater-pair coefficient non-identification errors") {
+  IntMat x = chain_missing_pair_3rater_2cat();
+  auto W = ms::loss::identity_weights(2);
+
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::not_identified);
+
+  const std::vector<RealMat> weights{*W};
+  auto many = ms::estimate_fiml_many(x, weights, EmOptions{});
+  REQUIRE(!many.has_value());
+  CHECK(many.error() == ms::Error::not_identified);
 }
 
 TEST_CASE("estimate_fiml_gwise: complete data matches complete g-wise estimator") {
@@ -147,7 +258,7 @@ TEST_CASE("estimate_fiml_gwise: complete data matches complete g-wise estimator"
 }
 
 TEST_CASE("estimate_fiml_gwise: g=2 nominal matches categorical FIML") {
-  IntMat x = twelve_subject_3rater_3cat();
+  IntMat x = identified_missing_3rater_3cat();
   auto distance = ms::loss::frechet_nominal_distance(3);
   auto weights = ms::loss::identity_weights(3);
   REQUIRE(distance.has_value());
@@ -184,7 +295,7 @@ TEST_CASE("estimate_fiml_gwise: variance is symmetric PSD and psi reconstructs i
 }
 
 TEST_CASE("estimate_fiml: info_rcond affects Louis variance, not estimates") {
-  IntMat x = twelve_subject_3rater_3cat();
+  IntMat x = identified_missing_3rater_3cat();
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
@@ -280,7 +391,7 @@ TEST_CASE("estimate_fiml: out-of-range category -> invalid_argument") {
 }
 
 TEST_CASE("diagnose_fiml_louis: reports a Louis spectrum on the MAR fixture") {
-  IntMat x = twelve_subject_3rater_3cat();
+  IntMat x = identified_missing_3rater_3cat();
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
