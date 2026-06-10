@@ -30,5 +30,8 @@ moment-based estimate is preferred over the U-statistic version
 (`kappa(x, estimator = "pairwise")`). The two
 agree under the usual asymptotics; the closed form can be faster on
 large `n`.
+
+With missing ratings, every rater must be observed at least once and every
+rater pair must be jointly observed by at least one subject.
 }
 \keyword{internal}

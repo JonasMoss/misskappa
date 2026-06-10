@@ -24,5 +24,9 @@ An object of class `misskappa_estimate` carrying one coefficient
 Backend for `alpha(estimator = "cat_fiml")`. Fits the
 saturated multinomial full-response distribution with EM, then maps that
 distribution to the implied scored covariance matrix.
+
+This fixed-item functional requires every item to be observed and every item
+pair to be jointly observed by at least one subject. The public [alpha()]
+wrapper checks this before dispatch; direct callers reach the C++ guard.
 }
 \keyword{internal}

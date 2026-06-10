@@ -35,5 +35,11 @@ covariance, and the standard error is a delta-method contraction of their
 gradient with the asymptotic covariance of the fitted moments. This is the
 quadratic-kappa counterpart of [alpha_continuous()] and shares its EM,
 casewise-score, and sandwich machinery.
+
+This backend is normally reached through [kappa()], which checks that every
+rater is observed and every rater pair is jointly observed before dispatch.
+Direct callers should enforce the same fixed-rater condition; otherwise the
+saturated covariance functional is not identified from the observed
+missing-data pattern.
 }
 \keyword{internal}

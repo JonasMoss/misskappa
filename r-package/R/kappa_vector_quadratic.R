@@ -192,6 +192,13 @@
 #' `"nt_fiml"` method fits the saturated normal mean/covariance by EM and is
 #' the vector analogue of [kappa_quadratic_fiml()].
 #'
+#' Both methods need each rater-feature cell to be observed at least once. The
+#' `"pairwise"` method additionally requires every rater-feature pair to
+#' overlap at least once, because each covariance entry is estimated from
+#' directly co-observed rows. Direct `"nt_fiml"` callers should enforce the
+#' same complete pairwise co-observation condition when the saturated
+#' covariance functional is the target.
+#'
 #' @param x Numeric array with dimensions subjects, raters, features.
 #' @param method `"pairwise"` or `"nt_fiml"`.
 #' @param W Optional features-by-features symmetric positive-semidefinite

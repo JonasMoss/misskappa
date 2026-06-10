@@ -32,5 +32,9 @@ distribution to several agreement-weight functionals. This is intended for
 simulations and validation code that need nominal, linear, and quadratic
 Cat-FIML coefficients for the same data matrix. The public [kappa()] API
 deliberately keeps one `weight` per call.
+
+This fixed-rater functional requires every rater to be observed and every
+rater pair to be jointly observed by at least one subject; otherwise the
+requested saturated pairwise agreement functional is not identified.
 }
 \keyword{internal}

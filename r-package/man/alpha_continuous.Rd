@@ -34,6 +34,12 @@ The fit and its sandwich covariance reproduce magmaan's
 `estimate_saturated_em_moments()` and lavaan's saturated estimator; the
 interval matches `coefficientalpha::alpha(varphi = 0)` and a nonparametric
 case bootstrap.
+
+This backend is normally reached through [alpha()], which checks that every
+item is observed and every item pair is jointly observed before dispatch.
+Direct callers should enforce the same fixed-item condition; otherwise the
+saturated covariance functional is not identified from the observed
+missing-data pattern.
 }
 \references{
 Zhang, Z., & Yuan, K.-H. (2016). Robust coefficients alpha and omega and

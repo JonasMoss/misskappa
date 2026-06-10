@@ -42,6 +42,7 @@ A `misskappa_estimate` object with `Conger` and `Fleiss`
 Estimates g-wise Conger-type and Fleiss-type agreement coefficients using
 multirater disagreement kernels (the Frechet / Hubert family). The
 `"complete"` estimator requires every entry observed; `"ipw"` and `"fiml"`
-admit missing entries (FIML is categorical only).
+admit missing entries (FIML is categorical only) when every requested rater
+g-tuple is jointly observed by at least one subject.
 }
 \keyword{internal}

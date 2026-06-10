@@ -67,6 +67,12 @@
 #' category codes with `values`; the observed categories are sorted and mapped
 #' to `values` before estimation.
 #'
+#' All three estimators target fixed-item coefficient alpha. With missing
+#' entries, every item must be observed at least once and every item pair must
+#' be jointly observed by at least one subject. If that complete pairwise
+#' co-observation condition fails, alpha is not identified from the observed
+#' missing-data pattern and the fit errors before running the estimator.
+#'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` and other
 #'   non-finite values indicate missing entries. For `estimator = "cat_fiml"`,
 #'   entries are integer category codes.
@@ -135,6 +141,10 @@ alpha <- function(x,
 #' Backend for `alpha(estimator = "cat_fiml")`. Fits the
 #' saturated multinomial full-response distribution with EM, then maps that
 #' distribution to the implied scored covariance matrix.
+#'
+#' This fixed-item functional requires every item to be observed and every item
+#' pair to be jointly observed by at least one subject. The public [alpha()]
+#' wrapper checks this before dispatch; direct callers reach the C++ guard.
 #'
 #' @param x A subjects-by-items matrix of integer category codes; `NA`s
 #'   indicate missing entries.
@@ -227,6 +237,10 @@ estimate_kappa_raw <- function(x,
 #' Cat-FIML coefficients for the same data matrix. The public [kappa()] API
 #' deliberately keeps one `weight` per call.
 #'
+#' This fixed-rater functional requires every rater to be observed and every
+#' rater pair to be jointly observed by at least one subject; otherwise the
+#' requested saturated pairwise agreement functional is not identified.
+#'
 #' @param x A subjects-by-raters matrix of integer category codes; `NA`s
 #'   indicate missing entries.
 #' @param weights Character vector containing any of `"identity"`,
@@ -307,6 +321,14 @@ estimate_kappa_fiml_multi <- function(x,
 #' subjects-by-raters-by-features array to score vector-valued ratings with a
 #' component-separable loss. See the arguments for the estimator / weight
 #' combinations supported in each mode.
+#'
+#' For scalar fixed-rater coefficients with missing entries, the observed-data
+#' pattern must identify the requested functional. For ordinary pairwise kappa
+#' (`g = 2`, and all quadratic requests), every rater must be observed at least
+#' once and every rater pair must be jointly observed by at least one subject.
+#' For non-quadratic `g > 2`, every requested rater g-tuple must be jointly
+#' observed by at least one subject. Violations are reported as
+#' non-identification before the estimator runs.
 #'
 #' @param x A subjects-by-raters matrix or data frame of scalar ratings, or a
 #'   subjects-by-raters-by-features 3-D array of vector-valued ratings (the
@@ -634,6 +656,9 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
 #' agree under the usual asymptotics; the closed form can be faster on
 #' large `n`.
 #'
+#' With missing ratings, every rater must be observed at least once and every
+#' rater pair must be jointly observed by at least one subject.
+#'
 #' @param x A subjects-by-raters numeric matrix of category scores; `NA`
 #'   marks missing entries.
 #' @param values Length-C numeric vector of category scores. The quadratic
@@ -685,6 +710,17 @@ kappa_quadratic <- function(x, values) {
 #' to category `k`. Row sums (number of raters per subject) need not be
 #' uniform across subjects.
 #'
+#' The `"pairwise"` estimator name is retained for API consistency, but the
+#' count-format moment estimator follows the Fleiss-Cuzick unequal-judges
+#' convention: observed row disagreement is weighted by `r_i - 1`, and chance
+#' disagreement uses the pooled rating-token margin. This differs from the
+#' unit-weighted distribution/count convention used by some software; the
+#' unit-weighted comparator is kept only in the C++ API for validation studies.
+#'
+#' Rows with fewer than two observed ratings contain no within-subject pair
+#' information and receive zero observed-disagreement weight; at least one row
+#' with two or more ratings is required.
+#'
 #' Counts data assumes **exchangeable iid raters** drawn from a single
 #' category distribution. For non-exchangeable raters, use rater-
 #' identified data and `kappa(x, estimator = "cat_fiml")` instead.
@@ -694,8 +730,8 @@ kappa_quadratic <- function(x, values) {
 #' aggregated away by the counts representation).
 #'
 #' @param x A subjects-by-categories non-negative integer matrix.
-#' @param estimator Either `"pairwise"` (moment-based; pooled over observed
-#'   pair counts) or `"cat_fiml"` (EM over the composition simplex with
+#' @param estimator Either `"pairwise"` (the Fleiss-Cuzick count-format moment
+#'   estimator) or `"cat_fiml"` (EM over the composition simplex with
 #'   multivariate hypergeometric weights for completing partial counts). The
 #'   two agree exactly when every row of `x` sums to `r_total`; with partial
 #'   counts (some `r_i < r_total`) the `"cat_fiml"` estimator can be more
@@ -798,6 +834,9 @@ kappa_counts <- function(x,
 #' Brennan-Prediger is not reported for continuous data; the chance-
 #' disagreement baseline requires a finite number of categories.
 #'
+#' For all missing-data routes here, every rater must be observed at least once
+#' and every rater pair must be jointly observed by at least one subject.
+#'
 #' @param x A subjects-by-raters numeric matrix.
 #' @param method One of `"available"`, `"ipw"`, `"gwet"`, or `"fiml"`.
 #'   `"fiml"` requires `weight = "quadratic"` and dispatches to
@@ -869,6 +908,10 @@ kappa_continuous <- function(x,
 #' missingness. Input is a rectangular subjects-by-raters-by-features array.
 #' The estimator forms diagonal-weighted component-loss moments and reports
 #' Conger and Fleiss coefficients.
+#'
+#' With IPW, each positive-weight rater-feature cell must be observed at
+#' least once. A vector coefficient is undefined when no positive-weight rater
+#' pairs are jointly observed within subjects.
 #'
 #' @param x Numeric array with dimensions subjects, raters, features.
 #' @param method `"pairwise"` for observed component-pair moments or `"ipw"`
@@ -954,7 +997,8 @@ kappa_vector <- function(x,
 #' Estimates g-wise Conger-type and Fleiss-type agreement coefficients using
 #' multirater disagreement kernels (the Frechet / Hubert family). The
 #' `"complete"` estimator requires every entry observed; `"ipw"` and `"fiml"`
-#' admit missing entries (FIML is categorical only).
+#' admit missing entries (FIML is categorical only) when every requested rater
+#' g-tuple is jointly observed by at least one subject.
 #'
 #' @param x A subjects-by-raters matrix or data frame.
 #' @param distance Multirater disagreement kernel. `"nominal"` uses Frechet

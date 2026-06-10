@@ -41,5 +41,8 @@ value).
 
 Brennan-Prediger is not reported for continuous data; the chance-
 disagreement baseline requires a finite number of categories.
+
+For all missing-data routes here, every rater must be observed at least once
+and every rater pair must be jointly observed by at least one subject.
 }
 \keyword{internal}
