@@ -95,6 +95,14 @@ not here. The port plan with the eight-step roadmap is at
       Zhang-Yuan's congeneric cell, add stronger congeneric and two-factor
       non-congeneric cells, borrow Enders/Savalei missingness rates, and use
       clean observed-anchor MAR rather than truth-dependent missingness.
+- [ ] **Replace counts-format pairwise weighting with an F&C default.**
+      Decision note: `dev/notes/counts-weighting-fc-gls.md`. Add C++ support
+      for Fleiss--Cuzick row weights (`r_i - 1`) and a GLS/IVW option
+      (`r_i`), use F&C as the public R default, and keep pooled-pairs only as
+      a legacy/internal comparison if it remains useful. Validate balanced
+      parity against Fleiss/irrCAC and add an unequal-row test showing the
+      difference from both current pooled pairs and irrCAC's unit-weighted
+      count convention.
 - [x] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Moved out of this repo: the manuscripts now live in the separate private
       papers repo, each with its own paper-local todo. Nothing paper-side
