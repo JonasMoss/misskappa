@@ -316,7 +316,7 @@ TEST_CASE("G-wise nominal Frechet IPW: rejects invalid or unidentified missingne
                 2, 2, ms::na_code;
   auto singular_rater = ms::estimate_ipw_gwise(zero_rater, *distance, ms::GwiseOptions{2});
   REQUIRE(!singular_rater.has_value());
-  CHECK(singular_rater.error() == ms::Error::singular_weight);
+  CHECK(singular_rater.error() == ms::Error::not_identified);
 
   IntMat no_joint(3, 3);
   no_joint << 0, ms::na_code, ms::na_code,
@@ -324,7 +324,7 @@ TEST_CASE("G-wise nominal Frechet IPW: rejects invalid or unidentified missingne
               ms::na_code, ms::na_code, 2;
   auto no_tuple = ms::estimate_ipw_gwise(no_joint, *distance);
   REQUIRE(!no_tuple.has_value());
-  CHECK(no_tuple.error() == ms::Error::singular_weight);
+  CHECK(no_tuple.error() == ms::Error::not_identified);
 
   auto distance5 = ms::loss::frechet_nominal_distance(5);
   REQUIRE(distance5.has_value());
@@ -346,7 +346,7 @@ TEST_CASE("G-wise continuous IPW: rejects unidentified missingness patterns and 
   auto singular_rater =
       ms::estimate_ipw_gwise_continuous(zero_rater, *distance, ms::GwiseOptions{2});
   REQUIRE(!singular_rater.has_value());
-  CHECK(singular_rater.error() == ms::Error::singular_weight);
+  CHECK(singular_rater.error() == ms::Error::not_identified);
 
   RealMat no_joint(3, 3);
   no_joint << 0.0, na, na,
@@ -354,7 +354,7 @@ TEST_CASE("G-wise continuous IPW: rejects unidentified missingness patterns and 
               na, na, 2.0;
   auto no_tuple = ms::estimate_ipw_gwise_continuous(no_joint, *distance);
   REQUIRE(!no_tuple.has_value());
-  CHECK(no_tuple.error() == ms::Error::singular_weight);
+  CHECK(no_tuple.error() == ms::Error::not_identified);
 
   auto oversized =
       ms::estimate_ipw_gwise_continuous(

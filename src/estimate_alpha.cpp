@@ -1,3 +1,4 @@
+#include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <cmath>
@@ -162,6 +163,8 @@ Result<Estimation> estimate_alpha_available_impl(const Data& data, int n, int R)
 Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& values) {
   auto valid = validate_alpha_inputs(ratings, values);
   if (!valid) return misskappa::unexpected(valid.error());
+  auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
+  if (!identified) return misskappa::unexpected(identified.error());
 
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());
@@ -171,6 +174,8 @@ Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& v
 Result<Estimation> estimate_alpha_available_continuous(RealMatView ratings) {
   auto valid = validate_alpha_continuous_inputs(ratings);
   if (!valid) return misskappa::unexpected(valid.error());
+  auto identified = detail::require_complete_pair_observation(detail::finite_mask(ratings));
+  if (!identified) return misskappa::unexpected(identified.error());
 
   const int n = static_cast<int>(ratings.rows());
   const int R = static_cast<int>(ratings.cols());

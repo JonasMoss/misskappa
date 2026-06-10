@@ -31,7 +31,7 @@ const char* error_to_message(misskappa::Error e) {
     case E::dimension_mismatch: return "Dimension mismatch.";
     case E::singular_weight:    return "Rater has zero observations; IPW/Gwet weight is singular.";
     case E::numerical_error:    return "Numerical error.";
-    case E::not_identified:     return "Coefficient is not identified from the Louis information for this missing-data pattern.";
+    case E::not_identified:     return "Coefficient is not identified for this missing-data pattern.";
     case E::not_supported:      return "Operation not supported.";
     case E::not_converged:      return "EM did not converge within max_iter iterations.";
   }

@@ -9,6 +9,7 @@
 #include "misskappa/estimate.hpp"
 #include "misskappa/diagnostics.hpp"
 
+#include "detail_pattern_checks.hpp"
 #include "detail_psd_inverse.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -893,6 +894,8 @@ Result<Estimation> estimate_fiml(
 
   auto in_res = preprocess_raw(ratings, C);
   if (!in_res) return misskappa::unexpected(in_res.error());
+  auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
+  if (!identified) return misskappa::unexpected(identified.error());
   auto em = run_em_preprocessed(*in_res, C, opts, false);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
@@ -919,6 +922,8 @@ Result<std::vector<Estimation>> estimate_fiml_many(
 
   auto in_res = preprocess_raw(ratings, C);
   if (!in_res) return misskappa::unexpected(in_res.error());
+  auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
+  if (!identified) return misskappa::unexpected(identified.error());
   auto em = run_em_preprocessed(*in_res, C, opts, false);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
@@ -948,6 +953,9 @@ Result<Estimation> estimate_fiml_gwise(
 
   auto in_res = preprocess_raw(ratings, distance.C);
   if (!in_res) return misskappa::unexpected(in_res.error());
+  auto tuple_identified =
+      detail::require_complete_tuple_observation(detail::observed_mask(ratings), g);
+  if (!tuple_identified) return misskappa::unexpected(tuple_identified.error());
   auto em = run_em_preprocessed(*in_res, distance.C, em_opts, true);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
@@ -986,6 +994,8 @@ Result<Estimation> estimate_fiml_gwise(
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, em_opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
+    auto identified = assert_reduced_gradient_identified(info.info_star, jacobian_reduced);
+    if (!identified) return misskappa::unexpected(identified.error());
     const RealMat group_psi =
         static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
@@ -1009,6 +1019,9 @@ Result<Estimation> estimate_alpha_fiml(
 
   auto in_res = preprocess_raw(ratings, C);
   if (!in_res) return misskappa::unexpected(in_res.error());
+  auto pattern_identified =
+      detail::require_complete_pair_observation(detail::observed_mask(ratings));
+  if (!pattern_identified) return misskappa::unexpected(pattern_identified.error());
   auto em = run_em_preprocessed(*in_res, C, opts, true);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
@@ -1027,6 +1040,8 @@ Result<Estimation> estimate_alpha_fiml(
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
+    auto identified = assert_reduced_gradient_identified(info.info_star, jacobian_reduced);
+    if (!identified) return misskappa::unexpected(identified.error());
     const RealMat group_psi =
         static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {

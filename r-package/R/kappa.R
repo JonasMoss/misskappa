@@ -108,6 +108,8 @@ alpha <- function(x,
                   values = NULL,
                   em_options = list()) {
   estimator <- match.arg(estimator)
+  .check_pattern_identifiable(.pattern_observed(x), unit = "item",
+                              coefficient = "coefficient alpha")
 
   if (estimator == "pairwise") {
     X <- .alpha_score_matrix(x, values)
@@ -408,11 +410,22 @@ kappa <- function(x,
   ## g collapses to the same coefficient, so always take the cheap closed form
   ## (the g = 2 path) and never the combinatorial g-wise enumeration.
   if (weight == "quadratic" || g == 2L) {
+    ## Every public scalar g = 2 path surfaces a fixed-rater coefficient
+    ## (Conger, and Brennan-Prediger for the raw estimators), so the saturated
+    ## functional needs a complete rater co-observation graph.
+    .check_pattern_identifiable(
+      .pattern_observed(x), unit = "rater",
+      coefficient = "Conger's kappa (and Brennan-Prediger)",
+      arity = 2L)
     return(.kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
                             em_options))
   }
 
   ## g > 2, non-quadratic: the Frechet / Hubert g-wise family.
+  .check_pattern_identifiable(
+    .pattern_observed(x), unit = "rater",
+    coefficient = sprintf("%s-wise kappa", g),
+    arity = g)
   .kappa_scalar_gwise(x, estimator, weight, g, values, em_options, dots)
 }
 
