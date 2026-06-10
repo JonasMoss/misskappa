@@ -104,7 +104,7 @@ test_that("public weighting schemes run through the raw and counts glue", {
   x <- cat_mat(R = 3L, k = 4L)
   for (w in weights) {
     expect_s3_class(kappa(x, estimator = "ipw", weight = w), "misskappa_estimate")
-    expect_s3_class(kappa_counts(dat.fleiss1971, estimator = "pairwise", weight = w),
+    expect_s3_class(kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = w),
                     "misskappa_estimate")
     expect_s3_class(kappa_counts(dat.fleiss1971, estimator = "cat_fiml", weight = w),
                     "misskappa_estimate")
@@ -126,7 +126,7 @@ test_that("legacy weighting schemes are internal-only", {
 
   for (w in legacy_weights) {
     expect_error(kappa(x, estimator = "ipw", weight = w), "should be one of")
-    expect_error(kappa_counts(counts, estimator = "pairwise", weight = w),
+    expect_error(kappa_counts(counts, estimator = "fleiss_cuzick", weight = w),
                  "should be one of")
 
     expect_s3_class(estimate_kappa_raw(x, method = "ipw", weight = w),

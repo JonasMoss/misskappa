@@ -14,7 +14,7 @@ argument.
   loss. `estimator` is `"ipw"` or `"cat_fiml"` for categorical ratings;
   `"pairwise"` or `"nt_fiml"` for the quadratically weighted scored coefficient.
 * `kappa_counts()` — counts-format input (subjects × categories); `estimator`
-  is `"pairwise"` or `"cat_fiml"`.
+  is `"fleiss_cuzick"` or `"cat_fiml"`.
 * `alpha()` — coefficient alpha for scored categorical and continuous item
   batteries; `estimator` is `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`.
 

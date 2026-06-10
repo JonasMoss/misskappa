@@ -80,7 +80,7 @@ use `kappa_counts()`. `dat.fleiss1971` is the classic psychiatric-diagnosis
 table (30 subjects, six raters, five categories):
 
 ```{r}
-kappa_counts(dat.fleiss1971, estimator = "pairwise")
+kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 ```
 
 ## Coefficient alpha

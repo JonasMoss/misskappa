@@ -219,20 +219,20 @@ test_that("kappa_quadratic() exposes empirical covariance and influence rows", {
                unname(vcov(fit)), tolerance = 1e-10)
 })
 
-test_that("kappa_counts(method='fiml') matches available on Fleiss 1971", {
-  fit_av <- kappa_counts(dat.fleiss1971, estimator = "pairwise", weight = "nominal")
+test_that("kappa_counts(method='fiml') matches fleiss_cuzick on Fleiss 1971", {
+  fit_av <- kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "nominal")
   fit_ml <- kappa_counts(dat.fleiss1971, estimator = "cat_fiml", weight = "nominal")
   expect_equal(unname(fit_av$estimates), unname(fit_ml$estimates),
                tolerance = 1e-9)
 })
 
-test_that("kappa_counts(method='fiml') differs from available with partial counts", {
+test_that("kappa_counts(method='fiml') differs from fleiss_cuzick with partial counts", {
   # r_total = 4 but only one row sums to 4; others sum to 3 (partial counts).
   y <- matrix(c(
     3, 1, 0,  0, 2, 1,  2, 0, 1,  1, 2, 0,
     0, 0, 3,  2, 1, 0,  3, 0, 0,  0, 1, 2
   ), nrow = 8, byrow = TRUE)
-  fit_av <- kappa_counts(y, estimator = "pairwise", weight = "nominal")
+  fit_av <- kappa_counts(y, estimator = "fleiss_cuzick", weight = "nominal")
   fit_ml <- kappa_counts(y, estimator = "cat_fiml", weight = "nominal", r_total = 4)
   expect_false(isTRUE(all.equal(unname(fit_av$estimates),
                                 unname(fit_ml$estimates),
@@ -255,6 +255,14 @@ test_that("kappa_counts() reproduces Fleiss 1971", {
                         values = c(1, 2, 3, 4, 5))
   expect_equal(unname(fit_q$estimates["Fleiss"]), 0.2840722495894910,
                tolerance = 1e-9)
+})
+
+test_that("kappa_counts() accepts historical pairwise alias", {
+  fit_fc <- kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+  fit_old <- kappa_counts(dat.fleiss1971, estimator = "pairwise")
+  expect_identical(fit_old$method, "fleiss_cuzick")
+  expect_equal(unname(fit_old$estimates), unname(fit_fc$estimates),
+               tolerance = 1e-12)
 })
 
 test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {

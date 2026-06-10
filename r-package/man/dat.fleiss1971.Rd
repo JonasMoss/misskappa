@@ -20,6 +20,6 @@ five categories. Each row is one subject; each column counts the number of
 raters who assigned that subject to that category.
 }
 \examples{
-kappa_counts(dat.fleiss1971, estimator = "pairwise")
+kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 }
 \keyword{datasets}
