@@ -176,6 +176,12 @@
 #' interval matches `coefficientalpha::alpha(varphi = 0)` and a nonparametric
 #' case bootstrap.
 #'
+#' This backend is normally reached through [alpha()], which checks that every
+#' item is observed and every item pair is jointly observed before dispatch.
+#' Direct callers should enforce the same fixed-item condition; otherwise the
+#' saturated covariance functional is not identified from the observed
+#' missing-data pattern.
+#'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped.
 #' @param em_options Named list tuning the EM fit: `tol` (convergence

@@ -33,5 +33,9 @@ Internal pilot for pairwise vector-valued ratings with component-wise
 missingness. Input is a rectangular subjects-by-raters-by-features array.
 The estimator forms diagonal-weighted component-loss moments and reports
 Conger and Fleiss coefficients.
+
+With IPW, each positive-weight rater-feature cell must be observed at
+least once. A vector coefficient is undefined when no positive-weight rater
+pairs are jointly observed within subjects.
 }
 \keyword{internal}

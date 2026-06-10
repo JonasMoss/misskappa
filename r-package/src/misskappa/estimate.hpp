@@ -37,7 +37,10 @@ struct GwiseOptions {
 // disagreement coefficients on L = 1 - weights internally.
 //
 // Estimates returned: (Conger, Fleiss, Brennan-Prediger). Cohen's kappa is
-// the R=2 case of Fleiss / Conger.
+// the R=2 case of Fleiss / Conger. With missing ratings, fixed-rater raw
+// coefficients require every rater to be observed and every rater pair to be
+// jointly observed by at least one subject; otherwise the saturated pairwise
+// functional is not identified and the estimators return Error::not_identified.
 Result<Estimation> estimate_available(IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);
@@ -54,8 +57,9 @@ Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 // with the delta method.
 //
 // `ratings` is n x R real-valued; `values` is the length-C category-score
-// vector used to define the quadratic loss. Returns (Conger, Fleiss,
-// Brennan-Prediger).
+// vector used to define the quadratic loss. With missing ratings, every rater
+// pair must be jointly observed by at least one subject. Returns (Conger,
+// Fleiss, Brennan-Prediger).
 Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values);
 
 // --- Counts-format input ---------------------------------------------------
@@ -77,7 +81,9 @@ enum class CountWeighting {
 // Estimates returned: (Fleiss, Brennan-Prediger). Conger requires identified
 // raters and is not in scope for counts. `estimate_available_counts` is the
 // Fleiss--Cuzick count moment estimator; use `estimate_counts(...,
-// CountWeighting::unit_weighted)` only for comparator/oracle studies.
+// CountWeighting::unit_weighted)` only for comparator/oracle studies. Rows
+// with r_i < 2 contain no within-subject pair information and receive zero
+// observed-disagreement weight; at least one row with r_i >= 2 is required.
 Result<Estimation> estimate_counts(
     IntMatView counts, RealMatView weights, CountWeighting weighting);
 Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights);
@@ -106,7 +112,8 @@ Result<Estimation> estimate_fiml_counts(
 //
 // Estimates returned: (Conger, Fleiss). No Brennan-Prediger row — chance
 // disagreement against a uniform reference distribution is not meaningful
-// without a finite category count.
+// without a finite category count. With missing ratings, every rater pair must
+// be jointly observed by at least one subject.
 Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
@@ -138,7 +145,8 @@ Result<Estimation> estimate_ipw_vector(
 // full-response distribution by EM and maps it to alpha through the implied
 // covariance matrix, so it is intended for small fixed-category batteries.
 //
-// Estimate returned: (alpha).
+// With missing responses, every item pair must be jointly observed by at least
+// one subject. Estimate returned: (alpha).
 Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& values);
 Result<Estimation> estimate_alpha_available_continuous(RealMatView ratings);
 Result<Estimation> estimate_alpha_fiml(
@@ -159,7 +167,8 @@ Result<Estimation> estimate_alpha_fiml(
 // the same MCAR IPW convention as the pairwise IPW estimators.
 // `estimate_fiml_gwise` fits the saturated categorical full-response
 // distribution by EM under ignorable missingness. Estimates returned:
-// (Cohen, Fleiss).
+// (Cohen, Fleiss). With missing ratings, every requested rater g-tuple must be
+// jointly observed by at least one subject.
 Result<Estimation> estimate_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
     GwiseOptions opts = {});

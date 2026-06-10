@@ -81,6 +81,12 @@
 #' quadratic-kappa counterpart of [alpha_continuous()] and shares its EM,
 #' casewise-score, and sandwich machinery.
 #'
+#' This backend is normally reached through [kappa()], which checks that every
+#' rater is observed and every rater pair is jointly observed before dispatch.
+#' Direct callers should enforce the same fixed-rater condition; otherwise the
+#' saturated covariance functional is not identified from the observed
+#' missing-data pattern.
+#'
 #' @param x A subjects-by-raters numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped. The Conger
 #'   and Fleiss quadratic kappas are scale-invariant, so no category-score

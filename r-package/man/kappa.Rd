@@ -88,6 +88,14 @@ Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
 subjects-by-raters-by-features array to score vector-valued ratings with a
 component-separable loss. See the arguments for the estimator / weight
 combinations supported in each mode.
+
+For scalar fixed-rater coefficients with missing entries, the observed-data
+pattern must identify the requested functional. For ordinary pairwise kappa
+(`g = 2`, and all quadratic requests), every rater must be observed at least
+once and every rater pair must be jointly observed by at least one subject.
+For non-quadratic `g > 2`, every requested rater g-tuple must be jointly
+observed by at least one subject. Violations are reported as
+non-identification before the estimator runs.
 }
 \details{
 The public R API deliberately exposes only the main weighting schemes used in

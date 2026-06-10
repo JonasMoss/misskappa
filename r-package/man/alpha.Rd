@@ -52,6 +52,12 @@ For ordinal or otherwise categorical responses under `"pairwise"` or
 `"nt_fiml"`, either pass the scored numeric matrix directly or pass integer
 category codes with `values`; the observed categories are sorted and mapped
 to `values` before estimation.
+
+All three estimators target fixed-item coefficient alpha. With missing
+entries, every item must be observed at least once and every item pair must
+be jointly observed by at least one subject. If that complete pairwise
+co-observation condition fails, alpha is not identified from the observed
+missing-data pattern and the fit errors before running the estimator.
 }
 \examples{
 # Continuous item battery: the textual subscale of the Holzinger-Swineford

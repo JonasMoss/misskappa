@@ -16,8 +16,8 @@ kappa_counts(
 \arguments{
 \item{x}{A subjects-by-categories non-negative integer matrix.}
 
-\item{estimator}{Either `"pairwise"` (moment-based; pooled over observed
-pair counts) or `"cat_fiml"` (EM over the composition simplex with
+\item{estimator}{Either `"pairwise"` (the Fleiss-Cuzick count-format moment
+estimator) or `"cat_fiml"` (EM over the composition simplex with
 multivariate hypergeometric weights for completing partial counts). The
 two agree exactly when every row of `x` sums to `r_total`; with partial
 counts (some `r_i < r_total`) the `"cat_fiml"` estimator can be more
@@ -47,6 +47,17 @@ for counts-format data: each row is one subject; each column is a
 category; `x[i, k]` is the number of raters who assigned subject `i`
 to category `k`. Row sums (number of raters per subject) need not be
 uniform across subjects.
+
+The `"pairwise"` estimator name is retained for API consistency, but the
+count-format moment estimator follows the Fleiss-Cuzick unequal-judges
+convention: observed row disagreement is weighted by `r_i - 1`, and chance
+disagreement uses the pooled rating-token margin. This differs from the
+unit-weighted distribution/count convention used by some software; the
+unit-weighted comparator is kept only in the C++ API for validation studies.
+
+Rows with fewer than two observed ratings contain no within-subject pair
+information and receive zero observed-disagreement weight; at least one row
+with two or more ratings is required.
 
 Counts data assumes **exchangeable iid raters** drawn from a single
 category distribution. For non-exchangeable raters, use rater-
