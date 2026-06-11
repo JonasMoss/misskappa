@@ -17,6 +17,7 @@ add_executable(misskappa_tests
   unit/continuous_test.cpp
   unit/vector_test.cpp
   unit/normal_fiml_test.cpp
+  unit/psd_inverse_test.cpp
   unit/counts_test.cpp
   unit/alpha_test.cpp
   unit/gwise_test.cpp
@@ -24,4 +25,6 @@ add_executable(misskappa_tests
   unit/fiml_counts_test.cpp
 )
 target_link_libraries(misskappa_tests PRIVATE misskappa doctest)
+# psd_inverse_test.cpp white-box-tests a private detail_*.hpp header.
+target_include_directories(misskappa_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME misskappa_tests COMMAND misskappa_tests)

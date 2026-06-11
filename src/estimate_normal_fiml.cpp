@@ -1,4 +1,5 @@
 #include "detail_pattern_checks.hpp"
+#include "detail_psd_inverse.hpp"
 #include "misskappa/estimate.hpp"
 
 #include <Eigen/Cholesky>
@@ -159,13 +160,20 @@ Result<RealMat> inverse_matrix(const RealMat& x) {
   return inv;
 }
 
-Result<RealMat> solve_matrix(const RealMat& a, const RealMat& b) {
-  Eigen::FullPivLU<RealMat> lu(a);
-  lu.setThreshold(1e-12);
-  if (!lu.isInvertible()) return misskappa::unexpected(Error::numerical_error);
-  RealMat x = lu.solve(b);
-  if (!x.allFinite()) return misskappa::unexpected(Error::numerical_error);
-  return x;
+// Invert one pattern's observed-block covariance Sigma_oo. soo_rcond == 0 (the
+// default) keeps the strict hard inverse, so a degenerate Sigma_oo errors.
+// soo_rcond > 0 routes it through the rank-truncated PSD pseudo-inverse: the
+// minimum-norm conditional-expectation solve, which lets the saturated EM
+// converge through a boundary / rank-deficient covariance instead of failing.
+// The kappa functional is a linear map of Sigma, so this is estimand-preserving
+// -- it changes only how the (possibly singular) MLE covariance is reached.
+Result<RealMat> soo_inverse(const RealMat& soo, double soo_rcond) {
+  if (soo_rcond > 0.0) {
+    RealMat pinv = detail::pseudo_inverse_psd(soo, soo_rcond);
+    if (!pinv.allFinite()) return misskappa::unexpected(Error::numerical_error);
+    return pinv;
+  }
+  return inverse_matrix(soo);
 }
 
 Result<std::vector<Pattern>> build_patterns(const RealMat& x) {
@@ -266,7 +274,7 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
       }
 
       if (!pat.missing.empty()) {
-        auto soo_inv = inverse_matrix(gather_square(out.sigma, pat.observed));
+        auto soo_inv = soo_inverse(gather_square(out.sigma, pat.observed), opts.soo_rcond);
         if (!soo_inv) return misskappa::unexpected(soo_inv.error());
         const RealMat smo = gather_submatrix(out.sigma, pat.missing, pat.observed);
         const RealMat som = gather_submatrix(out.sigma, pat.observed, pat.missing);
@@ -311,7 +319,8 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
 
 Result<RealVec> score_totals(
     const RealVec& mu, const RealMat& sigma, const std::vector<Pattern>& patterns,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos) {
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos,
+    double soo_rcond) {
   const int p = static_cast<int>(mu.size());
   const int q = p + vech_size(p);
   RealVec totals = RealVec::Zero(q);
@@ -319,7 +328,7 @@ Result<RealVec> score_totals(
   for (const Pattern& pat : patterns) {
     const int ng = static_cast<int>(pat.rows.size());
     const int no = static_cast<int>(pat.observed.size());
-    auto soo_inv = inverse_matrix(gather_square(sigma, pat.observed));
+    auto soo_inv = soo_inverse(gather_square(sigma, pat.observed), soo_rcond);
     if (!soo_inv) return misskappa::unexpected(soo_inv.error());
     const RealVec mu_o = gather_vector(mu, pat.observed);
     RealMat e = pat.x_observed.rowwise() - mu_o.transpose();
@@ -345,7 +354,8 @@ Result<RealVec> score_totals(
 Result<RealMat> score_matrix(
     const RealVec& mu, const RealMat& sigma, const RealMat& x,
     const std::vector<Pattern>& patterns,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos) {
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos,
+    double soo_rcond) {
   const int n = static_cast<int>(x.rows());
   const int p = static_cast<int>(mu.size());
   const int q = p + vech_size(p);
@@ -353,7 +363,7 @@ Result<RealMat> score_matrix(
 
   for (const Pattern& pat : patterns) {
     const int no = static_cast<int>(pat.observed.size());
-    auto soo_inv = inverse_matrix(gather_square(sigma, pat.observed));
+    auto soo_inv = soo_inverse(gather_square(sigma, pat.observed), soo_rcond);
     if (!soo_inv) return misskappa::unexpected(soo_inv.error());
     const RealVec mu_o = gather_vector(mu, pat.observed);
     RealMat e = pat.x_observed.rowwise() - mu_o.transpose();
@@ -381,7 +391,7 @@ Result<RealMat> score_matrix(
 Result<RealMat> observed_information(
     const RealVec& theta, const std::vector<Pattern>& patterns,
     const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos,
-    int n, int p, double h) {
+    int n, int p, double h, double soo_rcond) {
   if (!(h > 0.0) || !std::isfinite(h)) return misskappa::unexpected(Error::invalid_argument);
   const int q = static_cast<int>(theta.size());
   RealMat H(q, q);
@@ -390,9 +400,9 @@ Result<RealMat> observed_information(
     RealVec tm = theta;
     tp(k) += h;
     tm(k) -= h;
-    auto gp = score_totals(tp.head(p), unpack_sigma(tp, p), patterns, vech_pos);
+    auto gp = score_totals(tp.head(p), unpack_sigma(tp, p), patterns, vech_pos, soo_rcond);
     if (!gp) return misskappa::unexpected(gp.error());
-    auto gm = score_totals(tm.head(p), unpack_sigma(tm, p), patterns, vech_pos);
+    auto gm = score_totals(tm.head(p), unpack_sigma(tm, p), patterns, vech_pos, soo_rcond);
     if (!gm) return misskappa::unexpected(gm.error());
     H.col(k) = -((*gp) - (*gm)) / (2.0 * h * static_cast<double>(n));
   }
@@ -423,14 +433,33 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   RealVec theta(q);
   theta.head(p) = em->mu;
   theta.tail(pstar) = pack_lower(em->sigma);
-  auto scores = score_matrix(em->mu, em->sigma, em->x, em->patterns, vech_pos);
+  auto scores = score_matrix(em->mu, em->sigma, em->x, em->patterns, vech_pos, opts.soo_rcond);
   if (!scores) return misskappa::unexpected(scores.error());
-  auto H = observed_information(theta, em->patterns, vech_pos, n, p, opts.fd_h);
+  auto H = observed_information(theta, em->patterns, vech_pos, n, p, opts.fd_h, opts.soo_rcond);
   if (!H) return misskappa::unexpected(H.error());
-  auto solved = solve_matrix(*H, grad.gradient.transpose());
-  if (!solved) return misskappa::unexpected(solved.error());
 
-  RealMat psi = (*scores) * (*solved);
+  // Contract the gradient through a PSD pseudo-inverse rather than a hard solve,
+  // so a numerically singular observed information yields a finite, minimum-norm
+  // sandwich instead of erroring (the saturated functional stays estimable
+  // whenever every rater pair is co-observed, enforced upstream).
+  //
+  // Unlike cat_fiml -- whose Louis information has genuine flat nuisance
+  // directions truncated at the coarse opts.info_rcond (5e-5) -- the saturated
+  // normal information is positive definite wherever the EM yields a
+  // non-singular covariance. So truncate only at a machine-precision floor,
+  // matching the rank threshold of the FullPivLU solve this replaces: a
+  // full-rank fit is inverted exactly (no SE distortion), and only a genuinely
+  // singular information is rescued. null_frac flags any gradient mass that
+  // leaked into the truncated null space (the Stoica-Marzetta validity
+  // condition for the truncated SE).
+  constexpr double kSandwichRcond = 1e-12;
+  const RealMat Hpinv = detail::pseudo_inverse_psd(*H, kSandwichRcond);
+  if (!Hpinv.allFinite()) return misskappa::unexpected(Error::numerical_error);
+  auto null_frac =
+      detail::reduced_gradient_null_fraction(*H, grad.gradient, kSandwichRcond);
+  if (!null_frac) return misskappa::unexpected(null_frac.error());
+
+  RealMat psi = (*scores) * (Hpinv * grad.gradient.transpose());
   RealMat vcov = (psi.transpose() * psi) / std::pow(static_cast<double>(n), 2);
   vcov = 0.5 * (vcov + vcov.transpose());
 
@@ -438,7 +467,7 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   fit.estimates = std::move(grad.estimates);
   fit.vcov = std::move(vcov);
   fit.psi = std::move(psi);
-  fit.null_frac = RealVec();
+  fit.null_frac = std::move(*null_frac);
 
   NormalFimlEstimation out;
   out.fit = std::move(fit);

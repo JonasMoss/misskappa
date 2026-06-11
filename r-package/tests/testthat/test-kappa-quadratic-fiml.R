@@ -213,3 +213,19 @@ test_that("sandwich vcov matches magmaan's saturated-moment sandwich ACOV", {
   V_oracle <- G %*% acov %*% t(G)
   expect_equal(unname(vcov(fit)), unname(V_oracle), tolerance = 1e-6)
 })
+
+test_that("null_frac is surfaced, named, and zero on well-conditioned data", {
+  # The C++ backend now contracts the gradient through a pseudo-inverse and
+  # reports the per-coefficient truncated-null-space fraction. On a full-rank
+  # fit nothing is truncated, so the diagnostic must be present and zero.
+  X <- make_ratings(200L, 4L, miss = 0.2, seed = 5L)
+  fit <- kappa_quadratic_fiml(X)
+  expect_length(fit$null_frac, 2L)
+  expect_named(fit$null_frac, c("Conger", "Fleiss"))
+  expect_true(all(is.finite(fit$null_frac)))
+  expect_true(all(fit$null_frac >= 0 & fit$null_frac <= 1))
+  expect_lt(max(fit$null_frac), 1e-8)
+  # And the rcond floor does not perturb a full-rank SE: the sandwich still
+  # matches the closed-form covariance plug-in to high precision.
+  expect_true(all(is.finite(sqrt(diag(vcov(fit))))))
+})

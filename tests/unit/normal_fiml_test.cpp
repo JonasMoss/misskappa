@@ -99,6 +99,26 @@ RealMat complete_items() {
   return x;
 }
 
+// An 8x4 categorical pattern (NA = missing), found by deterministic search,
+// whose small-n EM converges to a rank-deficient saturated covariance: a
+// complete-case row then has a singular Sigma_oo, so the fit errors inside the
+// E-step before the sandwich is ever reached. This is genuine model
+// degeneracy, distinct from the (separate) observed-information conditioning
+// the gradient sandwich handles -- the rcond pseudo-inverse on H deliberately
+// does NOT paper over it. The test below pins that boundary.
+RealMat singular_covariance_pattern() {
+  RealMat x(8, 4);
+  x << na_d, 2.0, 2.0, 1.0,
+       3.0, 3.0, 2.0, 2.0,
+       1.0, 3.0, 3.0, 1.0,
+       2.0, 1.0, 1.0, 1.0,
+       na_d, 1.0, na_d, na_d,
+       3.0, na_d, na_d, 2.0,
+       3.0, 2.0, na_d, 2.0,
+       2.0, 2.0, 1.0, 1.0;
+  return x;
+}
+
 }  // namespace
 
 TEST_CASE("normal FIML alpha: complete data matches MLE covariance alpha") {
@@ -137,6 +157,45 @@ TEST_CASE("normal FIML quadratic kappa: missing data returns finite IF covarianc
   REQUIRE(r.has_value());
   CHECK(r->fit.estimates.allFinite());
   CHECK(r->fit.vcov.allFinite());
+  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+}
+
+TEST_CASE("normal FIML quadratic kappa: a degenerate fitted covariance still errors cleanly") {
+  // The rcond pseudo-inverse robustifies the SE sandwich, not the saturated
+  // likelihood: a rank-deficient fitted covariance is genuine model degeneracy
+  // and must surface as an error, not a fabricated estimate.
+  const RealMat x = singular_covariance_pattern();
+  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  CHECK_FALSE(r.has_value());
+}
+
+TEST_CASE("normal FIML quadratic kappa: missing data reports a finite null-space diagnostic") {
+  // Well-conditioned missingness: the fit succeeds and the per-coefficient
+  // null_frac diagnostic is populated (zero here -- nothing truncated).
+  RealMat x = complete_items();
+  x(1, 1) = na_d;
+  x(3, 0) = na_d;
+  x(5, 2) = na_d;
+
+  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  REQUIRE(r.has_value());
+  REQUIRE(r->fit.null_frac.size() == 2);
+  CHECK(r->fit.null_frac.allFinite());
+  CHECK(r->fit.null_frac.minCoeff() >= 0.0);
+  CHECK(r->fit.null_frac.maxCoeff() <= 1.0);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+}
+
+TEST_CASE("normal FIML quadratic kappa: full-rank information truncates nothing") {
+  // The machine-precision floor must not bite a full-rank fit: nothing is
+  // truncated, so null_frac is zero and the pseudo-inverse reproduces the exact
+  // inverse-based sandwich (no SE distortion). This guards against widening the
+  // floor to cat_fiml's coarse 5e-5, which would truncate real low-curvature
+  // directions even on benign complete data.
+  const RealMat x = complete_items();
+  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  REQUIRE(r.has_value());
+  CHECK(r->fit.null_frac.maxCoeff() < 1e-9);
   check_influence_contract(*r, static_cast<int>(x.rows()), 2);
 }
 

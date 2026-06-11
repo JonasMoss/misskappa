@@ -167,11 +167,19 @@
   dimnames(vcov_mat) <- list(estimate_names, estimate_names)
   psi <- raw$psi
   if (prod(dim(psi)) > 0L) colnames(psi) <- estimate_names
+  null_frac <- as.numeric(raw$null_frac)
+  if (length(null_frac) == length(estimates)) names(null_frac) <- estimate_names
   structure(
     list(
       estimates = estimates,
       vcov = vcov_mat,
       psi = psi,
+      # Per-coefficient fraction of the delta-method gradient in the truncated
+      # null space of the saturated information (rcond = info_rcond). For the
+      # normal-theory backend this is essentially always 0 -- the observed
+      # information is well-conditioned wherever the EM yields a non-singular
+      # covariance -- but it is surfaced for parity with the cat_fiml backend.
+      null_frac = null_frac,
       method = method,
       weight = weight,
       moments = list(

@@ -18,6 +18,14 @@ struct EmOptions {
   double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
   double start_alpha = 0.1;  // smoothing on initial theta; small positive.
   double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.
+  // Normal-theory FIML only: rcond for the per-pattern observed-block
+  // covariance inverse in the saturated EM. 0 (default) uses a strict hard
+  // inverse, so a degenerate fitted covariance errors. A positive value routes
+  // Sigma_oo through a rank-truncated PSD pseudo-inverse (minimum-norm
+  // conditional expectation), letting the EM converge through a boundary /
+  // rank-deficient covariance. Experimental: gated off by default pending the
+  // degenerate-vs-non-degenerate SE calibration smoke.
+  double soo_rcond = 0.0;
   // Total Dirichlet pseudo-mass spread uniformly over the full C^R pattern
   // table (delta = flatten / C^R added to each cell's expected count in the
   // M-step). With incomplete co-observation of the saturated joint the MLE is

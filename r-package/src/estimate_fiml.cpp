@@ -477,53 +477,9 @@ FimlVarianceCache build_fiml_variance_cache(
   return cache;
 }
 
-// Per-row fraction of the delta-method gradient lying in the truncated null
-// space of the reduced Louis information (the directions pseudo_inverse_psd
-// drops at the same rcond). This is a diagnostic, not a gate: when every
-// rater pair is co-observed the coefficients are estimable functions of the
-// identified pattern margins, so the saturated nuisance being flat does not
-// break the point estimate; a fraction away from zero flags that the sample
-// information is rank-deficient along directions the coefficient touches
-// (sparse support), making the point estimate selection-dependent and the
-// truncated SE optimistic about those directions.
-Result<RealVec> reduced_gradient_null_fraction(
-    const RealMat& info_star, const RealMat& jacobian_reduced, double rcond) {
-  RealVec frac = RealVec::Zero(jacobian_reduced.rows());
-  if (jacobian_reduced.cols() == 0 || jacobian_reduced.rows() == 0) return frac;
-  if (info_star.rows() != jacobian_reduced.cols()
-      || info_star.cols() != jacobian_reduced.cols()) {
-    return misskappa::unexpected(Error::numerical_error);
-  }
-
-  Eigen::SelfAdjointEigenSolver<RealMat> es(0.5 * (info_star + info_star.transpose()));
-  if (es.info() != Eigen::Success) {
-    return misskappa::unexpected(Error::numerical_error);
-  }
-
-  const RealVec& evals = es.eigenvalues();
-  const RealMat& evecs = es.eigenvectors();
-  const double lambda_max = evals.maxCoeff();
-  const double rc = (std::isfinite(rcond) && rcond > 0.0) ? rcond : 0.0;
-  const double threshold =
-      (std::isfinite(lambda_max) && lambda_max > 0.0) ? rc * lambda_max : 0.0;
-
-  for (Eigen::Index row = 0; row < jacobian_reduced.rows(); ++row) {
-    const Eigen::VectorXd grad = jacobian_reduced.row(row).transpose();
-    const double norm_sq = grad.squaredNorm();
-    if (!(norm_sq > 0.0) || !std::isfinite(norm_sq)) continue;
-    double null_sq = 0.0;
-    for (Eigen::Index k = 0; k < evals.size(); ++k) {
-      if (evals(k) > threshold) continue;
-      const double projection = evecs.col(k).dot(grad);
-      if (!std::isfinite(projection)) {
-        return misskappa::unexpected(Error::numerical_error);
-      }
-      null_sq += projection * projection;
-    }
-    frac(row) = std::sqrt(std::min(1.0, null_sq / norm_sq));
-  }
-  return frac;
-}
+// reduced_gradient_null_fraction now lives in detail_psd_inverse.hpp
+// (misskappa::detail) so the normal-theory FIML backend reports the same
+// truncated-null-space diagnostic against the same rcond.
 
 Result<EmRunResult> run_em_preprocessed(
     const EmInput& in, int c, EmOptions opts, bool compute_vcov) {
@@ -911,7 +867,7 @@ Result<Estimation> map_fiml_kappa(
   }
 
   const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
-  auto null_frac = reduced_gradient_null_fraction(
+  auto null_frac = detail::reduced_gradient_null_fraction(
       cache.info_star, jacobian_reduced, cache.info_rcond);
   if (!null_frac) return misskappa::unexpected(null_frac.error());
 
@@ -1046,7 +1002,7 @@ Result<Estimation> estimate_fiml_gwise(
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, em_opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
-    auto frac = reduced_gradient_null_fraction(
+    auto frac = detail::reduced_gradient_null_fraction(
         info.info_star, jacobian_reduced, em_opts.info_rcond);
     if (!frac) return misskappa::unexpected(frac.error());
     null_frac = std::move(*frac);
@@ -1096,7 +1052,7 @@ Result<Estimation> estimate_alpha_fiml(
   if (info.info_star.rows() > 0) {
     const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
     const RealMat jacobian_reduced = jacobian * info.jacobian;
-    auto frac = reduced_gradient_null_fraction(
+    auto frac = detail::reduced_gradient_null_fraction(
         info.info_star, jacobian_reduced, opts.info_rcond);
     if (!frac) return misskappa::unexpected(frac.error());
     null_frac = std::move(*frac);

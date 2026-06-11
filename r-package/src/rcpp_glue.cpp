@@ -167,6 +167,8 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     opts.start_alpha = Rcpp::as<double>(em_options["start_alpha"]);
   if (em_options.containsElementNamed("info_rcond"))
     opts.info_rcond = Rcpp::as<double>(em_options["info_rcond"]);
+  if (em_options.containsElementNamed("soo_rcond"))
+    opts.soo_rcond = Rcpp::as<double>(em_options["soo_rcond"]);
   if (em_options.containsElementNamed("flatten"))
     opts.flatten = Rcpp::as<double>(em_options["flatten"]);
   return opts;
