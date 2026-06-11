@@ -65,6 +65,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_alpha_normal_fiml
+Rcpp::List rcpp_alpha_normal_fiml(const Rcpp::NumericMatrix& x, Rcpp::List em_options);
+RcppExport SEXP _misskappa_rcpp_alpha_normal_fiml(SEXP xSEXP, SEXP em_optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_alpha_normal_fiml(x, em_options));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_kappa_fiml_counts
 Rcpp::List rcpp_kappa_fiml_counts(const Rcpp::IntegerMatrix& x, std::string weight_type, Rcpp::Nullable<Rcpp::NumericVector> values, int r_total, Rcpp::List em_options);
 RcppExport SEXP _misskappa_rcpp_kappa_fiml_counts(SEXP xSEXP, SEXP weight_typeSEXP, SEXP valuesSEXP, SEXP r_totalSEXP, SEXP em_optionsSEXP) {
@@ -103,6 +115,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type values(valuesSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_kappa_quadratic(x, values));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcpp_kappa_quadratic_fiml
+Rcpp::List rcpp_kappa_quadratic_fiml(const Rcpp::NumericMatrix& x, Rcpp::List em_options);
+RcppExport SEXP _misskappa_rcpp_kappa_quadratic_fiml(SEXP xSEXP, SEXP em_optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_quadratic_fiml(x, em_options));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -147,6 +171,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_kappa_vector_quadratic_fiml
+Rcpp::List rcpp_kappa_vector_quadratic_fiml(const Rcpp::NumericMatrix& x, int features, const Rcpp::NumericMatrix& W, Rcpp::List em_options);
+RcppExport SEXP _misskappa_rcpp_kappa_vector_quadratic_fiml(SEXP xSEXP, SEXP featuresSEXP, SEXP WSEXP, SEXP em_optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type features(featuresSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type W(WSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_vector_quadratic_fiml(x, features, W, em_options));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_kappa_gwise_categorical
 Rcpp::List rcpp_kappa_gwise_categorical(const Rcpp::IntegerMatrix& x, std::string distance_type, std::string method, int g, int max_chance_tuples, Rcpp::List em_options);
 RcppExport SEXP _misskappa_rcpp_kappa_gwise_categorical(SEXP xSEXP, SEXP distance_typeSEXP, SEXP methodSEXP, SEXP gSEXP, SEXP max_chance_tuplesSEXP, SEXP em_optionsSEXP) {
@@ -184,12 +222,15 @@ static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_kappa_fiml_multi", (DL_FUNC) &_misskappa_rcpp_kappa_fiml_multi, 4},
     {"_misskappa_rcpp_alpha_raw", (DL_FUNC) &_misskappa_rcpp_alpha_raw, 4},
     {"_misskappa_rcpp_alpha_available_continuous", (DL_FUNC) &_misskappa_rcpp_alpha_available_continuous, 1},
+    {"_misskappa_rcpp_alpha_normal_fiml", (DL_FUNC) &_misskappa_rcpp_alpha_normal_fiml, 2},
     {"_misskappa_rcpp_kappa_fiml_counts", (DL_FUNC) &_misskappa_rcpp_kappa_fiml_counts, 5},
     {"_misskappa_rcpp_fiml_louis_spectrum", (DL_FUNC) &_misskappa_rcpp_fiml_louis_spectrum, 4},
     {"_misskappa_rcpp_kappa_quadratic", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic, 2},
+    {"_misskappa_rcpp_kappa_quadratic_fiml", (DL_FUNC) &_misskappa_rcpp_kappa_quadratic_fiml, 2},
     {"_misskappa_rcpp_kappa_counts", (DL_FUNC) &_misskappa_rcpp_kappa_counts, 3},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_continuous, 3},
     {"_misskappa_rcpp_kappa_vector", (DL_FUNC) &_misskappa_rcpp_kappa_vector, 5},
+    {"_misskappa_rcpp_kappa_vector_quadratic_fiml", (DL_FUNC) &_misskappa_rcpp_kappa_vector_quadratic_fiml, 4},
     {"_misskappa_rcpp_kappa_gwise_categorical", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_categorical, 6},
     {"_misskappa_rcpp_kappa_gwise_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_continuous, 5},
     {NULL, NULL, 0}

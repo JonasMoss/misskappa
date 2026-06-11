@@ -159,6 +159,8 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     opts.tol = Rcpp::as<double>(em_options["tol"]);
   if (em_options.containsElementNamed("max_iter"))
     opts.max_iter = Rcpp::as<int>(em_options["max_iter"]);
+  if (em_options.containsElementNamed("fd_h"))
+    opts.fd_h = Rcpp::as<double>(em_options["fd_h"]);
   if (em_options.containsElementNamed("prune_tol"))
     opts.prune_tol = Rcpp::as<double>(em_options["prune_tol"]);
   if (em_options.containsElementNamed("start_alpha"))
@@ -174,6 +176,26 @@ Rcpp::NumericVector to_numeric_vector(const Eigen::VectorXd& x) {
   Rcpp::NumericVector out(x.size());
   for (Eigen::Index i = 0; i < x.size(); ++i) out[i] = x(i);
   return out;
+}
+
+Rcpp::NumericMatrix to_numeric_matrix(const Eigen::MatrixXd& x) {
+  Rcpp::NumericMatrix out(x.rows(), x.cols());
+  for (Eigen::Index i = 0; i < x.rows(); ++i) {
+    for (Eigen::Index j = 0; j < x.cols(); ++j) out(i, j) = x(i, j);
+  }
+  return out;
+}
+
+Rcpp::List normal_fiml_to_list(const misskappa::NormalFimlEstimation& e) {
+  return Rcpp::List::create(
+      Rcpp::Named("estimates") = to_numeric_vector(e.fit.estimates),
+      Rcpp::Named("vcov") = to_numeric_matrix(e.fit.vcov),
+      Rcpp::Named("psi") = to_numeric_matrix(e.fit.psi),
+      Rcpp::Named("null_frac") = to_numeric_vector(e.fit.null_frac),
+      Rcpp::Named("mu") = to_numeric_vector(e.mu),
+      Rcpp::Named("Sigma") = to_numeric_matrix(e.sigma),
+      Rcpp::Named("iterations") = e.iterations,
+      Rcpp::Named("converged") = e.converged);
 }
 
 }  // namespace
@@ -266,6 +288,23 @@ Rcpp::List rcpp_alpha_available_continuous(const Rcpp::NumericMatrix& x) {
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_alpha_normal_fiml(
+    const Rcpp::NumericMatrix& x,
+    Rcpp::List em_options) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = unwrap(misskappa::estimate_alpha_normal_fiml(ratings, opts));
+  if (!r.converged) {
+    Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
+  }
+  return normal_fiml_to_list(r);
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_fiml_counts(
     const Rcpp::IntegerMatrix& x,
     std::string weight_type,
@@ -353,6 +392,23 @@ Rcpp::List rcpp_kappa_quadratic(
 
   auto r = misskappa::estimate_quadratic(ratings, v);
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_quadratic_fiml(
+    const Rcpp::NumericMatrix& x,
+    Rcpp::List em_options) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = unwrap(misskappa::estimate_quadratic_normal_fiml(ratings, opts));
+  if (!r.converged) {
+    Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
+  }
+  return normal_fiml_to_list(r);
 }
 
 // [[Rcpp::export]]
@@ -487,6 +543,30 @@ Rcpp::List rcpp_kappa_vector(
     Rcpp::stop("Unknown vector method: " + method);
   }
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_vector_quadratic_fiml(
+    const Rcpp::NumericMatrix& x,
+    int features,
+    const Rcpp::NumericMatrix& W,
+    Rcpp::List em_options) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+  Eigen::MatrixXd metric(W.nrow(), W.ncol());
+  for (int i = 0; i < W.nrow(); ++i) {
+    for (int j = 0; j < W.ncol(); ++j) metric(i, j) = W(i, j);
+  }
+
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = unwrap(misskappa::estimate_vector_quadratic_normal_fiml(
+      ratings, features, metric, opts));
+  if (!r.converged) {
+    Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
+  }
+  return normal_fiml_to_list(r);
 }
 
 // [[Rcpp::export]]

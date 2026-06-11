@@ -13,6 +13,7 @@ namespace misskappa {
 struct EmOptions {
   int max_iter = 10000;
   double tol = 1e-8;
+  double fd_h = 1e-5;       // Central finite-difference step for observed information.
   double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
   double start_alpha = 0.1;  // smoothing on initial theta; small positive.
   double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.
@@ -33,6 +34,14 @@ struct GwiseOptions {
   // Chance-tuple cap. Categorical g-wise estimators enumerate finite category
   // support; continuous g-wise estimators enumerate direct n^g item tuples.
   std::int64_t max_chance_tuples = 5000000;
+};
+
+struct NormalFimlEstimation {
+  Estimation fit;
+  RealVec mu;
+  RealMat sigma;
+  int iterations = 0;
+  bool converged = false;
 };
 
 // --- Categorical raw-rating estimators -------------------------------------
@@ -125,6 +134,17 @@ Result<Estimation> estimate_fiml_counts(
 Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
+
+// Saturated normal-theory FIML estimators for smooth functions of the fitted
+// mean and covariance. Inputs are real-valued with non-finite entries treated
+// as missing. Returned influence rows correspond to rows with at least one
+// observed entry; all-empty rows are dropped, matching the R-level convention.
+Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
+    RealMatView ratings, EmOptions opts);
+Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
+    RealMatView ratings, EmOptions opts);
+Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(
+    RealMatView ratings, int features, RealMatView W, EmOptions opts);
 
 // --- Component-separable vector-rating estimators ---------------------------
 //

@@ -17,6 +17,10 @@ rcpp_alpha_available_continuous <- function(x) {
     .Call(`_misskappa_rcpp_alpha_available_continuous`, x)
 }
 
+rcpp_alpha_normal_fiml <- function(x, em_options) {
+    .Call(`_misskappa_rcpp_alpha_normal_fiml`, x, em_options)
+}
+
 rcpp_kappa_fiml_counts <- function(x, weight_type, values, r_total, em_options) {
     .Call(`_misskappa_rcpp_kappa_fiml_counts`, x, weight_type, values, r_total, em_options)
 }
@@ -29,6 +33,10 @@ rcpp_kappa_quadratic <- function(x, values) {
     .Call(`_misskappa_rcpp_kappa_quadratic`, x, values)
 }
 
+rcpp_kappa_quadratic_fiml <- function(x, em_options) {
+    .Call(`_misskappa_rcpp_kappa_quadratic_fiml`, x, em_options)
+}
+
 rcpp_kappa_counts <- function(x, weight_type, values) {
     .Call(`_misskappa_rcpp_kappa_counts`, x, weight_type, values)
 }
@@ -39,6 +47,10 @@ rcpp_kappa_continuous <- function(x, method, weight_type) {
 
 rcpp_kappa_vector <- function(x, features, method, loss_type, feature_weights) {
     .Call(`_misskappa_rcpp_kappa_vector`, x, features, method, loss_type, feature_weights)
+}
+
+rcpp_kappa_vector_quadratic_fiml <- function(x, features, W, em_options) {
+    .Call(`_misskappa_rcpp_kappa_vector_quadratic_fiml`, x, features, W, em_options)
 }
 
 rcpp_kappa_gwise_categorical <- function(x, distance_type, method, g, max_chance_tuples, em_options) {

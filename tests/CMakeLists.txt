@@ -16,6 +16,7 @@ add_executable(misskappa_tests
   unit/fiml_test.cpp
   unit/continuous_test.cpp
   unit/vector_test.cpp
+  unit/normal_fiml_test.cpp
   unit/counts_test.cpp
   unit/alpha_test.cpp
   unit/gwise_test.cpp
