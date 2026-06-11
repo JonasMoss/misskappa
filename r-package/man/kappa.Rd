@@ -50,7 +50,10 @@ categories.}
 pseudo-mass spread over the complete pattern table; any positive value
 selects the unique interior posterior mode when the saturated likelihood
 is flat, shrinking the fitted table toward uniform with weight
-`flatten / (n + flatten)`; `0`, the default, is strict ML). Pass any
+`flatten / (n + flatten)`; `0`, the default, is strict ML). Flattening
+is a uniqueness device, not an inference upgrade: it leaves the point
+estimate essentially unchanged but makes the reported standard errors
+conservative (roughly 50\% too wide in calibration). Pass any
 subset.}
 
 \item{...}{Mode-specific extras: `feature_weights` and `loss` (e.g.

@@ -5,8 +5,12 @@ summarize_calibration <- function(res) {
   res$failed <- is.na(res$est)
   key <- c("dgp", "mech", "n", "flatten")
 
-  fail <- aggregate(failed ~ dgp + mech + n + flatten, data = res,
-                    FUN = function(z) mean(z))
+  # One fit per (cell, flatten, rep): collapse rows first, else failed fits
+  # (1 row) are underweighted against successes (3 rows, one per coef).
+  per_fit <- aggregate(list(failed = res$failed),
+                       by = res[, c(key, "rep")], FUN = any)
+  fail <- aggregate(list(failed = per_fit$failed),
+                    by = per_fit[, key], FUN = mean)
   # Failures have coef = NA; per-coefficient stats use successful fits only.
   ok <- res[!res$failed, ]
   stats <- do.call(rbind, by(ok, ok[, c(key, "coef")], function(d) {

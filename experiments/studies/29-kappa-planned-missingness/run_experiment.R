@@ -29,6 +29,8 @@ usage <- function(status = 0L) {
     "  --shard-index N     1-based shard index. Default: 1.\n",
     "  --shard-count N     Number of replicate shards. Default: 1.\n",
     "  --resume            Reuse existing per-cell checkpoints in --out-dir.\n",
+    "  --checkpoints-only  Write per-cell checkpoints only; skip the in-process\n",
+    "                      replicates/summary aggregation (run combine.R after).\n",
     "  --progress          Print one line per design cell.\n",
     "  --help, -h          Show this help and exit.\n\n",
     "Examples:\n",
@@ -57,13 +59,30 @@ all_methods <- c(
   "ipw_nominal", "cat_fiml_nominal", "listwise_nominal",
   "ipw_absolute", "cat_fiml_absolute", "listwise_absolute",
   "ipw_quadratic", "cat_fiml_quadratic", "pairwise_quadratic",
-  "nt_fiml_quadratic", "listwise_quadratic"
+  "nt_fiml_quadratic", "listwise_quadratic",
+  "fleiss_counts_nominal", "fleiss_counts_quadratic",
+  "fleiss_counts_fiml_nominal", "fleiss_counts_fiml_quadratic"
 )
 
 quadratic_methods <- c(
   "ipw_quadratic", "cat_fiml_quadratic", "pairwise_quadratic",
   "nt_fiml_quadratic", "listwise_quadratic"
 )
+
+# Exchangeable Fleiss estimand via kappa_counts(). The saturated kappa() path
+# requires a complete rater co-observation graph; the exchangeable count
+# representation only needs each subject to contribute >= 2 ratings, so it is
+# the only target identified on disconnected / pair-incomplete planned designs
+# (block / ring / random pairs). It mirrors the one-way / exchangeable ICC of
+# ten Hove, Jorgensen & van der Ark (2025), the source of the planned designs.
+#
+# Two backends on the same Fleiss_exch estimand: a closed-form pairwise moment
+# estimator and a count-data FIML (EM over compositions of r_total into C, a
+# low-dimensional exchangeable model). Unlike the saturated fixed-rater cat_fiml,
+# the count FIML is well-identified at small n and carries no identification
+# guard, so it is the MAR-consistent estimator that still runs on sparse designs.
+counts_methods <- c("fleiss_counts_nominal", "fleiss_counts_quadratic",
+                    "fleiss_counts_fiml_nominal", "fleiss_counts_fiml_quadratic")
 
 mode_defaults <- function(mode) {
   if (mode == "smoke") {
@@ -77,7 +96,7 @@ mode_defaults <- function(mode) {
       mechanisms = c("complete", "mcar30", "mar_anchor30",
                      "designed_random2", "designed_block2",
                      "designed_bib3", "designed_two_phase"),
-      methods = quadratic_methods
+      methods = c(quadratic_methods, counts_methods)
     ))
   }
   if (mode == "screen") {
@@ -129,6 +148,7 @@ parse_args <- function(argv) {
   opts$out_dir <- file.path(script_dir, "results")
   opts$progress <- FALSE
   opts$resume <- FALSE
+  opts$checkpoints_only <- FALSE
   opts$shard_index <- 1L
   opts$shard_count <- 1L
 
@@ -147,6 +167,11 @@ parse_args <- function(argv) {
     }
     if (arg == "--resume") {
       opts$resume <- TRUE
+      i <- i + 1L
+      next
+    }
+    if (arg == "--checkpoints-only") {
+      opts$checkpoints_only <- TRUE
       i <- i + 1L
       next
     }
@@ -592,16 +617,20 @@ method_defs <- data.frame(
   method = all_methods,
   estimator = c("ipw", "cat_fiml", "listwise",
                 "ipw", "cat_fiml", "listwise",
-                "ipw", "cat_fiml", "pairwise", "nt_fiml", "listwise"),
+                "ipw", "cat_fiml", "pairwise", "nt_fiml", "listwise",
+                "kappa_counts", "kappa_counts", "kappa_counts", "kappa_counts"),
   base_estimator = c("ipw", "cat_fiml", "ipw",
                      "ipw", "cat_fiml", "ipw",
-                     "ipw", "cat_fiml", "pairwise", "nt_fiml", "ipw"),
+                     "ipw", "cat_fiml", "pairwise", "nt_fiml", "ipw",
+                     "pairwise", "pairwise", "cat_fiml", "cat_fiml"),
   weight = c("nominal", "nominal", "nominal",
              "linear", "linear", "linear",
-             "quadratic", "quadratic", "quadratic", "quadratic", "quadratic"),
+             "quadratic", "quadratic", "quadratic", "quadratic", "quadratic",
+             "nominal", "quadratic", "nominal", "quadratic"),
   weight_label = c("nominal", "nominal", "nominal",
                    "absolute", "absolute", "absolute",
-                   "quadratic", "quadratic", "quadratic", "quadratic", "quadratic"),
+                   "quadratic", "quadratic", "quadratic", "quadratic", "quadratic",
+                   "nominal", "quadratic", "nominal", "quadratic"),
   stringsAsFactors = FALSE
 )
 
@@ -628,6 +657,15 @@ method_defs <- method_defs[match(opts$methods, method_defs$method), , drop = FAL
 
 coef_names <- c("Conger", "Fleiss")
 alpha <- 0.05
+
+# Output coefficient labels for a method, mapped to the names the fit object
+# actually carries. The saturated kappa() path surfaces fixed-rater Conger /
+# Fleiss; the exchangeable kappa_counts path surfaces a count-based Fleiss that
+# we relabel "Fleiss_exch" so it is never conflated with the fixed-rater Fleiss.
+method_coefs <- function(estimator) {
+  if (estimator == "kappa_counts") return(c(Fleiss_exch = "Fleiss"))
+  c(Conger = "Conger", Fleiss = "Fleiss")
+}
 
 se_vector <- function(fit, coefs) {
   V <- stats::vcov(fit)
@@ -682,24 +720,52 @@ score_values <- function(X) {
 }
 
 fit_kappa <- function(X, spec, estimator, weight) {
-  misskappa::kappa(
+  # suppressWarnings: strict-ML cat_fiml warns (null_frac) on benign nuisance
+  # non-identification; studies 30-32 established the estimate and SE are
+  # sound there, so the warning is noise at simulation scale. Design-level
+  # non-identification still errors and lands in the `error` column.
+  suppressWarnings(misskappa::kappa(
     X,
     estimator = estimator,
     weight = weight,
     values = score_values(X),
     em_options = em_options_for(estimator)
-  )
+  ))
 }
 
-fit_result_rows <- function(fit, n_eff) {
+# Collapse a subjects-by-raters ratings matrix (categories 1..C, NA = missing)
+# into the subjects-by-C count format kappa_counts() consumes. Rater identity is
+# discarded, which is exactly the exchangeable representation; columns span the
+# full category set so they align with the complete-data truth scores.
+counts_from_ratings <- function(X, C) {
+  counts <- matrix(0L, nrow = nrow(X), ncol = C)
+  for (i in seq_len(nrow(X))) {
+    obs <- X[i, ][!is.na(X[i, ])]
+    if (length(obs)) counts[i, ] <- tabulate(obs, nbins = C)
+  }
+  counts
+}
+
+fit_counts <- function(X, spec, estimator, weight) {
+  suppressWarnings(misskappa::kappa_counts(
+    counts_from_ratings(X, spec$C),
+    estimator = estimator,
+    weight = weight,
+    values = seq.int(0L, spec$C - 1L),
+    em_options = em_options_for(estimator)  # empty for "pairwise"; EM tols for cat_fiml
+  ))
+}
+
+fit_result_rows <- function(fit, n_eff, coef_map = method_coefs("ipw")) {
   est <- stats::coef(fit)
-  se <- se_vector(fit, coef_names)
-  rows <- lapply(coef_names, function(coef) {
-    ci <- make_intervals(est[[coef]], se[[coef]], n_eff)
+  se <- se_vector(fit, unname(coef_map))
+  rows <- lapply(names(coef_map), function(coef) {
+    src <- coef_map[[coef]]
+    ci <- make_intervals(est[[src]], se[[src]], n_eff)
     data.frame(
       coefficient = coef,
-      estimate = unname(est[[coef]]),
-      se = unname(se[[coef]]),
+      estimate = unname(est[[src]]),
+      se = unname(se[[src]]),
       n_eff = n_eff,
       wald_z_lower = ci["wald_z", "lower"],
       wald_z_upper = ci["wald_z", "upper"],
@@ -716,9 +782,9 @@ fit_result_rows <- function(fit, n_eff) {
   do.call(rbind, rows)
 }
 
-fit_error_rows <- function(message) {
+fit_error_rows <- function(message, out_coefs = names(method_coefs("ipw"))) {
   data.frame(
-    coefficient = coef_names,
+    coefficient = out_coefs,
     estimate = NA_real_,
     se = NA_real_,
     n_eff = NA_integer_,
@@ -737,16 +803,22 @@ fit_error_rows <- function(message) {
 
 fit_one <- function(X, spec, method_row) {
   start <- proc.time()[["elapsed"]]
+  coef_map <- method_coefs(method_row$estimator)
   out <- tryCatch({
-    X_fit <- X
-    if (method_row$estimator == "listwise") {
-      X_fit <- X[stats::complete.cases(X), , drop = FALSE]
-      if (nrow(X_fit) < 2L) stop("Listwise deletion left fewer than two complete rows.", call. = FALSE)
+    if (method_row$estimator == "kappa_counts") {
+      fit <- fit_counts(X, spec, method_row$base_estimator, method_row$weight)
+      fit_result_rows(fit, nrow(X), coef_map)
+    } else {
+      X_fit <- X
+      if (method_row$estimator == "listwise") {
+        X_fit <- X[stats::complete.cases(X), , drop = FALSE]
+        if (nrow(X_fit) < 2L) stop("Listwise deletion left fewer than two complete rows.", call. = FALSE)
+      }
+      fit <- fit_kappa(X_fit, spec, method_row$base_estimator, method_row$weight)
+      fit_result_rows(fit, nrow(X_fit), coef_map)
     }
-    fit <- fit_kappa(X_fit, spec, method_row$base_estimator, method_row$weight)
-    fit_result_rows(fit, nrow(X_fit))
   }, error = function(e) {
-    fit_error_rows(conditionMessage(e))
+    fit_error_rows(conditionMessage(e), names(coef_map))
   })
   out$elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
   out
@@ -760,21 +832,24 @@ cat_fiml_multi <- get0(
 
 fit_cat_fiml_cache <- function(X, method_defs) {
   start <- proc.time()[["elapsed"]]
-  cat_rows <- method_defs[method_defs$base_estimator == "cat_fiml", , drop = FALSE]
+  ## Fixed-rater cat_fiml only: the exchangeable count FIML (estimator
+  ## "kappa_counts", base_estimator "cat_fiml") is a different backend/estimand
+  ## and must not be served from this raw saturated-FIML cache.
+  cat_rows <- method_defs[method_defs$estimator == "cat_fiml", , drop = FALSE]
   requested <- unique(cat_rows$weight)
   helper_weights <- ifelse(requested == "nominal", "identity", requested)
   out <- tryCatch({
-    fits <- cat_fiml_multi(
+    fits <- suppressWarnings(cat_fiml_multi(
       X,
       weights = helper_weights,
       values = score_values(X),
       em_options = em_options_for("cat_fiml")
-    )
+    ))
     elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
     cache <- list()
     for (i in seq_along(requested)) {
       fit <- fits[[helper_weights[[i]]]]
-      rows <- fit_result_rows(fit, nrow(X))
+      rows <- fit_result_rows(fit, nrow(X), method_coefs("cat_fiml"))
       rows$elapsed_ms <- elapsed_ms / length(requested)
       cache[[requested[[i]]]] <- rows
     }
@@ -783,7 +858,7 @@ fit_cat_fiml_cache <- function(X, method_defs) {
     elapsed_ms <- 1000 * (proc.time()[["elapsed"]] - start)
     cache <- list()
     for (weight in requested) {
-      rows <- fit_error_rows(conditionMessage(e))
+      rows <- fit_error_rows(conditionMessage(e), names(method_coefs("cat_fiml")))
       rows$elapsed_ms <- elapsed_ms / max(1L, length(requested))
       cache[[weight]] <- rows
     }
@@ -826,6 +901,16 @@ truth_for_dgp <- function(spec, seed, truth_n) {
       values = seq(0, spec$C - 1L)
     )
     est <- stats::coef(fit)
+    ## Exchangeable-target truth: kappa_counts() on the complete-data counts.
+    ## This is a different estimand from the fixed-rater Fleiss above, so the
+    ## counts methods are scored against their own truth.
+    fit_exch <- misskappa::kappa_counts(
+      counts_from_ratings(X, spec$C),
+      estimator = "pairwise",
+      weight = w,
+      values = seq(0, spec$C - 1L)
+    )
+    est_exch <- stats::coef(fit_exch)
     rows[[length(rows) + 1L]] <- data.frame(
       dgp = spec$id,
       dgp_label = spec$label,
@@ -834,106 +919,25 @@ truth_for_dgp <- function(spec, seed, truth_n) {
       R = spec$R,
       weight = w,
       weight_label = wl,
-      coefficient = coef_names,
-      truth = unname(est[coef_names]),
+      coefficient = c(coef_names, "Fleiss_exch"),
+      truth = unname(c(est[coef_names], est_exch[["Fleiss"]])),
       truth_n = truth_n,
-      truth_method = "complete-data Monte Carlo using kappa(estimator='ipw')",
+      truth_method = c(
+        rep("complete-data Monte Carlo using kappa(estimator='ipw')", length(coef_names)),
+        "complete-data Monte Carlo using kappa_counts(estimator='pairwise')"
+      ),
       stringsAsFactors = FALSE
     )
   }
   do.call(rbind, rows)
 }
 
-split_keys <- function(data, keys) {
-  interaction(data[, keys], drop = TRUE, lex.order = TRUE)
-}
-
-summarize_replicates <- function(df) {
-  keys <- c("dgp", "dgp_label", "dgp_family", "C", "R", "mechanism",
-            "mechanism_family", "n", "method", "estimator", "weight_label",
-            "coefficient")
-  interval_names <- c("wald_z", "wald_t", "fisher_t", "asin_t")
-  pieces <- lapply(split(df, split_keys(df, keys)), function(g) {
-    ok <- is.finite(g$estimate)
-    se_ok <- ok & is.finite(g$se) & g$se > 0
-    err <- g$estimate - g$truth
-    base <- data.frame(
-      dgp = g$dgp[[1L]],
-      dgp_label = g$dgp_label[[1L]],
-      dgp_family = g$dgp_family[[1L]],
-      C = g$C[[1L]],
-      R = g$R[[1L]],
-      mechanism = g$mechanism[[1L]],
-      mechanism_family = g$mechanism_family[[1L]],
-      n = g$n[[1L]],
-      method = g$method[[1L]],
-      estimator = g$estimator[[1L]],
-      weight_label = g$weight_label[[1L]],
-      coefficient = g$coefficient[[1L]],
-      reps = length(unique(g$rep)),
-      n_valid = sum(ok),
-      failures = sum(!ok),
-      truth = g$truth[[1L]],
-      mean_estimate = if (any(ok)) mean(g$estimate[ok]) else NA_real_,
-      bias = if (any(ok)) mean(err[ok]) else NA_real_,
-      sd_estimate = if (sum(ok) > 1L) stats::sd(g$estimate[ok]) else NA_real_,
-      mc_se_bias = if (sum(ok) > 1L) stats::sd(g$estimate[ok]) / sqrt(sum(ok)) else NA_real_,
-      mse = if (any(ok)) mean(err[ok]^2) else NA_real_,
-      rmse = if (any(ok)) sqrt(mean(err[ok]^2)) else NA_real_,
-      mean_se = if (any(se_ok)) mean(g$se[se_ok]) else NA_real_,
-      se_over_sd = if (sum(se_ok) > 1L && stats::sd(g$estimate[se_ok]) > 1e-12) {
-        mean(g$se[se_ok]) / stats::sd(g$estimate[se_ok])
-      } else NA_real_,
-      mean_elapsed_ms = mean(g$elapsed_ms, na.rm = TRUE),
-      median_elapsed_ms = stats::median(g$elapsed_ms, na.rm = TRUE),
-      mean_observed_fraction = mean(g$observed_fraction, na.rm = TRUE),
-      mean_subjects_used = mean(g$subjects_used, na.rm = TRUE),
-      mean_empty_rows = mean(g$empty_rows, na.rm = TRUE),
-      mean_complete_rows = mean(g$complete_rows, na.rm = TRUE),
-      mean_n_eff = mean(g$n_eff, na.rm = TRUE),
-      min_pair_count_min = min(g$min_pair_count, na.rm = TRUE),
-      mean_observed_patterns = mean(g$observed_patterns, na.rm = TRUE),
-      stringsAsFactors = FALSE
-    )
-
-    do.call(rbind, lapply(interval_names, function(interval) {
-      lo <- g[[paste0(interval, "_lower")]]
-      hi <- g[[paste0(interval, "_upper")]]
-      ci_ok <- se_ok & is.finite(lo) & is.finite(hi)
-      covered <- ci_ok & lo <= g$truth & g$truth <= hi
-      below <- ci_ok & hi < g$truth
-      above <- ci_ok & lo > g$truth
-      cbind(
-        base,
-        data.frame(
-          interval = interval,
-          interval_n = sum(ci_ok),
-          coverage95 = if (any(ci_ok)) mean(covered[ci_ok]) else NA_real_,
-          miss_below = if (any(ci_ok)) mean(below[ci_ok]) else NA_real_,
-          miss_above = if (any(ci_ok)) mean(above[ci_ok]) else NA_real_,
-          mean_ci_length = if (any(ci_ok)) mean(hi[ci_ok] - lo[ci_ok]) else NA_real_,
-          stringsAsFactors = FALSE
-        )
-      )
-    }))
-  })
-  ans <- do.call(rbind, pieces)
-  ans <- ans[order(ans$dgp, ans$mechanism, ans$n, ans$weight_label,
-                   ans$estimator, ans$coefficient, ans$interval), ]
-  rownames(ans) <- NULL
-  ans
-}
+## split_keys(), summarize_replicates(), write_csv_atomic(): shared with
+## combine.R so a sharded merge summarises identically to a single-process run.
+source(file.path(script_dir, "summarize.R"))
 
 log_progress <- function(...) {
   if (opts$progress) message(format(Sys.time(), "%H:%M:%S"), " ", sprintf(...))
-}
-
-write_csv_atomic <- function(x, path) {
-  tmp <- paste0(path, ".tmp")
-  write.csv(x, tmp, row.names = FALSE)
-  if (file.exists(path)) unlink(path)
-  ok <- file.rename(tmp, path)
-  if (!ok) stop("Failed to move temporary file into place: ", path, call. = FALSE)
 }
 
 checkpoint_file <- function(cell, grid, dir) {
@@ -952,7 +956,11 @@ checkpoint_file <- function(cell, grid, dir) {
 }
 
 method_is_applicable <- function(spec, method_row) {
-  if (method_row$base_estimator %in% c("pairwise", "nt_fiml") &&
+  ## The fixed-rater pairwise / nt_fiml estimators only support quadratic loss.
+  ## (The exchangeable kappa_counts path also uses a pairwise backend but does
+  ## support nominal, so key the restriction on the public estimator, not the
+  ## base_estimator.)
+  if (method_row$estimator %in% c("pairwise", "nt_fiml") &&
       method_row$weight != "quadratic") {
     return(FALSE)
   }
@@ -1113,7 +1121,7 @@ for (cell in seq_len(nrow(grid))) {
     for (m in seq_len(nrow(method_defs))) {
       method_row <- method_defs[m, ]
       if (!method_is_applicable(spec, method_row)) next
-      if (method_row$base_estimator == "cat_fiml" && !is.null(cat_fiml_multi)) {
+      if (method_row$estimator == "cat_fiml" && !is.null(cat_fiml_multi)) {
         if (is.null(cat_fiml_cache)) {
           cat_fiml_cache <- fit_cat_fiml_cache(X, method_defs)
         }
@@ -1163,13 +1171,18 @@ missing_checkpoints <- checkpoint_files[!file.exists(checkpoint_files)]
 if (length(missing_checkpoints)) {
   stop("Missing checkpoint(s): ", paste(missing_checkpoints, collapse = ", "), call. = FALSE)
 }
-replicates <- do.call(rbind, lapply(checkpoint_files, function(path) {
-  read.csv(path, stringsAsFactors = FALSE)
-}))
-summary <- summarize_replicates(replicates)
 
-write_csv_atomic(replicates, file.path(opts$out_dir, "replicates.csv"))
-write_csv_atomic(summary, file.path(opts$out_dir, "summary.csv"))
+## In sharded runs each shard holds only its own replicate subset, so the
+## in-process aggregate is partial; --checkpoints-only skips it and leaves the
+## final merge to combine.R over all shards' checkpoints.
+if (!opts$checkpoints_only) {
+  replicates <- do.call(rbind, lapply(checkpoint_files, function(path) {
+    read.csv(path, stringsAsFactors = FALSE)
+  }))
+  summary <- summarize_replicates(replicates)
+  write_csv_atomic(replicates, file.path(opts$out_dir, "replicates.csv"))
+  write_csv_atomic(summary, file.path(opts$out_dir, "summary.csv"))
+}
 
 cmd <- paste(commandArgs(FALSE), collapse = " ")
 metadata <- data.frame(
@@ -1202,20 +1215,27 @@ metadata <- data.frame(
 )
 write_csv_atomic(metadata, file.path(opts$out_dir, "metadata.csv"))
 
-cat("Wrote:\n")
-for (name in c("truth.csv", "cell_plan.csv", "replicates.csv", "summary.csv",
-               "mechanisms.csv", "methods.csv", "dgps.csv", "metadata.csv")) {
-  cat("  ", normalizePath(file.path(opts$out_dir, name), mustWork = FALSE), "\n", sep = "")
-}
-cat("  ", normalizePath(checkpoint_dir, mustWork = FALSE), "/\n", sep = "")
+if (opts$checkpoints_only) {
+  cat("Checkpoints-only: wrote ", length(checkpoint_files),
+      " cell checkpoint(s) to ", normalizePath(checkpoint_dir, mustWork = FALSE),
+      "/\nRun combine.R over --out-dir to produce replicates.csv + summary.csv.\n",
+      sep = "")
+} else {
+  cat("Wrote:\n")
+  for (name in c("truth.csv", "cell_plan.csv", "replicates.csv", "summary.csv",
+                 "mechanisms.csv", "methods.csv", "dgps.csv", "metadata.csv")) {
+    cat("  ", normalizePath(file.path(opts$out_dir, name), mustWork = FALSE), "\n", sep = "")
+  }
+  cat("  ", normalizePath(checkpoint_dir, mustWork = FALSE), "/\n", sep = "")
 
-headline <- summary[summary$coefficient == "Conger" &
-                      summary$interval == "wald_t" &
-                      summary$weight_label == "quadratic",
-                    c("dgp", "mechanism", "method", "bias", "rmse",
-                      "coverage95", "n_valid", "failures", "mean_elapsed_ms")]
-headline <- headline[order(headline$dgp, headline$mechanism, headline$method), ]
-if (nrow(headline)) {
-  cat("\nConger quadratic smoke rows, Wald-t interval:\n")
-  print(utils::head(headline, 24L), row.names = FALSE, digits = 3)
+  headline <- summary[summary$coefficient == "Conger" &
+                        summary$interval == "wald_t" &
+                        summary$weight_label == "quadratic",
+                      c("dgp", "mechanism", "method", "bias", "rmse",
+                        "coverage95", "n_valid", "failures", "mean_elapsed_ms")]
+  headline <- headline[order(headline$dgp, headline$mechanism, headline$method), ]
+  if (nrow(headline)) {
+    cat("\nConger quadratic smoke rows, Wald-t interval:\n")
+    print(utils::head(headline, 24L), row.names = FALSE, digits = 3)
+  }
 }

@@ -64,7 +64,11 @@ method_label <- c(
   cat_fiml_quadratic = "Cat-FIML",
   pairwise_quadratic = "Pairwise",
   nt_fiml_quadratic = "NT-FIML",
-  listwise_quadratic = "Listwise"
+  listwise_quadratic = "Listwise",
+  fleiss_counts_nominal = "Fleiss-counts",
+  fleiss_counts_quadratic = "Fleiss-counts",
+  fleiss_counts_fiml_nominal = "Fleiss-counts-FIML",
+  fleiss_counts_fiml_quadratic = "Fleiss-counts-FIML"
 )
 summary$method_label <- unname(method_label[summary$method])
 summary$method_label[is.na(summary$method_label)] <- summary$method[is.na(summary$method_label)]
@@ -82,35 +86,76 @@ The generic planned-missingness framing follows the idea that measurement burden
 can be deliberately distributed over subjects while preserving ignorable
 observed-data likelihoods [@Graham2006PlannedMissingness].
 
-The design additions here are narrower and more agreement-specific than the
-generic planned-missingness literature. The ICC planned-missingness papers treat
-ratings as exchangeable and ask how to spend a fixed rating budget across
-subjects, raters, and overlap patterns [@vanDerArkJorgensenTenHove2023Planned;
-@tenHoveJorgensenVanDerArk2025ICC]. We therefore include a random two-rater
-assignment (`designed_random2`) and a block assignment (`designed_block2`) to
-separate ordinary loss of information from the fixed-rater identifiability
-problem created by disconnected co-observation graphs. Fanshawe et al.'s breast
-cancer grading application makes the same graph-connectivity issue visible for
-latent-trait agreement models [@Fanshawe2008AgreementMissing], so the runner also
-includes a sparse connected ring (`designed_ring2`) where every rater is linked
-but many rater pairs are never co-observed.
+### Where the planned designs come from, and why the estimand splits in two
 
-The kappa-native planned design is the balanced incomplete block idea in
-Abraira and Perez de Vargas [@AbrairaPerezDeVargas1999KappaIncomplete]:
-`designed_bib3` assigns three raters per subject, and with six raters uses ten
-blocks in which every rater pair appears exactly twice. The form and anchor
-mechanisms riff on the three-form and anchor-rater designs discussed for
-planned incomplete reliability data [@Graham2006PlannedMissingness;
-@tenHoveJorgensenVanDerArk2025ICC]. `designed_forms4` cycles four-rater
-subsets corresponding to two of three rater-form groups; `designed_anchor3`
-keeps rater 1 on every subject and rotates two additional raters; and
-`designed_two_phase` adds periodic fully rated calibration subjects to the
-anchor design. These are planned and ignorable by construction, unlike the
-accidental MCAR/MAR mechanisms in the same grid. Schouten's fixed-versus-varying
-observer distinction [@Schouten1986NominalAgreement] and the modern deletion
-comparisons by De Raadt et al. and Warrens et al. motivate keeping listwise
-deletion and accidental missingness in the same study
-[@DeRaadt2019KappaMissing; @Warrens2025WeightedKappaMissing].
+The planned rater-subset designs are taken from the ICC planned-incomplete-data
+literature [@vanDerArkJorgensenTenHove2023Planned;
+@tenHoveJorgensenVanDerArk2025ICC; @Fanshawe2008AgreementMissing;
+@AbrairaPerezDeVargas1999KappaIncomplete]. The key point for this study is *how*
+that literature gets identifiability from sparse data. ten Hove, Jorgensen and
+van der Ark [-@tenHoveJorgensenVanDerArk2025ICC] estimate interrater reliability
+as an **intraclass correlation** through a **structured** model --- a
+random-effects / variance-components ANOVA model, or equivalently a one-factor
+SEM --- in which raters are **exchangeable and interchangeable** ($y_{sr} = \mu +
+\mu_s + \mu_r + \mu_{sr}$, with the ICC a ratio of variance components). That
+structural assumption is exactly what lets them use partially crossed, even
+disconnected, designs: the shared subject and rater variance components are
+pooled across *all* observed subject--rater combinations, so rater identity is
+never needed and the co-observation graph may be sparse. They flag the boundary
+themselves --- the common-factor variant has convergence trouble "when there is
+little-to-no overlap among raters... minimal information about shared variance."
+
+`misskappa` takes the opposite stance: its weighted kappa is **distribution-free
+and fixed-rater** (no variance-components structure, rater identity retained), so
+it cannot borrow strength the way an ICC model does. Consequently the *same*
+planned designs split into two identifiability regimes:
+
+- **Fixed-rater kappa (Conger / Cohen).** Each disagreement term is a functional
+  of a rater *pair's* bivariate law, so the coefficient is identified only if the
+  rater co-observation graph is **complete** (every pair co-observed at least
+  once). Mere connectivity does not suffice --- the structured-design connectivity
+  that rescues an ICC does not rescue a saturated kappa.
+- **Exchangeable Fleiss (`kappa_counts`).** Discarding rater identity collapses
+  the pairwise terms to a pooled within-subject quantity, and identifiability
+  relaxes to **each subject contributing $\ge 2$ ratings**; the graph may be
+  disconnected. This is the categorical analogue of ten Hove et al.'s one-way /
+  exchangeable ICC, and it is the *only* target estimable on the sparse designs.
+
+This study therefore carries **two estimand tracks**. The fixed-rater estimators
+(IPW, Cat-FIML, pairwise, NT-FIML, listwise) target Conger/Fleiss and are valid
+on the complete-graph mechanisms; the exchangeable `kappa_counts` track
+(`Fleiss-counts`, coefficient `Fleiss_exch`) runs on *every* mechanism, including
+the sparse designs. On the three sparse designs the fixed-rater cells double as an
+**identifiability demonstration**: the co-observation guard fires and those cells
+are recorded as failures, confirming empirically that distribution-free
+fixed-rater kappa cannot use what the structured ICC can.
+
+The seven planned designs map onto the two regimes as follows:
+
+| Planned design | Co-observation graph | Fixed-rater track | Exchangeable track |
+|---|---|---|---|
+| `designed_bib3` (BIB, 3/subject) | complete (every pair $\times 2$) | yes | yes |
+| `designed_anchor3` (anchor + 2 rotating) | complete | yes | yes |
+| `designed_two_phase` (anchor + calibration) | complete | yes | yes |
+| `designed_forms4` (rater-form subsets) | complete | yes | yes |
+| `designed_random2` (random pair) | sparse, often incomplete | guard fires | yes |
+| `designed_ring2` (adjacent pairs) | connected but pair-incomplete | guard fires | yes |
+| `designed_block2` (disjoint teams) | disconnected | guard fires | yes |
+
+The complete-graph BIB idea is Abraira and Perez de Vargas
+[-@AbrairaPerezDeVargas1999KappaIncomplete] (`designed_bib3`: three raters per
+subject; with six raters, ten blocks in which every rater pair appears twice).
+The form and anchor mechanisms riff on the three-form and anchor-rater designs
+for planned incomplete reliability data [@Graham2006PlannedMissingness;
+@tenHoveJorgensenVanDerArk2025ICC]; `designed_ring2` follows Fanshawe et al.'s
+breast-cancer grading application [@Fanshawe2008AgreementMissing], where the same
+graph-connectivity issue first becomes visible. These planned mechanisms are
+ignorable by construction, unlike the accidental MCAR/MAR mechanisms in the same
+grid. Schouten's fixed-versus-varying observer distinction
+[@Schouten1986NominalAgreement] and the modern deletion comparisons by De Raadt
+et al. and Warrens et al. motivate keeping listwise deletion and accidental
+missingness in the same study [@DeRaadt2019KappaMissing;
+@Warrens2025WeightedKappaMissing].
 
 ## Run
 
@@ -194,6 +239,37 @@ quad_tab <- data.frame(
   check.names = FALSE
 )
 knitr::kable(quad_tab, align = "lllrrrrrrr")
+```
+
+### Fixed-rater identifiability on sparse designs
+
+The fixed-rater estimators above should show near-total `Failures` on the
+disconnected / pair-incomplete designs (`designed_random2`, `designed_block2`,
+`designed_ring2`): the co-observation guard fires because Conger/Fleiss are not
+identified there. The exchangeable `Fleiss-counts` track below should instead
+produce valid estimates on those same designs.
+
+```{r exch-smoke}
+exch <- subset(summary, coefficient == "Fleiss_exch" & interval == "wald_t")
+if (nrow(exch)) {
+  exch <- exch[order(exch$dgp, exch$mechanism, exch$method_label, exch$weight_label), ]
+  exch_tab <- data.frame(
+    DGP = exch$dgp,
+    Mechanism = exch$mechanism,
+    Method = exch$method_label,
+    Weight = exch$weight_label,
+    Valid = exch$n_valid,
+    Failures = exch$failures,
+    Bias = fmt_signed(exch$bias, 3),
+    RMSE = fmt(exch$rmse, 3),
+    `Mean SE` = fmt(exch$mean_se, 3),
+    `Fit ms` = fmt(exch$median_elapsed_ms, 0),
+    check.names = FALSE
+  )
+  knitr::kable(exch_tab, align = "llllrrrrrr")
+} else {
+  cat("No exchangeable Fleiss-counts rows in this run.\n")
+}
 ```
 
 ## Interval Check
