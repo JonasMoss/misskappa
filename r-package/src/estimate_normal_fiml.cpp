@@ -40,6 +40,9 @@ struct GradientResult {
   RealMat gradient;  // K x q, q = p + vech_size(p).
 };
 
+using PatternPtrList = std::vector<const Pattern*>;
+using ScorePatternIndex = std::vector<PatternPtrList>;
+
 int vech_size(int p) {
   return p * (p + 1) / 2;
 }
@@ -310,14 +313,35 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
   return out;
 }
 
+// Each observed-pattern marginal depends only on parameters for variables
+// observed in that pattern, so finite-difference columns can skip the rest.
+ScorePatternIndex build_score_pattern_index(
+    const std::vector<Pattern>& patterns, int p,
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos) {
+  ScorePatternIndex out(static_cast<std::size_t>(p + vech_size(p)));
+  for (const Pattern& pat : patterns) {
+    const int no = static_cast<int>(pat.observed.size());
+    for (int a = 0; a < no; ++a) {
+      const int ja = pat.observed[static_cast<std::size_t>(a)];
+      out[static_cast<std::size_t>(ja)].push_back(&pat);
+      for (int b = 0; b <= a; ++b) {
+        const int jb = pat.observed[static_cast<std::size_t>(b)];
+        out[static_cast<std::size_t>(p + vech_pos(ja, jb))].push_back(&pat);
+      }
+    }
+  }
+  return out;
+}
+
 Result<RealVec> score_totals(
-    const RealVec& mu, const RealMat& sigma, const std::vector<Pattern>& patterns,
+    const RealVec& mu, const RealMat& sigma, const PatternPtrList& patterns,
     const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos) {
   const int p = static_cast<int>(mu.size());
   const int q = p + vech_size(p);
   RealVec totals = RealVec::Zero(q);
 
-  for (const Pattern& pat : patterns) {
+  for (const Pattern* pat_ptr : patterns) {
+    const Pattern& pat = *pat_ptr;
     const int ng = static_cast<int>(pat.rows.size());
     const int no = static_cast<int>(pat.observed.size());
     auto soo_inv = inverse_matrix(gather_square(sigma, pat.observed));
@@ -380,7 +404,7 @@ Result<RealMat> score_matrix(
 }
 
 Result<RealMat> observed_information(
-    const RealVec& theta, const std::vector<Pattern>& patterns,
+    const RealVec& theta, const ScorePatternIndex& score_patterns,
     const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos,
     int n, int p, double h) {
   if (!(h > 0.0) || !std::isfinite(h)) return misskappa::unexpected(Error::invalid_argument);
@@ -391,9 +415,13 @@ Result<RealMat> observed_information(
     RealVec tm = theta;
     tp(k) += h;
     tm(k) -= h;
-    auto gp = score_totals(tp.head(p), unpack_sigma(tp, p), patterns, vech_pos);
+    auto gp = score_totals(
+        tp.head(p), unpack_sigma(tp, p),
+        score_patterns[static_cast<std::size_t>(k)], vech_pos);
     if (!gp) return misskappa::unexpected(gp.error());
-    auto gm = score_totals(tm.head(p), unpack_sigma(tm, p), patterns, vech_pos);
+    auto gm = score_totals(
+        tm.head(p), unpack_sigma(tm, p),
+        score_patterns[static_cast<std::size_t>(k)], vech_pos);
     if (!gm) return misskappa::unexpected(gm.error());
     H.col(k) = -((*gp) - (*gm)) / (2.0 * h * static_cast<double>(n));
   }
@@ -412,6 +440,8 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   const int pstar = vech_size(p);
   const int q = p + pstar;
   const auto vech_pos = vech_positions(p);
+  const ScorePatternIndex score_patterns =
+      build_score_pattern_index(em->patterns, p, vech_pos);
 
   GradientResult grad = gradient_fn(em->mu, em->sigma);
   if (grad.gradient.cols() != q || grad.gradient.rows() != grad.estimates.size()) {
@@ -426,7 +456,7 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   theta.tail(pstar) = pack_lower(em->sigma);
   auto scores = score_matrix(em->mu, em->sigma, em->x, em->patterns, vech_pos);
   if (!scores) return misskappa::unexpected(scores.error());
-  auto H = observed_information(theta, em->patterns, vech_pos, n, p, opts.fd_h);
+  auto H = observed_information(theta, score_patterns, vech_pos, n, p, opts.fd_h);
   if (!H) return misskappa::unexpected(H.error());
   auto solved = solve_matrix(*H, grad.gradient.transpose());
   if (!solved) return misskappa::unexpected(solved.error());
