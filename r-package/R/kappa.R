@@ -50,7 +50,8 @@
       "The coefficient is still identified, but the point estimate depends ",
       "on which likelihood maximizer the EM selected, and the SE uses a ",
       "rank-truncated pseudo-inverse. Pass em_options = list(flatten = 0.1) ",
-      "to select a unique interior posterior mode."), mx), call. = FALSE)
+      "to select a unique interior posterior mode (point estimate essentially ",
+      "unchanged; standard errors become conservative)."), mx), call. = FALSE)
   }
   invisible(NULL)
 }
@@ -118,7 +119,12 @@
 #'   table; any positive value makes the fitted table the unique interior
 #'   posterior mode when the saturated likelihood is flat, at the cost of
 #'   shrinking it toward uniform with weight `flatten / (n + flatten)`;
-#'   `0`, the default, is strict ML). Pass any subset.
+#'   `0`, the default, is strict ML). Flattening is a uniqueness device,
+#'   not an inference upgrade: it leaves the point estimate essentially
+#'   unchanged but makes the reported standard errors conservative
+#'   (roughly 50\% too wide in calibration), so leave it at `0` unless a
+#'   unique reproducible fit matters more than SE sharpness. Pass any
+#'   subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix. Methods: `print`,
@@ -400,7 +406,10 @@ estimate_kappa_fiml_multi <- function(x,
 #'   pseudo-mass spread over the complete pattern table; any positive value
 #'   selects the unique interior posterior mode when the saturated likelihood
 #'   is flat, shrinking the fitted table toward uniform with weight
-#'   `flatten / (n + flatten)`; `0`, the default, is strict ML). Pass any
+#'   `flatten / (n + flatten)`; `0`, the default, is strict ML). Flattening
+#'   is a uniqueness device, not an inference upgrade: it leaves the point
+#'   estimate essentially unchanged but makes the reported standard errors
+#'   conservative (roughly 50\% too wide in calibration). Pass any
 #'   subset.
 #' @param ... Mode-specific extras: `feature_weights` and `loss` (e.g.
 #'   `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the

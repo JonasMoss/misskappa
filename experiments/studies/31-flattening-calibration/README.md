@@ -35,13 +35,20 @@ co-observed), bias, SD, RMSE, SE/SD, 95% Wald coverage, mean and p90 of the
    strict ML: median 1.000–1.001, max 1.005 across all 18 cells. Bias shift
    at n = 20 is ≤ 0.003 for c = 0.1. At c = 1 the attenuation becomes
    visible (bias shift up to −0.023 at n = 20, lc3x3; RMSE up to +2.9%) —
-   matching the w·κ̂ = c/(n+c)·κ̂ prediction. **Recommend c = 0.1**; avoid
-   c ≥ 0.5 as a default.
+   matching the w·κ̂ = c/(n+c)·κ̂ prediction. **Recommend c = 0.1 when
+   flattening is wanted**; avoid c ≥ 0.5. (Final package decision: strict
+   ML stays the default *and* the inference recommendation — flattening is
+   a uniqueness device with conservative SEs; see study 32 and note §7b.)
 2. **Failures are now design-guard only.** With the face-tolerance stopping
    rule (see below), flatten > 0 has zero `not_converged` failures; the only
-   errors are genuine "pair never co-observed" design failures (max 6% at
-   n = 20, lc4x4 pairs). Strict ML (c = 0) retains a small residual of its
-   own slow-EM non-convergences.
+   errors are genuine "pair never co-observed" design failures (max ~16% at
+   n = 20, lc4x4/lc5x4 pairs; ≤ 0.5% at n = 40). Strict ML (c = 0) retains
+   a small residual of its own slow-EM non-convergences (~2–3pp on top, so
+   ~18% worst-cell). *Correction 2026-06-10 (found by study 32): the
+   original summary's `fail_rate` averaged over rows, underweighting failed
+   fits ~3× (reported 6.8% was really 17.9%); `summarize.R` fixed and
+   `results/calibration-summary.csv` regenerated. Per-coefficient stats
+   were always computed on successful fits and are unaffected.*
 3. **Flattening inflates the SE (conservative).** se/sd jumps from ~0.96
    (strict) to ~1.47 (any c > 0); coverage rises from median 0.88 to 0.97.
    Mechanism (verified on the Louis spectrum): flattening retains the full

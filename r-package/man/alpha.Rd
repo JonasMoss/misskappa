@@ -30,7 +30,12 @@ eigenvalue cutoff used when inverting Louis' observed information), and
 table; any positive value makes the fitted table the unique interior
 posterior mode when the saturated likelihood is flat, at the cost of
 shrinking it toward uniform with weight `flatten / (n + flatten)`;
-`0`, the default, is strict ML). Pass any subset.}
+`0`, the default, is strict ML). Flattening is a uniqueness device,
+not an inference upgrade: it leaves the point estimate essentially
+unchanged but makes the reported standard errors conservative
+(roughly 50\% too wide in calibration), so leave it at `0` unless a
+unique reproducible fit matters more than SE sharpness. Pass any
+subset.}
 }
 \value{
 An object of class `misskappa_estimate` carrying one coefficient
