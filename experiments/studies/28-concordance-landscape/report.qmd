@@ -1,0 +1,530 @@
+---
+title: "Concordance coefficients in software and the literature: where misskappa sits"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+read_results <- function(f) {
+  p <- file.path("results", f)
+  if (!file.exists(p))
+    stop("Missing ", p, ". Run: Rscript run_experiment.R", call. = FALSE)
+  read.csv(p, check.names = FALSE, stringsAsFactors = FALSE)
+}
+equivalence <- read_results("equivalence.csv")
+bias        <- read_results("bias_correction.csv")
+bias_meth   <- read_results("bias_methods.csv")
+repeated    <- read_results("repeated.csv")
+delta_dial  <- read_results("delta_dial.csv")
+identity    <- read_results("repeated_identity.csv")
+categorical <- read_results("categorical.csv")
+vfork       <- read_results("vanbelle_fork.csv")
+vhomog      <- read_results("vanbelle_homog.csv")
+inventory   <- read_results("inventory.csv")
+meta        <- read_results("metadata.csv")
+mv  <- function(k) meta$value[meta$key == k]
+fmt <- function(x, d = 3) formatC(as.numeric(x), digits = d, format = "f")
+sci <- function(x, d = 1) formatC(as.numeric(x), digits = d, format = "e")
+```
+
+## Question
+
+`misskappa` is a missing-data agreement package: it estimates the
+Cohen / Conger / Fleiss / Brennan--Prediger kappa family and coefficient
+alpha under MCAR (inverse-probability weighting) and MAR (FIML), with
+influence-function standard errors and Wald equality tests. It is *not*
+advertised as a concordance-correlation-coefficient (CCC) tool. Yet its
+quadratically weighted Conger coefficient **is** Lin's CCC for two raters
+on continuous data (van Oest & Moss 2026), and its worked dataset --- the
+Vanbelle (2019) CRACKLES study --- is exactly the *repeated-measurement*
+agreement problem the biostatistics CCC literature was built for.
+
+So: where does `misskappa` sit in the concordance-coefficient software and
+literature landscape? Which packages own the territory it does not, how do
+the CCC people handle repeated measurement, and what is the "unbiased CCC"
+that neither `misskappa` nor the plain Lin estimator computes?
+
+## Short answer
+
+`misskappa` and the CCC world are **complementary, not competing**. The CCC
+tradition (Lin 1989; King & Chinchilli 2001; Carrasco & Jover 2003) is a
+*continuous, complete-data, mixed-model / U-statistic* enterprise (`cccrm`,
+`SimplyAgree`). `misskappa` owns the orthogonal axis it was built for ---
+**missing data** (IPW, FIML) and **categorical / vector-valued agreement** ---
+but the overlap is larger than it looks: its quadratic Conger kappa reproduces
+Lin's CCC to machine precision (confirmed against `DescTools`, `cccrm::cccUst`,
+and the moment plug-in at `r fmt(equivalence$ccc[1], 6)`), and --- the new finding
+in this report --- its **vector path reproduces the King--Chinchilli--Carrasco
+repeated-measures U-statistic CCC exactly** (its `Dmat` is misskappa's
+component-weight matrix $W$). So the two are the *same estimator* across the
+continuous-agreement range; what the CCC packages still own alone is the
+**mixed-model / longitudinal** route (`ccc_vc`, time trends, covariates), and
+what `misskappa` owns alone is missing data and influence-function inference.
+
+The "unbiased CCC" question has a sharper answer than the first draft of this
+report gave. Carrasco's variance-components estimator corrects one thing --- the
+squared mean-difference term in the denominator --- and that correction does
+**almost nothing** (it moves the `bpres` CCC by $`r sci(bias$gap_vc[1])`$, and is
+sub-percent for any usable $n$). More importantly, **a denominator patch is not a
+proper bias correction at all**: it removes only
+$`r fmt(mean(bias_meth$pct_removed_loc_patch), 0)`\%$ of the moment estimator's
+actual bias. The genuine $O(1/n)$ bias of a CCC --- a *ratio* of moments --- is
+the nonlinearity bias $\mathbb E[\hat N/\hat D]\neq \mathbb E[\hat N]/\mathbb E[\hat D]$,
+which a proper second-order correction (the second-order influence function /
+von Mises expansion, or equivalently a jackknife) removes:
+$`r fmt(mean(bias_meth$pct_removed_jackknife), 0)`\%$ of the bias, versus the
+denominator patch's sliver. Since `misskappa` already exposes per-subject
+(first-order) influence functions, the principled addition is that second-order
+correction, not a denominator tweak --- and even it only matters at small $n$.
+
+## The software landscape
+
+```{r inventory}
+inv <- inventory
+names(inv) <- c("package", "lang", "computes", "repeated measures",
+                "missing data", "inference", "key reference")
+knitr::kable(inv[, c("package", "lang", "computes", "repeated measures",
+                     "missing data", "key reference")],
+  caption = "Agreement / concordance software. CCC-and-continuous first, categorical next, misskappa last.")
+```
+
+The table splits cleanly. **Continuous concordance** is dominated by
+`cccrm` (Carrasco's package: variance-components `ccc_vc`, U-statistic
+`cccUst`, longitudinal `ccclon`) and `SimplyAgree` (Caldwell's modern
+agreement toolkit, popular in sports and clinical science), with `epiR`,
+`DescTools`, and `pingouin`/Stata/SAS offering the plain paired Lin CCC.
+**Method-comparison** lives in `MethComp` (Carstensen --- Deming regression,
+limits of agreement) and `blandr`. **Categorical agreement** is `irr`,
+`irrCAC` (Gwet's chance-corrected coefficients), `vcd`, and `psych`, with
+`multiagree` (Vanbelle) the one tool that handles **multilevel / clustered**
+multirater kappa --- and the source of our CRACKLES data. Across all of them,
+**none estimates agreement under missing data with a principled MCAR/MAR
+model**; that column is `misskappa`'s alone. Conversely, none of
+`misskappa`'s estimators target longitudinal CCC.
+
+## The CCC $\leftrightarrow$ misskappa bridge
+
+Lin's concordance correlation coefficient for two methods $X,Y$ is
+$$
+\rho_c \;=\; \frac{2\,\sigma_{xy}}{\sigma_x^2+\sigma_y^2+(\mu_x-\mu_y)^2},
+$$
+the Pearson correlation shrunk by a bias-correction factor for location and
+scale shift. The quadratically weighted two-rater Conger coefficient is the
+same ratio of disagreement to chance-disagreement, so the two coincide
+(van Oest & Moss 2026). The benchmark confirms it: on the systolic
+blood-pressure data (`cccrm::bpres`, first replicate, $n=`r equivalence$n[1]`$),
+
+```{r equiv}
+e <- equivalence[equivalence$dataset == equivalence$dataset[1], ]
+disp <- data.frame(
+  implementation = e$implementation,
+  CCC            = fmt(e$ccc, 7),
+  note           = e$detail,
+  check.names = FALSE)
+knitr::kable(disp, align = "llr",
+  caption = sprintf("Lin's CCC on bpres (n = %d): four implementations agree; ccc_vc is the bias-corrected outlier.", e$n[1]))
+```
+
+The first four rows are **identical to seven decimals**
+(`r fmt(e$ccc[1], 7)`): `misskappa`'s quadratic Conger kappa, the hand-coded
+moment plug-in, `DescTools::CCC`, and `cccrm`'s U-statistic `cccUst` all
+compute the same Lin coefficient. The fifth, Carrasco's variance-components
+`ccc_vc`, sits slightly higher (`r fmt(e$ccc[e$implementation == "cccrm::ccc_vc (variance components)"], 7)`)
+--- the bias correction discussed below. The equivalence is not an artefact of
+this dataset: it also holds on `irr::anxiety`, where the two raters happen to
+share a mean so the location term vanishes entirely.
+
+## How the CCC literature handles repeated measurement
+
+The interesting question is the one the Vanbelle data poses: what happens
+when each subject is measured *more than once* per method --- replicates,
+time points, or clustered sites? The literature offers three paradigms,
+and the benchmark runs all three on the full `bpres` data (two devices,
+two replicates per subject):
+
+```{r repeated}
+rp <- repeated
+disp <- data.frame(
+  implementation = rp$implementation,
+  paradigm       = rp$paradigm,
+  CCC            = ifelse(is.na(rp$ccc), "--", fmt(rp$ccc, 4)),
+  SE             = ifelse(is.na(rp$se), "--", fmt(rp$se, 4)),
+  `95% CI`       = ifelse(is.na(rp$lcl), "--",
+                          sprintf("(%s, %s)", fmt(rp$lcl, 3), fmt(rp$ucl, 3))),
+  check.names = FALSE)
+knitr::kable(disp, align = "lllrl",
+  caption = "Repeated-measures CCC on bpres (2 methods x 2 replicates).")
+```
+
+1. **Variance components / linear mixed model** (Carrasco & Jover 2003;
+   `cccrm::ccc_vc`). Fit a mixed model with subject, method, and (optionally)
+   time random/fixed effects by REML, then form the CCC as a ratio of
+   variance components --- structurally an intraclass-correlation argument.
+   This is the route that generalizes to longitudinal data, covariates, and
+   non-Gaussian outcomes (Carrasco 2010 extends it to overdispersed counts).
+   Here it gives `r fmt(rp$ccc[rp$implementation == "cccrm::ccc_vc"], 4)`.
+
+2. **U-statistics** (King & Chinchilli 2001; King, Chinchilli & Carrasco
+   2007; `cccrm::cccUst`, and `SimplyAgree`). Build the CCC from
+   $U$-statistics of pairwise within- and between-subject squared
+   differences, time-weighting the replicate structure. It is
+   distribution-free; here `r fmt(rp$ccc[rp$implementation == "cccrm::cccUst"], 4)`
+   (`cccrm`) and `r fmt(rp$ccc[grepl("SimplyAgree", rp$implementation)], 4)`
+   (`SimplyAgree`).
+
+3. **GEE / modelling** (Barnhart & Williamson 2001; Barnhart, Haber & Song
+   2002 for the *overall* CCC across many observers; King & Chinchilli 2001
+   for categorical data). Estimating equations on transformed agreement
+   contrasts, useful when covariate adjustment is the point.
+
+`misskappa` has no mixed-model CCC --- but it is **not** absent from the table.
+Its vector path handles the replicate structure directly: treat the two methods
+as raters and the two replicates as components of a rating vector. That
+reproduces the U-statistic value **exactly**
+(`r fmt(rp$ccc[rp$implementation == "misskappa (vector path)"], 6)` vs `cccUst`'s
+`r fmt(rp$ccc[rp$implementation == "cccrm::cccUst"], 6)`), which is not a
+coincidence --- it is the subject of the next section.
+
+## The U-statistic estimator *is* misskappa's vector path
+
+The U-statistic route (King--Chinchilli--Carrasco; `cccUst`) is the closest prior
+art to misskappa's quadratic / vector machinery, and the relationship is exact,
+not analogical. Two facts pin it down.
+
+**One estimator dials from kappa to CCC.** `cccUst` carries a `delta` argument:
+the power of the per-component distance. `delta = 0` gives a 0/1 distance,
+`delta = 1` a squared distance, so a single estimator spans the categorical and
+continuous ends of agreement:
+
+```{r delta-dial}
+dd <- delta_dial
+disp <- data.frame(
+  `delta`        = dd$delta,
+  `distance`     = dd$distance,
+  `target`       = dd$target,
+  `cccUst`       = fmt(dd$cccUst, 5),
+  `misskappa`    = fmt(dd$misskappa, 5),
+  `cross-check`  = sprintf("%s (%s)", fmt(dd$cross_check, 5), dd$cross_name),
+  check.names = FALSE)
+knitr::kable(disp, align = "llllll",
+  caption = "cccUst's delta dial: one estimator from unweighted kappa (delta=0) to Lin's CCC (delta=1), matched by misskappa and the standard packages at both ends.")
+```
+
+At both ends it matches to the shown digits: `delta = 0` reproduces the
+unweighted Cohen kappa, `delta = 1` reproduces Lin's CCC = the quadratically
+weighted kappa. This *is* the kappa = CCC identity (van Oest & Moss 2026), built
+into software from the CCC side ever since King & Chinchilli (2001).
+
+**The repeated-measures kernel is the vector loss.** `cccUst` represents each
+subject as a profile over occasions and compares two profiles with a quadratic
+form $v^\top \mathbf D\, v$, $v = |X-Y|^{\delta}$, where $\mathbf D$ (the `Dmat`
+argument) weights the occasions; the coefficient is again $1 - \text{within} /
+\text{between}$, with the **subject** as the i.i.d. unit and the per-subject
+$U$-statistic projection serving as the influence function. Put $\mathbf D = W$
+and "occasion" = "vector component" and this is exactly misskappa's
+component-separable quadratic kappa:
+
+```{r identity}
+id <- identity
+disp <- data.frame(
+  weights            = id$weights,
+  `cccUst`           = fmt(id$cccUst, 6),
+  `misskappa vector` = ifelse(is.na(id$misskappa_vector), "--", fmt(id$misskappa_vector, 6)),
+  `difference`       = sci(id$diff, 1),
+  check.names = FALSE)
+knitr::kable(disp, align = "lrrr",
+  caption = "cccUst(Dmat) vs misskappa vector kappa (W = Dmat): identical on the diagonal, divergent off it.")
+```
+
+With **diagonal** weights the two are identical to machine precision
+($`r sci(id$diff[grepl("diagonal weights", id$weights)][1])`$) --- which is why
+misskappa's vector path reproduced `cccUst` on `bpres` exactly. They diverge only
+**off the diagonal**, by a real and principled amount
+($`r fmt(id$diff[grepl("off-diagonal", id$weights)][1], 3)`$ here): misskappa uses
+the signed quadratic form $(x-y)^\top W (x-y) = \lVert L(x-y)\rVert^2$ --- a genuine
+weighted-Euclidean (Mahalanobis) distance --- whereas `cccUst` uses absolute
+cross-terms $\sum_{st} D_{st}\,|x_s-y_s|\,|x_t-y_t|$, which is not induced by any
+metric on the rating space and discards the sign of joint errors. The two
+coincide exactly when $W$ is diagonal (signs are then irrelevant); off-diagonal,
+misskappa's is the correct generalization. Off-diagonal weights are essentially
+never used in the CCC literature, but they are meaningful here --- misskappa's
+CRACKLES analysis couples left/right of each thoracic site --- so this is the
+regime where the distinction bites.
+
+So misskappa's vector kappa and the King--Chinchilli--Carrasco repeated-measures
+CCC are the **same construction from opposite ends**. The honest positioning:
+KCC own the unified, distribution-free, repeated-measures CCC *estimator*;
+misskappa adds the missing-data layer (IPW / FIML --- `cccUst` is listwise only),
+influence-function inference with Wald / joint equality tests, the kappa = CCC
+*identity* (they had it as an estimator, not a theorem), and the extension to
+more than two raters and to categorical data.
+
+## The "unbiased CCC" question
+
+`misskappa` (like the plain Lin estimator) computes the moment plug-in
+$\hat\rho_c=\hat N/\hat D$ with $\hat N=2s_{xy}$ and
+$\hat D=s_x^2+s_y^2+(\bar x-\bar y)^2$, which is biased in finite samples. Two
+things are often conflated here, and neither is what a real correction needs.
+
+**It is not the $/n$ vs $/(n-1)$ choice.** In the ratio the $1/n$ factor cancels
+between the numerator and the *variance* terms of the denominator, so switching
+to unbiased second moments changes $\hat\rho_c$ only through the unscaled
+location term --- a sub-$10^{-4}$ effect.
+
+**It is not the location-term "correction" either.** One can note that
+$\mathbb E[(\bar x-\bar y)^2]=(\mu_x-\mu_y)^2+\operatorname{Var}(\bar x-\bar y)$
+and subtract $\operatorname{Var}(\bar x-\bar y)=(\sigma_x^2+\sigma_y^2-2\sigma_{xy})/n$
+from the denominator --- which is roughly what Carrasco & Jover's
+variance-components estimator does implicitly (a truncated between-method
+variance component). But this patches **one term of one moment** and ignores the
+dominant bias. In fact the $1/n$ biases of $\hat N$ and $\hat D$ are *both*
+$-2\sigma_{xy}/n$ and largely cancel in the ratio; the leading $O(1/n)$ bias is
+the **ratio nonlinearity** $\mathbb E[\hat N/\hat D]\neq\mathbb E[\hat N]/\mathbb E[\hat D]$
+--- the Jacobian-curvature term that the delta method drops at first order. The
+location patch does not touch it.
+
+The benchmark makes the gap concrete. Against a known true CCC, we compare the
+moment estimator, the location patch, and a **jackknife** --- which is a proper
+nonparametric estimator of the $O(1/n)$ bias (the same quantity the second-order
+influence function / von Mises expansion targets):
+
+```{r bias-methods}
+bm <- bias_meth
+disp <- data.frame(
+  n                 = bm$n,
+  `bias_sd`         = fmt(bm$bias_sd, 1),
+  `true CCC`        = fmt(bm$true_ccc, 4),
+  `moment bias`     = fmt(bm$bias_moment, 4),
+  `loc-patch bias`  = fmt(bm$bias_loc_patch, 4),
+  `jackknife bias`  = fmt(bm$bias_jackknife, 4),
+  `% removed: patch`     = sprintf("%s%%", fmt(bm$pct_removed_loc_patch, 0)),
+  `% removed: jackknife` = sprintf("%s%%", fmt(bm$pct_removed_jackknife, 0)),
+  check.names = FALSE)
+knitr::kable(disp, align = "lrrrrrrr",
+  caption = "Proper bias correction vs the denominator patch (rho = 0.5, 3000 reps/cell). The patch removes a sliver; the jackknife removes nearly all of it.")
+```
+
+The denominator patch removes only
+$`r fmt(min(bm$pct_removed_loc_patch), 0)`$--$`r fmt(max(bm$pct_removed_loc_patch), 0)`\%$
+of the moment bias; the jackknife removes
+$`r fmt(min(bm$pct_removed_jackknife), 0)`$--$`r fmt(max(bm$pct_removed_jackknife), 0)`\%$
+(values near or above 100% are Monte-Carlo scatter on a residual bias already at
+the noise floor). So the resolution of the user's question is two-layered:
+Carrasco's variance-components route **does basically nothing** to the point
+estimate on non-repeated data --- $`r sci(bias$gap_vc[1])`$ on `bpres`, and
+sub-percent for any usable $n$ (it earns its keep on *repeated* structure, not
+on bias) --- and the denominator correction it embodies is **not a proper bias
+correction** anyway. A genuine unbiased-CCC for `misskappa` would be a
+second-order influence-function (or jackknife / bootstrap) correction of the
+whole ratio functional. That is natural here precisely because every
+`misskappa` estimator already exposes its per-subject *first-order* influence
+functions --- the second-order term is the missing piece --- though, as the table
+shows, it only matters below $n\approx 30$.
+
+## Categorical and vector-valued agreement (CRACKLES)
+
+On the other side of `misskappa`'s range --- categorical and vector-valued
+data --- the comparators are `irr` and `irrCAC`, and here `misskappa`
+*reproduces* them and then *extends* past them. Using the four expert
+observers (`EXP1`--`EXP4`) on the CRACKLES data:
+
+```{r categorical}
+ca <- categorical
+ca$estimate <- ifelse(is.na(ca$estimate), "-- (no path)", fmt(ca$estimate, 6))
+knitr::kable(ca[, c("scope", "implementation", "coefficient", "estimate")],
+  align = "lllr",
+  caption = "Categorical validation and the vector-valued extension on CRACKLES (EXP group).")
+```
+
+At a single chest site (a scalar binary rating), `misskappa`'s Fleiss kappa
+matches `irr::kappam.fleiss` and `irrCAC::fleiss.kappa.raw` exactly
+(`r fmt(ca$estimate[ca$coefficient=="Fleiss" & ca$implementation=="misskappa (ipw, nominal)"][1], 4)`),
+and its Conger kappa matches `irrCAC::conger.kappa.raw`
+(`r fmt(as.numeric(ca$estimate[ca$coefficient=="Conger" & grepl("ipw", ca$implementation)][1]), 4)`)
+--- and the IPW and Cat-FIML estimators agree on the complete data, as they
+must. The pay-off is the last block: pooling all six sites into a
+**vector-valued** rating with a Hamming component loss gives a single
+six-site agreement coefficient (Conger
+`r fmt(as.numeric(ca$estimate[grepl("vector", ca$scope) & ca$coefficient=="Conger"][1]), 4)`,
+Fleiss
+`r fmt(as.numeric(ca$estimate[grepl("vector", ca$scope) & ca$coefficient=="Fleiss"][1]), 4)`)
+that **none** of `irr`, `irrCAC`, or `DescTools` can produce. This is
+`misskappa`'s own answer to "repeated measurement": treat the repeats as
+components of a vector, not as levels of a random effect.
+
+## Vanbelle's multilevel kappa vs the vector path
+
+CRACKLES has been analysed before --- by Vanbelle (2019), whose *multilevel
+multirater kappa* is the standard treatment of **sites within patients**. The two
+coefficients take opposite routes through the same repeated structure, and it is
+worth seeing exactly how they relate. Vanbelle **collapses** the six sites: she
+pools the site-level ratings and chance-corrects with the *pooled* marginals,
+under a within-cluster **homogeneity** assumption --- that every site of a patient
+shares the same classification probabilities --- yielding a scalar kappa with a
+patient-clustered SE. misskappa **keeps** the six sites as a vector and
+chance-corrects *each site with its own marginals*.
+
+On the real data they differ, and the difference is informative. The pooled
+coefficient reproduces Vanbelle's published Table 3 values to the decimal (a check
+that pooling *is* her point estimate); the vector coefficient runs systematically
+lower:
+
+```{r vanbelle-fork}
+vf <- vfork
+disp <- data.frame(
+  `observer group`      = vf$group,
+  `misskappa vector`    = fmt(vf$misskappa_vector, 3),
+  `Vanbelle pooled`     = fmt(vf$vanbelle_pooled, 3),
+  `Vanbelle (2019) Table 3` = fmt(vf$vanbelle_published, 2),
+  check.names = FALSE)
+knitr::kable(disp, align = "lrrr",
+  caption = "CRACKLES Conger kappa by observer group: misskappa's vector coefficient vs Vanbelle's pooled (multilevel) coefficient, which reproduces her published values.")
+```
+
+The gap is not noise --- it is exactly the **between-site covariance of the
+raters' marginals** in the chance term,
+$$
+P_e^{\text{misskappa}}-P_e^{\text{Vanbelle}}
+   = \sum_j \operatorname{Cov}_s\!\big(p_j(r_1,s),\,p_j(r_2,s)\big),
+$$
+which vanishes precisely when the sites are identically distributed. So the two
+coincide **iff** homogeneity holds, which a synthetic check confirms:
+
+```{r vanbelle-homog}
+vh <- vhomog
+disp <- data.frame(
+  scenario           = vh$scenario,
+  `misskappa vector` = fmt(vh$misskappa_vector, 4),
+  `Vanbelle pooled`  = fmt(vh$vanbelle_pooled, 4),
+  `difference`       = fmt(vh$diff, 4),
+  check.names = FALSE)
+knitr::kable(disp, align = "lrrr",
+  caption = "Homogeneity is the fork: identical site marginals -> the two agree; differing marginals -> they split.")
+```
+
+With identical site marginals the two agree (residual
+`r fmt(vhomog$diff[grepl("homogeneous", vhomog$scenario)][1], 4)` is Monte-Carlo
+noise); with differing marginals they split by
+`r fmt(abs(vhomog$diff[grepl("heterogeneous", vhomog$scenario)][1]), 3)`, the same
+kind of margin as the real data. On CRACKLES the sites are very different
+(anterior crackles are near-absent), so misskappa's per-site chance correction
+discounts the easy "no crackle anywhere" agreement that Vanbelle's pooled
+correction partly credits --- hence the lower, more conservative coefficient.
+Neither is wrong; they chance-correct at different *levels*, and homogeneity is
+the exact condition under which the level stops mattering. Vanbelle's own Table 2
+rejects that assumption at $p<0.0001$ (and she computes the pooled coefficient
+anyway, for sample-size reasons) --- so on this dataset the two coefficients are
+genuinely estimating different things.
+
+On the *inference* side the two agree more than the point estimates suggest:
+misskappa's vector SE already treats the patient as the i.i.d. unit (the rating
+vector *is* the patient's observation), so it clusters at the patient level by
+construction --- the same level Vanbelle's multilevel variance targets. The pooled
+stack above is used only to recover her point estimate; its naive
+one-row-per-site SE would understate the uncertainty, which is exactly the
+clustering problem her paper exists to fix.
+
+## Where this leaves misskappa
+
+* **Owns:** missing-data agreement (IPW under MCAR, FIML under MAR) for the
+  categorical kappa family and alpha; vector-valued / component-separable
+  agreement; a quadratic coefficient that *is* Lin's CCC for two continuous
+  raters --- and, via the vector path, the King--Chinchilli--Carrasco
+  **repeated-measures** U-statistic CCC (reproduced exactly) --- all with
+  influence-function SEs and Wald equality tests.
+* **Does not own (CCC world owns):** the *mixed-model / longitudinal* CCC route
+  (`cccrm::ccc_vc`: time trends, covariates, non-Gaussian outcomes); the
+  *overall* CCC across many observers (Barnhart 2002); method-comparison
+  tooling --- Bland--Altman, Deming (`MethComp`, `blandr`); multilevel clustered
+  kappa (`multiagree`).
+* **Could add (but low priority):** a proper second-order bias correction for
+  the `pairwise` quadratic / CCC estimator --- a second-order influence-function
+  (or jackknife / bootstrap) correction of the ratio functional, *not* the
+  denominator patch, which removes only a sliver of the bias. `misskappa`
+  already exposes first-order influence functions, so the machinery is half
+  built; but the effect is sub-percent above $n\approx 30$, so this is a
+  nicety, not a fix.
+
+## Caveats
+
+* The equivalence and bias results use complete continuous data; the point of
+  `misskappa` is the missing-data case, where the CCC packages (all
+  listwise-only) have no comparator. A genuine missing-data CCC benchmark
+  would require simulating MCAR/MAR amputation and has no external baseline ---
+  it belongs in the FIML/quadratic simulation experiments, not here.
+* `epiR::epi.ccc` (a fourth Lin implementation) could not be installed on this
+  box: `epiR` pulls `sf`/GDAL system libraries that are absent. `DescTools`,
+  `cccrm`, and the hand-coded plug-in already give three independent Lin
+  implementations, so the equivalence is not under-witnessed.
+* The repeated-measures CCCs from the three paradigms differ in the third
+  decimal (`r fmt(min(repeated$ccc, na.rm=TRUE), 3)`--`r fmt(max(repeated$ccc, na.rm=TRUE), 3)`);
+  this is expected (different estimands and small-sample behaviour), not an
+  error. `SimplyAgree::agree_reps` is formally deprecated in favour of
+  `agreement_limit` but still computes the K-C-C CCC.
+* `multiagree` is the right tool when the CRACKLES clustering (sites within
+  patients) is modelled as such; experiment 25 already reproduces Vanbelle's
+  weighted kappas exactly against it. Here we use the EXP subgroup
+  descriptively.
+* The bias results use a Gaussian DGP and the jackknife as the reference
+  "proper" corrector; deriving the second-order influence function of the
+  weighted multirater CCC in closed form (so a one-pass, no-resampling
+  correction with a consistent SE is available) is the actual work a future
+  "unbiased misskappa" would need.
+
+## Reproduce
+
+```bash
+cd experiments/studies/28-concordance-landscape
+Rscript run_experiment.R     # writes results/*.csv (needs cccrm, SimplyAgree,
+                             # DescTools, irrCAC, irr; comparators are guarded)
+quarto render report.qmd
+```
+
+Run with `misskappa` `r mv("misskappa")`, `cccrm` `r mv("cccrm")`,
+`SimplyAgree` `r mv("SimplyAgree")`, `DescTools` `r mv("DescTools")`,
+`irrCAC` `r mv("irrCAC")`, `irr` `r mv("irr")`, R `r mv("R_version")`.
+Reference PDFs and DOIs are collected in
+`dev/refs/concordance-refs.md`.
+
+## References
+
+Key concordance-coefficient literature (full DOIs in
+`dev/refs/concordance-refs.md`):
+
+* **Lin, L. I.-K. (1989).** A concordance correlation coefficient to evaluate
+  reproducibility. *Biometrics* 45(1), 255--268. The original CCC.
+* **Lin, L. I.-K. (2000).** A note on the concordance correlation coefficient.
+  *Biometrics* 56, 324--325. Corrects the variance formula.
+* **King, T. S., & Chinchilli, V. M. (2001).** A generalized concordance
+  correlation coefficient for continuous and categorical data. *Statistics in
+  Medicine* 20(14), 2131--2147.
+* **Carrasco, J. L., & Jover, L. (2003).** Estimating the generalized
+  concordance correlation coefficient through variance components.
+  *Biometrics* 59(4), 849--858. The variance-components route --- and the
+  bias-corrected denominator.
+* **King, T. S., Chinchilli, V. M., & Carrasco, J. L. (2007).** A repeated
+  measures concordance correlation coefficient. *Statistics in Medicine*
+  26(16), 3095--3113. The U-statistic repeated-measures CCC.
+* **Carrasco, J. L., et al. (2013).** Estimation of the concordance
+  correlation coefficient for repeated measures using SAS and R. *Computer
+  Methods and Programs in Biomedicine* 109(3), 293--304. The `cccrm` paper.
+* **Barnhart, H. X., Haber, M., & Song, J. (2002).** Overall concordance
+  correlation coefficient for evaluating agreement among multiple observers.
+  *Biometrics* 58(4), 1020--1027.
+* **Barnhart, H. X., Haber, M. J., & Lin, L. I. (2007).** An overview on
+  assessing agreement with continuous measurements. *J. Biopharm. Stat.*
+  17(4), 529--569. (Already in `dev/refs/`.)
+* **Caldwell, A. R. (2022).** SimplyAgree: an R package and jamovi module for
+  simplifying agreement and reliability analyses. *JOSS* 7(71), 4148.
+* **van Oest, R., & Moss, J. (2026).** Quadratically weighted agreement
+  coefficients: interpretations and connections. (Already in `dev/refs/`; the
+  source of the quadratic-kappa = CCC identity.)
+* **Vanbelle, S. (2017, 2019).** Dependent / multilevel multirater kappa.
+  *Biometrical Journal*; *Stat. Methods Med. Res.* (Already in `dev/refs/`;
+  source of the CRACKLES data.)

@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Concordance coefficients in software and the literature: where misskappa sits</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="report_files/libs/clipboard/clipboard.min.js"></script>
+<script src="report_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="report_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="report_files/libs/quarto-html/popper.min.js"></script>
+<script src="report_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="report_files/libs/quarto-html/anchor.min.js"></script>
+<link href="report_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="report_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="report_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="report_files/libs/bootstrap/bootstrap-dda2343e5b9c8970e1230fd64b2c125e.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#question" id="toc-question" class="nav-link active" data-scroll-target="#question">Question</a></li>
+  <li><a href="#short-answer" id="toc-short-answer" class="nav-link" data-scroll-target="#short-answer">Short answer</a></li>
+  <li><a href="#the-software-landscape" id="toc-the-software-landscape" class="nav-link" data-scroll-target="#the-software-landscape">The software landscape</a></li>
+  <li><a href="#the-ccc-leftrightarrow-misskappa-bridge" id="toc-the-ccc-leftrightarrow-misskappa-bridge" class="nav-link" data-scroll-target="#the-ccc-leftrightarrow-misskappa-bridge">The CCC <span class="math inline">\(\leftrightarrow\)</span> misskappa bridge</a></li>
+  <li><a href="#how-the-ccc-literature-handles-repeated-measurement" id="toc-how-the-ccc-literature-handles-repeated-measurement" class="nav-link" data-scroll-target="#how-the-ccc-literature-handles-repeated-measurement">How the CCC literature handles repeated measurement</a></li>
+  <li><a href="#the-u-statistic-estimator-is-misskappas-vector-path" id="toc-the-u-statistic-estimator-is-misskappas-vector-path" class="nav-link" data-scroll-target="#the-u-statistic-estimator-is-misskappas-vector-path">The U-statistic estimator <em>is</em> misskappa’s vector path</a></li>
+  <li><a href="#the-unbiased-ccc-question" id="toc-the-unbiased-ccc-question" class="nav-link" data-scroll-target="#the-unbiased-ccc-question">The “unbiased CCC” question</a></li>
+  <li><a href="#categorical-and-vector-valued-agreement-crackles" id="toc-categorical-and-vector-valued-agreement-crackles" class="nav-link" data-scroll-target="#categorical-and-vector-valued-agreement-crackles">Categorical and vector-valued agreement (CRACKLES)</a></li>
+  <li><a href="#vanbelles-multilevel-kappa-vs-the-vector-path" id="toc-vanbelles-multilevel-kappa-vs-the-vector-path" class="nav-link" data-scroll-target="#vanbelles-multilevel-kappa-vs-the-vector-path">Vanbelle’s multilevel kappa vs the vector path</a></li>
+  <li><a href="#where-this-leaves-misskappa" id="toc-where-this-leaves-misskappa" class="nav-link" data-scroll-target="#where-this-leaves-misskappa">Where this leaves misskappa</a></li>
+  <li><a href="#caveats" id="toc-caveats" class="nav-link" data-scroll-target="#caveats">Caveats</a></li>
+  <li><a href="#reproduce" id="toc-reproduce" class="nav-link" data-scroll-target="#reproduce">Reproduce</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Concordance coefficients in software and the literature: where misskappa sits</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="question" class="level2">
+<h2 class="anchored" data-anchor-id="question">Question</h2>
+<p><code>misskappa</code> is a missing-data agreement package: it estimates the Cohen / Conger / Fleiss / Brennan–Prediger kappa family and coefficient alpha under MCAR (inverse-probability weighting) and MAR (FIML), with influence-function standard errors and Wald equality tests. It is <em>not</em> advertised as a concordance-correlation-coefficient (CCC) tool. Yet its quadratically weighted Conger coefficient <strong>is</strong> Lin’s CCC for two raters on continuous data (van Oest &amp; Moss 2026), and its worked dataset — the Vanbelle (2019) CRACKLES study — is exactly the <em>repeated-measurement</em> agreement problem the biostatistics CCC literature was built for.</p>
+<p>So: where does <code>misskappa</code> sit in the concordance-coefficient software and literature landscape? Which packages own the territory it does not, how do the CCC people handle repeated measurement, and what is the “unbiased CCC” that neither <code>misskappa</code> nor the plain Lin estimator computes?</p>
+</section>
+<section id="short-answer" class="level2">
+<h2 class="anchored" data-anchor-id="short-answer">Short answer</h2>
+<p><code>misskappa</code> and the CCC world are <strong>complementary, not competing</strong>. The CCC tradition (Lin 1989; King &amp; Chinchilli 2001; Carrasco &amp; Jover 2003) is a <em>continuous, complete-data, mixed-model / U-statistic</em> enterprise (<code>cccrm</code>, <code>SimplyAgree</code>). <code>misskappa</code> owns the orthogonal axis it was built for — <strong>missing data</strong> (IPW, FIML) and <strong>categorical / vector-valued agreement</strong> — but the overlap is larger than it looks: its quadratic Conger kappa reproduces Lin’s CCC to machine precision (confirmed against <code>DescTools</code>, <code>cccrm::cccUst</code>, and the moment plug-in at 0.915173), and — the new finding in this report — its <strong>vector path reproduces the King–Chinchilli–Carrasco repeated-measures U-statistic CCC exactly</strong> (its <code>Dmat</code> is misskappa’s component-weight matrix <span class="math inline">\(W\)</span>). So the two are the <em>same estimator</em> across the continuous-agreement range; what the CCC packages still own alone is the <strong>mixed-model / longitudinal</strong> route (<code>ccc_vc</code>, time trends, covariates), and what <code>misskappa</code> owns alone is missing data and influence-function inference.</p>
+<p>The “unbiased CCC” question has a sharper answer than the first draft of this report gave. Carrasco’s variance-components estimator corrects one thing — the squared mean-difference term in the denominator — and that correction does <strong>almost nothing</strong> (it moves the <code>bpres</code> CCC by <span class="math inline">\(2.0e-04\)</span>, and is sub-percent for any usable <span class="math inline">\(n\)</span>). More importantly, <strong>a denominator patch is not a proper bias correction at all</strong>: it removes only <span class="math inline">\(21\%\)</span> of the moment estimator’s actual bias. The genuine <span class="math inline">\(O(1/n)\)</span> bias of a CCC — a <em>ratio</em> of moments — is the nonlinearity bias <span class="math inline">\(\mathbb E[\hat N/\hat D]\neq \mathbb E[\hat N]/\mathbb E[\hat D]\)</span>, which a proper second-order correction (the second-order influence function / von Mises expansion, or equivalently a jackknife) removes: <span class="math inline">\(96\%\)</span> of the bias, versus the denominator patch’s sliver. Since <code>misskappa</code> already exposes per-subject (first-order) influence functions, the principled addition is that second-order correction, not a denominator tweak — and even it only matters at small <span class="math inline">\(n\)</span>.</p>
+</section>
+<section id="the-software-landscape" class="level2">
+<h2 class="anchored" data-anchor-id="the-software-landscape">The software landscape</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Agreement / concordance software. CCC-and-continuous first, categorical next, misskappa last.</caption>
+<colgroup>
+<col style="width: 8%">
+<col style="width: 3%">
+<col style="width: 30%">
+<col style="width: 16%">
+<col style="width: 12%">
+<col style="width: 27%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">package</th>
+<th style="text-align: left;">lang</th>
+<th style="text-align: left;">computes</th>
+<th style="text-align: left;">repeated measures</th>
+<th style="text-align: left;">missing data</th>
+<th style="text-align: left;">key reference</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">cccrm</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">Lin CCC (generalized, weighted)</td>
+<td style="text-align: left;">yes (longitudinal + replicates)</td>
+<td style="text-align: left;">listwise only</td>
+<td style="text-align: left;">Carrasco &amp; Jover 2003; King-Chinchilli-Carrasco 2007</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SimplyAgree</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">Lin CCC + Bland-Altman LoA + reliability</td>
+<td style="text-align: left;">yes (nested/replicate)</td>
+<td style="text-align: left;">listwise only</td>
+<td style="text-align: left;">Caldwell 2022 (JOSS)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">epiR (epi.ccc)</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">Lin CCC (paired)</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">listwise only</td>
+<td style="text-align: left;">Lin 1989</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DescTools (CCC)</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">Lin CCC (paired)</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">na.rm only</td>
+<td style="text-align: left;">Lin 1989</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">agRee</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">agreement indices incl.&nbsp;CCC</td>
+<td style="text-align: left;">partial</td>
+<td style="text-align: left;">limited</td>
+<td style="text-align: left;">Feng et al.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MethComp</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">method comparison (Deming, LoA, ICC)</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">listwise only</td>
+<td style="text-align: left;">Carstensen et al.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">blandr</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">Bland-Altman limits of agreement</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">listwise only</td>
+<td style="text-align: left;">Datta 2017</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">multiagree</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">multilevel multirater weighted kappa</td>
+<td style="text-align: left;">yes (multilevel clustering)</td>
+<td style="text-align: left;">listwise/aligned</td>
+<td style="text-align: left;">Vanbelle 2017/2019</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">irr</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">kappa / ICC / agreement (categorical + ICC)</td>
+<td style="text-align: left;">via ICC only</td>
+<td style="text-align: left;">listwise only</td>
+<td style="text-align: left;">Gamer et al.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">irrCAC</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">chance-corrected agreement (AC1/AC2, Fleiss, alpha)</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">partial (weights)</td>
+<td style="text-align: left;">Gwet 2014</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">SAS %ccc / PROC</td>
+<td style="text-align: left;">SAS</td>
+<td style="text-align: left;">Lin CCC (VC + U-stat)</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">listwise</td>
+<td style="text-align: left;">Carrasco et al.&nbsp;2013</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Stata (concord)</td>
+<td style="text-align: left;">Stata</td>
+<td style="text-align: left;">Lin CCC (paired)</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">listwise</td>
+<td style="text-align: left;">Lin 1989</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">pingouin</td>
+<td style="text-align: left;">Python</td>
+<td style="text-align: left;">Lin CCC (paired)</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">listwise</td>
+<td style="text-align: left;">Lin 1989</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">misskappa</td>
+<td style="text-align: left;">R</td>
+<td style="text-align: left;">Conger/Fleiss/BP kappa + alpha; quadratic kappa == Lin CCC</td>
+<td style="text-align: left;">via vector path (= U-stat CCC)</td>
+<td style="text-align: left;">IPW (MCAR) + FIML (MAR)</td>
+<td style="text-align: left;">van Oest &amp; Moss 2026; Moss 2024</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The table splits cleanly. <strong>Continuous concordance</strong> is dominated by <code>cccrm</code> (Carrasco’s package: variance-components <code>ccc_vc</code>, U-statistic <code>cccUst</code>, longitudinal <code>ccclon</code>) and <code>SimplyAgree</code> (Caldwell’s modern agreement toolkit, popular in sports and clinical science), with <code>epiR</code>, <code>DescTools</code>, and <code>pingouin</code>/Stata/SAS offering the plain paired Lin CCC. <strong>Method-comparison</strong> lives in <code>MethComp</code> (Carstensen — Deming regression, limits of agreement) and <code>blandr</code>. <strong>Categorical agreement</strong> is <code>irr</code>, <code>irrCAC</code> (Gwet’s chance-corrected coefficients), <code>vcd</code>, and <code>psych</code>, with <code>multiagree</code> (Vanbelle) the one tool that handles <strong>multilevel / clustered</strong> multirater kappa — and the source of our CRACKLES data. Across all of them, <strong>none estimates agreement under missing data with a principled MCAR/MAR model</strong>; that column is <code>misskappa</code>’s alone. Conversely, none of <code>misskappa</code>’s estimators target longitudinal CCC.</p>
+</section>
+<section id="the-ccc-leftrightarrow-misskappa-bridge" class="level2">
+<h2 class="anchored" data-anchor-id="the-ccc-leftrightarrow-misskappa-bridge">The CCC <span class="math inline">\(\leftrightarrow\)</span> misskappa bridge</h2>
+<p>Lin’s concordance correlation coefficient for two methods <span class="math inline">\(X,Y\)</span> is <span class="math display">\[
+\rho_c \;=\; \frac{2\,\sigma_{xy}}{\sigma_x^2+\sigma_y^2+(\mu_x-\mu_y)^2},
+\]</span> the Pearson correlation shrunk by a bias-correction factor for location and scale shift. The quadratically weighted two-rater Conger coefficient is the same ratio of disagreement to chance-disagreement, so the two coincide (van Oest &amp; Moss 2026). The benchmark confirms it: on the systolic blood-pressure data (<code>cccrm::bpres</code>, first replicate, <span class="math inline">\(n=384\)</span>),</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Lin’s CCC on bpres (n = 384): four implementations agree; ccc_vc is the bias-corrected outlier.</caption>
+<colgroup>
+<col style="width: 41%">
+<col style="width: 11%">
+<col style="width: 46%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">implementation</th>
+<th style="text-align: left;">CCC</th>
+<th style="text-align: right;">note</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">misskappa (quadratic Conger kappa)</td>
+<td style="text-align: left;">0.9151726</td>
+<td style="text-align: right;">pairwise-available moment estimator</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">moment plug-in (1/n), by hand</td>
+<td style="text-align: left;">0.9151726</td>
+<td style="text-align: right;">Lin (1989) definition</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DescTools::CCC</td>
+<td style="text-align: left;">0.9151726</td>
+<td style="text-align: right;">Lin’s CCC, z-transform CI</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">cccrm::cccUst (U-statistic)</td>
+<td style="text-align: left;">0.9151726</td>
+<td style="text-align: right;">King-Chinchilli-Carrasco U-statistic</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">cccrm::ccc_vc (variance components)</td>
+<td style="text-align: left;">0.9153748</td>
+<td style="text-align: right;">Carrasco &amp; Jover REML – BIAS-CORRECTED</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The first four rows are <strong>identical to seven decimals</strong> (0.9151726): <code>misskappa</code>’s quadratic Conger kappa, the hand-coded moment plug-in, <code>DescTools::CCC</code>, and <code>cccrm</code>’s U-statistic <code>cccUst</code> all compute the same Lin coefficient. The fifth, Carrasco’s variance-components <code>ccc_vc</code>, sits slightly higher (0.9153748) — the bias correction discussed below. The equivalence is not an artefact of this dataset: it also holds on <code>irr::anxiety</code>, where the two raters happen to share a mean so the location term vanishes entirely.</p>
+</section>
+<section id="how-the-ccc-literature-handles-repeated-measurement" class="level2">
+<h2 class="anchored" data-anchor-id="how-the-ccc-literature-handles-repeated-measurement">How the CCC literature handles repeated measurement</h2>
+<p>The interesting question is the one the Vanbelle data poses: what happens when each subject is measured <em>more than once</em> per method — replicates, time points, or clustered sites? The literature offers three paradigms, and the benchmark runs all three on the full <code>bpres</code> data (two devices, two replicates per subject):</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Repeated-measures CCC on bpres (2 methods x 2 replicates).</caption>
+<colgroup>
+<col style="width: 31%">
+<col style="width: 37%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 15%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">implementation</th>
+<th style="text-align: left;">paradigm</th>
+<th style="text-align: left;">CCC</th>
+<th style="text-align: right;">SE</th>
+<th style="text-align: left;">95% CI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">cccrm::ccc_vc</td>
+<td style="text-align: left;">variance components (REML)</td>
+<td style="text-align: left;">0.9150</td>
+<td style="text-align: right;">0.0070</td>
+<td style="text-align: left;">(0.900, 0.928)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">cccrm::cccUst</td>
+<td style="text-align: left;">U-statistics</td>
+<td style="text-align: left;">0.9148</td>
+<td style="text-align: right;">0.0103</td>
+<td style="text-align: left;">(0.892, 0.933)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">SimplyAgree::agree_reps (ccc)</td>
+<td style="text-align: left;">U-statistics (K-C-C)</td>
+<td style="text-align: left;">0.9157</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: left;">(0.894, 0.933)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">misskappa (vector path)</td>
+<td style="text-align: left;">U-statistics (replicates as vector)</td>
+<td style="text-align: left;">0.9148</td>
+<td style="text-align: right;">0.0195</td>
+<td style="text-align: left;">(0.877, 0.953)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ol type="1">
+<li><p><strong>Variance components / linear mixed model</strong> (Carrasco &amp; Jover 2003; <code>cccrm::ccc_vc</code>). Fit a mixed model with subject, method, and (optionally) time random/fixed effects by REML, then form the CCC as a ratio of variance components — structurally an intraclass-correlation argument. This is the route that generalizes to longitudinal data, covariates, and non-Gaussian outcomes (Carrasco 2010 extends it to overdispersed counts). Here it gives 0.9150.</p></li>
+<li><p><strong>U-statistics</strong> (King &amp; Chinchilli 2001; King, Chinchilli &amp; Carrasco 2007; <code>cccrm::cccUst</code>, and <code>SimplyAgree</code>). Build the CCC from <span class="math inline">\(U\)</span>-statistics of pairwise within- and between-subject squared differences, time-weighting the replicate structure. It is distribution-free; here 0.9148 (<code>cccrm</code>) and 0.9157 (<code>SimplyAgree</code>).</p></li>
+<li><p><strong>GEE / modelling</strong> (Barnhart &amp; Williamson 2001; Barnhart, Haber &amp; Song 2002 for the <em>overall</em> CCC across many observers; King &amp; Chinchilli 2001 for categorical data). Estimating equations on transformed agreement contrasts, useful when covariate adjustment is the point.</p></li>
+</ol>
+<p><code>misskappa</code> has no mixed-model CCC — but it is <strong>not</strong> absent from the table. Its vector path handles the replicate structure directly: treat the two methods as raters and the two replicates as components of a rating vector. That reproduces the U-statistic value <strong>exactly</strong> (0.914794 vs <code>cccUst</code>’s 0.914794), which is not a coincidence — it is the subject of the next section.</p>
+</section>
+<section id="the-u-statistic-estimator-is-misskappas-vector-path" class="level2">
+<h2 class="anchored" data-anchor-id="the-u-statistic-estimator-is-misskappas-vector-path">The U-statistic estimator <em>is</em> misskappa’s vector path</h2>
+<p>The U-statistic route (King–Chinchilli–Carrasco; <code>cccUst</code>) is the closest prior art to misskappa’s quadratic / vector machinery, and the relationship is exact, not analogical. Two facts pin it down.</p>
+<p><strong>One estimator dials from kappa to CCC.</strong> <code>cccUst</code> carries a <code>delta</code> argument: the power of the per-component distance. <code>delta = 0</code> gives a 0/1 distance, <code>delta = 1</code> a squared distance, so a single estimator spans the categorical and continuous ends of agreement:</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>cccUst’s delta dial: one estimator from unweighted kappa (delta=0) to Lin’s CCC (delta=1), matched by misskappa and the standard packages at both ends.</caption>
+<colgroup>
+<col style="width: 6%">
+<col style="width: 15%">
+<col style="width: 29%">
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">delta</th>
+<th style="text-align: left;">distance</th>
+<th style="text-align: left;">target</th>
+<th style="text-align: left;">cccUst</th>
+<th style="text-align: left;">misskappa</th>
+<th style="text-align: left;">cross-check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">0/1 (nominal)</td>
+<td style="text-align: left;">unweighted kappa</td>
+<td style="text-align: left;">0.32506</td>
+<td style="text-align: left;">0.32506</td>
+<td style="text-align: left;">0.32506 (irr::kappa2)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">squared</td>
+<td style="text-align: left;">Lin CCC = quadratic kappa</td>
+<td style="text-align: left;">0.69820</td>
+<td style="text-align: left;">0.69820</td>
+<td style="text-align: left;">0.69820 (DescTools::CCC)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>At both ends it matches to the shown digits: <code>delta = 0</code> reproduces the unweighted Cohen kappa, <code>delta = 1</code> reproduces Lin’s CCC = the quadratically weighted kappa. This <em>is</em> the kappa = CCC identity (van Oest &amp; Moss 2026), built into software from the CCC side ever since King &amp; Chinchilli (2001).</p>
+<p><strong>The repeated-measures kernel is the vector loss.</strong> <code>cccUst</code> represents each subject as a profile over occasions and compares two profiles with a quadratic form <span class="math inline">\(v^\top \mathbf D\, v\)</span>, <span class="math inline">\(v = |X-Y|^{\delta}\)</span>, where <span class="math inline">\(\mathbf D\)</span> (the <code>Dmat</code> argument) weights the occasions; the coefficient is again <span class="math inline">\(1 - \text{within} /
+\text{between}\)</span>, with the <strong>subject</strong> as the i.i.d. unit and the per-subject <span class="math inline">\(U\)</span>-statistic projection serving as the influence function. Put <span class="math inline">\(\mathbf D = W\)</span> and “occasion” = “vector component” and this is exactly misskappa’s component-separable quadratic kappa:</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>cccUst(Dmat) vs misskappa vector kappa (W = Dmat): identical on the diagonal, divergent off it.</caption>
+<colgroup>
+<col style="width: 47%">
+<col style="width: 12%">
+<col style="width: 23%">
+<col style="width: 15%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">weights</th>
+<th style="text-align: right;">cccUst</th>
+<th style="text-align: right;">misskappa vector</th>
+<th style="text-align: right;">difference</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">diagonal weights (W diagonal)</td>
+<td style="text-align: right;">0.805652</td>
+<td style="text-align: right;">0.805652</td>
+<td style="text-align: right;">-1.1e-16</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">off-diagonal weights (W[1,2]=1.5)</td>
+<td style="text-align: right;">0.787802</td>
+<td style="text-align: right;">0.843241</td>
+<td style="text-align: right;">-5.5e-02</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>With <strong>diagonal</strong> weights the two are identical to machine precision (<span class="math inline">\(-1.1e-16\)</span>) — which is why misskappa’s vector path reproduced <code>cccUst</code> on <code>bpres</code> exactly. They diverge only <strong>off the diagonal</strong>, by a real and principled amount (<span class="math inline">\(-0.055\)</span> here): misskappa uses the signed quadratic form <span class="math inline">\((x-y)^\top W (x-y) = \lVert L(x-y)\rVert^2\)</span> — a genuine weighted-Euclidean (Mahalanobis) distance — whereas <code>cccUst</code> uses absolute cross-terms <span class="math inline">\(\sum_{st} D_{st}\,|x_s-y_s|\,|x_t-y_t|\)</span>, which is not induced by any metric on the rating space and discards the sign of joint errors. The two coincide exactly when <span class="math inline">\(W\)</span> is diagonal (signs are then irrelevant); off-diagonal, misskappa’s is the correct generalization. Off-diagonal weights are essentially never used in the CCC literature, but they are meaningful here — misskappa’s CRACKLES analysis couples left/right of each thoracic site — so this is the regime where the distinction bites.</p>
+<p>So misskappa’s vector kappa and the King–Chinchilli–Carrasco repeated-measures CCC are the <strong>same construction from opposite ends</strong>. The honest positioning: KCC own the unified, distribution-free, repeated-measures CCC <em>estimator</em>; misskappa adds the missing-data layer (IPW / FIML — <code>cccUst</code> is listwise only), influence-function inference with Wald / joint equality tests, the kappa = CCC <em>identity</em> (they had it as an estimator, not a theorem), and the extension to more than two raters and to categorical data.</p>
+</section>
+<section id="the-unbiased-ccc-question" class="level2">
+<h2 class="anchored" data-anchor-id="the-unbiased-ccc-question">The “unbiased CCC” question</h2>
+<p><code>misskappa</code> (like the plain Lin estimator) computes the moment plug-in <span class="math inline">\(\hat\rho_c=\hat N/\hat D\)</span> with <span class="math inline">\(\hat N=2s_{xy}\)</span> and <span class="math inline">\(\hat D=s_x^2+s_y^2+(\bar x-\bar y)^2\)</span>, which is biased in finite samples. Two things are often conflated here, and neither is what a real correction needs.</p>
+<p><strong>It is not the <span class="math inline">\(/n\)</span> vs <span class="math inline">\(/(n-1)\)</span> choice.</strong> In the ratio the <span class="math inline">\(1/n\)</span> factor cancels between the numerator and the <em>variance</em> terms of the denominator, so switching to unbiased second moments changes <span class="math inline">\(\hat\rho_c\)</span> only through the unscaled location term — a sub-<span class="math inline">\(10^{-4}\)</span> effect.</p>
+<p><strong>It is not the location-term “correction” either.</strong> One can note that <span class="math inline">\(\mathbb E[(\bar x-\bar y)^2]=(\mu_x-\mu_y)^2+\operatorname{Var}(\bar x-\bar y)\)</span> and subtract <span class="math inline">\(\operatorname{Var}(\bar x-\bar y)=(\sigma_x^2+\sigma_y^2-2\sigma_{xy})/n\)</span> from the denominator — which is roughly what Carrasco &amp; Jover’s variance-components estimator does implicitly (a truncated between-method variance component). But this patches <strong>one term of one moment</strong> and ignores the dominant bias. In fact the <span class="math inline">\(1/n\)</span> biases of <span class="math inline">\(\hat N\)</span> and <span class="math inline">\(\hat D\)</span> are <em>both</em> <span class="math inline">\(-2\sigma_{xy}/n\)</span> and largely cancel in the ratio; the leading <span class="math inline">\(O(1/n)\)</span> bias is the <strong>ratio nonlinearity</strong> <span class="math inline">\(\mathbb E[\hat N/\hat D]\neq\mathbb E[\hat N]/\mathbb E[\hat D]\)</span> — the Jacobian-curvature term that the delta method drops at first order. The location patch does not touch it.</p>
+<p>The benchmark makes the gap concrete. Against a known true CCC, we compare the moment estimator, the location patch, and a <strong>jackknife</strong> — which is a proper nonparametric estimator of the <span class="math inline">\(O(1/n)\)</span> bias (the same quantity the second-order influence function / von Mises expansion targets):</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Proper bias correction vs the denominator patch (rho = 0.5, 3000 reps/cell). The patch removes a sliver; the jackknife removes nearly all of it.</caption>
+<colgroup>
+<col style="width: 3%">
+<col style="width: 7%">
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 16%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">n</th>
+<th style="text-align: right;">bias_sd</th>
+<th style="text-align: right;">true CCC</th>
+<th style="text-align: right;">moment bias</th>
+<th style="text-align: right;">loc-patch bias</th>
+<th style="text-align: right;">jackknife bias</th>
+<th style="text-align: right;">% removed: patch</th>
+<th style="text-align: right;">% removed: jackknife</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">8</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">-0.0811</td>
+<td style="text-align: right;">-0.0708</td>
+<td style="text-align: right;">-0.0062</td>
+<td style="text-align: right;">13%</td>
+<td style="text-align: right;">92%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">15</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">-0.0492</td>
+<td style="text-align: right;">-0.0424</td>
+<td style="text-align: right;">-0.0077</td>
+<td style="text-align: right;">14%</td>
+<td style="text-align: right;">84%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">30</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">-0.0187</td>
+<td style="text-align: right;">-0.0148</td>
+<td style="text-align: right;">0.0022</td>
+<td style="text-align: right;">21%</td>
+<td style="text-align: right;">112%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">100</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">-0.0058</td>
+<td style="text-align: right;">-0.0045</td>
+<td style="text-align: right;">0.0005</td>
+<td style="text-align: right;">22%</td>
+<td style="text-align: right;">109%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">8</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">0.3333</td>
+<td style="text-align: right;">-0.0409</td>
+<td style="text-align: right;">-0.0320</td>
+<td style="text-align: right;">0.0021</td>
+<td style="text-align: right;">22%</td>
+<td style="text-align: right;">105%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">15</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">0.3333</td>
+<td style="text-align: right;">-0.0197</td>
+<td style="text-align: right;">-0.0135</td>
+<td style="text-align: right;">0.0036</td>
+<td style="text-align: right;">31%</td>
+<td style="text-align: right;">118%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">30</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">0.3333</td>
+<td style="text-align: right;">-0.0133</td>
+<td style="text-align: right;">-0.0099</td>
+<td style="text-align: right;">-0.0022</td>
+<td style="text-align: right;">25%</td>
+<td style="text-align: right;">83%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">100</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">0.3333</td>
+<td style="text-align: right;">-0.0055</td>
+<td style="text-align: right;">-0.0044</td>
+<td style="text-align: right;">-0.0021</td>
+<td style="text-align: right;">20%</td>
+<td style="text-align: right;">61%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The denominator patch removes only <span class="math inline">\(13\)</span>–<span class="math inline">\(31\%\)</span> of the moment bias; the jackknife removes <span class="math inline">\(61\)</span>–<span class="math inline">\(118\%\)</span> (values near or above 100% are Monte-Carlo scatter on a residual bias already at the noise floor). So the resolution of the user’s question is two-layered: Carrasco’s variance-components route <strong>does basically nothing</strong> to the point estimate on non-repeated data — <span class="math inline">\(2.0e-04\)</span> on <code>bpres</code>, and sub-percent for any usable <span class="math inline">\(n\)</span> (it earns its keep on <em>repeated</em> structure, not on bias) — and the denominator correction it embodies is <strong>not a proper bias correction</strong> anyway. A genuine unbiased-CCC for <code>misskappa</code> would be a second-order influence-function (or jackknife / bootstrap) correction of the whole ratio functional. That is natural here precisely because every <code>misskappa</code> estimator already exposes its per-subject <em>first-order</em> influence functions — the second-order term is the missing piece — though, as the table shows, it only matters below <span class="math inline">\(n\approx 30\)</span>.</p>
+</section>
+<section id="categorical-and-vector-valued-agreement-crackles" class="level2">
+<h2 class="anchored" data-anchor-id="categorical-and-vector-valued-agreement-crackles">Categorical and vector-valued agreement (CRACKLES)</h2>
+<p>On the other side of <code>misskappa</code>’s range — categorical and vector-valued data — the comparators are <code>irr</code> and <code>irrCAC</code>, and here <code>misskappa</code> <em>reproduces</em> them and then <em>extends</em> past them. Using the four expert observers (<code>EXP1</code>–<code>EXP4</code>) on the CRACKLES data:</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Categorical validation and the vector-valued extension on CRACKLES (EXP group).</caption>
+<colgroup>
+<col style="width: 36%">
+<col style="width: 34%">
+<col style="width: 13%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">scope</th>
+<th style="text-align: left;">implementation</th>
+<th style="text-align: left;">coefficient</th>
+<th style="text-align: right;">estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">EXP group, site U1 (scalar)</td>
+<td style="text-align: left;">misskappa (ipw, nominal)</td>
+<td style="text-align: left;">Fleiss</td>
+<td style="text-align: right;">0.635417</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EXP group, site U1 (scalar)</td>
+<td style="text-align: left;">misskappa (cat_fiml, nominal)</td>
+<td style="text-align: left;">Fleiss</td>
+<td style="text-align: right;">0.635417</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">EXP group, site U1 (scalar)</td>
+<td style="text-align: left;">irr::kappam.fleiss</td>
+<td style="text-align: left;">Fleiss</td>
+<td style="text-align: right;">0.635417</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EXP group, site U1 (scalar)</td>
+<td style="text-align: left;">irrCAC::fleiss.kappa.raw</td>
+<td style="text-align: left;">Fleiss</td>
+<td style="text-align: right;">0.635420</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">EXP group, site U1 (scalar)</td>
+<td style="text-align: left;">misskappa (ipw, nominal)</td>
+<td style="text-align: left;">Conger</td>
+<td style="text-align: right;">0.636364</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EXP group, site U1 (scalar)</td>
+<td style="text-align: left;">irrCAC::conger.kappa.raw</td>
+<td style="text-align: left;">Conger</td>
+<td style="text-align: right;">0.636360</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">EXP group, all 6 sites (vector)</td>
+<td style="text-align: left;">misskappa vector (Hamming)</td>
+<td style="text-align: left;">Conger</td>
+<td style="text-align: right;">0.519186</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EXP group, all 6 sites (vector)</td>
+<td style="text-align: left;">misskappa vector (Hamming)</td>
+<td style="text-align: left;">Fleiss</td>
+<td style="text-align: right;">0.514982</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">EXP group, all 6 sites (vector)</td>
+<td style="text-align: left;">irr / irrCAC / DescTools</td>
+<td style="text-align: left;">Conger</td>
+<td style="text-align: right;">– (no path)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>At a single chest site (a scalar binary rating), <code>misskappa</code>’s Fleiss kappa matches <code>irr::kappam.fleiss</code> and <code>irrCAC::fleiss.kappa.raw</code> exactly (0.6354), and its Conger kappa matches <code>irrCAC::conger.kappa.raw</code> (0.6364) — and the IPW and Cat-FIML estimators agree on the complete data, as they must. The pay-off is the last block: pooling all six sites into a <strong>vector-valued</strong> rating with a Hamming component loss gives a single six-site agreement coefficient (Conger 0.5192, Fleiss 0.5150) that <strong>none</strong> of <code>irr</code>, <code>irrCAC</code>, or <code>DescTools</code> can produce. This is <code>misskappa</code>’s own answer to “repeated measurement”: treat the repeats as components of a vector, not as levels of a random effect.</p>
+</section>
+<section id="vanbelles-multilevel-kappa-vs-the-vector-path" class="level2">
+<h2 class="anchored" data-anchor-id="vanbelles-multilevel-kappa-vs-the-vector-path">Vanbelle’s multilevel kappa vs the vector path</h2>
+<p>CRACKLES has been analysed before — by Vanbelle (2019), whose <em>multilevel multirater kappa</em> is the standard treatment of <strong>sites within patients</strong>. The two coefficients take opposite routes through the same repeated structure, and it is worth seeing exactly how they relate. Vanbelle <strong>collapses</strong> the six sites: she pools the site-level ratings and chance-corrects with the <em>pooled</em> marginals, under a within-cluster <strong>homogeneity</strong> assumption — that every site of a patient shares the same classification probabilities — yielding a scalar kappa with a patient-clustered SE. misskappa <strong>keeps</strong> the six sites as a vector and chance-corrects <em>each site with its own marginals</em>.</p>
+<p>On the real data they differ, and the difference is informative. The pooled coefficient reproduces Vanbelle’s published Table 3 values to the decimal (a check that pooling <em>is</em> her point estimate); the vector coefficient runs systematically lower:</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>CRACKLES Conger kappa by observer group: misskappa’s vector coefficient vs Vanbelle’s pooled (multilevel) coefficient, which reproduces her published values.</caption>
+<colgroup>
+<col style="width: 20%">
+<col style="width: 23%">
+<col style="width: 22%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">observer group</th>
+<th style="text-align: right;">misskappa vector</th>
+<th style="text-align: right;">Vanbelle pooled</th>
+<th style="text-align: right;">Vanbelle (2019) Table 3</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">EXP</td>
+<td style="text-align: right;">0.519</td>
+<td style="text-align: right;">0.563</td>
+<td style="text-align: right;">0.56</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NOR</td>
+<td style="text-align: right;">0.535</td>
+<td style="text-align: right;">0.583</td>
+<td style="text-align: right;">0.58</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">RUS</td>
+<td style="text-align: right;">0.187</td>
+<td style="text-align: right;">0.196</td>
+<td style="text-align: right;">0.20</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">WAL</td>
+<td style="text-align: right;">0.506</td>
+<td style="text-align: right;">0.531</td>
+<td style="text-align: right;">0.53</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">NLD</td>
+<td style="text-align: right;">0.478</td>
+<td style="text-align: right;">0.491</td>
+<td style="text-align: right;">0.49</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">PUL</td>
+<td style="text-align: right;">0.384</td>
+<td style="text-align: right;">0.404</td>
+<td style="text-align: right;">0.40</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">STU</td>
+<td style="text-align: right;">0.354</td>
+<td style="text-align: right;">0.366</td>
+<td style="text-align: right;">0.37</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The gap is not noise — it is exactly the <strong>between-site covariance of the raters’ marginals</strong> in the chance term, <span class="math display">\[
+P_e^{\text{misskappa}}-P_e^{\text{Vanbelle}}
+   = \sum_j \operatorname{Cov}_s\!\big(p_j(r_1,s),\,p_j(r_2,s)\big),
+\]</span> which vanishes precisely when the sites are identically distributed. So the two coincide <strong>iff</strong> homogeneity holds, which a synthetic check confirms:</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Homogeneity is the fork: identical site marginals -&gt; the two agree; differing marginals -&gt; they split.</caption>
+<colgroup>
+<col style="width: 42%">
+<col style="width: 22%">
+<col style="width: 20%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">scenario</th>
+<th style="text-align: right;">misskappa vector</th>
+<th style="text-align: right;">Vanbelle pooled</th>
+<th style="text-align: right;">difference</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">homogeneous (all 6 sites p=0.30)</td>
+<td style="text-align: right;">0.3749</td>
+<td style="text-align: right;">0.3755</td>
+<td style="text-align: right;">-0.0006</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">heterogeneous (sites differ)</td>
+<td style="text-align: right;">0.3486</td>
+<td style="text-align: right;">0.3954</td>
+<td style="text-align: right;">-0.0468</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>With identical site marginals the two agree (residual -0.0006 is Monte-Carlo noise); with differing marginals they split by 0.047, the same kind of margin as the real data. On CRACKLES the sites are very different (anterior crackles are near-absent), so misskappa’s per-site chance correction discounts the easy “no crackle anywhere” agreement that Vanbelle’s pooled correction partly credits — hence the lower, more conservative coefficient. Neither is wrong; they chance-correct at different <em>levels</em>, and homogeneity is the exact condition under which the level stops mattering. Vanbelle’s own Table 2 rejects that assumption at <span class="math inline">\(p&lt;0.0001\)</span> (and she computes the pooled coefficient anyway, for sample-size reasons) — so on this dataset the two coefficients are genuinely estimating different things.</p>
+<p>On the <em>inference</em> side the two agree more than the point estimates suggest: misskappa’s vector SE already treats the patient as the i.i.d. unit (the rating vector <em>is</em> the patient’s observation), so it clusters at the patient level by construction — the same level Vanbelle’s multilevel variance targets. The pooled stack above is used only to recover her point estimate; its naive one-row-per-site SE would understate the uncertainty, which is exactly the clustering problem her paper exists to fix.</p>
+</section>
+<section id="where-this-leaves-misskappa" class="level2">
+<h2 class="anchored" data-anchor-id="where-this-leaves-misskappa">Where this leaves misskappa</h2>
+<ul>
+<li><strong>Owns:</strong> missing-data agreement (IPW under MCAR, FIML under MAR) for the categorical kappa family and alpha; vector-valued / component-separable agreement; a quadratic coefficient that <em>is</em> Lin’s CCC for two continuous raters — and, via the vector path, the King–Chinchilli–Carrasco <strong>repeated-measures</strong> U-statistic CCC (reproduced exactly) — all with influence-function SEs and Wald equality tests.</li>
+<li><strong>Does not own (CCC world owns):</strong> the <em>mixed-model / longitudinal</em> CCC route (<code>cccrm::ccc_vc</code>: time trends, covariates, non-Gaussian outcomes); the <em>overall</em> CCC across many observers (Barnhart 2002); method-comparison tooling — Bland–Altman, Deming (<code>MethComp</code>, <code>blandr</code>); multilevel clustered kappa (<code>multiagree</code>).</li>
+<li><strong>Could add (but low priority):</strong> a proper second-order bias correction for the <code>pairwise</code> quadratic / CCC estimator — a second-order influence-function (or jackknife / bootstrap) correction of the ratio functional, <em>not</em> the denominator patch, which removes only a sliver of the bias. <code>misskappa</code> already exposes first-order influence functions, so the machinery is half built; but the effect is sub-percent above <span class="math inline">\(n\approx 30\)</span>, so this is a nicety, not a fix.</li>
+</ul>
+</section>
+<section id="caveats" class="level2">
+<h2 class="anchored" data-anchor-id="caveats">Caveats</h2>
+<ul>
+<li>The equivalence and bias results use complete continuous data; the point of <code>misskappa</code> is the missing-data case, where the CCC packages (all listwise-only) have no comparator. A genuine missing-data CCC benchmark would require simulating MCAR/MAR amputation and has no external baseline — it belongs in the FIML/quadratic simulation experiments, not here.</li>
+<li><code>epiR::epi.ccc</code> (a fourth Lin implementation) could not be installed on this box: <code>epiR</code> pulls <code>sf</code>/GDAL system libraries that are absent. <code>DescTools</code>, <code>cccrm</code>, and the hand-coded plug-in already give three independent Lin implementations, so the equivalence is not under-witnessed.</li>
+<li>The repeated-measures CCCs from the three paradigms differ in the third decimal (0.915–0.916); this is expected (different estimands and small-sample behaviour), not an error. <code>SimplyAgree::agree_reps</code> is formally deprecated in favour of <code>agreement_limit</code> but still computes the K-C-C CCC.</li>
+<li><code>multiagree</code> is the right tool when the CRACKLES clustering (sites within patients) is modelled as such; experiment 25 already reproduces Vanbelle’s weighted kappas exactly against it. Here we use the EXP subgroup descriptively.</li>
+<li>The bias results use a Gaussian DGP and the jackknife as the reference “proper” corrector; deriving the second-order influence function of the weighted multirater CCC in closed form (so a one-pass, no-resampling correction with a consistent SE is available) is the actual work a future “unbiased misskappa” would need.</li>
+</ul>
+</section>
+<section id="reproduce" class="level2">
+<h2 class="anchored" data-anchor-id="reproduce">Reproduce</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> experiments/studies/28-concordance-landscape</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> run_experiment.R     <span class="co"># writes results/*.csv (needs cccrm, SimplyAgree,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                             <span class="co"># DescTools, irrCAC, irr; comparators are guarded)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render report.qmd</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Run with <code>misskappa</code> 1.0.0, <code>cccrm</code> 3.0.6, <code>SimplyAgree</code> 0.3.0, <code>DescTools</code> 0.99.60, <code>irrCAC</code> 1.4, <code>irr</code> 0.84.1, R 4.5.2. Reference PDFs and DOIs are collected in <code>dev/refs/concordance-refs.md</code>.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p>Key concordance-coefficient literature (full DOIs in <code>dev/refs/concordance-refs.md</code>):</p>
+<ul>
+<li><strong>Lin, L. I.-K. (1989).</strong> A concordance correlation coefficient to evaluate reproducibility. <em>Biometrics</em> 45(1), 255–268. The original CCC.</li>
+<li><strong>Lin, L. I.-K. (2000).</strong> A note on the concordance correlation coefficient. <em>Biometrics</em> 56, 324–325. Corrects the variance formula.</li>
+<li><strong>King, T. S., &amp; Chinchilli, V. M. (2001).</strong> A generalized concordance correlation coefficient for continuous and categorical data. <em>Statistics in Medicine</em> 20(14), 2131–2147.</li>
+<li><strong>Carrasco, J. L., &amp; Jover, L. (2003).</strong> Estimating the generalized concordance correlation coefficient through variance components. <em>Biometrics</em> 59(4), 849–858. The variance-components route — and the bias-corrected denominator.</li>
+<li><strong>King, T. S., Chinchilli, V. M., &amp; Carrasco, J. L. (2007).</strong> A repeated measures concordance correlation coefficient. <em>Statistics in Medicine</em> 26(16), 3095–3113. The U-statistic repeated-measures CCC.</li>
+<li><strong>Carrasco, J. L., et al.&nbsp;(2013).</strong> Estimation of the concordance correlation coefficient for repeated measures using SAS and R. <em>Computer Methods and Programs in Biomedicine</em> 109(3), 293–304. The <code>cccrm</code> paper.</li>
+<li><strong>Barnhart, H. X., Haber, M., &amp; Song, J. (2002).</strong> Overall concordance correlation coefficient for evaluating agreement among multiple observers. <em>Biometrics</em> 58(4), 1020–1027.</li>
+<li><strong>Barnhart, H. X., Haber, M. J., &amp; Lin, L. I. (2007).</strong> An overview on assessing agreement with continuous measurements. <em>J. Biopharm. Stat.</em> 17(4), 529–569. (Already in <code>dev/refs/</code>.)</li>
+<li><strong>Caldwell, A. R. (2022).</strong> SimplyAgree: an R package and jamovi module for simplifying agreement and reliability analyses. <em>JOSS</em> 7(71), 4148.</li>
+<li><strong>van Oest, R., &amp; Moss, J. (2026).</strong> Quadratically weighted agreement coefficients: interpretations and connections. (Already in <code>dev/refs/</code>; the source of the quadratic-kappa = CCC identity.)</li>
+<li><strong>Vanbelle, S. (2017, 2019).</strong> Dependent / multilevel multirater kappa. <em>Biometrical Journal</em>; <em>Stat. Methods Med. Res.</em> (Already in <code>dev/refs/</code>; source of the CRACKLES data.)</li>
+</ul>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
