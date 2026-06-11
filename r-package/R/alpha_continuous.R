@@ -1,6 +1,7 @@
 # Coefficient alpha for continuous items under ignorable missingness, via a
 # saturated normal FIML / EM covariance and a sandwich delta-method standard
-# error.
+# error. The estimator itself lives in the C++ backend; the R code keeps the
+# user-facing validation and object shape.
 #
 # This is the {continuous, missing} cell of the alpha-under-missingness grid:
 # the categorical multinomial-EM route lives in alpha_cat_fiml() /
@@ -159,6 +160,31 @@
   (H + t(H)) / 2
 }
 
+.normal_fiml_from_cpp <- function(raw, estimate_names, method, weight) {
+  estimates <- as.numeric(raw$estimates)
+  names(estimates) <- estimate_names
+  vcov_mat <- raw$vcov
+  dimnames(vcov_mat) <- list(estimate_names, estimate_names)
+  psi <- raw$psi
+  if (prod(dim(psi)) > 0L) colnames(psi) <- estimate_names
+  structure(
+    list(
+      estimates = estimates,
+      vcov = vcov_mat,
+      psi = psi,
+      method = method,
+      weight = weight,
+      moments = list(
+        mu = as.numeric(raw$mu),
+        Sigma = raw$Sigma,
+        iterations = as.integer(raw$iterations),
+        converged = isTRUE(raw$converged)
+      )
+    ),
+    class = "misskappa_estimate"
+  )
+}
+
 # ---- public estimator -------------------------------------------------------
 
 #' Coefficient alpha for continuous items under missing data (normal FIML)
@@ -217,7 +243,6 @@ alpha_continuous <- function(x, em_options = list()) {
     X <- X[keep, , drop = FALSE]
     R <- R[keep, , drop = FALSE]
   }
-  n <- nrow(X)
   if (any(colSums(R) == 0L)) {
     stop("every item must be observed for at least one subject.")
   }
@@ -225,41 +250,11 @@ alpha_continuous <- function(x, em_options = list()) {
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5), em_options
   )
-  pstar <- p * (p + 1L) / 2L
-  vech_pos <- .amc_vech_pos(p)
-  patterns <- .amc_patterns(R)
 
-  em <- .amc_em(X, patterns, tol = opt$tol, max_iter = opt$max_iter)
-  if (!em$converged) {
-    warning("saturated EM did not converge in ", opt$max_iter, " iterations.")
-  }
-  Sigma <- em$Sigma
-  alpha_hat <- .amc_alpha_from_S(Sigma)
-
-  theta <- c(em$mu, .amc_vech(Sigma))
-  scores <- .amc_score_matrix(em$mu, Sigma, X, patterns, vech_pos, p, pstar)
-  H <- .amc_information(theta, X, patterns, vech_pos, p, pstar, h = opt$fd_h)
-  Hinv <- solve(H)
-
-  g <- c(numeric(p), .amc_alpha_grad_s(Sigma))            # alpha has no mu part
-
-  estimates <- c(alpha = alpha_hat)
-  # Per-subject influence psi_i = g' H^{-1} s_i; vcov = crossprod(psi) / n^2.
-  psi <- matrix(scores %*% (Hinv %*% g), ncol = 1L,
-                dimnames = list(NULL, "alpha"))
-  var_alpha <- sum(psi^2) / n^2
-  vcov_mat <- matrix(var_alpha, 1L, 1L, dimnames = list("alpha", "alpha"))
-
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi,
-      method = "alpha-continuous-fiml",
-      weight = "score",
-      moments = list(mu = em$mu, Sigma = Sigma,
-                     iterations = em$iterations, converged = em$converged)
-    ),
-    class = "misskappa_estimate"
+  .normal_fiml_from_cpp(
+    rcpp_alpha_normal_fiml(X, opt),
+    estimate_names = "alpha",
+    method = "alpha-continuous-fiml",
+    weight = "score"
   )
 }

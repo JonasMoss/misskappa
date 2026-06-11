@@ -31,6 +31,7 @@ add_library(misskappa STATIC
   src/estimate_raw.cpp
   src/estimate_continuous.cpp
   src/estimate_vector.cpp
+  src/estimate_normal_fiml.cpp
   src/estimate_counts.cpp
   src/estimate_alpha.cpp
   src/estimate_gwise.cpp

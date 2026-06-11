@@ -5,10 +5,8 @@
 # casewise scores, the observed information, and the sandwich contraction. The
 # only coefficient-specific piece is the gradient .kqf_grad().
 #
-# The EM and score helpers (.amc_em, .amc_score_matrix, .amc_information,
-# .amc_vech, .amc_vech_pos, .amc_unpack, .amc_patterns) live in
-# alpha_continuous.R and are reused verbatim; the moments are validated there
-# against magmaan's estimate_saturated_em_moments() and lavaan's saturated h1.
+# The EM, score, and information calculations live in the C++ normal-FIML
+# backend shared with alpha_continuous().
 #
 # Unlike alpha, the quadratic kappas depend on the rater means through
 # t3 = sum_j (mu_j - mubar)^2, so the gradient carries a non-zero mean block.
@@ -119,7 +117,6 @@ kappa_quadratic_fiml <- function(x, em_options = list()) {
     X <- X[keep, , drop = FALSE]
     R <- R[keep, , drop = FALSE]
   }
-  n <- nrow(X)
   if (any(colSums(R) == 0L)) {
     stop("every rater must be observed for at least one subject.")
   }
@@ -127,40 +124,11 @@ kappa_quadratic_fiml <- function(x, em_options = list()) {
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5), em_options
   )
-  pstar <- p * (p + 1L) / 2L
-  vech_pos <- .amc_vech_pos(p)
-  patterns <- .amc_patterns(R)
 
-  em <- .amc_em(X, patterns, tol = opt$tol, max_iter = opt$max_iter)
-  if (!em$converged) {
-    warning("saturated EM did not converge in ", opt$max_iter, " iterations.")
-  }
-  grad <- .kqf_grad(em$mu, em$Sigma)
-  estimates <- grad$estimates
-  G <- grad$G                                             # 2 x (p + pstar)
-  cf <- c("Conger", "Fleiss")
-
-  theta <- c(em$mu, .amc_vech(em$Sigma))
-  scores <- .amc_score_matrix(em$mu, em$Sigma, X, patterns, vech_pos, p, pstar)
-  H <- .amc_information(theta, X, patterns, vech_pos, p, pstar, h = opt$fd_h)
-  Hinv <- solve(H)
-
-  # Per-subject influence psi_i = G H^{-1} s_i; vcov = crossprod(psi) / n^2.
-  psi <- scores %*% (Hinv %*% t(G))
-  colnames(psi) <- cf
-  vcov_mat <- crossprod(psi) / n^2
-  dimnames(vcov_mat) <- list(cf, cf)
-
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi,
-      method = "quadratic-fiml",
-      weight = "quadratic",
-      moments = list(mu = em$mu, Sigma = em$Sigma,
-                     iterations = em$iterations, converged = em$converged)
-    ),
-    class = "misskappa_estimate"
+  .normal_fiml_from_cpp(
+    rcpp_kappa_quadratic_fiml(X, opt),
+    estimate_names = c("Conger", "Fleiss"),
+    method = "quadratic-fiml",
+    weight = "quadratic"
   )
 }

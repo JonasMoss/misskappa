@@ -150,35 +150,23 @@
 .kvq_fiml <- function(X, R, p, W, em_options = list()) {
   X <- X[rowSums(is.finite(X)) > 0L, , drop = FALSE]
   Rmiss <- is.finite(X)
-  n <- nrow(X)
-  q <- ncol(X)
   if (any(colSums(Rmiss) == 0L)) {
     stop("every rater-feature cell must be observed for at least one subject.")
   }
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5), em_options
   )
-  pstar <- q * (q + 1L) / 2L
-  vech_pos <- .amc_vech_pos(q)
-  patterns <- .amc_patterns(Rmiss)
-  em <- .amc_em(X, patterns, tol = opt$tol, max_iter = opt$max_iter)
-  if (!em$converged) {
-    warning("saturated EM did not converge in ", opt$max_iter, " iterations.")
-  }
-
-  grad <- .kvq_grad(em$mu, em$Sigma, R, p, W)
-  theta <- c(em$mu, .amc_vech(em$Sigma))
-  scores <- .amc_score_matrix(em$mu, em$Sigma, X, patterns, vech_pos, q, pstar)
-  H <- .amc_information(theta, X, patterns, vech_pos, q, pstar, h = opt$fd_h)
-  Hinv <- solve(H)
-
-  psi <- scores %*% (Hinv %*% t(grad$G))
+  raw <- rcpp_kappa_vector_quadratic_fiml(X, p, W, opt)
+  estimates <- as.numeric(raw$estimates)
+  names(estimates) <- c("Conger", "Fleiss")
+  grad <- .kvq_grad(as.numeric(raw$mu), raw$Sigma, R, p, W)
+  psi <- raw$psi
   colnames(psi) <- c("Conger", "Fleiss")
-  vcov_mat <- crossprod(psi) / n^2
+  vcov_mat <- raw$vcov
   dimnames(vcov_mat) <- list(colnames(psi), colnames(psi))
-  list(mu = em$mu, Sigma = em$Sigma, estimates = grad$estimates,
+  list(mu = as.numeric(raw$mu), Sigma = raw$Sigma, estimates = estimates,
        vcov = vcov_mat, psi = psi, summaries = grad$summaries,
-       iterations = em$iterations, converged = em$converged)
+       iterations = as.integer(raw$iterations), converged = isTRUE(raw$converged))
 }
 
 #' Quadratic vector agreement from covariance moments
