@@ -278,16 +278,19 @@ struct EmIterStatus {
   bool converged = false;
 };
 
-EmIterStatus run_em_iterations(
-    Eigen::VectorXd& theta, const EmInput& in, EmOptions opts) {
-  EmIterStatus status;
-  std::size_t n_total_subjects = 0;
-  for (std::uint32_t s : in.group_n_subjects) n_total_subjects += s;
-  if (n_total_subjects == 0) {
-    status.converged = true;
-    return status;
-  }
-  const double n_subj = static_cast<double>(n_total_subjects);
+struct EmLoopConfig {
+  double n_subj = 0.0;
+  double flatten = 0.0;
+  double delta = 0.0;
+  double denom = 0.0;
+  int iter_cap = 0;
+  double tol = 0.0;
+};
+
+EmLoopConfig make_em_loop_config(
+    Eigen::Index theta_size, std::size_t n_total_subjects, const EmOptions& opts) {
+  EmLoopConfig cfg;
+  cfg.n_subj = static_cast<double>(n_total_subjects);
   // Dirichlet flattening: each cell gains delta = flatten / C^R pseudo-count
   // in the M-step, turning EM into posterior-mode iteration. Likelihood-flat
   // directions then contract only at rate ~ n / (n + flatten) per iteration.
@@ -299,51 +302,146 @@ EmIterStatus run_em_iterations(
   // identified functionals are flat (to face-width order) along those
   // directions. flatten = 0 leaves strict ML and the user's settings
   // untouched.
-  const double flatten = (opts.flatten > 0.0) ? opts.flatten : 0.0;
-  const double delta =
-      (flatten > 0.0 && theta.size() > 0)
-          ? flatten / static_cast<double>(theta.size())
+  cfg.flatten = (opts.flatten > 0.0) ? opts.flatten : 0.0;
+  cfg.delta =
+      (cfg.flatten > 0.0 && theta_size > 0)
+          ? cfg.flatten / static_cast<double>(theta_size)
           : 0.0;
-  int iter_cap = opts.max_iter;
-  double tol = opts.tol;
-  if (flatten > 0.0) {
-    const double scaled = 300.0 * (n_subj + flatten) / flatten;
+  cfg.denom = cfg.n_subj + cfg.flatten;
+  cfg.iter_cap = opts.max_iter;
+  cfg.tol = opts.tol;
+  if (cfg.flatten > 0.0) {
+    const double scaled = 300.0 * (cfg.n_subj + cfg.flatten) / cfg.flatten;
     const double capped = std::min(scaled, 1.0e6);
-    iter_cap = std::max(iter_cap, static_cast<int>(capped));
+    cfg.iter_cap = std::max(cfg.iter_cap, static_cast<int>(capped));
     constexpr double face_tol = 1e-4;
-    tol = std::max(tol, face_tol * flatten / (n_subj + flatten));
+    cfg.tol = std::max(cfg.tol, face_tol * cfg.flatten / (cfg.n_subj + cfg.flatten));
   }
-  Eigen::VectorXd expected = Eigen::VectorXd::Zero(theta.size());
-  for (int it = 0; it < iter_cap; ++it) {
-    status.iterations = it + 1;
-    expected.setZero();
-    for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
-      const std::uint32_t n_comps = in.group_n_completions[g];
-      if (n_comps == 0) continue;
-      const std::uint32_t offset = in.group_offsets[g];
-      // posterior over completions, proportional to theta on those completions.
-      double sum_w = 0.0;
-      for (std::uint32_t k = 0; k < n_comps; ++k) {
-        sum_w += theta(static_cast<Eigen::Index>(in.completion_indices[offset + k]));
-      }
-      if (sum_w <= singular_tol) continue;
-      const double scale = static_cast<double>(in.group_n_subjects[g]) / sum_w;
-      for (std::uint32_t k = 0; k < n_comps; ++k) {
-        const Eigen::Index idx = static_cast<Eigen::Index>(in.completion_indices[offset + k]);
-        expected(idx) += scale * theta(idx);
-      }
+  return cfg;
+}
+
+void em_sweep(
+    const Eigen::VectorXd& theta, Eigen::VectorXd& out, const EmInput& in,
+    const EmLoopConfig& cfg) {
+  out.setZero();
+  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+    const std::uint32_t n_comps = in.group_n_completions[g];
+    if (n_comps == 0) continue;
+    const std::uint32_t offset = in.group_offsets[g];
+    // Posterior over completions, proportional to theta on those completions.
+    double sum_w = 0.0;
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      sum_w += theta(static_cast<Eigen::Index>(in.completion_indices[offset + k]));
     }
-    Eigen::VectorXd new_theta =
-        (expected.array() + delta).matrix() / (n_subj + flatten);
-    const double max_change = (new_theta - theta).cwiseAbs().maxCoeff();
-    if (max_change < tol) {
-      theta = std::move(new_theta);
+    if (sum_w <= singular_tol) continue;
+    const double scale = static_cast<double>(in.group_n_subjects[g]) / sum_w;
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      const Eigen::Index idx = static_cast<Eigen::Index>(in.completion_indices[offset + k]);
+      out(idx) += scale * theta(idx);
+    }
+  }
+  out = (out.array() + cfg.delta).matrix() / cfg.denom;
+}
+
+bool valid_em_state(Eigen::VectorXd& theta, const EmInput& in) {
+  for (Eigen::Index i = 0; i < theta.size(); ++i) {
+    if (!(theta(i) >= 0.0) || !std::isfinite(theta(i))) return false;
+  }
+  const double total = theta.sum();
+  if (total <= zero_tol) return false;
+  theta /= total;
+
+  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+    const std::uint32_t n_comps = in.group_n_completions[g];
+    if (n_comps == 0) continue;
+    const std::uint32_t offset = in.group_offsets[g];
+    double sum_w = 0.0;
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      sum_w += theta(static_cast<Eigen::Index>(in.completion_indices[offset + k]));
+    }
+    if (sum_w <= singular_tol) return false;
+  }
+  return true;
+}
+
+EmIterStatus run_plain_em_iterations(
+    Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
+  EmIterStatus status;
+  Eigen::VectorXd next = Eigen::VectorXd::Zero(theta.size());
+  for (int it = 0; it < cfg.iter_cap; ++it) {
+    status.iterations = it + 1;
+    em_sweep(theta, next, in, cfg);
+    const double max_change = (next - theta).cwiseAbs().maxCoeff();
+    if (max_change < cfg.tol) {
+      theta.swap(next);
       status.converged = true;
       return status;
     }
-    theta = std::move(new_theta);
+    theta.swap(next);
   }
   return status;
+}
+
+EmIterStatus run_squarem_iterations(
+    Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
+  EmIterStatus status;
+  Eigen::VectorXd t1(theta.size()), t2(theta.size()), tx(theta.size());
+  while (status.iterations < cfg.iter_cap) {
+    em_sweep(theta, t1, in, cfg);
+    ++status.iterations;
+    if ((t1 - theta).cwiseAbs().maxCoeff() < cfg.tol) {
+      theta.swap(t1);
+      status.converged = true;
+      return status;
+    }
+    if (status.iterations >= cfg.iter_cap) {
+      theta.swap(t1);
+      return status;
+    }
+
+    em_sweep(t1, t2, in, cfg);
+    ++status.iterations;
+    if ((t2 - t1).cwiseAbs().maxCoeff() < cfg.tol) {
+      theta.swap(t2);
+      status.converged = true;
+      return status;
+    }
+
+    const Eigen::VectorXd r = t1 - theta;
+    const Eigen::VectorXd v = (t2 - t1) - r;
+    const double vnorm = v.norm();
+    double alpha = (vnorm > 0.0) ? -r.norm() / vnorm : -1.0;
+    if (alpha > -1.0) alpha = -1.0;
+
+    tx = theta - 2.0 * alpha * r + (alpha * alpha) * v;
+    if (!valid_em_state(tx, in)) {
+      theta.swap(t2);
+      continue;
+    }
+    if (status.iterations >= cfg.iter_cap) {
+      theta.swap(t2);
+      return status;
+    }
+
+    em_sweep(tx, t1, in, cfg);
+    ++status.iterations;
+    theta.swap(t1);
+  }
+  return status;
+}
+
+EmIterStatus run_em_iterations(
+    Eigen::VectorXd& theta, const EmInput& in, EmOptions opts) {
+  std::size_t n_total_subjects = 0;
+  for (std::uint32_t s : in.group_n_subjects) n_total_subjects += s;
+  if (n_total_subjects == 0) {
+    return EmIterStatus{0, true};
+  }
+  const EmLoopConfig cfg = make_em_loop_config(theta.size(), n_total_subjects, opts);
+  if (opts.acceleration == EmAcceleration::squarem) {
+    return run_squarem_iterations(theta, in, cfg);
+  }
+  return run_plain_em_iterations(theta, in, cfg);
 }
 
 RealMat constraint_jacobian(Eigen::Index n_final, Eigen::Index ref) {

@@ -10,6 +10,11 @@
 
 namespace misskappa {
 
+enum class EmAcceleration {
+  none,
+  squarem,
+};
+
 struct EmOptions {
   int max_iter = 10000;
   double tol = 1e-8;
@@ -26,6 +31,10 @@ struct EmOptions {
   // flatten / (n + flatten). 0 = strict ML (legacy behaviour, point on the
   // face determined by the deterministic start).
   double flatten = 0.0;
+  // C++-only categorical FIML acceleration. R deliberately does not expose
+  // this knob yet; calibration showed stable point estimates but support/
+  // pseudo-inverse policy movement in the reported SEs.
+  EmAcceleration acceleration = EmAcceleration::none;
 };
 
 struct GwiseOptions {

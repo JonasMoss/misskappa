@@ -373,6 +373,27 @@ TEST_CASE("estimate_fiml: info_rcond affects Louis variance, not estimates") {
   CHECK(r_drop->vcov.norm() < r_keep->vcov.norm());
 }
 
+TEST_CASE("estimate_fiml: C++ SQUAREM acceleration preserves estimates") {
+  IntMat x = identified_missing_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+
+  EmOptions plain{};
+  plain.tol = 1e-9;
+  plain.max_iter = 20000;
+  auto r_plain = ms::estimate_fiml(x, *W, plain);
+  REQUIRE(r_plain.has_value());
+
+  EmOptions squarem = plain;
+  squarem.acceleration = ms::EmAcceleration::squarem;
+  auto r_squarem = ms::estimate_fiml(x, *W, squarem);
+  REQUIRE(r_squarem.has_value());
+
+  CHECK((r_plain->estimates - r_squarem->estimates).cwiseAbs().maxCoeff() < 1e-6);
+  CHECK(r_squarem->vcov.allFinite());
+}
+
 TEST_CASE("estimate_fiml: perfect agreement converges to kappa = 1") {
   IntMat x(5, 2);
   x << 0, 0,
