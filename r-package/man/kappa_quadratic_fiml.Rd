@@ -12,9 +12,10 @@ missing entries. Rows that are entirely missing are dropped. The Conger
 and Fleiss quadratic kappas are scale-invariant, so no category-score
 vector is required.}
 
-\item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`),
-`max_iter` (default `10000`), and `fd_h` (finite-difference step for the
-information matrix, default `1e-5`). Pass any subset.}
+\item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`) and
+`max_iter` (default `10000`). `fd_h` is accepted for backward
+compatibility and ignored because the observed information is analytic.
+Pass any subset.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the `Conger` and

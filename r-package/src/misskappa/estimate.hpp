@@ -14,7 +14,7 @@ namespace misskappa {
 struct EmOptions {
   int max_iter = 10000;
   double tol = 1e-8;
-  double fd_h = 1e-5;       // Central finite-difference step for observed information.
+  double fd_h = 1e-5;       // Deprecated no-op for normal FIML; kept for R/API compatibility.
   double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
   double start_alpha = 0.1;  // smoothing on initial theta; small positive.
   double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.

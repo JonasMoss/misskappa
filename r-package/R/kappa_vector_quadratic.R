@@ -154,7 +154,7 @@
     stop("every rater-feature cell must be observed for at least one subject.")
   }
   opt <- utils::modifyList(
-    list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5), em_options
+    list(tol = 1e-8, max_iter = 10000L), em_options
   )
   raw <- rcpp_kappa_vector_quadratic_fiml(X, p, W, opt)
   estimates <- as.numeric(raw$estimates)
@@ -191,8 +191,9 @@
 #' @param method `"pairwise"` or `"nt_fiml"`.
 #' @param W Optional features-by-features symmetric positive-semidefinite
 #'   weight matrix. Defaults to the identity matrix.
-#' @param em_options Used only by `"nt_fiml"`; named list with `tol`,
-#'   `max_iter`, and `fd_h`.
+#' @param em_options Used only by `"nt_fiml"`; named list with `tol` and
+#'   `max_iter`. `fd_h` is accepted for backward compatibility and ignored
+#'   because the observed information is analytic.
 #'
 #' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
 #'   coefficients, covariance matrix, per-subject influence functions, and

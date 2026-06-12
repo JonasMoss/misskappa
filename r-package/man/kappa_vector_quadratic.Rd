@@ -19,8 +19,9 @@ kappa_vector_quadratic(
 \item{W}{Optional features-by-features symmetric positive-semidefinite
 weight matrix. Defaults to the identity matrix.}
 
-\item{em_options}{Used only by `"nt_fiml"`; named list with `tol`,
-`max_iter`, and `fd_h`.}
+\item{em_options}{Used only by `"nt_fiml"`; named list with `tol` and
+`max_iter`. `fd_h` is accepted for backward compatibility and ignored
+because the observed information is analytic.}
 }
 \value{
 A `misskappa_estimate` object with `Conger` and `Fleiss`

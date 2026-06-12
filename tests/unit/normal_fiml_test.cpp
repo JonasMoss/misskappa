@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <limits>
+#include <random>
 
 using misskappa::EmOptions;
 using misskappa::RealMat;
@@ -99,6 +100,27 @@ RealMat complete_items() {
   return x;
 }
 
+RealMat benchmark_items(int n, int p, double missing_prob, unsigned seed) {
+  std::mt19937 gen(seed);
+  std::normal_distribution<double> normal(0.0, 1.0);
+  std::uniform_real_distribution<double> uniform(0.0, 1.0);
+  RealMat x(n, p);
+  for (int i = 0; i < n; ++i) {
+    const double factor = normal(gen);
+    int observed = 0;
+    for (int j = 0; j < p; ++j) {
+      x(i, j) = 1.0 + 0.8 * factor + 0.6 * normal(gen);
+      if (uniform(gen) < missing_prob) {
+        x(i, j) = na_d;
+      } else {
+        ++observed;
+      }
+    }
+    if (observed == 0) x(i, 0) = 1.0 + normal(gen);
+  }
+  return x;
+}
+
 }  // namespace
 
 TEST_CASE("normal FIML alpha: complete data matches MLE covariance alpha") {
@@ -138,6 +160,50 @@ TEST_CASE("normal FIML quadratic kappa: missing data returns finite IF covarianc
   CHECK(r->fit.estimates.allFinite());
   CHECK(r->fit.vcov.allFinite());
   check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+}
+
+TEST_CASE("normal FIML quadratic kappa: missing-data estimates and SEs are pinned") {
+  const RealMat x = benchmark_items(500, 6, 0.2, 548);
+
+  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  REQUIRE(r.has_value());
+  CHECK(r->converged);
+  CHECK(std::abs(r->fit.estimates(0) - 0.627565184290) < 1e-11);
+  CHECK(std::abs(r->fit.estimates(1) - 0.627513328957) < 1e-11);
+  CHECK(std::abs(std::sqrt(r->fit.vcov(0, 0)) - 0.018896194796) < 1e-8);
+  CHECK(std::abs(std::sqrt(r->fit.vcov(1, 1)) - 0.018902343240) < 1e-8);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+}
+
+TEST_CASE("normal FIML quadratic kappa: fd_h is compatibility-only with analytic information") {
+  const RealMat x = benchmark_items(120, 5, 0.2, 167);
+  EmOptions coarse{};
+  coarse.fd_h = 1e-3;
+  EmOptions fine{};
+  fine.fd_h = 1e-8;
+
+  auto a = ms::estimate_quadratic_normal_fiml(x, coarse);
+  auto b = ms::estimate_quadratic_normal_fiml(x, fine);
+  REQUIRE(a.has_value());
+  REQUIRE(b.has_value());
+  CHECK((a->fit.estimates - b->fit.estimates).cwiseAbs().maxCoeff() < 1e-14);
+  CHECK((a->fit.vcov - b->fit.vcov).cwiseAbs().maxCoeff() < 1e-14);
+}
+
+TEST_CASE("normal FIML quadratic kappa: singular covariance returns numerical error") {
+  RealMat x(8, 3);
+  x << 1.0, 1.0, 0.4,
+       2.0, 2.0, 1.3,
+       3.0, 3.0, 2.5,
+       4.0, 4.0, 3.6,
+       5.0, 5.0, 4.2,
+       6.0, 6.0, 5.4,
+       7.0, 7.0, 6.7,
+       8.0, 8.0, 7.5;
+
+  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::numerical_error);
 }
 
 TEST_CASE("normal FIML vector quadratic: complete data matches vector moment formula") {

@@ -23,8 +23,9 @@ When supplied, its length must equal the number of unique finite entries
 in `x`.}
 
 \item{em_options}{Named list tuning the EM fit for the likelihood
-estimators. For `"nt_fiml"`: `tol`, `max_iter`, `fd_h`. For `"cat_fiml"`:
-`tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond` (the relative
+estimators. For `"nt_fiml"`: `tol`, `max_iter`; `fd_h` is accepted for
+backward compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
+`prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
 `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
 table; any positive value makes the fitted table the unique interior
