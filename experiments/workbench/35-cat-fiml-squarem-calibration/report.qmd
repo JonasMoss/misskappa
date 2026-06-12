@@ -1,0 +1,150 @@
+---
+title: "35 - Cat-FIML SQUAREM Calibration"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+results_dir <- file.path(dirname(knitr::current_input()), "results")
+needed <- file.path(results_dir, c("summary.csv", "comparison.csv", "metadata.csv"))
+if (!all(file.exists(needed))) {
+  stop(
+    "Missing results. Run: Rscript experiments/workbench/35-cat-fiml-squarem-calibration/run_experiment.R --smoke --progress",
+    call. = FALSE
+  )
+}
+summary <- read.csv(file.path(results_dir, "summary.csv"), stringsAsFactors = FALSE)
+comparison <- read.csv(file.path(results_dir, "comparison.csv"), stringsAsFactors = FALSE)
+metadata <- read.csv(file.path(results_dir, "metadata.csv"), stringsAsFactors = FALSE)
+meta <- setNames(metadata$value, metadata$key)
+
+fmt <- function(x, digits = 3) {
+  ifelse(is.finite(x), formatC(x, digits = digits, format = "fg", flag = "#"), NA)
+}
+fmt_sci <- function(x) {
+  ifelse(is.finite(x), formatC(x, digits = 2, format = "e"), NA)
+}
+```
+
+## Question
+
+Does SQUAREM acceleration change the strict-ML categorical FIML estimates,
+standard errors, or interval coverage enough to offset the runtime gain seen in
+the phase-timed performance probe?
+
+## Short Answer
+
+This experiment is the calibration harness for that decision. It compares two
+local C++ variants on matched simulated datasets: ordinary active-set EM, which
+is checksum-identical to canonical strict ML in the performance probe, and the
+same estimator with SQUAREM wrapped around the EM fixed-point map. The default
+smoke run is only a mechanical check; use `--calibration` or a larger `--reps`
+override before treating the coverage columns as policy evidence.
+
+```{r}
+headline <- comparison[comparison$coefficient == "Conger" &
+                         comparison$weight_label == "quadratic",
+                       c("dgp", "mechanism", "n", "paired_reps",
+                         "median_abs_estimate_diff", "median_se_ratio",
+                         "coverage_wald_t_em", "coverage_wald_t_squarem",
+                         "coverage_fisher_t_em", "coverage_fisher_t_squarem",
+                         "median_speedup", "mean_iter_ratio")]
+headline <- headline[order(headline$dgp, headline$mechanism, headline$n), ]
+headline_out <- transform(
+  headline,
+  median_abs_estimate_diff = fmt_sci(median_abs_estimate_diff),
+  median_se_ratio = fmt(median_se_ratio),
+  coverage_wald_t_em = fmt(coverage_wald_t_em),
+  coverage_wald_t_squarem = fmt(coverage_wald_t_squarem),
+  coverage_fisher_t_em = fmt(coverage_fisher_t_em),
+  coverage_fisher_t_squarem = fmt(coverage_fisher_t_squarem),
+  median_speedup = fmt(median_speedup),
+  mean_iter_ratio = fmt(mean_iter_ratio)
+)
+names(headline_out) <- c("DGP", "Mechanism", "n", "Paired Reps",
+                         "Median |Delta Est|", "Median SE Ratio",
+                         "Wald-t EM", "Wald-t SQUAREM",
+                         "Fisher-t EM", "Fisher-t SQUAREM",
+                         "Median Speedup", "Mean Iter Ratio")
+knitr::kable(headline_out)
+```
+
+## Evidence
+
+The paired comparison is computed within replicate, DGP, mechanism, sample
+size, weight, and coefficient. The estimate-difference columns are therefore
+algorithmic differences on the same data, not Monte Carlo noise from different
+datasets.
+
+```{r}
+est_dev <- comparison[order(-comparison$p95_abs_estimate_diff),
+                      c("dgp", "mechanism", "n", "weight_label", "coefficient",
+                        "paired_reps", "p95_abs_estimate_diff",
+                        "median_abs_estimate_diff_over_em_se",
+                        "median_se_ratio", "p10_se_ratio", "p90_se_ratio")]
+est_dev <- utils::head(est_dev, 12L)
+est_dev_out <- transform(
+  est_dev,
+  p95_abs_estimate_diff = fmt_sci(p95_abs_estimate_diff),
+  median_abs_estimate_diff_over_em_se = fmt(median_abs_estimate_diff_over_em_se),
+  median_se_ratio = fmt(median_se_ratio),
+  p10_se_ratio = fmt(p10_se_ratio),
+  p90_se_ratio = fmt(p90_se_ratio)
+)
+names(est_dev_out) <- c("DGP", "Mechanism", "n", "Weight", "Coefficient",
+                        "Paired Reps", "P95 |Delta Est|",
+                        "Median |Delta| / EM SE", "Median SE Ratio",
+                        "P10 SE Ratio", "P90 SE Ratio")
+knitr::kable(est_dev_out)
+```
+
+```{r}
+runtime <- comparison[comparison$coefficient == "Conger",
+                      c("dgp", "mechanism", "n", "weight_label",
+                        "median_speedup", "mean_iter_ratio",
+                        "mean_support_delta")]
+runtime <- runtime[order(runtime$dgp, runtime$mechanism, runtime$n, runtime$weight_label), ]
+runtime_out <- transform(
+  runtime,
+  median_speedup = fmt(median_speedup),
+  mean_iter_ratio = fmt(mean_iter_ratio),
+  mean_support_delta = fmt(mean_support_delta)
+)
+names(runtime_out) <- c("DGP", "Mechanism", "n", "Weight",
+                        "Median Speedup", "Mean Iter Ratio",
+                        "Mean Support Delta")
+knitr::kable(runtime_out)
+```
+
+## Caveats
+
+The DGPs are study-29-shaped stress cells, not a literal source of study 29's
+full simulation grid. They cover balanced, high-agreement, and skew-sparse
+latent-class ratings with MCAR, anchor-MAR, and planned two-rater missingness.
+Truth is complete-data Monte Carlo truth, so increase `--truth-n` for final
+calibration runs.
+
+The SQUAREM variant uses the active-set implementation from the performance
+probe. The ordinary EM control uses the same active-set implementation, so the
+statistical comparison isolates acceleration rather than the mechanical
+active-set rewrite.
+
+## Reproduce
+
+Generated at `r meta[["generated_at"]]` with:
+
+```{r}
+cat(meta[["command"]], "\n")
+```
+
+Useful outputs:
+
+- `results/replicates.csv`: one row per variant, replicate, coefficient, and weight.
+- `results/summary.csv`: bias, RMSE, SE calibration, interval coverage, runtime, and EM support by variant.
+- `results/comparison.csv`: paired EM-vs-SQUAREM estimate, SE, coverage, support, speed, and iteration ratios.
