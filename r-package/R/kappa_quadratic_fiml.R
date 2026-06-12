@@ -89,9 +89,10 @@
 #'   missing entries. Rows that are entirely missing are dropped. The Conger
 #'   and Fleiss quadratic kappas are scale-invariant, so no category-score
 #'   vector is required.
-#' @param em_options Named list tuning the EM fit: `tol` (default `1e-8`),
-#'   `max_iter` (default `10000`), and `fd_h` (finite-difference step for the
-#'   information matrix, default `1e-5`). Pass any subset.
+#' @param em_options Named list tuning the EM fit: `tol` (default `1e-8`) and
+#'   `max_iter` (default `10000`). `fd_h` is accepted for backward
+#'   compatibility and ignored because the observed information is analytic.
+#'   Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying the `Conger` and
 #'   `Fleiss` coefficients and their 2x2 asymptotic covariance. Additional
@@ -122,7 +123,7 @@ kappa_quadratic_fiml <- function(x, em_options = list()) {
   }
 
   opt <- utils::modifyList(
-    list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5), em_options
+    list(tol = 1e-8, max_iter = 10000L), em_options
   )
 
   .normal_fiml_from_cpp(

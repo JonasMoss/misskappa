@@ -16,13 +16,15 @@ namespace misskappa {
 
 namespace {
 
-constexpr double zero_tol = 1e-10;
+constexpr double inverse_rcond_tol = 1e-12;
 
 struct Pattern {
   std::vector<int> rows;
   std::vector<int> observed;
   std::vector<int> missing;
   RealMat x_observed;
+  RealVec sum_observed;
+  RealMat cross_observed;
 };
 
 struct NormalEmFit {
@@ -38,9 +40,6 @@ struct GradientResult {
   RealVec estimates;
   RealMat gradient;  // K x q, q = p + vech_size(p).
 };
-
-using PatternPtrList = std::vector<const Pattern*>;
-using ScorePatternIndex = std::vector<PatternPtrList>;
 
 int vech_size(int p) {
   return p * (p + 1) / 2;
@@ -90,32 +89,6 @@ Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> vech_positions(int p) {
   return pos;
 }
 
-RealVec pack_lower(const RealMat& sigma) {
-  const int p = static_cast<int>(sigma.rows());
-  RealVec out(vech_size(p));
-  int k = 0;
-  for (int j = 0; j < p; ++j) {
-    for (int i = j; i < p; ++i) {
-      out(k) = sigma(i, j);
-      ++k;
-    }
-  }
-  return out;
-}
-
-RealMat unpack_sigma(const RealVec& theta, int p) {
-  RealMat sigma = RealMat::Zero(p, p);
-  int k = p;
-  for (int j = 0; j < p; ++j) {
-    for (int i = j; i < p; ++i) {
-      sigma(i, j) = theta(k);
-      sigma(j, i) = theta(k);
-      ++k;
-    }
-  }
-  return sigma;
-}
-
 RealVec gather_vector(const RealVec& x, const std::vector<int>& idx) {
   RealVec out(static_cast<Eigen::Index>(idx.size()));
   for (std::size_t k = 0; k < idx.size(); ++k) out(static_cast<Eigen::Index>(k)) = x(idx[k]);
@@ -142,20 +115,26 @@ RealMat gather_submatrix(
   return gather_matrix(x, rows, cols);
 }
 
-void add_submatrix(RealMat& dst, const std::vector<int>& rows, const RealMat& value) {
-  for (std::size_t i = 0; i < rows.size(); ++i) {
-    for (std::size_t j = 0; j < rows.size(); ++j) {
-      dst(rows[i], rows[j]) += value(static_cast<Eigen::Index>(i), static_cast<Eigen::Index>(j));
-    }
-  }
-}
-
 Result<RealMat> inverse_matrix(const RealMat& x) {
   if (x.rows() != x.cols() || x.rows() == 0) {
     return misskappa::unexpected(Error::invalid_argument);
   }
+  if (!x.allFinite()) return misskappa::unexpected(Error::numerical_error);
+
+  Eigen::LLT<RealMat> llt(x);
+  if (llt.info() == Eigen::Success) {
+    const double rcond = llt.rcond();
+    if (!std::isfinite(rcond) || rcond <= inverse_rcond_tol) {
+      return misskappa::unexpected(Error::numerical_error);
+    }
+    RealMat inv = llt.solve(RealMat::Identity(x.rows(), x.cols()));
+    if (!inv.allFinite()) return misskappa::unexpected(Error::numerical_error);
+    inv = 0.5 * (inv + inv.transpose());
+    return inv;
+  }
+
   Eigen::FullPivLU<RealMat> lu(x);
-  lu.setThreshold(1e-12);
+  lu.setThreshold(inverse_rcond_tol);
   if (!lu.isInvertible()) return misskappa::unexpected(Error::numerical_error);
   RealMat inv = lu.inverse();
   if (!inv.allFinite()) return misskappa::unexpected(Error::numerical_error);
@@ -202,6 +181,8 @@ Result<std::vector<Pattern>> build_patterns(const RealMat& x) {
     }
     if (pat.observed.empty()) return misskappa::unexpected(Error::invalid_argument);
     pat.x_observed = gather_matrix(x, pat.rows, pat.observed);
+    pat.sum_observed = pat.x_observed.colwise().sum().transpose();
+    pat.cross_observed = pat.x_observed.transpose() * pat.x_observed;
     patterns.push_back(std::move(pat));
   }
   return patterns;
@@ -261,34 +242,57 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
     RealMat t2 = RealMat::Zero(p, p);
 
     for (const Pattern& pat : out.patterns) {
-      const int ng = static_cast<int>(pat.rows.size());
+      const double ng = static_cast<double>(pat.rows.size());
       const int no = static_cast<int>(pat.observed.size());
-      RealMat xc = RealMat::Zero(ng, p);
       for (int a = 0; a < no; ++a) {
-        xc.col(pat.observed[static_cast<std::size_t>(a)]) = pat.x_observed.col(a);
+        const int ja = pat.observed[static_cast<std::size_t>(a)];
+        t1(ja) += pat.sum_observed(a);
+        for (int b = 0; b < no; ++b) {
+          const int jb = pat.observed[static_cast<std::size_t>(b)];
+          t2(ja, jb) += pat.cross_observed(a, b);
+        }
       }
 
       if (!pat.missing.empty()) {
         auto soo_inv = inverse_matrix(gather_square(out.sigma, pat.observed));
         if (!soo_inv) return misskappa::unexpected(soo_inv.error());
         const RealMat smo = gather_submatrix(out.sigma, pat.missing, pat.observed);
-        const RealMat som = gather_submatrix(out.sigma, pat.observed, pat.missing);
         const RealMat smm = gather_square(out.sigma, pat.missing);
         const RealMat b = smo * (*soo_inv);
         const RealVec mu_o = gather_vector(out.mu, pat.observed);
         const RealVec mu_m = gather_vector(out.mu, pat.missing);
-        RealMat xo_c = pat.x_observed.rowwise() - mu_o.transpose();
-        RealMat xm = xo_c * b.transpose();
-        xm.rowwise() += mu_m.transpose();
-        for (std::size_t a = 0; a < pat.missing.size(); ++a) {
-          xc.col(pat.missing[a]) = xm.col(static_cast<Eigen::Index>(a));
-        }
-        const RealMat cmm = smm - b * som;
-        add_submatrix(t2, pat.missing, static_cast<double>(ng) * cmm);
-      }
 
-      t1.noalias() += xc.colwise().sum().transpose();
-      t2.noalias() += xc.transpose() * xc;
+        const RealVec se = pat.sum_observed - ng * mu_o;
+        const RealMat see = pat.cross_observed - pat.sum_observed * mu_o.transpose() -
+                            mu_o * pat.sum_observed.transpose() + ng * mu_o * mu_o.transpose();
+
+        const RealVec sum_missing = b * se + ng * mu_m;
+        const RealMat xo_e_cross = pat.cross_observed - pat.sum_observed * mu_o.transpose();
+        const RealMat cross_observed_missing =
+            xo_e_cross * b.transpose() + pat.sum_observed * mu_m.transpose();
+        const RealMat b_see_b = b * see * b.transpose();
+        const RealVec b_se = b * se;
+        const RealMat cross_missing =
+            b_see_b + b_se * mu_m.transpose() + mu_m * b_se.transpose() +
+            ng * mu_m * mu_m.transpose();
+        const RealMat conditional_cov = smm - b * smo.transpose();
+
+        const int nm = static_cast<int>(pat.missing.size());
+        for (int a = 0; a < nm; ++a) {
+          const int ja = pat.missing[static_cast<std::size_t>(a)];
+          t1(ja) += sum_missing(a);
+          for (int c = 0; c < no; ++c) {
+            const int jc = pat.observed[static_cast<std::size_t>(c)];
+            const double value = cross_observed_missing(c, a);
+            t2(jc, ja) += value;
+            t2(ja, jc) += value;
+          }
+          for (int c = 0; c < nm; ++c) {
+            const int jc = pat.missing[static_cast<std::size_t>(c)];
+            t2(ja, jc) += cross_missing(a, c) + ng * conditional_cov(a, c);
+          }
+        }
+      }
     }
 
     RealVec mu_new = t1 / static_cast<double>(n);
@@ -310,60 +314,6 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
     return misskappa::unexpected(Error::numerical_error);
   }
   return out;
-}
-
-// Each observed-pattern marginal depends only on parameters for variables
-// observed in that pattern, so finite-difference columns can skip the rest.
-ScorePatternIndex build_score_pattern_index(
-    const std::vector<Pattern>& patterns, int p,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos) {
-  ScorePatternIndex out(static_cast<std::size_t>(p + vech_size(p)));
-  for (const Pattern& pat : patterns) {
-    const int no = static_cast<int>(pat.observed.size());
-    for (int a = 0; a < no; ++a) {
-      const int ja = pat.observed[static_cast<std::size_t>(a)];
-      out[static_cast<std::size_t>(ja)].push_back(&pat);
-      for (int b = 0; b <= a; ++b) {
-        const int jb = pat.observed[static_cast<std::size_t>(b)];
-        out[static_cast<std::size_t>(p + vech_pos(ja, jb))].push_back(&pat);
-      }
-    }
-  }
-  return out;
-}
-
-Result<RealVec> score_totals(
-    const RealVec& mu, const RealMat& sigma, const PatternPtrList& patterns,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos) {
-  const int p = static_cast<int>(mu.size());
-  const int q = p + vech_size(p);
-  RealVec totals = RealVec::Zero(q);
-
-  for (const Pattern* pat_ptr : patterns) {
-    const Pattern& pat = *pat_ptr;
-    const int ng = static_cast<int>(pat.rows.size());
-    const int no = static_cast<int>(pat.observed.size());
-    auto soo_inv = inverse_matrix(gather_square(sigma, pat.observed));
-    if (!soo_inv) return misskappa::unexpected(soo_inv.error());
-    const RealVec mu_o = gather_vector(mu, pat.observed);
-    RealMat e = pat.x_observed.rowwise() - mu_o.transpose();
-    RealMat u = e * (*soo_inv);
-    const RealVec mu_sum = u.colwise().sum().transpose();
-    for (int a = 0; a < no; ++a) totals(pat.observed[static_cast<std::size_t>(a)]) += mu_sum(a);
-
-    const RealMat utu = u.transpose() * u;
-    for (int a = 0; a < no; ++a) {
-      for (int b = 0; b <= a; ++b) {
-        const int ja = pat.observed[static_cast<std::size_t>(a)];
-        const int jb = pat.observed[static_cast<std::size_t>(b)];
-        const double wt = (ja == jb) ? 1.0 : 2.0;
-        const int col = p + vech_pos(ja, jb);
-        totals(col) += wt * (0.5 * utu(a, b) - 0.5 * static_cast<double>(ng) * (*soo_inv)(a, b));
-      }
-    }
-  }
-
-  return totals;
 }
 
 Result<RealMat> score_matrix(
@@ -403,27 +353,78 @@ Result<RealMat> score_matrix(
 }
 
 Result<RealMat> observed_information(
-    const RealVec& theta, const ScorePatternIndex& score_patterns,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos,
-    int n, int p, double h) {
-  if (!(h > 0.0) || !std::isfinite(h)) return misskappa::unexpected(Error::invalid_argument);
-  const int q = static_cast<int>(theta.size());
-  RealMat H(q, q);
-  for (int k = 0; k < q; ++k) {
-    RealVec tp = theta;
-    RealVec tm = theta;
-    tp(k) += h;
-    tm(k) -= h;
-    auto gp = score_totals(
-        tp.head(p), unpack_sigma(tp, p),
-        score_patterns[static_cast<std::size_t>(k)], vech_pos);
-    if (!gp) return misskappa::unexpected(gp.error());
-    auto gm = score_totals(
-        tm.head(p), unpack_sigma(tm, p),
-        score_patterns[static_cast<std::size_t>(k)], vech_pos);
-    if (!gm) return misskappa::unexpected(gm.error());
-    H.col(k) = -((*gp) - (*gm)) / (2.0 * h * static_cast<double>(n));
+    const RealVec& mu, const RealMat& sigma, const std::vector<Pattern>& patterns,
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& vech_pos, int n, int p) {
+  const int q = p + vech_size(p);
+  RealMat H = RealMat::Zero(q, q);
+
+  for (const Pattern& pat : patterns) {
+    const int no = static_cast<int>(pat.observed.size());
+    const double ng = static_cast<double>(pat.rows.size());
+    auto soo_inv = inverse_matrix(gather_square(sigma, pat.observed));
+    if (!soo_inv) return misskappa::unexpected(soo_inv.error());
+    const RealMat& a_inv = *soo_inv;
+    const RealVec mu_o = gather_vector(mu, pat.observed);
+    const RealVec se = pat.sum_observed - ng * mu_o;
+    const RealMat see = pat.cross_observed - pat.sum_observed * mu_o.transpose() -
+                        mu_o * pat.sum_observed.transpose() + ng * mu_o * mu_o.transpose();
+    const RealVec v = a_inv * se;
+    const RealMat u = a_inv * see * a_inv;
+
+    for (int a = 0; a < no; ++a) {
+      const int ja = pat.observed[static_cast<std::size_t>(a)];
+      for (int c = 0; c < no; ++c) {
+        H(ja, pat.observed[static_cast<std::size_t>(c)]) -= ng * a_inv(a, c);
+      }
+    }
+
+    for (int a = 0; a < no; ++a) {
+      for (int b = 0; b <= a; ++b) {
+        const int ja = pat.observed[static_cast<std::size_t>(a)];
+        const int jb = pat.observed[static_cast<std::size_t>(b)];
+        const int col = p + vech_pos(ja, jb);
+        for (int c = 0; c < no; ++c) {
+          const int jc = pat.observed[static_cast<std::size_t>(c)];
+          const double value = (a == b) ? -a_inv(c, a) * v(a)
+                                        : -(a_inv(c, a) * v(b) + a_inv(c, b) * v(a));
+          H(jc, col) += value;
+          H(col, jc) += value;
+        }
+      }
+    }
+
+    for (int a = 0; a < no; ++a) {
+      for (int b = 0; b <= a; ++b) {
+        const int ja = pat.observed[static_cast<std::size_t>(a)];
+        const int jb = pat.observed[static_cast<std::size_t>(b)];
+        const int row = p + vech_pos(ja, jb);
+        const double row_weight = (ja == jb) ? 1.0 : 2.0;
+        for (int c = 0; c < no; ++c) {
+          for (int d = 0; d <= c; ++d) {
+            const int jc = pat.observed[static_cast<std::size_t>(c)];
+            const int jd = pat.observed[static_cast<std::size_t>(d)];
+            const int col = p + vech_pos(jc, jd);
+
+            double aa = 0.0;
+            double au = 0.0;
+            double ua = 0.0;
+            if (c == d) {
+              aa = a_inv(a, c) * a_inv(c, b);
+              au = a_inv(a, c) * u(c, b);
+              ua = u(a, c) * a_inv(c, b);
+            } else {
+              aa = a_inv(a, c) * a_inv(d, b) + a_inv(a, d) * a_inv(c, b);
+              au = a_inv(a, c) * u(d, b) + a_inv(a, d) * u(c, b);
+              ua = u(a, c) * a_inv(d, b) + u(a, d) * a_inv(c, b);
+            }
+            H(row, col) += row_weight * 0.5 * (ng * aa - au - ua);
+          }
+        }
+      }
+    }
   }
+
+  H = -H / static_cast<double>(n);
   H = 0.5 * (H + H.transpose());
   if (!H.allFinite()) return misskappa::unexpected(Error::numerical_error);
   return H;
@@ -439,8 +440,6 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   const int pstar = vech_size(p);
   const int q = p + pstar;
   const auto vech_pos = vech_positions(p);
-  const ScorePatternIndex score_patterns =
-      build_score_pattern_index(em->patterns, p, vech_pos);
 
   GradientResult grad = gradient_fn(em->mu, em->sigma);
   if (grad.gradient.cols() != q || grad.gradient.rows() != grad.estimates.size()) {
@@ -450,12 +449,9 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
     return misskappa::unexpected(Error::numerical_error);
   }
 
-  RealVec theta(q);
-  theta.head(p) = em->mu;
-  theta.tail(pstar) = pack_lower(em->sigma);
   auto scores = score_matrix(em->mu, em->sigma, em->x, em->patterns, vech_pos);
   if (!scores) return misskappa::unexpected(scores.error());
-  auto H = observed_information(theta, score_patterns, vech_pos, n, p, opts.fd_h);
+  auto H = observed_information(em->mu, em->sigma, em->patterns, vech_pos, n, p);
   if (!H) return misskappa::unexpected(H.error());
   auto solved = solve_matrix(*H, grad.gradient.transpose());
   if (!solved) return misskappa::unexpected(solved.error());

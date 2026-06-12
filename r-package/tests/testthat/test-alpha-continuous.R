@@ -31,7 +31,7 @@ test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
                tolerance = 1e-10)
 })
 
-test_that("standard errors are stable across finite-difference steps", {
+test_that("standard errors ignore legacy fd_h option", {
   X <- make_data(450L, 5L, rho = 0.35, miss = 0.2, seed = 8L)
   hs <- c(1e-4, 1e-5, 1e-6)
   ses <- vapply(hs, function(h) {
@@ -39,7 +39,7 @@ test_that("standard errors are stable across finite-difference steps", {
     sqrt(vcov(fit)[1, 1])
   }, numeric(1))
   rel_span <- diff(range(ses)) / mean(ses)
-  expect_lt(rel_span, 1e-6)
+  expect_equal(rel_span, 0, tolerance = 1e-12)
 })
 
 test_that("analytic casewise scores match numerical differentiation", {

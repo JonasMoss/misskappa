@@ -211,9 +211,9 @@
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped.
 #' @param em_options Named list tuning the EM fit: `tol` (convergence
-#'   tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
-#'   and `fd_h` (finite-difference step for the information matrix, default
-#'   `1e-5`). Pass any subset.
+#'   tolerance on the moments, default `1e-8`) and `max_iter` (default
+#'   `10000`). `fd_h` is accepted for backward compatibility and ignored
+#'   because the observed information is analytic. Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance. Additional fields: `moments`
@@ -248,7 +248,7 @@ alpha_continuous <- function(x, em_options = list()) {
   }
 
   opt <- utils::modifyList(
-    list(tol = 1e-8, max_iter = 10000L, fd_h = 1e-5), em_options
+    list(tol = 1e-8, max_iter = 10000L), em_options
   )
 
   .normal_fiml_from_cpp(

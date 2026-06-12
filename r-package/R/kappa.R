@@ -112,8 +112,9 @@
 #'   When supplied, its length must equal the number of unique finite entries
 #'   in `x`.
 #' @param em_options Named list tuning the EM fit for the likelihood
-#'   estimators. For `"nt_fiml"`: `tol`, `max_iter`, `fd_h`. For `"cat_fiml"`:
-#'   `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond` (the relative
+#'   estimators. For `"nt_fiml"`: `tol`, `max_iter`; `fd_h` is accepted for
+#'   backward compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
+#'   `prune_tol`, `start_alpha`, `info_rcond` (the relative
 #'   eigenvalue cutoff used when inverting Louis' observed information), and
 #'   `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
 #'   table; any positive value makes the fitted table the unique interior
@@ -903,8 +904,8 @@ kappa_counts <- function(x,
 #'   `"linear"`, `"quadratic"`, `"radical"`, or `"ratio"`. The data range
 #'   `[min(x), max(x)]` is used to parameterise the kernel. Only
 #'   `"quadratic"` is available with `method = "fiml"`.
-#' @param em_options Used only when `method = "fiml"`: named list with `tol`,
-#'   `max_iter`, and `fd_h`.
+#' @param em_options Used only when `method = "fiml"`: named list with `tol`
+#'   and `max_iter`. `fd_h` is accepted for backward compatibility and ignored.
 #'
 #' @return A `misskappa_estimate` object carrying named coefficients
 #'   (`Conger`, `Fleiss`) and the 2x2 asymptotic covariance matrix.

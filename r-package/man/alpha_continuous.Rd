@@ -11,9 +11,9 @@ alpha_continuous(x, em_options = list())
 missing entries. Rows that are entirely missing are dropped.}
 
 \item{em_options}{Named list tuning the EM fit: `tol` (convergence
-tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
-and `fd_h` (finite-difference step for the information matrix, default
-`1e-5`). Pass any subset.}
+tolerance on the moments, default `1e-8`) and `max_iter` (default
+`10000`). `fd_h` is accepted for backward compatibility and ignored
+because the observed information is analytic. Pass any subset.}
 }
 \value{
 An object of class `misskappa_estimate` carrying one coefficient

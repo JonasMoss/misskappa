@@ -23,8 +23,8 @@ kappa_continuous(
 `[min(x), max(x)]` is used to parameterise the kernel. Only
 `"quadratic"` is available with `method = "fiml"`.}
 
-\item{em_options}{Used only when `method = "fiml"`: named list with `tol`,
-`max_iter`, and `fd_h`.}
+\item{em_options}{Used only when `method = "fiml"`: named list with `tol`
+and `max_iter`. `fd_h` is accepted for backward compatibility and ignored.}
 }
 \value{
 A `misskappa_estimate` object carrying named coefficients
