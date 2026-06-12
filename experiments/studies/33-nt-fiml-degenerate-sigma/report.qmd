@@ -1,0 +1,70 @@
+---
+title: "Study 33: nt-FIML Degenerate Sigma Rescue"
+format:
+  html:
+    toc: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+results_dir <- Sys.getenv("STUDY33_RESULTS_DIR", "results/smoke")
+needed <- file.path(results_dir, c("recovery.csv", "timing.csv", "calibration.csv"))
+if (!all(file.exists(needed))) {
+  stop(
+    "Missing result CSVs. Run: Rscript run_experiment.R --smoke ",
+    "or set STUDY33_RESULTS_DIR to a completed output directory.",
+    call. = FALSE
+  )
+}
+recovery <- read.csv(file.path(results_dir, "recovery.csv"))
+timing <- read.csv(file.path(results_dir, "timing.csv"))
+calibration <- read.csv(file.path(results_dir, "calibration.csv"))
+```
+
+## Question
+
+Does the experimental `em_options$soo_rcond` rescue for singular observed-block
+covariances in normal-theory FIML buy trustworthy inference for small-sample
+quadratic kappa?
+
+## Short Answer
+
+No. The rescue can turn numerical failures into point estimates, but the
+degenerate rescued stratum reports standard errors that are much too small.
+The default policy should remain to error on the singular covariance path.
+
+## Evidence
+
+Recovery:
+
+```{r}
+knitr::kable(recovery, digits = 3)
+```
+
+Median fit timings:
+
+```{r}
+knitr::kable(timing, digits = 3)
+```
+
+Calibration:
+
+```{r}
+knitr::kable(calibration, digits = 3)
+```
+
+## Caveats
+
+This study uses one latent-normal rater model with five raters, five categories,
+and one correlation level. It is an engineering and inference diagnostic for the
+rescued boundary path, not a broad simulation study for the quadratic paper.
+
+## Reproduce
+
+```bash
+Rscript run_experiment.R --smoke --load-all
+Rscript run_experiment.R --full --load-all
+```
