@@ -1,0 +1,5 @@
+/bin/
+/report.html
+/report_files/
+/results/*
+!/results/.gitignore
