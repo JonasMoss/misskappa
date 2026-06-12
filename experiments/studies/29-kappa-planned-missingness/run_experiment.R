@@ -76,8 +76,8 @@ quadratic_methods <- c(
 # (block / ring / random pairs). It mirrors the one-way / exchangeable ICC of
 # ten Hove, Jorgensen & van der Ark (2025), the source of the planned designs.
 #
-# Two backends on the same Fleiss_exch estimand: a closed-form pairwise moment
-# estimator and a count-data FIML (EM over compositions of r_total into C, a
+# Two backends on the same Fleiss_exch estimand: the Fleiss-Cuzick count moment
+# estimator and count-data FIML (EM over compositions of r_total into C, a
 # low-dimensional exchangeable model). Unlike the saturated fixed-rater cat_fiml,
 # the count FIML is well-identified at small n and carries no identification
 # guard, so it is the MAR-consistent estimator that still runs on sparse designs.
@@ -622,7 +622,7 @@ method_defs <- data.frame(
   base_estimator = c("ipw", "cat_fiml", "ipw",
                      "ipw", "cat_fiml", "ipw",
                      "ipw", "cat_fiml", "pairwise", "nt_fiml", "ipw",
-                     "pairwise", "pairwise", "cat_fiml", "cat_fiml"),
+                     "fleiss_cuzick", "fleiss_cuzick", "cat_fiml", "cat_fiml"),
   weight = c("nominal", "nominal", "nominal",
              "linear", "linear", "linear",
              "quadratic", "quadratic", "quadratic", "quadratic", "quadratic",
@@ -752,7 +752,7 @@ fit_counts <- function(X, spec, estimator, weight) {
     estimator = estimator,
     weight = weight,
     values = seq.int(0L, spec$C - 1L),
-    em_options = em_options_for(estimator)  # empty for "pairwise"; EM tols for cat_fiml
+    em_options = em_options_for(estimator)  # empty for Fleiss-Cuzick; EM tols for cat_fiml
   ))
 }
 
@@ -906,7 +906,7 @@ truth_for_dgp <- function(spec, seed, truth_n) {
     ## counts methods are scored against their own truth.
     fit_exch <- misskappa::kappa_counts(
       counts_from_ratings(X, spec$C),
-      estimator = "pairwise",
+      estimator = "fleiss_cuzick",
       weight = w,
       values = seq(0, spec$C - 1L)
     )
@@ -924,7 +924,7 @@ truth_for_dgp <- function(spec, seed, truth_n) {
       truth_n = truth_n,
       truth_method = c(
         rep("complete-data Monte Carlo using kappa(estimator='ipw')", length(coef_names)),
-        "complete-data Monte Carlo using kappa_counts(estimator='pairwise')"
+        "complete-data Monte Carlo using kappa_counts(estimator='fleiss_cuzick')"
       ),
       stringsAsFactors = FALSE
     )
