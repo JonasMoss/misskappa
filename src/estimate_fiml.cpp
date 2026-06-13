@@ -18,8 +18,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace misskappa {
@@ -48,7 +46,6 @@ struct EmInput {
 
 struct EmRunResult {
   Eigen::VectorXd theta_hat;    // pruned, normalised
-  RealMat vcov;                 // covariance of theta_hat
   std::vector<std::uint64_t> pattern_indices;  // ranks of surviving patterns
   int c = 0;
   int R = 0;
@@ -179,40 +176,36 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
     }
   }
 
-  // Bucket subjects by observed pattern (as a string key for stable ordering).
-  std::map<std::string, std::pair<std::vector<int>, std::uint32_t>> by_key;
-  std::vector<std::string> pattern_order;
-  std::vector<std::string> subject_keys;
+  // Bucket subjects by observed pattern, preserving first-seen group order.
+  std::map<std::vector<int>, std::uint32_t> row_to_group;
+  std::vector<std::vector<int>> pattern_order;
+  std::vector<std::uint32_t> group_counts;
   pattern_order.reserve(static_cast<std::size_t>(ratings.rows()));
-  subject_keys.reserve(static_cast<std::size_t>(ratings.rows()));
+  group_counts.reserve(static_cast<std::size_t>(ratings.rows()));
+  in.subject_groups.reserve(static_cast<std::size_t>(ratings.rows()));
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    std::string key;
     std::vector<int> row(static_cast<std::size_t>(in.R));
     for (int j = 0; j < in.R; ++j) {
       row[static_cast<std::size_t>(j)] = ratings(i, j);
-      key += std::to_string(ratings(i, j));
-      key += ',';
     }
-    subject_keys.push_back(key);
-    auto it = by_key.find(key);
-    if (it == by_key.end()) {
-      by_key.emplace(key, std::make_pair(std::move(row), std::uint32_t{1}));
-      pattern_order.push_back(key);
+    auto it = row_to_group.find(row);
+    if (it == row_to_group.end()) {
+      const auto group = static_cast<std::uint32_t>(pattern_order.size());
+      row_to_group.emplace(row, group);
+      pattern_order.push_back(std::move(row));
+      group_counts.push_back(std::uint32_t{1});
+      in.subject_groups.push_back(group);
     } else {
-      it->second.second += 1;
+      group_counts[it->second] += 1;
+      in.subject_groups.push_back(it->second);
     }
   }
 
   // For each unique observed pattern, enumerate compatible completions.
   std::uint32_t cum_offset = 0;
-  std::unordered_map<std::string, std::uint32_t> key_to_group;
-  key_to_group.reserve(pattern_order.size());
   for (std::size_t g = 0; g < pattern_order.size(); ++g) {
-    const auto& key = pattern_order[g];
-    key_to_group.emplace(key, static_cast<std::uint32_t>(g));
-    const auto& entry = by_key.at(key);
-    const std::vector<int>& observed = entry.first;
-    const std::uint32_t count = entry.second;
+    const std::vector<int>& observed = pattern_order[g];
+    const std::uint32_t count = group_counts[g];
 
     std::vector<int> missing_positions;
     missing_positions.reserve(observed.size());
@@ -235,10 +228,6 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
       in.completion_indices.push_back(rank);
     }
     cum_offset += static_cast<std::uint32_t>(completion_ranks.size());
-  }
-  in.subject_groups.reserve(subject_keys.size());
-  for (const auto& key : subject_keys) {
-    in.subject_groups.push_back(key_to_group.at(key));
   }
 
   // Total pattern space: c^R.
@@ -386,6 +375,7 @@ EmIterStatus run_squarem_iterations(
     Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
   EmIterStatus status;
   Eigen::VectorXd t1(theta.size()), t2(theta.size()), tx(theta.size());
+  Eigen::VectorXd r(theta.size()), v(theta.size());
   while (status.iterations < cfg.iter_cap) {
     em_sweep(theta, t1, in, cfg);
     ++status.iterations;
@@ -407,8 +397,9 @@ EmIterStatus run_squarem_iterations(
       return status;
     }
 
-    const Eigen::VectorXd r = t1 - theta;
-    const Eigen::VectorXd v = (t2 - t1) - r;
+    r.noalias() = t1 - theta;
+    v.noalias() = t2 - t1;
+    v -= r;
     const double vnorm = v.norm();
     double alpha = (vnorm > 0.0) ? -r.norm() / vnorm : -1.0;
     if (alpha > -1.0) alpha = -1.0;
@@ -478,42 +469,40 @@ LouisReducedInfo build_louis_reduced_info(
   }
   out.ref = ref;
 
-  std::unordered_map<std::uint64_t, Eigen::Index> rank_to_pruned;
-  rank_to_pruned.reserve(pruned_ranks.size());
+  std::vector<Eigen::Index> rank_to_pruned(in.n_total_patterns, Eigen::Index{-1});
   for (Eigen::Index i = 0; i < n_final; ++i) {
-    rank_to_pruned.emplace(pruned_ranks[static_cast<std::size_t>(i)], i);
+    rank_to_pruned[static_cast<std::size_t>(
+        pruned_ranks[static_cast<std::size_t>(i)])] = i;
   }
 
   RealMat info_star = RealMat::Zero(n_final - 1, n_final - 1);
   RealMat group_scores = RealMat::Zero(
       static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
+  Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
     const std::uint32_t offset = in.group_offsets[g];
 
     double sum_theta_subset = 0.0;
-    bool has_pruned_completion = false;
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const std::uint64_t rank = in.completion_indices[offset + k];
-      auto it = rank_to_pruned.find(rank);
-      if (it != rank_to_pruned.end()) {
-        has_pruned_completion = true;
-        sum_theta_subset += theta_pruned(it->second);
+      const Eigen::Index idx = rank_to_pruned[static_cast<std::size_t>(rank)];
+      if (idx >= 0) {
+        sum_theta_subset += theta_pruned(idx);
       }
     }
-    if (!has_pruned_completion || sum_theta_subset <= singular_tol) continue;
+    if (sum_theta_subset <= singular_tol) continue;
 
     // Score for theta_pruned: posterior / theta_pruned. In raw FIML this is
     // constant across all compatible retained completions.
     const double retained_score = 1.0 / sum_theta_subset;
     double ref_score = 0.0;
-    Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
+    s_reduced.setZero();
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const std::uint64_t rank = in.completion_indices[offset + k];
-      auto it = rank_to_pruned.find(rank);
-      if (it == rank_to_pruned.end()) continue;
-      const Eigen::Index idx = it->second;
+      const Eigen::Index idx = rank_to_pruned[static_cast<std::size_t>(rank)];
+      if (idx < 0) continue;
       if (idx == ref) {
         ref_score = retained_score;
       } else {
@@ -533,20 +522,6 @@ LouisReducedInfo build_louis_reduced_info(
   out.jacobian = constraint_jacobian(n_final, ref);
   out.group_scores = std::move(group_scores);
   return out;
-}
-
-// Louis observed-information variance for the pruned theta.
-RealMat em_variance(
-    const Eigen::VectorXd& theta_pruned,
-    const std::vector<std::uint64_t>& pruned_ranks,
-    const EmInput& in,
-    const EmOptions& opts) {
-  const Eigen::Index n_final = theta_pruned.size();
-  if (n_final <= 1) return RealMat::Zero(n_final, n_final);
-
-  const LouisReducedInfo info = build_louis_reduced_info(theta_pruned, pruned_ranks, in);
-  const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
-  return info.jacobian * var_star * info.jacobian.transpose();
 }
 
 FimlVarianceCache build_fiml_variance_cache(
@@ -623,7 +598,7 @@ Result<RealVec> reduced_gradient_null_fraction(
 }
 
 Result<EmRunResult> run_em_preprocessed(
-    const EmInput& in, int c, EmOptions opts, bool compute_vcov) {
+    const EmInput& in, int c, EmOptions opts) {
   EmRunResult out;
   out.c = c;
   out.R = in.R;
@@ -671,9 +646,6 @@ Result<EmRunResult> run_em_preprocessed(
 
   out.theta_hat = std::move(theta_pruned);
   out.pattern_indices = std::move(pruned_ranks);
-  if (compute_vcov) {
-    out.vcov = em_variance(out.theta_hat, out.pattern_indices, in, opts);
-  }
   return out;
 }
 
@@ -1136,6 +1108,7 @@ Result<Loglin2MomentCache> build_loglin2_moment_cache(
   out.complete_cov = 0.5 * (out.complete_cov + out.complete_cov.transpose());
 
   RealMat missing_info = RealMat::Zero(dim, dim);
+  RealVec tbar = RealVec::Zero(dim);
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
     const std::uint32_t offset = in.group_offsets[g];
@@ -1145,7 +1118,7 @@ Result<Loglin2MomentCache> build_loglin2_moment_cache(
     }
     if (mass <= singular_tol) return misskappa::unexpected(Error::numerical_error);
 
-    RealVec tbar = RealVec::Zero(dim);
+    tbar.setZero();
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const Eigen::Index cell =
           static_cast<Eigen::Index>(in.completion_indices[offset + k]);
@@ -1352,7 +1325,7 @@ Result<Estimation> estimate_fiml(
   if (!in_res) return misskappa::unexpected(in_res.error());
   auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
   if (!identified) return misskappa::unexpected(identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
@@ -1380,7 +1353,7 @@ Result<std::vector<Estimation>> estimate_fiml_many(
   if (!in_res) return misskappa::unexpected(in_res.error());
   auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
   if (!identified) return misskappa::unexpected(identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
@@ -1412,7 +1385,7 @@ Result<Estimation> estimate_fiml_gwise(
   auto tuple_identified =
       detail::require_complete_tuple_observation(detail::observed_mask(ratings), g);
   if (!tuple_identified) return misskappa::unexpected(tuple_identified.error());
-  auto em = run_em_preprocessed(*in_res, distance.C, em_opts, false);
+  auto em = run_em_preprocessed(*in_res, distance.C, em_opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
   FimlVarianceCache cache = build_fiml_variance_cache(*em, *in_res, em_opts);
@@ -1720,7 +1693,7 @@ Result<Estimation> estimate_alpha_fiml(
   auto pattern_identified =
       detail::require_complete_pair_observation(detail::observed_mask(ratings));
   if (!pattern_identified) return misskappa::unexpected(pattern_identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
   FimlVarianceCache cache = build_fiml_variance_cache(*em, *in_res, opts);
@@ -1765,7 +1738,7 @@ Result<FimlLouisDiagnostic> diagnose_fiml_louis(
 
   auto in_res = preprocess_raw(ratings, C);
   if (!in_res) return misskappa::unexpected(in_res.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 

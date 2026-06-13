@@ -418,6 +418,7 @@ LouisReducedInfoCounts build_louis_reduced_info(
   RealMat info_star = RealMat::Zero(n_final - 1, n_final - 1);
   RealMat group_scores = RealMat::Zero(
       static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
+  Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
@@ -436,7 +437,7 @@ LouisReducedInfoCounts build_louis_reduced_info(
     if (!has_pruned_completion || sum_w <= singular_tol) continue;
 
     double ref_score = 0.0;
-    Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
+    s_reduced.setZero();
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const auto aidx = static_cast<std::size_t>(in.completion_indices[offset + k]);
       const Eigen::Index idx = active_to_pruned[aidx];
