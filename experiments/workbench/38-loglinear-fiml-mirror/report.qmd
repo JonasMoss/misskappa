@@ -1,0 +1,197 @@
+---
+title: "Is the all-2-way log-linear FIML the categorical mirror of nt-fiml?"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+res_dir <- "results"
+need <- function(f) {
+  p <- file.path(res_dir, f)
+  if (!file.exists(p)) stop("Missing ", p, ". Run: Rscript run_experiment.R --main", call. = FALSE)
+  utils::read.csv(p, stringsAsFactors = FALSE)
+}
+summary <- need("summary.csv")
+truths <- need("truths.csv")
+meta <- need("metadata.csv")
+est_levels <- c(ipw = "IPW", pairwise = "Pairwise", cat_fiml = "Saturated cat-FIML",
+                ds_fiml = "DS-FIML", loglin2_fiml = "Log-linear (all-2-way) FIML",
+                nt_fiml = "NT-FIML")
+lab <- function(e) ifelse(e %in% names(est_levels), est_levels[e], e)
+```
+
+## Question
+
+nt-fiml is consistent under MCAR for any distribution and efficient under MAR
+when normality holds, because the Gaussian is saturated in exactly the moments
+quadratic kappa needs (means + covariances) and max-entropy beyond. For
+nominal-weight Conger/Fleiss — which depend only on the univariate and bivariate
+margins of the rating distribution — the discrete analogue is the
+**all-2-way-interaction log-linear model** (the maximum-entropy distribution
+matching all 1-way and 2-way margins). Does it inherit nt-fiml's duality:
+model-free consistency under MCAR, and consistency + efficiency under MAR when
+the truth has no genuine 3-way-or-higher rater interactions?
+
+DS-FIML, by contrast, constrains the 2-way margins through a latent class, so it
+is *not* expected to be model-free MCAR-consistent — it carries a misspecification
+bias asymptote ([[project_ds_fiml_prototype]]). The contrast is the headline.
+
+## Short answer
+
+```{r answer, results = "asis"}
+# Filled narratively below from the evidence tables.
+cat("The duality holds (the bias-vs-n contrast H1 and the MAR tables H2/H3), ",
+    "and the new delta-method SEs are well calibrated (H4): by n >= 400, ",
+    "`SE/SD` ~ 1 and coverage ~0.95 in every cell -- including under MAR, where ",
+    "the MCAR-only IPW interval instead collapses.\n", sep = "")
+```
+
+## H1 — MCAR model-free consistency (3-way-interaction truth `ds_4x4`)
+
+On a Dawid–Skene severity truth (genuine higher-order rater interactions), under
+MCAR: does each estimator's bias vanish as n grows? The log-linear FIML and the
+saturated cat-FIML should → 0 (they preserve the 2-way margins); DS-FIML should
+plateau at its misspecification asymptote.
+
+```{r h1-table}
+h1 <- summary[summary$dgp == "ds_4x4" & summary$mechanism == "mcar30" &
+                summary$weight == "nominal" & summary$coefficient == "Conger", ]
+h1 <- h1[order(h1$estimator, h1$n), c("estimator", "n", "bias", "sd", "rmse")]
+h1$estimator <- lab(h1$estimator)
+knitr::kable(h1, digits = 4, row.names = FALSE,
+             col.names = c("Estimator", "n", "Bias", "SD", "RMSE"))
+```
+
+```{r h1-plot, fig.width = 7, fig.height = 4.2}
+op <- par(mar = c(4, 4, 1, 1))
+ests <- unique(h1$estimator)
+cols <- seq_along(ests)
+ns <- sort(unique(h1$n))
+plot(NA, xlim = range(ns), ylim = range(c(0, h1$bias)), log = "x",
+     xlab = "n (log scale)", ylab = "Bias (Conger, nominal)")
+abline(h = 0, col = "grey60", lty = 2)
+for (i in seq_along(ests)) {
+  d <- h1[h1$estimator == ests[i], ]
+  lines(d$n, d$bias, type = "b", col = cols[i], pch = 19)
+}
+legend("topright", legend = ests, col = cols, pch = 19, lty = 1, bty = "n", cex = 0.85)
+par(op)
+```
+
+## H2 — MAR efficiency when the restriction holds (`loglin2_4x4`)
+
+On an all-2-way truth (the restriction holds exactly), under MAR: the log-linear
+FIML should be consistent and lower-RMSE than the MCAR-only baselines (IPW),
+which are MAR-biased.
+
+```{r h2-table}
+h2 <- summary[summary$dgp == "loglin2_4x4" & summary$mechanism == "mar_anchor30" &
+                summary$weight == "nominal" & summary$coefficient == "Conger", ]
+h2 <- h2[order(h2$estimator, h2$n), c("estimator", "n", "bias", "sd", "rmse")]
+h2$estimator <- lab(h2$estimator)
+knitr::kable(h2, digits = 4, row.names = FALSE,
+             col.names = c("Estimator", "n", "Bias", "SD", "RMSE"))
+```
+
+## H3 — MAR robustness boundary (3-way-interaction truth `ds_4x4`)
+
+On the interaction-bearing truth under MAR, no estimator's working model is
+correct; characterise the residual bias of each rung.
+
+```{r h3-table}
+h3 <- summary[summary$dgp == "ds_4x4" & summary$mechanism == "mar_anchor30" &
+                summary$weight == "nominal" & summary$coefficient == "Conger", ]
+h3 <- h3[order(h3$estimator, h3$n), c("estimator", "n", "bias", "sd", "rmse")]
+h3$estimator <- lab(h3$estimator)
+knitr::kable(h3, digits = 4, row.names = FALSE,
+             col.names = c("Estimator", "n", "Bias", "SD", "RMSE"))
+```
+
+## H4 — Standard-error calibration (log-linear FIML)
+
+The C++ `estimate_kappa_loglin2` carries delta-method SEs: the Louis observed
+information in the model's sufficient-statistic (1-way + 2-way margin)
+coordinates, mapped through the implied-kappa Jacobian. Two diagnostics below:
+`SE/SD` (mean delta-method SE over the across-replication SD of the estimate —
+pure SE calibration, target 1) and Wald coverage about the **exact** truth
+(which additionally absorbs any point bias).
+
+```{r h4-loglin2}
+h4 <- summary[summary$estimator == "loglin2_fiml" & summary$weight == "nominal" &
+                summary$coefficient == "Conger", ]
+h4 <- h4[order(h4$dgp, h4$mechanism, h4$n),
+         c("dgp", "mechanism", "n", "bias", "sd", "mean_se", "se_sd", "coverage")]
+knitr::kable(h4, digits = c(0, 0, 0, 4, 4, 4, 3, 3), row.names = FALSE,
+             col.names = c("DGP", "Mechanism", "n", "Bias", "SD", "Mean SE",
+                           "SE/SD", "Cover"))
+```
+
+The SE is well calibrated wherever loglin2 is consistent. By n ≥ 400 `SE/SD`
+sits in 0.96–1.05 and coverage in 0.94–0.96 in *every* cell — including the
+`ds_4x4` MAR boundary, where loglin2's residual fill-in bias turns out to be
+tiny (Conger bias −0.003 at n = 1600), so coverage recovers to nominal rather
+than collapsing. The only sub-nominal coverage is at n = 40 (0.81–0.92): partly
+small-n FIML point bias, and under anchor-MAR partly an SE optimism of ~20%
+(`SE/SD` ≈ 0.79) — the same n ≤ 40 weak spot the other FIMLs show. It clears by
+n ≥ 100–400.
+
+### Coverage across estimators (largest n)
+
+```{r h4-cross}
+cross <- summary[summary$n == max(summary$n) & summary$weight == "nominal" &
+                   summary$coefficient == "Conger" & is.finite(summary$coverage), ]
+cross <- cross[order(cross$dgp, cross$mechanism, cross$estimator),
+               c("dgp", "mechanism", "estimator", "se_sd", "coverage")]
+cross$estimator <- lab(cross$estimator)
+knitr::kable(cross, digits = 3, row.names = FALSE,
+             col.names = c("DGP", "Mechanism", "Estimator", "SE/SD", "Cover"))
+```
+
+At n = 1600 the contrast with the MCAR-only baseline is sharp: under anchor-MAR,
+log-linear FIML and saturated cat-FIML hold nominal coverage (~0.95) while IPW
+collapses (0.65 on `ds_4x4`, 0.90 on `loglin2_4x4`) — its `SE/SD` is ~1, so this
+is bias, not a variance miss: the IPW interval is centred on the MAR-biased
+estimand. The log-linear FIML interval is valid under MAR; IPW's is not.
+
+## Ladder summary
+
+```{r ladder}
+big <- summary[summary$n == max(summary$n) & summary$coefficient == "Conger" &
+                 summary$weight == "nominal", ]
+big <- big[order(big$dgp, big$mechanism, big$estimator),
+           c("dgp", "mechanism", "estimator", "bias", "rmse")]
+big$estimator <- lab(big$estimator)
+knitr::kable(big, digits = 4, row.names = FALSE,
+             col.names = c("DGP", "Mechanism", "Estimator", "Bias", "RMSE"))
+```
+
+## Caveats
+
+- `loglin2_fiml` here is the C++ `estimate_kappa_loglin2` (it matches the R EM
+  prototype in `R/loglin2_fiml.R` to ~1e-5 and runs in milliseconds rather than
+  seconds); the R EM is retained only for the closed-form truth helpers. The
+  full `C^R` table is still materialised, so the simulation stays at `C=4, R=4`
+  (the `ds_5x6` cell is ~2 min/fit and excluded).
+- Coverage is computed about the *exact* truth, so it absorbs point bias; the
+  `SE/SD` column isolates SE calibration. Low coverage with `SE/SD` ~ 1 (the H3
+  MAR boundary, or small n) is a bias effect, not an SE defect.
+- `ds_fiml` is carried point-only (NA SE columns) — its delta-method SEs are
+  validated separately in workbench 37.
+- All estimators target the same fixed-rater estimand; truth is exact from each
+  DGP's generating margins.
+
+## Reproduce
+
+```{r repro, results = "asis"}
+cat(sprintf("Seed base %s, %s reps/cell, run %s.\n\n", meta$seed_base, meta$reps, meta$timestamp))
+```
+
+```sh
+Rscript run_experiment.R --main --reps 500
+```
