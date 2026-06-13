@@ -69,11 +69,11 @@ paper") in notes that reference them.
 
 ```sh
 cmake --preset dev
-cmake --build --preset dev
+cmake --build --preset dev --parallel "$(nproc)"
 ctest --preset dev
 
 cmake --preset opt
-cmake --build --preset opt
+cmake --build --preset opt --parallel "$(nproc)"
 ctest --preset opt
 ```
 
@@ -82,6 +82,16 @@ preset adds AddressSanitizer + UBSan). `opt` is the release build
 (`-O3 -DNDEBUG`, no `-march`, matching R's own flags); it produces
 `libmisskappa.a`, which the C++ unit tests link and which `just r-dev` links the
 R glue against (see "R package build" below).
+
+**Always build in parallel.** Pass `--parallel "$(nproc)"` (the `just` recipes
+do this for you); without it the Unix Makefiles generator compiles the ~26
+`-O3` Eigen-heavy translation units *serially*, which on a multi-core box is the
+difference between ~3 min and ~20 min for a clean `opt` build. Compiles also
+route through **ccache** when it is installed: `CMakeLists.txt` sets
+`CMAKE_CXX_COMPILER_LAUNCHER` via a guarded `find_program` (a no-op if ccache is
+absent), so a cache-warm rebuild after `just clean` or a branch switch is
+near-instant (only edited files miss). This is the CMake build's own ccache
+wiring, independent of the R-side `~/.R/Makevars` setup described below.
 
 Repo-root `justfile` wraps the common loops: `just build`, `just test`
 (`dev` build + ctest), `just opt`, `just test-opt`, `just r-install`,

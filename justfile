@@ -12,7 +12,7 @@ default:
 # C++ build + tests (dev preset: debug, no sanitizers).
 build:
   @cmake --preset dev
-  @cmake --build --preset dev
+  @cmake --build --preset dev --parallel $(nproc)
 
 test: build
   @ctest --preset dev
@@ -30,7 +30,7 @@ fmt-cpp:
 # Release build (no sanitizers). Used by the C++ unit tests (ctest).
 opt:
   @cmake --preset opt
-  @cmake --build --preset opt
+  @cmake --build --preset opt --parallel $(nproc)
 
 test-opt: opt
   @ctest --preset opt
@@ -87,7 +87,7 @@ r-install: vendor r-docs
 # against your new C++.
 r-dev:
   @cmake --preset opt
-  @cmake --build --preset opt --target misskappa   # lib only — skip the unit-test exe
+  @cmake --build --preset opt --target misskappa --parallel $(nproc)   # lib only — skip the unit-test exe
   @root="$(pwd)"; \
     rsync -a --delete \
       --exclude='*.o' --exclude='*.so' --exclude='*.dll' --exclude='symbols.rds' \
