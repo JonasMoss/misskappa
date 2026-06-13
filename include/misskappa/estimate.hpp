@@ -72,6 +72,22 @@ Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);
 Result<std::vector<Estimation>> estimate_fiml_many(
     IntMatView ratings, const std::vector<RealMat>& weights, EmOptions opts);
+
+// All-two-way-interaction log-linear FIML: like estimate_fiml, but the joint
+// rating law is restricted to the maximum-entropy distribution matching all
+// univariate and bivariate margins (the log-linear model with rater main
+// effects and pairwise interactions, no three-way-or-higher terms). Those
+// margins are exactly the statistics pairwise-loss Conger/Fleiss/BP functionals
+// depend on, so this is the discrete analogue of normal FIML's saturated
+// mean-covariance model: model-free consistent under MCAR, and consistent +
+// efficient under MAR when the truth carries no genuine higher-order rater
+// interactions. EM with the same pattern-completion E-step as estimate_fiml
+// and an IPF M-step projecting the expected table onto the all-2-way model
+// (SQUAREM-accelerated). Point estimates only (vcov/psi/null_frac empty);
+// returns (Conger, Fleiss, Brennan-Prediger). Requires complete pairwise
+// co-observation, as the 2-way margins must be identified.
+Result<Estimation> estimate_fiml_loglin2(
+    IntMatView ratings, RealMatView weights, EmOptions opts);
 Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 
 // --- Closed-form quadratic estimator (raw, real-valued) --------------------

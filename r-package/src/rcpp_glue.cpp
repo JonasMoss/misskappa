@@ -226,6 +226,18 @@ Rcpp::List rcpp_kappa_raw(
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_kappa_loglin2(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::List em_options) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values);
+  misskappa::EmOptions opts = parse_em_options(em_options);
+  auto r = misskappa::estimate_fiml_loglin2(in.ratings_indexed, in.weights, opts);
+  return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_fiml_multi(
     const Rcpp::IntegerMatrix& x,
     Rcpp::CharacterVector weight_types,

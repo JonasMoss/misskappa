@@ -1159,6 +1159,232 @@ Result<Estimation> estimate_fiml_gwise(
                     std::move(null_frac)};
 }
 
+// --- All-two-way-interaction log-linear FIML -------------------------------
+//
+// Reuses the saturated FIML pattern-completion E-step (em_sweep with delta=0,
+// denom=1 returns the expected complete-data table) but replaces the free
+// multinomial M-step with an IPF projection onto the all-2-way log-linear
+// model. The projection always starts IPF from the uniform table, so its
+// output is the unique maximum-entropy table matching the expected 2-way
+// margins (no three-way-or-higher interactions) regardless of the input --
+// which keeps the SQUAREM extrapolation below safe (em_map re-projects to the
+// model manifold every step). Kappa is read off the dense fitted table's
+// univariate and bivariate margins directly (the C^R Qed matrices that
+// build_kappa_map forms are quadratic in the support size and are meant for
+// the pruned saturated table, not this dense one).
+Result<Estimation> estimate_fiml_loglin2(
+    IntMatView ratings, RealMatView weights, EmOptions opts) {
+  const int n = static_cast<int>(ratings.rows());
+  const int R = static_cast<int>(ratings.cols());
+  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
+  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
+  const int C = static_cast<int>(weights.rows());
+  if (weights.cols() != C) return misskappa::unexpected(Error::dimension_mismatch);
+  if (C < 1) return misskappa::unexpected(Error::invalid_argument);
+
+  auto in_res = preprocess_raw(ratings, C);
+  if (!in_res) return misskappa::unexpected(in_res.error());
+  auto identified =
+      detail::require_complete_pair_observation(detail::observed_mask(ratings));
+  if (!identified) return misskappa::unexpected(identified.error());
+  const EmInput& in = *in_res;
+  const Eigen::Index N = static_cast<Eigen::Index>(in.n_total_patterns);
+  if (N < 1) return misskappa::unexpected(Error::numerical_error);
+
+  const RealMat L = RealMat::Constant(C, C, 1.0) - weights;  // disagreement
+
+  std::vector<std::pair<int, int>> pairs;
+  for (int j = 0; j < R - 1; ++j)
+    for (int l = j + 1; l < R; ++l) pairs.emplace_back(j, l);
+  const int npairs = static_cast<int>(pairs.size());
+  const Eigen::Index CC = static_cast<Eigen::Index>(C) * C;
+
+  // Per-cell category codes, and per-pair cell -> (a*C + b) bin index.
+  std::vector<int> cats(static_cast<std::size_t>(N) * static_cast<std::size_t>(R));
+  for (Eigen::Index cell = 0; cell < N; ++cell) {
+    const std::vector<int> t = unrank_tuple(static_cast<std::uint64_t>(cell), R, C);
+    for (int j = 0; j < R; ++j)
+      cats[static_cast<std::size_t>(cell) * R + j] = t[static_cast<std::size_t>(j)];
+  }
+  std::vector<std::vector<int>> pairbin(
+      static_cast<std::size_t>(npairs), std::vector<int>(static_cast<std::size_t>(N)));
+  for (int pp = 0; pp < npairs; ++pp) {
+    const int j = pairs[pp].first, l = pairs[pp].second;
+    for (Eigen::Index cell = 0; cell < N; ++cell) {
+      pairbin[pp][static_cast<std::size_t>(cell)] =
+          cats[static_cast<std::size_t>(cell) * R + j] * C +
+          cats[static_cast<std::size_t>(cell) * R + l];
+    }
+  }
+
+  const Eigen::VectorXd uniform = Eigen::VectorXd::Constant(N, 1.0 / static_cast<double>(N));
+
+  // IPF projection onto the all-2-way model: scale a uniform table until its
+  // bivariate margins match `target` (each a length-C*C vector summing to 1).
+  auto project = [&](const std::vector<Eigen::VectorXd>& target) -> Eigen::VectorXd {
+    Eigen::VectorXd w = uniform;
+    Eigen::VectorXd cur(CC);
+    for (int cyc = 0; cyc < 500; ++cyc) {
+      for (int pp = 0; pp < npairs; ++pp) {
+        cur.setZero();
+        for (Eigen::Index cell = 0; cell < N; ++cell)
+          cur[pairbin[pp][static_cast<std::size_t>(cell)]] += w[cell];
+        for (Eigen::Index cell = 0; cell < N; ++cell) {
+          const int b = pairbin[pp][static_cast<std::size_t>(cell)];
+          if (cur[b] > singular_tol) w[cell] *= target[pp][b] / cur[b];
+        }
+      }
+      double maxerr = 0.0;
+      for (int pp = 0; pp < npairs; ++pp) {
+        cur.setZero();
+        for (Eigen::Index cell = 0; cell < N; ++cell)
+          cur[pairbin[pp][static_cast<std::size_t>(cell)]] += w[cell];
+        for (Eigen::Index b = 0; b < CC; ++b)
+          maxerr = std::max(maxerr, std::abs(cur[b] - target[pp][b]));
+      }
+      if (maxerr < 1e-12) break;
+    }
+    const double s = w.sum();
+    if (s > zero_tol) w /= s;
+    return w;
+  };
+
+  // One EM map: p -> project(2-way margins of the E-step's expected table).
+  EmLoopConfig cfg;
+  cfg.delta = 0.0;
+  cfg.denom = 1.0;
+  const double inv_n = 1.0 / static_cast<double>(n);
+  Eigen::VectorXd E(N);
+
+  auto valid_state = [&](Eigen::VectorXd& q) -> bool {
+    for (Eigen::Index cell = 0; cell < q.size(); ++cell) {
+      if (!(q[cell] >= 0.0) || !std::isfinite(q[cell])) return false;
+    }
+    const double s = q.sum();
+    if (s <= zero_tol) return false;
+    q /= s;
+    for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+      const std::uint32_t n_comps = in.group_n_completions[g];
+      const std::uint32_t offset = in.group_offsets[g];
+      double mass = 0.0;
+      for (std::uint32_t k = 0; k < n_comps; ++k) {
+        mass += q[static_cast<Eigen::Index>(in.completion_indices[offset + k])];
+      }
+      if (mass <= singular_tol) return false;
+    }
+    return true;
+  };
+
+  auto em_map = [&](const Eigen::VectorXd& p, Eigen::VectorXd& out) -> bool {
+    em_sweep(p, E, in, cfg);  // expected complete-data counts, summing to n
+    std::vector<Eigen::VectorXd> target(static_cast<std::size_t>(npairs),
+                                        Eigen::VectorXd::Zero(CC));
+    for (int pp = 0; pp < npairs; ++pp)
+      for (Eigen::Index cell = 0; cell < N; ++cell)
+        target[static_cast<std::size_t>(pp)][pairbin[pp][static_cast<std::size_t>(cell)]] +=
+            E[cell] * inv_n;
+    out = project(target);
+    return valid_state(out);
+  };
+
+  // SQUAREM (SqS3) acceleration of the EM; the plain EM is linearly convergent
+  // and slow, so the stabilised quadratic step cuts the iteration count. The
+  // extrapolate is clamped to the nonneg simplex before re-mapping; a
+  // non-finite result falls back to the plain double-EM step.
+  Eigen::VectorXd p = uniform;
+  EmIterStatus status;
+  if (!valid_state(p)) return misskappa::unexpected(Error::numerical_error);
+  while (status.iterations < opts.max_iter) {
+    Eigen::VectorXd p1(N), p2(N), p_acc(N);
+    if (!em_map(p, p1)) return misskappa::unexpected(Error::numerical_error);
+    ++status.iterations;
+    // Fixed-point residual at p (the plain-EM step), the proper convergence
+    // test -- checking the post-extrapolation change can stop early on a
+    // SQUAREM trajectory that briefly stalls away from the optimum.
+    if ((p1 - p).cwiseAbs().maxCoeff() < opts.tol) {
+      p = p1;
+      status.converged = true;
+      break;
+    }
+    if (status.iterations >= opts.max_iter) {
+      p = p1;
+      break;
+    }
+    if (!em_map(p1, p2)) return misskappa::unexpected(Error::numerical_error);
+    ++status.iterations;
+    if ((p2 - p1).cwiseAbs().maxCoeff() < opts.tol) {
+      p = p2;
+      status.converged = true;
+      break;
+    }
+    const Eigen::VectorXd r = p1 - p;
+    const Eigen::VectorXd v = (p2 - p1) - r;
+    const double sr = r.norm(), sv = v.norm();
+    if (sv < 1e-14) {
+      p = p2;
+      continue;
+    }
+    double alpha = -(sr / sv);
+    if (alpha > -1.0) alpha = -1.0;
+    Eigen::VectorXd p_try = p - 2.0 * alpha * r + (alpha * alpha) * v;
+    p_try = p_try.cwiseMax(0.0);
+    const double s = p_try.sum();
+    if (s <= zero_tol) {
+      p = p2;
+      continue;
+    }
+    p_try /= s;
+    if (!valid_state(p_try)) {
+      p = p2;
+      continue;
+    }
+    if (status.iterations >= opts.max_iter) {
+      p = p2;
+      continue;
+    }
+    if (em_map(p_try, p_acc)) {
+      ++status.iterations;
+      p = p_acc;
+    } else {
+      p = p2;
+    }
+  }
+  if (!status.converged) return misskappa::unexpected(Error::not_converged);
+
+  // Kappa from the fitted table's univariate and bivariate margins.
+  RealMat marg = RealMat::Zero(C, R);
+  for (Eigen::Index cell = 0; cell < N; ++cell) {
+    const double pc = p[cell];
+    for (int j = 0; j < R; ++j)
+      marg(cats[static_cast<std::size_t>(cell) * R + j], j) += pc;
+  }
+  double pd = 0.0, pec = 0.0;
+  Eigen::VectorXd Pjl(CC);
+  for (int pp = 0; pp < npairs; ++pp) {
+    const int j = pairs[pp].first, l = pairs[pp].second;
+    Pjl.setZero();
+    for (Eigen::Index cell = 0; cell < N; ++cell)
+      Pjl[pairbin[pp][static_cast<std::size_t>(cell)]] += p[cell];
+    for (int a = 0; a < C; ++a)
+      for (int b = 0; b < C; ++b)
+        pd += L(a, b) * Pjl[static_cast<Eigen::Index>(a) * C + b];
+    pec += (marg.col(j).transpose() * L * marg.col(l)).value();
+  }
+  pd /= static_cast<double>(npairs);
+  pec /= static_cast<double>(npairs);
+  const RealVec p_bar = marg.rowwise().mean();
+  const double pef = (p_bar.transpose() * L * p_bar).value();
+  const double d_bp = L.sum() / static_cast<double>(C * C);
+
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  RealVec estimates(3);
+  estimates(0) = (std::abs(pec) > singular_tol) ? 1.0 - pd / pec : nan;  // Conger
+  estimates(1) = (std::abs(pef) > singular_tol) ? 1.0 - pd / pef : nan;  // Fleiss
+  estimates(2) = (std::abs(d_bp) > singular_tol) ? 1.0 - pd / d_bp : nan; // BP
+
+  return Estimation{std::move(estimates), RealMat(), RealMat(), RealVec()};
+}
+
 Result<Estimation> estimate_alpha_fiml(
     IntMatView ratings, const RealVec& values, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());

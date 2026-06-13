@@ -26,6 +26,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_kappa_loglin2
+Rcpp::List rcpp_kappa_loglin2(const Rcpp::IntegerMatrix& x, std::string weight_type, Rcpp::Nullable<Rcpp::NumericVector> values, Rcpp::List em_options);
+RcppExport SEXP _misskappa_rcpp_kappa_loglin2(SEXP xSEXP, SEXP weight_typeSEXP, SEXP valuesSEXP, SEXP em_optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::IntegerMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< std::string >::type weight_type(weight_typeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_loglin2(x, weight_type, values, em_options));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_kappa_fiml_multi
 Rcpp::List rcpp_kappa_fiml_multi(const Rcpp::IntegerMatrix& x, Rcpp::CharacterVector weight_types, Rcpp::Nullable<Rcpp::NumericVector> values, Rcpp::List em_options);
 RcppExport SEXP _misskappa_rcpp_kappa_fiml_multi(SEXP xSEXP, SEXP weight_typesSEXP, SEXP valuesSEXP, SEXP em_optionsSEXP) {
@@ -219,6 +233,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_kappa_raw", (DL_FUNC) &_misskappa_rcpp_kappa_raw, 5},
+    {"_misskappa_rcpp_kappa_loglin2", (DL_FUNC) &_misskappa_rcpp_kappa_loglin2, 4},
     {"_misskappa_rcpp_kappa_fiml_multi", (DL_FUNC) &_misskappa_rcpp_kappa_fiml_multi, 4},
     {"_misskappa_rcpp_alpha_raw", (DL_FUNC) &_misskappa_rcpp_alpha_raw, 4},
     {"_misskappa_rcpp_alpha_available_continuous", (DL_FUNC) &_misskappa_rcpp_alpha_available_continuous, 1},

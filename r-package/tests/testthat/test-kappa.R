@@ -105,6 +105,36 @@ test_that("FIML matches available on complete data, identity weight", {
                tolerance = 1e-6)
 })
 
+test_that("loglin2 FIML preserves complete-data pairwise kappas", {
+  x <- matrix(c(
+    0, 0, 0,
+    0, 0, 0,
+    0, 0, 1,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 0,
+    1, 1, 1,
+    1, 1, 1,
+    0, 1, 0,
+    1, 0, 0,
+    0, 1, 1,
+    1, 0, 1
+  ), ncol = 3, byrow = TRUE)
+
+  saturated <- estimate_kappa_raw(x, method = "fiml", weight = "identity")
+  loglin2 <- estimate_kappa_loglin2(x, weight = "identity",
+                                    em_options = list(tol = 1e-10))
+  expect_s3_class(loglin2, "misskappa_estimate")
+  expect_equal(unname(loglin2$estimates), unname(saturated$estimates),
+               tolerance = 1e-8)
+  expect_equal(dim(loglin2$vcov), c(0L, 0L))
+  expect_error(
+    estimate_kappa_loglin2(x, weight = "identity",
+                           em_options = list(max_iter = 0L)),
+    "EM did not converge"
+  )
+})
+
 test_that("multi-weight FIML helper matches repeated FIML fits", {
   complete_support <- as.matrix(expand.grid(
     r1 = 0:1, r2 = 0:1, r3 = 0:1, r4 = 0:1
@@ -240,6 +270,48 @@ test_that("kappa_counts(method='fiml') differs from fleiss_cuzick with partial c
   # Frozen against legacy.
   expect_equal(unname(fit_ml$estimates["Fleiss"]), 0.2725053215314407,
                tolerance = 1e-7)
+})
+
+test_that("ratings_to_counts() aggregates and discards rater identity", {
+  X <- rbind(
+    c(0, 1, 1, NA),
+    c(2, 2, NA, 2),
+    c(0, 0, 0, 0)
+  )
+  cnt <- ratings_to_counts(X)
+  expect_equal(colnames(cnt), c("0", "1", "2"))
+  expect_equal(unname(cnt[1, ]), c(1L, 2L, 0L))   # one 0, two 1s, one missing
+  expect_equal(unname(cnt[2, ]), c(0L, 0L, 3L))   # three 2s, one missing
+  expect_equal(rowSums(cnt), c(3, 3, 4))          # row total = # observed
+  expect_true(is.integer(cnt))
+  # Permuting raters within each subject leaves the counts unchanged.
+  Xperm <- t(apply(X, 1L, sample))
+  expect_equal(ratings_to_counts(Xperm, categories = c(0, 1, 2)), cnt)
+})
+
+test_that("ratings_to_counts() honours an explicit category set and errors off-set", {
+  X <- rbind(c(1, 1, 2), c(2, 2, 1))
+  cnt <- ratings_to_counts(X, categories = 1:4)
+  expect_equal(colnames(cnt), as.character(1:4))
+  expect_equal(unname(colSums(cnt)), c(3L, 3L, 0L, 0L))  # cats 3,4 unobserved
+  expect_error(ratings_to_counts(X, categories = c(1, 3)), "absent from")
+  expect_error(ratings_to_counts(matrix(NA_real_, 2, 2)), "no observed")
+})
+
+test_that("ratings_to_counts() -> cat_fiml equals exchangeable-restricted raw fit", {
+  # On counts-summarised data, kappa_counts(cat_fiml) is the exchangeable
+  # count-FIML; check the bridge reproduces a hand-built counts matrix and
+  # that fleiss_cuzick is reachable the same way.
+  set.seed(11)
+  X <- matrix(sample(c(0:2, NA), 60, replace = TRUE, prob = c(.3, .3, .3, .1)),
+              nrow = 15)
+  cnt <- ratings_to_counts(X)
+  ref <- t(apply(X, 1L, function(r) tabulate(match(r, 0:2), nbins = 3L)))
+  expect_equal(unname(cnt), ref)
+  expect_s3_class(kappa_counts(cnt, estimator = "cat_fiml", r_total = 4),
+                  "misskappa_estimate")
+  expect_s3_class(kappa_counts(cnt, estimator = "fleiss_cuzick"),
+                  "misskappa_estimate")
 })
 
 test_that("kappa_counts() reproduces Fleiss 1971", {

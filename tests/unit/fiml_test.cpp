@@ -55,6 +55,24 @@ IntMat twelve_subject_3rater_3cat() {
   return x;
 }
 
+IntMat complete_3rater_2cat() {
+  IntMat x(12, 3);
+  x <<
+    0, 0, 0,
+    0, 0, 0,
+    0, 0, 1,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 0,
+    1, 1, 1,
+    1, 1, 1,
+    0, 1, 0,
+    1, 0, 0,
+    0, 1, 1,
+    1, 0, 1;
+  return x;
+}
+
 IntMat identified_missing_3rater_3cat() {
   IntMat x(36, 3);
   Eigen::Index row = 0;
@@ -148,6 +166,48 @@ TEST_CASE("estimate_fiml: complete data, identity weights matches Cohen") {
   CHECK(std::abs(r->estimates(0) - 0.4) < 1e-9);                // Conger
   CHECK(std::abs(r->estimates(1) - 13.0 / 33.0) < 1e-9);        // Fleiss
   CHECK(std::abs(r->estimates(2) - 0.4) < 1e-9);                // BP
+}
+
+TEST_CASE("estimate_fiml_loglin2: complete data preserves saturated pairwise kappas") {
+  IntMat x = complete_3rater_2cat();
+  auto W = ms::loss::identity_weights(2);
+  EmOptions opts;
+  opts.tol = 1e-10;
+  auto saturated = ms::estimate_fiml(x, *W, opts);
+  auto loglin2 = ms::estimate_fiml_loglin2(x, *W, opts);
+  REQUIRE(saturated.has_value());
+  REQUIRE(loglin2.has_value());
+
+  CHECK((loglin2->estimates - saturated->estimates).cwiseAbs().maxCoeff() < 1e-8);
+  CHECK(loglin2->vcov.size() == 0);
+  CHECK(loglin2->psi.size() == 0);
+  CHECK(loglin2->null_frac.size() == 0);
+}
+
+TEST_CASE("estimate_fiml_loglin2: pairwise-only missing data fits") {
+  IntMat x = pairwise_only_3rater_2cat();
+  auto W = ms::loss::identity_weights(2);
+  EmOptions opts;
+  opts.tol = 1e-9;
+  auto r = ms::estimate_fiml_loglin2(x, *W, opts);
+  REQUIRE(r.has_value());
+
+  CHECK(r->estimates.size() == 3);
+  CHECK(r->estimates.array().isFinite().all());
+}
+
+TEST_CASE("estimate_fiml_loglin2: reports non-convergence and non-identification") {
+  auto W = ms::loss::identity_weights(2);
+
+  EmOptions too_short;
+  too_short.max_iter = 0;
+  auto short_run = ms::estimate_fiml_loglin2(complete_3rater_2cat(), *W, too_short);
+  REQUIRE_FALSE(short_run.has_value());
+  CHECK(short_run.error() == ms::Error::not_converged);
+
+  auto missing_pair = ms::estimate_fiml_loglin2(chain_missing_pair_3rater_2cat(), *W, EmOptions{});
+  REQUIRE_FALSE(missing_pair.has_value());
+  CHECK(missing_pair.error() == ms::Error::not_identified);
 }
 
 TEST_CASE("estimate_fiml: sparse MAR fixture succeeds with null-frac diagnostic") {

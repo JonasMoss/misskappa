@@ -5,6 +5,10 @@ rcpp_kappa_raw <- function(x, method, weight_type, values, em_options) {
     .Call(`_misskappa_rcpp_kappa_raw`, x, method, weight_type, values, em_options)
 }
 
+rcpp_kappa_loglin2 <- function(x, weight_type, values, em_options) {
+    .Call(`_misskappa_rcpp_kappa_loglin2`, x, weight_type, values, em_options)
+}
+
 rcpp_kappa_fiml_multi <- function(x, weight_types, values, em_options) {
     .Call(`_misskappa_rcpp_kappa_fiml_multi`, x, weight_types, values, em_options)
 }
