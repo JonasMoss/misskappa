@@ -1538,6 +1538,10 @@ Result<Estimation> estimate_fiml_loglin2(
     return static_cast<std::size_t>(pp) * static_cast<std::size_t>(CC)
            + static_cast<std::size_t>(b);
   };
+  const double ipf_tol =
+      (std::isfinite(opts.tol) && opts.tol > 0.0)
+          ? std::max(1e-12, std::min(1e-9, opts.tol * 1e-2))
+          : 1e-12;
   auto project = [&](const std::vector<double>& target_margins,
                      Eigen::VectorXd& out) -> bool {
     out.setConstant(uniform_prob);
@@ -1571,7 +1575,7 @@ Result<Estimation> estimate_fiml_loglin2(
               std::abs(cur[static_cast<std::size_t>(b)]
                        - target_margins[target_at(pp, b)]));
       }
-      if (maxerr < 1e-12) break;
+      if (maxerr < ipf_tol) break;
     }
     const double s = out.sum();
     if (s <= zero_tol || !std::isfinite(s)) return false;
