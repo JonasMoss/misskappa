@@ -349,8 +349,9 @@ estimate_kappa_fiml_multi <- function(x,
 #' restricted model is saturated in exactly the margins pairwise-loss kappa
 #' functionals depend on, so it is consistent under MCAR for any distribution
 #' and efficient under MAR when the truth has no genuine higher-order rater
-#' interactions. Point estimates only (no variance); for research use behind
-#' the experiments. Requires complete pairwise co-observation.
+#' interactions. Variance uses grouped observed-pattern scores and the Louis
+#' observed information in the model's sufficient-statistic coordinates.
+#' Requires complete pairwise co-observation.
 #'
 #' @param x A subjects-by-raters matrix of integer category codes; `NA`s
 #'   indicate missing entries.
@@ -358,7 +359,7 @@ estimate_kappa_fiml_multi <- function(x,
 #' @param values Optional numeric category scores for metric weights.
 #' @param em_options Named list of categorical EM options (`tol`, `max_iter`).
 #'
-#' @return A `misskappa_estimate` object (empty `vcov`/`psi`).
+#' @return A `misskappa_estimate` object.
 #'
 #' @keywords internal
 estimate_kappa_loglin2 <- function(x,
@@ -381,8 +382,13 @@ estimate_kappa_loglin2 <- function(x,
   if (length(dim(vcov_mat)) == 2L && all(dim(vcov_mat) == length(estimates))) {
     dimnames(vcov_mat) <- list(names(estimates), names(estimates))
   }
-  structure(list(estimates = estimates, vcov = vcov_mat, psi = out$psi,
-                 null_frac = out$null_frac, method = "loglin2_fiml",
+  psi_mat <- out$psi
+  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
+  null_frac <- out$null_frac
+  if (length(null_frac) == length(estimates)) names(null_frac) <- names(estimates)
+  .warn_null_frac(null_frac, em_options)
+  structure(list(estimates = estimates, vcov = vcov_mat, psi = psi_mat,
+                 null_frac = null_frac, method = "loglin2_fiml",
                  weight = weight),
             class = "misskappa_estimate")
 }

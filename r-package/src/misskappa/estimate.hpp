@@ -84,9 +84,10 @@ Result<std::vector<Estimation>> estimate_fiml_many(
 // efficient under MAR when the truth carries no genuine higher-order rater
 // interactions. EM with the same pattern-completion E-step as estimate_fiml
 // and an IPF M-step projecting the expected table onto the all-2-way model
-// (SQUAREM-accelerated). Point estimates only (vcov/psi/null_frac empty);
-// returns (Conger, Fleiss, Brennan-Prediger). Requires complete pairwise
-// co-observation, as the 2-way margins must be identified.
+// (SQUAREM-accelerated). Variance uses grouped observed-pattern scores and
+// Louis observed information in the sufficient-statistic coordinates. Returns
+// (Conger, Fleiss, Brennan-Prediger). Requires complete pairwise co-observation,
+// as the 2-way margins must be identified.
 Result<Estimation> estimate_fiml_loglin2(
     IntMatView ratings, RealMatView weights, EmOptions opts);
 Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);

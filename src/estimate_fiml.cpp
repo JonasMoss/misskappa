@@ -1028,6 +1028,287 @@ Result<Estimation> map_fiml_kappa(
                     std::move(*null_frac)};
 }
 
+struct Loglin2MomentCache {
+  RealVec mu;
+  RealMat complete_cov;
+  RealMat observed_info;
+  RealMat group_scores;
+};
+
+struct Loglin2KappaMap {
+  RealVec estimates;
+  RealMat jacobian_mu;
+};
+
+std::vector<Eigen::Index> build_loglin2_suff_indices(
+    Eigen::Index n_cells, int R, int C, int npairs, Eigen::Index CC,
+    const std::vector<int>& cats, const std::vector<std::vector<int>>& pairbin) {
+  const Eigen::Index nz = static_cast<Eigen::Index>(R + npairs);
+  const Eigen::Index one_way = static_cast<Eigen::Index>(R) * C;
+  std::vector<Eigen::Index> out(
+      static_cast<std::size_t>(n_cells * nz), Eigen::Index{0});
+
+  for (Eigen::Index cell = 0; cell < n_cells; ++cell) {
+    const std::size_t base =
+        static_cast<std::size_t>(cell) * static_cast<std::size_t>(nz);
+    for (int j = 0; j < R; ++j) {
+      out[base + static_cast<std::size_t>(j)] =
+          static_cast<Eigen::Index>(j) * C
+          + cats[static_cast<std::size_t>(cell) * R + j];
+    }
+    for (int pp = 0; pp < npairs; ++pp) {
+      out[base + static_cast<std::size_t>(R + pp)] =
+          one_way + static_cast<Eigen::Index>(pp) * CC
+          + pairbin[static_cast<std::size_t>(pp)][static_cast<std::size_t>(cell)];
+    }
+  }
+  return out;
+}
+
+Result<Loglin2MomentCache> build_loglin2_moment_cache(
+    const Eigen::VectorXd& p, const EmInput& in, int R, int C, int npairs,
+    Eigen::Index CC, const std::vector<Eigen::Index>& suff_indices) {
+  const Eigen::Index n_cells = p.size();
+  const Eigen::Index nz = static_cast<Eigen::Index>(R + npairs);
+  const Eigen::Index dim = static_cast<Eigen::Index>(R) * C
+                           + static_cast<Eigen::Index>(npairs) * CC;
+  const double n = static_cast<double>(in.subject_groups.size());
+
+  Loglin2MomentCache out;
+  out.mu = RealVec::Zero(dim);
+  out.complete_cov = RealMat::Zero(dim, dim);
+  out.observed_info = RealMat::Zero(dim, dim);
+  out.group_scores = RealMat::Zero(
+      static_cast<Eigen::Index>(in.group_n_subjects.size()), dim);
+
+  for (Eigen::Index cell = 0; cell < n_cells; ++cell) {
+    const double pc = p[cell];
+    if (!(pc >= 0.0) || !std::isfinite(pc)) {
+      return misskappa::unexpected(Error::numerical_error);
+    }
+    const std::size_t base =
+        static_cast<std::size_t>(cell) * static_cast<std::size_t>(nz);
+    for (Eigen::Index a = 0; a < nz; ++a) {
+      out.mu[suff_indices[base + static_cast<std::size_t>(a)]] += pc;
+    }
+  }
+
+  out.complete_cov.noalias() = -out.mu * out.mu.transpose();
+  for (Eigen::Index cell = 0; cell < n_cells; ++cell) {
+    const double pc = p[cell];
+    const std::size_t base =
+        static_cast<std::size_t>(cell) * static_cast<std::size_t>(nz);
+    for (Eigen::Index a = 0; a < nz; ++a) {
+      const Eigen::Index ia = suff_indices[base + static_cast<std::size_t>(a)];
+      for (Eigen::Index b = 0; b < nz; ++b) {
+        const Eigen::Index ib = suff_indices[base + static_cast<std::size_t>(b)];
+        out.complete_cov(ia, ib) += pc;
+      }
+    }
+  }
+  out.complete_cov = 0.5 * (out.complete_cov + out.complete_cov.transpose());
+
+  RealMat missing_info = RealMat::Zero(dim, dim);
+  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
+    const std::uint32_t n_comps = in.group_n_completions[g];
+    const std::uint32_t offset = in.group_offsets[g];
+    double mass = 0.0;
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      mass += p[static_cast<Eigen::Index>(in.completion_indices[offset + k])];
+    }
+    if (mass <= singular_tol) return misskappa::unexpected(Error::numerical_error);
+
+    RealVec tbar = RealVec::Zero(dim);
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      const Eigen::Index cell =
+          static_cast<Eigen::Index>(in.completion_indices[offset + k]);
+      const double q = p[cell] / mass;
+      const std::size_t base =
+          static_cast<std::size_t>(cell) * static_cast<std::size_t>(nz);
+      for (Eigen::Index a = 0; a < nz; ++a) {
+        tbar[suff_indices[base + static_cast<std::size_t>(a)]] += q;
+      }
+    }
+
+    out.group_scores.row(static_cast<Eigen::Index>(g)) =
+        (tbar - out.mu).transpose();
+
+    const double ng = static_cast<double>(in.group_n_subjects[g]);
+    missing_info.noalias() -= ng * tbar * tbar.transpose();
+    for (std::uint32_t k = 0; k < n_comps; ++k) {
+      const Eigen::Index cell =
+          static_cast<Eigen::Index>(in.completion_indices[offset + k]);
+      const double q = p[cell] / mass;
+      const std::size_t base =
+          static_cast<std::size_t>(cell) * static_cast<std::size_t>(nz);
+      for (Eigen::Index a = 0; a < nz; ++a) {
+        const Eigen::Index ia = suff_indices[base + static_cast<std::size_t>(a)];
+        for (Eigen::Index b = 0; b < nz; ++b) {
+          const Eigen::Index ib = suff_indices[base + static_cast<std::size_t>(b)];
+          missing_info(ia, ib) += ng * q;
+        }
+      }
+    }
+  }
+
+  missing_info = 0.5 * (missing_info + missing_info.transpose());
+  out.observed_info =
+      n * out.complete_cov - missing_info;
+  out.observed_info = 0.5 * (out.observed_info + out.observed_info.transpose());
+  if (!out.mu.allFinite() || !out.complete_cov.allFinite()
+      || !out.observed_info.allFinite() || !out.group_scores.allFinite()) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+  return out;
+}
+
+Loglin2KappaMap map_loglin2_kappa_from_margins(
+    const RealVec& mu, RealMatView L, const std::vector<std::pair<int, int>>& pairs,
+    int R, int C) {
+  const int npairs = static_cast<int>(pairs.size());
+  const Eigen::Index CC = static_cast<Eigen::Index>(C) * C;
+  const Eigen::Index one_way = static_cast<Eigen::Index>(R) * C;
+  const Eigen::Index dim = one_way + static_cast<Eigen::Index>(npairs) * CC;
+
+  auto one_idx = [C](int rater, int cat) {
+    return static_cast<Eigen::Index>(rater) * C + cat;
+  };
+  auto pair_idx = [one_way, CC](int pp, int a, int b, int C) {
+    return one_way + static_cast<Eigen::Index>(pp) * CC
+           + static_cast<Eigen::Index>(a) * C + b;
+  };
+
+  double pd = 0.0;
+  double pec = 0.0;
+  RealVec p_bar = RealVec::Zero(C);
+  for (int j = 0; j < R; ++j) {
+    for (int a = 0; a < C; ++a) p_bar(a) += mu[one_idx(j, a)];
+  }
+  p_bar /= static_cast<double>(R);
+
+  Loglin2KappaMap out;
+  out.jacobian_mu = RealMat::Zero(3, dim);
+  RealVec grad_pd = RealVec::Zero(dim);
+  RealVec grad_pec = RealVec::Zero(dim);
+
+  for (int pp = 0; pp < npairs; ++pp) {
+    const int j = pairs[static_cast<std::size_t>(pp)].first;
+    const int l = pairs[static_cast<std::size_t>(pp)].second;
+    for (int a = 0; a < C; ++a) {
+      for (int b = 0; b < C; ++b) {
+        const Eigen::Index idx = pair_idx(pp, a, b, C);
+        pd += L(a, b) * mu[idx];
+        grad_pd[idx] = L(a, b) / static_cast<double>(npairs);
+      }
+    }
+    for (int a = 0; a < C; ++a) {
+      double d_j = 0.0;
+      for (int b = 0; b < C; ++b) {
+        d_j += L(a, b) * mu[one_idx(l, b)];
+      }
+      grad_pec[one_idx(j, a)] += d_j / static_cast<double>(npairs);
+    }
+    for (int b = 0; b < C; ++b) {
+      double d_l = 0.0;
+      for (int a = 0; a < C; ++a) {
+        d_l += mu[one_idx(j, a)] * L(a, b);
+      }
+      grad_pec[one_idx(l, b)] += d_l / static_cast<double>(npairs);
+    }
+    for (int a = 0; a < C; ++a) {
+      for (int b = 0; b < C; ++b) {
+        pec += mu[one_idx(j, a)] * L(a, b) * mu[one_idx(l, b)];
+      }
+    }
+  }
+  pd /= static_cast<double>(npairs);
+  pec /= static_cast<double>(npairs);
+
+  const double pef = (p_bar.transpose() * L * p_bar).value();
+  const double d_bp = L.sum() / static_cast<double>(C * C);
+
+  RealVec grad_pef = RealVec::Zero(dim);
+  const RealVec grad_pbar = (L + L.transpose()) * p_bar;
+  for (int j = 0; j < R; ++j) {
+    for (int a = 0; a < C; ++a) {
+      grad_pef[one_idx(j, a)] = grad_pbar(a) / static_cast<double>(R);
+    }
+  }
+
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  out.estimates.resize(3);
+  out.estimates(0) = (std::abs(pec) > singular_tol) ? 1.0 - pd / pec : nan;
+  out.estimates(1) = (std::abs(pef) > singular_tol) ? 1.0 - pd / pef : nan;
+  out.estimates(2) = (std::abs(d_bp) > singular_tol) ? 1.0 - pd / d_bp : nan;
+
+  if (std::abs(pec) > singular_tol) {
+    out.jacobian_mu.row(0) =
+        (-(grad_pd * pec - pd * grad_pec).transpose()) / (pec * pec);
+  }
+  if (std::abs(pef) > singular_tol) {
+    out.jacobian_mu.row(1) =
+        (-(grad_pd * pef - pd * grad_pef).transpose()) / (pef * pef);
+  }
+  if (std::abs(d_bp) > singular_tol) {
+    out.jacobian_mu.row(2) = -grad_pd.transpose() / d_bp;
+  }
+  return out;
+}
+
+Result<Estimation> map_loglin2_kappa(
+    const EmInput& in, const Eigen::VectorXd& p, RealMatView L,
+    const std::vector<std::pair<int, int>>& pairs,
+    const std::vector<int>& cats, const std::vector<std::vector<int>>& pairbin,
+    const EmOptions& opts) {
+  const int n = static_cast<int>(in.subject_groups.size());
+  const int R = in.R;
+  const int C = in.c;
+  const int npairs = static_cast<int>(pairs.size());
+  const Eigen::Index CC = static_cast<Eigen::Index>(C) * C;
+
+  const std::vector<Eigen::Index> suff_indices =
+      build_loglin2_suff_indices(p.size(), R, C, npairs, CC, cats, pairbin);
+  auto moments = build_loglin2_moment_cache(
+      p, in, R, C, npairs, CC, suff_indices);
+  if (!moments) return misskappa::unexpected(moments.error());
+
+  Loglin2KappaMap kmap =
+      map_loglin2_kappa_from_margins(moments->mu, L, pairs, R, C);
+  if (!kmap.jacobian_mu.allFinite()) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+
+  const RealMat bread =
+      detail::pseudo_inverse_psd(moments->observed_info, opts.info_rcond);
+  if (!bread.allFinite()) return misskappa::unexpected(Error::numerical_error);
+
+  // The information is in natural-parameter coordinates. Kappa is a function
+  // of mean-value margins, so transform its Jacobian with Var_p(t).
+  const RealMat jacobian_eta = kmap.jacobian_mu * moments->complete_cov;
+  auto null_frac = reduced_gradient_null_fraction(
+      moments->observed_info, jacobian_eta, opts.info_rcond);
+  if (!null_frac) return misskappa::unexpected(null_frac.error());
+
+  const RealMat influence_map =
+      bread * moments->complete_cov * kmap.jacobian_mu.transpose();
+  RealMat psi = RealMat::Zero(n, 3);
+  const RealMat group_psi =
+      static_cast<double>(n) * moments->group_scores * influence_map;
+  for (Eigen::Index i = 0; i < n; ++i) {
+    psi.row(i) = group_psi.row(
+        static_cast<Eigen::Index>(in.subject_groups[static_cast<std::size_t>(i)]));
+  }
+  RealMat vcov =
+      (psi.transpose() * psi) / std::pow(static_cast<double>(n), 2);
+  vcov = 0.5 * (vcov + vcov.transpose());
+  if (!vcov.allFinite() || !psi.allFinite()) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+
+  return Estimation{std::move(kmap.estimates), std::move(vcov), std::move(psi),
+                    std::move(*null_frac)};
+}
+
 }  // namespace
 
 Result<Estimation> estimate_fiml(
@@ -1351,38 +1632,7 @@ Result<Estimation> estimate_fiml_loglin2(
   }
   if (!status.converged) return misskappa::unexpected(Error::not_converged);
 
-  // Kappa from the fitted table's univariate and bivariate margins.
-  RealMat marg = RealMat::Zero(C, R);
-  for (Eigen::Index cell = 0; cell < N; ++cell) {
-    const double pc = p[cell];
-    for (int j = 0; j < R; ++j)
-      marg(cats[static_cast<std::size_t>(cell) * R + j], j) += pc;
-  }
-  double pd = 0.0, pec = 0.0;
-  Eigen::VectorXd Pjl(CC);
-  for (int pp = 0; pp < npairs; ++pp) {
-    const int j = pairs[pp].first, l = pairs[pp].second;
-    Pjl.setZero();
-    for (Eigen::Index cell = 0; cell < N; ++cell)
-      Pjl[pairbin[pp][static_cast<std::size_t>(cell)]] += p[cell];
-    for (int a = 0; a < C; ++a)
-      for (int b = 0; b < C; ++b)
-        pd += L(a, b) * Pjl[static_cast<Eigen::Index>(a) * C + b];
-    pec += (marg.col(j).transpose() * L * marg.col(l)).value();
-  }
-  pd /= static_cast<double>(npairs);
-  pec /= static_cast<double>(npairs);
-  const RealVec p_bar = marg.rowwise().mean();
-  const double pef = (p_bar.transpose() * L * p_bar).value();
-  const double d_bp = L.sum() / static_cast<double>(C * C);
-
-  const double nan = std::numeric_limits<double>::quiet_NaN();
-  RealVec estimates(3);
-  estimates(0) = (std::abs(pec) > singular_tol) ? 1.0 - pd / pec : nan;  // Conger
-  estimates(1) = (std::abs(pef) > singular_tol) ? 1.0 - pd / pef : nan;  // Fleiss
-  estimates(2) = (std::abs(d_bp) > singular_tol) ? 1.0 - pd / d_bp : nan; // BP
-
-  return Estimation{std::move(estimates), RealMat(), RealMat(), RealVec()};
+  return map_loglin2_kappa(in, p, L, pairs, cats, pairbin, opts);
 }
 
 Result<Estimation> estimate_alpha_fiml(

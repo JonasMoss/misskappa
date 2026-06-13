@@ -127,7 +127,22 @@ test_that("loglin2 FIML preserves complete-data pairwise kappas", {
   expect_s3_class(loglin2, "misskappa_estimate")
   expect_equal(unname(loglin2$estimates), unname(saturated$estimates),
                tolerance = 1e-8)
-  expect_equal(dim(loglin2$vcov), c(0L, 0L))
+  expect_equal(dim(loglin2$vcov), c(3L, 3L))
+  expect_equal(rownames(loglin2$vcov), names(loglin2$estimates))
+  expect_equal(colnames(loglin2$vcov), names(loglin2$estimates))
+  expect_true(all(is.finite(loglin2$vcov)))
+  expect_equal(unname(loglin2$vcov), unname(t(loglin2$vcov)), tolerance = 1e-10)
+  expect_true(min(eigen(loglin2$vcov, symmetric = TRUE, only.values = TRUE)$values) > -1e-8)
+  expect_equal(dim(loglin2$psi), c(nrow(x), 3L))
+  expect_equal(colnames(loglin2$psi), names(loglin2$estimates))
+  expect_equal(
+    unname(crossprod(loglin2$psi) / nrow(x)^2),
+    unname(loglin2$vcov),
+    tolerance = 1e-10
+  )
+  expect_named(loglin2$null_frac, names(loglin2$estimates))
+  expect_true(all(is.finite(loglin2$null_frac)))
+  expect_true(all(loglin2$null_frac >= 0 & loglin2$null_frac <= 1))
   expect_error(
     estimate_kappa_loglin2(x, weight = "identity",
                            em_options = list(max_iter = 0L)),

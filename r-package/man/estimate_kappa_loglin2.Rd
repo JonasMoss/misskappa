@@ -22,7 +22,7 @@ indicate missing entries.}
 \item{em_options}{Named list of categorical EM options (`tol`, `max_iter`).}
 }
 \value{
-A `misskappa_estimate` object (empty `vcov`/`psi`).
+A `misskappa_estimate` object.
 }
 \description{
 Fits the maximum-entropy log-linear model matching all univariate and
@@ -33,7 +33,8 @@ coefficients. This is the categorical analogue of normal-theory FIML: the
 restricted model is saturated in exactly the margins pairwise-loss kappa
 functionals depend on, so it is consistent under MCAR for any distribution
 and efficient under MAR when the truth has no genuine higher-order rater
-interactions. Point estimates only (no variance); for research use behind
-the experiments. Requires complete pairwise co-observation.
+interactions. Variance uses grouped observed-pattern scores and the Louis
+observed information in the model's sufficient-statistic coordinates.
+Requires complete pairwise co-observation.
 }
 \keyword{internal}

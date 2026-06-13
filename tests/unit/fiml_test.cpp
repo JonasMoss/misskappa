@@ -19,6 +19,28 @@ namespace {
 
 constexpr double tol = 1e-9;
 
+void check_three_coef_variance_contract(const ms::Estimation& e, int n) {
+  REQUIRE(e.vcov.rows() == 3);
+  REQUIRE(e.vcov.cols() == 3);
+  CHECK(e.vcov.array().isFinite().all());
+  CHECK((e.vcov - e.vcov.transpose()).cwiseAbs().maxCoeff() < 1e-10);
+  Eigen::SelfAdjointEigenSolver<RealMat> es(e.vcov);
+  REQUIRE(es.info() == Eigen::Success);
+  CHECK(es.eigenvalues().minCoeff() > -1e-8);
+
+  REQUIRE(e.psi.rows() == n);
+  REQUIRE(e.psi.cols() == 3);
+  CHECK(e.psi.array().isFinite().all());
+  const RealMat psi_vcov =
+      (e.psi.transpose() * e.psi) / std::pow(static_cast<double>(n), 2);
+  CHECK((psi_vcov - e.vcov).cwiseAbs().maxCoeff() < 1e-10);
+
+  REQUIRE(e.null_frac.size() == 3);
+  CHECK(e.null_frac.array().isFinite().all());
+  CHECK(e.null_frac.minCoeff() >= 0.0);
+  CHECK(e.null_frac.maxCoeff() <= 1.0);
+}
+
 IntMat ten_subject_2rater() {
   IntMat x(10, 2);
   x <<
@@ -179,9 +201,7 @@ TEST_CASE("estimate_fiml_loglin2: complete data preserves saturated pairwise kap
   REQUIRE(loglin2.has_value());
 
   CHECK((loglin2->estimates - saturated->estimates).cwiseAbs().maxCoeff() < 1e-8);
-  CHECK(loglin2->vcov.size() == 0);
-  CHECK(loglin2->psi.size() == 0);
-  CHECK(loglin2->null_frac.size() == 0);
+  check_three_coef_variance_contract(*loglin2, static_cast<int>(x.rows()));
 }
 
 TEST_CASE("estimate_fiml_loglin2: pairwise-only missing data fits") {
@@ -194,6 +214,7 @@ TEST_CASE("estimate_fiml_loglin2: pairwise-only missing data fits") {
 
   CHECK(r->estimates.size() == 3);
   CHECK(r->estimates.array().isFinite().all());
+  check_three_coef_variance_contract(*r, static_cast<int>(x.rows()));
 }
 
 TEST_CASE("estimate_fiml_loglin2: reports non-convergence and non-identification") {
