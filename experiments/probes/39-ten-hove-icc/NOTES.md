@@ -31,14 +31,36 @@ paper used.
   relative disagreement **7.6e-4**, all from BFGS-vs-lme4 optimizer tolerance,
   not structure. 0 singular fits.
 
-**Status.** Estimator core DONE + verified. Not yet folded into package `src/`
-(would need the vendored-cpp path + an internal optimizer to replace R `optim`).
+**Delta-method SEs** (`icc_se.R`) — DONE + verified. `V_theta` = inverse observed
+information of the *profile* loglik (numeric Hessian via numDeriv of the C++
+`icc_loglik`, mu profiled out so the mean's estimation is accounted for); analytic
+ICC gradients; `SE = sqrt(grad' V_theta grad)`. Also a logit-transformed CI that
+respects `[0,1]`. Validated against an **honest parametric bootstrap** (B=500,
+refit each replicate) — the actual sampling SD the SE estimates (NB: not the
+Krinsky-Robb "Monte-Carlo CI" the paper sells, which never refits):
+
+| regime | design | ICC | SE_delta / SD_boot |
+|---|---|---|---|
+| interior | S=60, 50% miss, ICC≈.41/.56 | A,1 / C,1 | **1.03 / 0.99** |
+| boundary | S=30, 83% miss, ICC≈.78/.80 | A,1 / C,1 | **0.89 / 0.95** |
+
+i.e. delta-SE is ~exact in the interior and ~11% optimistic for ICC(A,1) near the
+ceiling — exactly the boundary degradation predicted. There the Wald CI spills up
+to 0.92–0.95 while the logit CI stays bounded and asymmetric. Confirms our read on
+ten Hove: a model-based delta SE is enough; the MC-CI buys ~nothing it can't get
+from a logit transform.
+
+**Status.** Estimator core + delta SEs DONE + verified. Not yet folded into
+package `src/` (would need the vendored-cpp path + an internal optimizer/Hessian
+to replace R `optim`/`numDeriv`).
 
 **Open / next.**
-- Variance/SE: paper uses `merDeriv` robust acov → delta-method *or* Monte-Carlo
-  CI. NB their own Fig. 7 shows DM vs MC differ negligibly *within* MLE-RE; the
-  coverage failures are MLE-CF (lavaan, fixed-rater) and ANOVA. So a delta-method
-  SE on the variance components is enough; skip the MC-CI theater.
+- Per Fig. 7, DM vs MC differ negligibly within MLE-RE (the coverage failures are
+  MLE-CF/lavaan and ANOVA), so no need to add a Monte-Carlo CI. Optionally match
+  `merDeriv`→`car::deltaMethod` numbers exactly (not installed; bootstrap is the
+  stronger oracle anyway).
+- A real coverage sim (vs nominal 95%) would quantify the boundary optimism;
+  out of scope for "add SEs".
 - Decide estimand surface: expose ICC(A,1)/ICC(C,1) (single) and the `,k`
   averaged variants (Table 1) — all are functions of the same three components.
 - Positioning (for the papers): MLE-RE is ICC-only and MCAR/ignorable-by-design;
