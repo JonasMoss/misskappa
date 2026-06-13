@@ -20,6 +20,7 @@ reference:
       - alpha
       - kappa
       - kappa_counts
+      - ratings_to_counts
   - title: Hypothesis tests
     contents:
       - kappa_test
