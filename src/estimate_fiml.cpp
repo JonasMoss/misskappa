@@ -62,7 +62,6 @@ struct LouisReducedInfo {
 };
 
 struct FimlVarianceCache {
-  RealMat theta_vcov;
   RealMat var_star;
   RealMat info_star;
   RealMat theta_jacobian;
@@ -479,17 +478,26 @@ LouisReducedInfo build_louis_reduced_info(
   RealMat group_scores = RealMat::Zero(
       static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
   Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
+  std::vector<Eigen::Index> reduced_indices;
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
     const std::uint32_t offset = in.group_offsets[g];
 
     double sum_theta_subset = 0.0;
+    bool ref_present = false;
+    reduced_indices.clear();
+    reduced_indices.reserve(n_comps);
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const std::uint64_t rank = in.completion_indices[offset + k];
       const Eigen::Index idx = rank_to_pruned[static_cast<std::size_t>(rank)];
       if (idx >= 0) {
         sum_theta_subset += theta_pruned(idx);
+        if (idx == ref) {
+          ref_present = true;
+        } else {
+          reduced_indices.push_back((idx < ref) ? idx : idx - 1);
+        }
       }
     }
     if (sum_theta_subset <= singular_tol) continue;
@@ -497,24 +505,23 @@ LouisReducedInfo build_louis_reduced_info(
     // Score for theta_pruned: posterior / theta_pruned. In raw FIML this is
     // constant across all compatible retained completions.
     const double retained_score = 1.0 / sum_theta_subset;
-    double ref_score = 0.0;
-    s_reduced.setZero();
-    for (std::uint32_t k = 0; k < n_comps; ++k) {
-      const std::uint64_t rank = in.completion_indices[offset + k];
-      const Eigen::Index idx = rank_to_pruned[static_cast<std::size_t>(rank)];
-      if (idx < 0) continue;
-      if (idx == ref) {
-        ref_score = retained_score;
-      } else {
-        const Eigen::Index reduced_idx = (idx < ref) ? idx : idx - 1;
-        s_reduced(reduced_idx) = retained_score;
+    const double n_g = static_cast<double>(in.group_n_subjects[g]);
+    if (ref_present) {
+      s_reduced.setConstant(-retained_score);
+      for (Eigen::Index idx : reduced_indices) {
+        s_reduced(idx) = 0.0;
+      }
+      group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
+      info_star.noalias() += n_g * s_reduced * s_reduced.transpose();
+    } else {
+      const double weighted_score_sq = n_g * retained_score * retained_score;
+      for (Eigen::Index a : reduced_indices) {
+        group_scores(static_cast<Eigen::Index>(g), a) = retained_score;
+        for (Eigen::Index b : reduced_indices) {
+          info_star(a, b) += weighted_score_sq;
+        }
       }
     }
-    if (ref_score != 0.0) s_reduced.array() -= ref_score;
-    group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
-
-    info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
-                          * s_reduced * s_reduced.transpose();
   }
 
   // Symmetrise for numerical safety before eigendecomposition.
@@ -528,7 +535,6 @@ FimlVarianceCache build_fiml_variance_cache(
     const EmRunResult& em, const EmInput& in, const EmOptions& opts) {
   FimlVarianceCache cache;
   const Eigen::Index n_final = em.theta_hat.size();
-  cache.theta_vcov = RealMat::Zero(n_final, n_final);
   cache.var_star = RealMat::Zero(0, 0);
   cache.info_star = RealMat::Zero(0, 0);
   cache.theta_jacobian = RealMat::Zero(n_final, 0);
@@ -544,8 +550,6 @@ FimlVarianceCache build_fiml_variance_cache(
   cache.info_star = info.info_star;
   cache.theta_jacobian = info.jacobian;
   cache.group_scores = info.group_scores;
-  cache.theta_vcov =
-      cache.theta_jacobian * cache.var_star * cache.theta_jacobian.transpose();
   return cache;
 }
 
@@ -1009,7 +1013,11 @@ Result<Estimation> map_fiml_kappa(
       cache.info_star, jacobian_reduced, cache.info_rcond);
   if (!null_frac) return misskappa::unexpected(null_frac.error());
 
-  RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
+  RealMat vcov = RealMat::Zero(3, 3);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
   RealMat psi = RealMat::Zero(n, 3);
   if (cache.var_star.rows() > 0) {
     const RealMat group_psi =
@@ -1422,7 +1430,11 @@ Result<Estimation> estimate_fiml_gwise(
       cache.info_star, jacobian_reduced, cache.info_rcond);
   if (!frac) return misskappa::unexpected(frac.error());
 
-  RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
+  RealMat vcov = RealMat::Zero(2, 2);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
   RealMat psi = RealMat::Zero(n, 2);
   if (cache.var_star.rows() > 0) {
     const RealMat group_psi =
@@ -1709,7 +1721,11 @@ Result<Estimation> estimate_alpha_fiml(
       cache.info_star, jacobian_reduced, cache.info_rcond);
   if (!frac) return misskappa::unexpected(frac.error());
 
-  RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
+  RealMat vcov = RealMat::Zero(1, 1);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
 
   RealMat psi = RealMat::Zero(n, 1);
   if (cache.var_star.rows() > 0) {

@@ -160,7 +160,6 @@ struct LouisReducedInfoCounts {
 };
 
 struct FimlCountsVarianceCache {
-  RealMat theta_vcov;
   RealMat var_star;
   RealMat info_star;
   RealMat theta_jacobian;
@@ -418,6 +417,7 @@ LouisReducedInfoCounts build_louis_reduced_info(
   RealMat group_scores = RealMat::Zero(
       static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
   Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
+  std::vector<std::pair<Eigen::Index, double>> reduced_scores;
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
@@ -436,7 +436,8 @@ LouisReducedInfoCounts build_louis_reduced_info(
     if (!has_pruned_completion || sum_w <= singular_tol) continue;
 
     double ref_score = 0.0;
-    s_reduced.setZero();
+    reduced_scores.clear();
+    reduced_scores.reserve(n_comps);
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const auto aidx = static_cast<std::size_t>(in.completion_indices[offset + k]);
       const Eigen::Index idx = active_to_pruned[aidx];
@@ -446,13 +447,25 @@ LouisReducedInfoCounts build_louis_reduced_info(
         ref_score = score;
       } else {
         const Eigen::Index reduced_idx = (idx < ref) ? idx : idx - 1;
-        s_reduced(reduced_idx) = score;
+        reduced_scores.emplace_back(reduced_idx, score);
       }
     }
-    if (ref_score != 0.0) s_reduced.array() -= ref_score;
-    group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
-    info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
-                          * s_reduced * s_reduced.transpose();
+    const double n_g = static_cast<double>(in.group_n_subjects[g]);
+    if (ref_score != 0.0) {
+      s_reduced.setConstant(-ref_score);
+      for (const auto& entry : reduced_scores) {
+        s_reduced(entry.first) += entry.second;
+      }
+      group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
+      info_star.noalias() += n_g * s_reduced * s_reduced.transpose();
+    } else {
+      for (const auto& a : reduced_scores) {
+        group_scores(static_cast<Eigen::Index>(g), a.first) = a.second;
+        for (const auto& b : reduced_scores) {
+          info_star(a.first, b.first) += n_g * a.second * b.second;
+        }
+      }
+    }
   }
 
   out.info_star = 0.5 * (info_star + info_star.transpose());
@@ -512,7 +525,6 @@ FimlCountsVarianceCache build_fiml_counts_variance_cache(
     const EmRunResultCounts& em, const EmInputCounts& in, const EmOptions& opts) {
   FimlCountsVarianceCache cache;
   const Eigen::Index n_final = em.theta_hat.size();
-  cache.theta_vcov = RealMat::Zero(n_final, n_final);
   cache.var_star = RealMat::Zero(0, 0);
   cache.info_star = RealMat::Zero(0, 0);
   cache.theta_jacobian = RealMat::Zero(n_final, 0);
@@ -527,8 +539,6 @@ FimlCountsVarianceCache build_fiml_counts_variance_cache(
   cache.info_star = info.info_star;
   cache.theta_jacobian = info.jacobian;
   cache.group_scores = info.group_scores;
-  cache.theta_vcov =
-      cache.theta_jacobian * cache.var_star * cache.theta_jacobian.transpose();
   return cache;
 }
 
@@ -588,10 +598,14 @@ Estimation map_to_kappa(
     jacobian.row(1) = -grad_pd.transpose() / d_bp;
   }
 
-  RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
+  const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
+  RealMat vcov = RealMat::Zero(2, 2);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
   RealMat psi = RealMat::Zero(static_cast<Eigen::Index>(em.n_subjects), 2);
   if (cache.var_star.rows() > 0) {
-    const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
     const RealMat group_psi =
         static_cast<double>(em.n_subjects) * cache.group_scores
         * cache.var_star * jacobian_reduced.transpose();
