@@ -178,7 +178,10 @@
 #' full symmetric positive-semidefinite feature-weight matrix. The `"pairwise"`
 #' method uses pairwise-available covariance moments and is MCAR-oriented; the
 #' `"nt_fiml"` method fits the saturated normal mean/covariance by EM and is
-#' the vector analogue of [kappa_quadratic_fiml()].
+#' the vector analogue of [kappa_quadratic_fiml()]. With a quadratic weight this
+#' is the covariance/variance-components route used for Lin's concordance
+#' correlation coefficient under unbalanced repeated measures; the full matrix
+#' `W` is the extension, not the missing-data machinery.
 #'
 #' Both methods need each rater-feature cell to be observed at least once. The
 #' `"pairwise"` method additionally requires every rater-feature pair to
@@ -186,6 +189,12 @@
 #' directly co-observed rows. Direct `"nt_fiml"` callers should enforce the
 #' same complete pairwise co-observation condition when the saturated
 #' covariance functional is the target.
+#'
+#' The full-`W` route is internal because the current normal-FIML backend is
+#' numerically strict: it inverts per-pattern covariance blocks and can return a
+#' numerical error when the fitted covariance is singular or nearly singular
+#' (for example, a deterministic or non-varying feature within a missingness
+#' pattern). There is no ridge or rank-aware fallback yet.
 #'
 #' @param x Numeric array with dimensions subjects, raters, features.
 #' @param method `"pairwise"` or `"nt_fiml"`.
@@ -198,6 +207,22 @@
 #' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
 #'   coefficients, covariance matrix, per-subject influence functions, and
 #'   fitted mean/covariance moments.
+#'
+#' @references
+#' Carrasco, J. L., & Jover, L. (2003). Estimating the generalized concordance
+#' correlation coefficient through variance components. \emph{Biometrics},
+#' 59(4), 849--858.
+#'
+#' King, T. S., & Chinchilli, V. M. (2001). A generalized concordance
+#' correlation coefficient for continuous and categorical data.
+#' \emph{Statistics in Medicine}, 20(14), 2131--2147.
+#'
+#' King, T. S., Chinchilli, V. M., & Carrasco, J. L. (2007). A repeated
+#' measures concordance correlation coefficient. \emph{Statistics in Medicine},
+#' 26(16), 3095--3113.
+#'
+#' Lin, L. I.-K. (1989). A concordance correlation coefficient to evaluate
+#' reproducibility. \emph{Biometrics}, 45(1), 255--268.
 #'
 #' @keywords internal
 kappa_vector_quadratic <- function(x,

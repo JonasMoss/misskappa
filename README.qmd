@@ -114,11 +114,26 @@ alpha_test(
   paired = FALSE)
 ```
 
-### Frontier / experimental
+### Vector-valued ratings
 
-There is early support for **vector-valued** ratings, where each rating is a
-vector and the weights act one component at a time. This part is still active
-research and the paper is in preparation, so expect the surface to shift. The
+Sometimes a rating is itself a vector, with one weight per component. The
+CRACKLES auscultation data ship this way: each observer scores six chest sites
+per patient, so a single verdict is a six-component vector. Pass the array and
+`kappa()` takes the vector path, with the same `pairwise` and `ipw` estimators
+as the scalar case.
+
+None of the inference is new. A missing component drops out of the rater pairs
+it touches, and the estimators are the standard missing-data ones used
+throughout the package. For the quadratic weight the coefficient equals Lin's
+concordance correlation coefficient, and fitting it to incomplete data is the
+variance-components approach long used for that coefficient under unbalanced
+designs (King and Chinchilli 2001, Carrasco and Jover 2003).
+
+What is still in preparation is the construction, not the inference: the
+component-separable weighted family, the full feature-coupling matrix that ties
+components together instead of weighting them one at a time, and the paper
+behind them. That full-matrix route stays internal for now because its
+per-pattern covariance step is fragile when a feature never varies. The
 [vector-valued agreement
 article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html)
 walks through it.
@@ -138,7 +153,7 @@ reference and the worked-example articles:
 - [Missingness and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
 - [Testing equality of agreement coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
 - [Validation strategy](https://jonasmoss.github.io/misskappa/articles/validation.html)
-- [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(frontier / experimental)*
+- [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(in preparation)*
 - [C++ API reference](https://jonasmoss.github.io/misskappa/cpp/)
 
 ## Contents

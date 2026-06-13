@@ -1,7 +1,8 @@
 # Vector-valued agreement with separable feature weights — proto-paper
 
 Status: **proto-paper, in preparation.** This is a short, paper-shaped overview of
-*our* construction. It is not yet a manuscript and the API it documents is frontier.
+*our* construction. It is not yet a manuscript, and the API it documents may
+change while the vector-valued agreement paper is in preparation.
 The dense technical notes are the appendix: see
 [`component-separable-vector-kappa.md`](component-separable-vector-kappa.md),
 [`quadratic-vector-tensor-kappa.md`](quadratic-vector-tensor-kappa.md), and

@@ -118,8 +118,10 @@ kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 ```
 
 The [g-wise agreement](articles/gwise-agreement.html) article develops the
-multirater kernels in full. Vector-valued agreement is **frontier / experimental**
-ongoing research — see the
+multirater kernels in full. Vector-valued agreement is in preparation: the
+missing-data estimators are the same standard pairwise/IPW machinery used
+elsewhere in the package, while the new work is the component-separable vector
+loss family and full-matrix feature coupling. See the
 [vector-valued agreement](articles/vector-valued-agreement.html) article.
 
 ## Testing whether coefficients are equal

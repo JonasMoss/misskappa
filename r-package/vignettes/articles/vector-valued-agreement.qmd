@@ -7,16 +7,23 @@ title: "Vector-Valued Agreement"
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-::: {.callout-warning}
-## Frontier / experimental
+::: {.callout-note}
+## In preparation
 
-Vector-valued agreement with **component-separable feature weights**, and its
-missing-data estimators, is our own ongoing research rather than settled, published
-methodology. The interface shown here may change, some routes are internal, and the
-supporting manuscript is in preparation. Treat results as exploratory. The general
-Fréchet framework for multirater agreement (Moss 2024; the multirater /
-vector-valued-data paper) is the loose anchor, but it does **not** cover the
-separable-weight construction below — that is new here.
+The inference here is ordinary. The same `pairwise` and `ipw` estimators as
+scalar `kappa()`, applied one component at a time, so a missing component just
+drops from the rater pairs it touches. For the quadratic weight the coefficient
+is Lin's concordance correlation coefficient, and fitting it to incomplete data
+is the variance-components approach long used for that coefficient under
+unbalanced designs (King & Chinchilli 2001; Carrasco & Jover 2003).
+
+What is still in preparation is the construction around that inference: the
+**component-separable** weighted family below, the full feature-coupling matrix
+$W$, and the supporting manuscript. The interface may change, and the
+full-matrix FIML route stays internal for the numerical reason noted at the end
+of this article. The general Fréchet framework for multirater agreement
+(Moss 2024) is the loose anchor, but it does **not** cover the separable-weight
+family that is new here.
 :::
 
 ```{r}
@@ -55,20 +62,21 @@ a weighted average of per-component losses $d_\ell$ passed through a scalar
 transform $h$. The `weight` argument selects the component loss: `"nominal"` is
 Hamming (count of disagreeing sites, $d_\ell = \mathbf 1[x_\ell \neq y_\ell]$,
 $h(t)=t$), `"linear"` is absolute difference, and `"quadratic"` is squared
-difference; passing `loss = "rms"` keeps the squared component loss but sets
+difference. Passing `loss = "rms"` keeps the squared component loss but sets
 $h(t)=\sqrt t$. Per-component weights enter through `feature_weights`, e.g. to
 down-weight some sites.
 
 The Conger and Fleiss coefficients are then the usual $\kappa = 1 - D_o/D_e$, with
 observed disagreement, distinct-rater-pair chance, and pooled-margin chance all
-built from these component losses. The separability is deliberate: because
+built from these component losses. The separability is deliberate. Because
 disagreement is a sum over features, a *missing component* simply drops that
 feature from the affected rater pair, and the estimator stays a ratio of
-feature-level moments — which is what makes the missing-data estimators below
-tractable. The closest published precedent is the single-loss multivariate
-agreement coefficient of Janson & Olsson (2001); the weighted separable family and
-its missing-data theory are the new part, sketched in the proto-paper note under
-the project's `dev/notes/`.
+feature-level moments, which keeps the missing-data estimators below tractable.
+Those estimators are the standard `pairwise` and `ipw` machinery from the rest
+of the package. What is new is the weighted separable loss family, whose closest
+published precedent is the single fixed-loss multivariate agreement coefficient
+of Janson & Olsson (2001). It is sketched in the proto-paper note under the
+project's `dev/notes/`.
 
 ## The expert panel
 
@@ -123,9 +131,14 @@ $$
 $$
 
 Because the estimand depends on the data only through $(\mu, \Sigma)$, it admits a
-**FIML** estimator: fit the saturated normal mean and covariance by EM and use every
+**FIML** estimator. Fit the saturated normal mean and covariance by EM and use every
 partially observed vector, exactly as the scalar `nt_fiml` quadratic kappa does. This
-is the vector analogue of `kappa_quadratic_fiml()`.
+is the vector analogue of `kappa_quadratic_fiml()`. With a quadratic weight the
+coefficient is Lin's concordance correlation coefficient, and using every partially
+observed vector this way is the variance-components route by which that coefficient has
+long been estimated under unbalanced repeated measures (King & Chinchilli 2001,
+Carrasco & Jover 2003). What is new is the full matrix $W$ coupling features, not the
+way incomplete data are handled.
 
 The publicly supported vector path uses *diagonal* weights, so the squared-loss
 coefficient with per-feature weights is reachable directly:
@@ -134,17 +147,17 @@ coefficient with per-feature weights is reachable directly:
 kappa(dat.vanbelle2019[, 1:4, ], weight = "quadratic", estimator = "pairwise")
 ```
 
-The **full-matrix-$W$** quadratic estimators — including the FIML route — currently
+The **full-matrix $W$** quadratic estimators, including the FIML route, currently
 live in an internal backend, `kappa_vector_quadratic()`, and are *not* exposed
-through `kappa()`. They are experimental: the normal-theory FIML path inverts
-per-pattern covariance blocks and is singular when a feature has no within-pattern
-variation (which the complete binary CRACKLES data triggers). The call shape, for
-reference only, is
+through `kappa()`. The reason is numerical rather than methodological. The
+normal-theory FIML path inverts per-pattern covariance blocks and is singular when a
+feature has no within-pattern variation, which the complete binary CRACKLES data
+triggers. The call shape, for reference only, is
 
 ```{r}
 #| eval: false
-# Experimental, internal, may fail to converge on degenerate data — not part of
-# the public API. Shown only to document the full-W / FIML route.
+# Internal route, may fail to converge on degenerate data, not part of the
+# public API. Shown only to document the full-matrix W and FIML path.
 fit <- misskappa:::kappa_vector_quadratic(
   dat.vanbelle2019[, 1:4, ],
   method = "nt_fiml",            # or "pairwise"
@@ -159,9 +172,25 @@ nonregular RMS at perfect agreement, FIML on degenerate data).
 
 ## References
 
+Carrasco, J. L., & Jover, L. (2003). Estimating the generalized concordance
+correlation coefficient through variance components. *Biometrics*, 59(4),
+849–858. <https://doi.org/10.1111/j.0006-341X.2003.00099.x>
+
 Janson, H., & Olsson, U. (2001). A measure of agreement for interval or nominal
 multivariate observations. *Educational and Psychological Measurement*, 61(2),
 277–289.
+
+King, T. S., & Chinchilli, V. M. (2001). A generalized concordance correlation
+coefficient for continuous and categorical data. *Statistics in Medicine*,
+20(14), 2131–2147. <https://doi.org/10.1002/sim.845>
+
+King, T. S., Chinchilli, V. M., & Carrasco, J. L. (2007). A repeated measures
+concordance correlation coefficient. *Statistics in Medicine*, 26(16),
+3095–3113. <https://doi.org/10.1002/sim.2778>
+
+Lin, L. I.-K. (1989). A concordance correlation coefficient to evaluate
+reproducibility. *Biometrics*, 45(1), 255–268.
+<https://doi.org/10.2307/2532051>
 
 Moss, J. (2024). Measures of agreement with multiple raters: Fréchet variances and
 inference. *Psychometrika*. <https://doi.org/10.1007/s11336-023-09945-2>
