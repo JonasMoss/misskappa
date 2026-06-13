@@ -1540,7 +1540,7 @@ Result<Estimation> estimate_fiml_loglin2(
   };
   const double ipf_tol =
       (std::isfinite(opts.tol) && opts.tol > 0.0)
-          ? std::max(1e-12, std::min(1e-9, opts.tol * 1e-2))
+          ? std::max(1e-12, std::min(1e-8, opts.tol))
           : 1e-12;
   auto project = [&](const std::vector<double>& target_margins,
                      Eigen::VectorXd& out) -> bool {
