@@ -132,6 +132,24 @@ not here. The port plan with the eight-step roadmap is at
       equality and general finite-vector losses latent. A saturated
       multinomial FIML over rater-feature profiles is the natural extension,
       but the support is combinatorial and needs a separate design pass.
+- [ ] **Revisit log-linear FIML runtime only with likelihood-preserving changes.**
+      The 2026-06 NLopt experiment on branch `loglinear-nlopt-experiment`
+      found no safe optimizer shortcut. Direct NLopt in natural-parameter
+      space was fast on a sparse `n = 100, R = 6, C = 4` scratch case
+      (~0.25s), but stopped at a worse observed likelihood than the existing
+      EM/IPF path (`nll = 461.04` vs `458.71`); TNEWTON and NLopt-as-start
+      also landed in worse basins despite lower wall time. Warm-starting IPF
+      from the previous table changed the fixed point and was slower on the
+      same case. The only committed safe improvement was
+      `029bbf3 Reduce log-linear IPF margin checks`, which preserves the fit
+      by checking pair-margin error every five IPF sweeps instead of every
+      sweep (about 10.8s -> 9.5s in the scratch case). If this is revisited,
+      prefer changes that preserve or explicitly improve the observed
+      likelihood: better IPF bookkeeping, cached sufficient-statistic passes,
+      convergence diagnostics exposed from `estimate_fiml_loglin2`, or a
+      constrained convex solver with robust boundary handling. Do not
+      automatically swap in direct NLopt unless it beats the EM/IPF likelihood
+      and preserves estimates across sparse missingness cases.
 - [ ] **POD-pointer overloads — only when a non-Eigen consumer shows up.**
       The Eigen API is already thin for the two consumers we have (in-tree
       C++ tests and R via Rcpp+RcppEigen). If we ever add a Python / Julia /
