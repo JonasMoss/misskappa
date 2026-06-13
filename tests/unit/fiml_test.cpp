@@ -190,6 +190,21 @@ TEST_CASE("estimate_fiml: complete data, identity weights matches Cohen") {
   CHECK(std::abs(r->estimates(2) - 0.4) < 1e-9);                // BP
 }
 
+TEST_CASE("estimate_fiml: complete data supports non-symmetric weights") {
+  IntMat x = complete_3rater_2cat();
+  RealMat W(2, 2);
+  W << 1.0, 0.2,
+       0.7, 1.0;
+
+  auto available = ms::estimate_available(x, W);
+  auto fiml = ms::estimate_fiml(x, W, EmOptions{});
+  REQUIRE(available.has_value());
+  REQUIRE(fiml.has_value());
+
+  CHECK((fiml->estimates - available->estimates).cwiseAbs().maxCoeff() < 1e-10);
+  check_three_coef_variance_contract(*fiml, static_cast<int>(x.rows()));
+}
+
 TEST_CASE("estimate_fiml_loglin2: complete data preserves saturated pairwise kappas") {
   IntMat x = complete_3rater_2cat();
   auto W = ms::loss::identity_weights(2);
