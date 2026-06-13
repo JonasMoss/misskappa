@@ -64,6 +64,10 @@ Counts data assumes **exchangeable iid raters** drawn from a single
 category distribution. For non-exchangeable raters, use rater-
 identified data and `kappa(x, estimator = "cat_fiml")` instead.
 
+To obtain counts from a rater-identified subjects-by-raters matrix, use
+[ratings_to_counts()]; chaining it into `estimator = "cat_fiml"` fits the
+exchangeable count-FIML.
+
 Conger is not reported (raters are not identified in this input format),
 and neither IPW nor Gwet are meaningful (per-rater observation rates are
 aggregated away by the counts representation).

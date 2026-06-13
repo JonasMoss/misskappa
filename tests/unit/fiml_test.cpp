@@ -19,6 +19,28 @@ namespace {
 
 constexpr double tol = 1e-9;
 
+void check_three_coef_variance_contract(const ms::Estimation& e, int n) {
+  REQUIRE(e.vcov.rows() == 3);
+  REQUIRE(e.vcov.cols() == 3);
+  CHECK(e.vcov.array().isFinite().all());
+  CHECK((e.vcov - e.vcov.transpose()).cwiseAbs().maxCoeff() < 1e-10);
+  Eigen::SelfAdjointEigenSolver<RealMat> es(e.vcov);
+  REQUIRE(es.info() == Eigen::Success);
+  CHECK(es.eigenvalues().minCoeff() > -1e-8);
+
+  REQUIRE(e.psi.rows() == n);
+  REQUIRE(e.psi.cols() == 3);
+  CHECK(e.psi.array().isFinite().all());
+  const RealMat psi_vcov =
+      (e.psi.transpose() * e.psi) / std::pow(static_cast<double>(n), 2);
+  CHECK((psi_vcov - e.vcov).cwiseAbs().maxCoeff() < 1e-10);
+
+  REQUIRE(e.null_frac.size() == 3);
+  CHECK(e.null_frac.array().isFinite().all());
+  CHECK(e.null_frac.minCoeff() >= 0.0);
+  CHECK(e.null_frac.maxCoeff() <= 1.0);
+}
+
 IntMat ten_subject_2rater() {
   IntMat x(10, 2);
   x <<
@@ -52,6 +74,24 @@ IntMat twelve_subject_3rater_3cat() {
     0, 0, 0,
     1, 0, 1,
     2, 2, 1;
+  return x;
+}
+
+IntMat complete_3rater_2cat() {
+  IntMat x(12, 3);
+  x <<
+    0, 0, 0,
+    0, 0, 0,
+    0, 0, 1,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 0,
+    1, 1, 1,
+    1, 1, 1,
+    0, 1, 0,
+    1, 0, 0,
+    0, 1, 1,
+    1, 0, 1;
   return x;
 }
 
@@ -148,6 +188,21 @@ TEST_CASE("estimate_fiml: complete data, identity weights matches Cohen") {
   CHECK(std::abs(r->estimates(0) - 0.4) < 1e-9);                // Conger
   CHECK(std::abs(r->estimates(1) - 13.0 / 33.0) < 1e-9);        // Fleiss
   CHECK(std::abs(r->estimates(2) - 0.4) < 1e-9);                // BP
+}
+
+TEST_CASE("estimate_fiml: complete data supports non-symmetric weights") {
+  IntMat x = complete_3rater_2cat();
+  RealMat W(2, 2);
+  W << 1.0, 0.2,
+       0.7, 1.0;
+
+  auto available = ms::estimate_available(x, W);
+  auto fiml = ms::estimate_fiml(x, W, EmOptions{});
+  REQUIRE(available.has_value());
+  REQUIRE(fiml.has_value());
+
+  CHECK((fiml->estimates - available->estimates).cwiseAbs().maxCoeff() < 1e-10);
+  check_three_coef_variance_contract(*fiml, static_cast<int>(x.rows()));
 }
 
 TEST_CASE("estimate_fiml: sparse MAR fixture succeeds with null-frac diagnostic") {

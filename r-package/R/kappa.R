@@ -757,6 +757,90 @@ kappa_quadratic <- function(x, values) {
   )
 }
 
+#' Convert rater-identified ratings to counts format
+#'
+#' @description
+#' Aggregates a subjects-by-raters matrix of categorical ratings into the
+#' subjects-by-categories counts format consumed by [kappa_counts()]: each
+#' row is one subject, each column one category, and `out[i, k]` is the number
+#' of raters who assigned subject `i` to category `k`. Missing entries (`NA`
+#' or, for numeric input, any non-finite value) are simply not counted, so a
+#' subject rated by a subset of raters contributes a row whose total is the
+#' number of raters who actually scored it.
+#'
+#' Aggregating to counts **discards rater identity**, which is exactly the
+#' exchangeable-raters representation. Feeding the result to
+#' `kappa_counts(estimator = "cat_fiml")` therefore fits the exchangeable
+#' count-FIML: the maximum-likelihood estimator one obtains by imposing rater
+#' exchangeability on the saturated categorical FIML of
+#' `kappa(estimator = "cat_fiml")`. Under genuinely non-exchangeable raters
+#' (rater-specific marginals), prefer the rater-identified
+#' `kappa(x, estimator = "cat_fiml")` instead, which keeps per-rater
+#' information.
+#'
+#' @param x A subjects-by-raters matrix or data frame of category labels
+#'   (integer codes, characters, or factors). `NA` --- and, for numeric
+#'   input, any non-finite value --- marks a missing rating.
+#' @param categories Optional vector giving the full set of categories and
+#'   their column order in the output. Defaults to the sorted unique observed
+#'   labels. Supply it to pin a known category set (including categories that
+#'   happen to be unobserved, which then appear as all-zero columns) or to
+#'   control column order. Observed labels outside `categories` are an error.
+#'
+#' @return An integer subjects-by-categories matrix whose columns are named by
+#'   `categories` and whose row names are carried over from `x`. Suitable as
+#'   the `x` argument of [kappa_counts()].
+#'
+#' @seealso [kappa_counts()] for the count-format estimators;
+#'   [kappa()] for the rater-identified (non-exchangeable) estimators.
+#'
+#' @examples
+#' # Gwet (2014): 20 subjects, five raters, categories {0, 1, 2, 3}, with
+#' # missing ratings. Aggregate to counts, then fit the exchangeable
+#' # count-FIML (equivalent to exchangeability-constrained cat_fiml).
+#' counts <- ratings_to_counts(dat.gwet2014)
+#' head(counts)
+#' kappa_counts(counts, estimator = "cat_fiml")
+#'
+#' # The Fleiss-Cuzick moment estimator is available from the same counts.
+#' kappa_counts(counts, estimator = "fleiss_cuzick")
+#'
+#' @export
+ratings_to_counts <- function(x, categories = NULL) {
+  if (is.data.frame(x)) x <- as.matrix(x)
+  if (!is.matrix(x)) {
+    stop("'x' must be a subjects-by-raters matrix or data frame.")
+  }
+  if (is.numeric(x)) x[!is.finite(x)] <- NA
+
+  observed <- x[!is.na(x)]
+  if (length(observed) == 0L) {
+    stop("'x' has no observed (non-missing) ratings.")
+  }
+
+  if (is.null(categories)) {
+    categories <- sort(unique(as.vector(observed)))
+  } else {
+    extra <- setdiff(unique(as.vector(observed)), categories)
+    if (length(extra) > 0L) {
+      shown <- extra[seq_len(min(5L, length(extra)))]
+      stop("Observed labels absent from 'categories': ",
+           paste(shown, collapse = ", "),
+           if (length(extra) > 5L) ", ..." else "")
+    }
+  }
+  C <- length(categories)
+
+  idx <- matrix(match(x, categories), nrow = nrow(x))  # NA ratings stay NA
+  counts <- matrix(0L, nrow = nrow(x), ncol = C,
+                   dimnames = list(rownames(x), as.character(categories)))
+  for (i in seq_len(nrow(x))) {
+    row_idx <- idx[i, !is.na(idx[i, ])]
+    if (length(row_idx) > 0L) counts[i, ] <- tabulate(row_idx, nbins = C)
+  }
+  counts
+}
+
 #' Weighted agreement coefficients for counts-format input
 #'
 #' @description
@@ -779,6 +863,10 @@ kappa_quadratic <- function(x, values) {
 #' Counts data assumes **exchangeable iid raters** drawn from a single
 #' category distribution. For non-exchangeable raters, use rater-
 #' identified data and `kappa(x, estimator = "cat_fiml")` instead.
+#'
+#' To obtain counts from a rater-identified subjects-by-raters matrix, use
+#' [ratings_to_counts()]; chaining it into `estimator = "cat_fiml"` fits the
+#' exchangeable count-FIML.
 #'
 #' Conger is not reported (raters are not identified in this input format),
 #' and neither IPW nor Gwet are meaningful (per-rater observation rates are

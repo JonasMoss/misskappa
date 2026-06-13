@@ -1,0 +1,29 @@
+# DEV-ONLY Makevars — NOT shipped, NOT vendored, CRAN never sees it.
+#
+# `just r-dev` mirrors r-package/ into build-rdev/ (minus build artifacts) and
+# drops this file in as build-rdev/src/Makevars. Instead of recompiling the
+# whole vendored C++ library on every install, it compiles only the R glue
+# (RcppExports.cpp + rcpp_glue.cpp) and links it against the prebuilt opt-preset
+# static library that `just opt` produces. The shipped r-package/src/Makevars
+# stays self-contained (compiles every vendored source) for CRAN /
+# install_github — see justfile `r-dev` vs `r-install`.
+#
+# MISSKAPPA_ROOT is exported by the just recipe (repo root). `just opt` must have
+# built build-opt/libmisskappa.a first (the recipe depends on it).
+
+CXX_STD = CXX17
+
+# Compile only the R glue; everything else comes from the prebuilt static lib.
+# R restricts the build to this list because it finds OBJECTS= in the package
+# Makevars (tools:::.shlib_internal greps for it); without that it would force
+# OBJECTS=<all sources> onto the make command line and recompile everything.
+OBJECTS = RcppExports.o rcpp_glue.o
+
+# Canonical public headers (not the vendored copies) + the prebuilt opt library,
+# so editing include/ needs no re-vendor — just `just opt` to refresh the .a.
+PKG_CPPFLAGS = -I$(MISSKAPPA_ROOT)/include -DEIGEN_NO_EXCEPTIONS
+PKG_LIBS = $(MISSKAPPA_ROOT)/build-opt/libmisskappa.a
+
+# Relink the glue whenever the static library is newer (C++ impl changed but the
+# glue source did not), so an incremental install still picks up the new .a.
+$(SHLIB): $(MISSKAPPA_ROOT)/build-opt/libmisskappa.a
