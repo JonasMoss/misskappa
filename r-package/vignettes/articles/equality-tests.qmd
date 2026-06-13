@@ -78,25 +78,27 @@ When both coefficients are computed on the *same* subjects, the two estimates
 are correlated and ignoring that dependence gives the wrong standard error.
 `paired = TRUE` (the default) takes the dependence from the influence functions.
 
-A clean illustration on **real missing data**: in `dat.mcduff2019`, MTurk judges
-rate smiling images on two attributes (*smile presence* and *image
-positivity*), but only about 4% of the item-by-judge grid is observed. Because
-both coefficients are estimated on the same items, the contrast is dependent.
+A clean illustration on **real crowdsourced data**: in `dat.mcduff2019`, MTurk
+judges rate smiling images on two attributes (*smile presence* and *image
+positivity*). Each image is rated on a 1-6 scale by only a handful of the 121
+judges, and almost no two judges share images, so the judges are treated as
+exchangeable and each image is summarised by its category counts. Because both
+coefficients are estimated on the same items, the contrast is dependent.
 
 ```{r}
-to_wide <- function(attribute) {
+to_counts <- function(attribute) {
   m <- with(dat.mcduff2019,
             tapply(get(attribute), list(item, judge), function(z) z[1]))
-  matrix(as.numeric(m), nrow = nrow(m))
+  ratings_to_counts(matrix(as.numeric(m), nrow = nrow(m)))
 }
-smile    <- kappa(to_wide("rating_smile"),    estimator = "pairwise")
-positive <- kappa(to_wide("rating_positive"), estimator = "pairwise")
+smile    <- kappa_counts(to_counts("rating_smile"),    weight = "quadratic")
+positive <- kappa_counts(to_counts("rating_positive"), weight = "quadratic")
 
-kappa_test(smile = smile, positive = positive, coef = "Conger")
+kappa_test(smile = smile, positive = positive, coef = "Fleiss")
 ```
 
-The headline is that this paired test runs on a genuinely incomplete design: the
-pairwise-available estimator supplies both the point estimates and the influence
+The headline is that this paired test runs on a genuinely crowdsourced design: the
+exchangeable count estimator supplies both the point estimates and the influence
 functions that encode their dependence.
 
 Coefficient alpha has the same structure. Every `bfi` respondent answers all five

@@ -26,12 +26,16 @@ items and judges, and no judge rates every image --- which makes it a useful
 missing-data example. There are 273 items, 121 judges, and 1365 rows.
 }
 \examples{
-# Reshape the long table to an (items x judges) matrix for one attribute,
-# then estimate the scored agreement coefficient on the incomplete grid.
+# Each image is rated on a 1-6 smile scale by 5 of the 121 MTurk judges, and
+# almost no two judges share images, so the judges are not individually
+# identified -- this is a crowdsourced design with exchangeable raters.
+# Reshape to an (items x judges) matrix, collapse to per-image category
+# counts with ratings_to_counts(), then estimate the scored (quadratically
+# weighted) agreement.
 smile <- with(dat.mcduff2019,
               tapply(rating_smile, list(item, judge), function(z) z[1]))
 smile <- matrix(as.numeric(smile), nrow = nrow(smile))
-kappa(smile, estimator = "pairwise")
+kappa_counts(ratings_to_counts(smile), weight = "quadratic")
 }
 \references{
 McDuff, D., & Girard, J. M. (2019). Democratizing Psychological

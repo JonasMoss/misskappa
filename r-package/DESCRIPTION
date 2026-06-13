@@ -1,7 +1,7 @@
 Package: misskappa
 Type: Package
 Title: Agreement Coefficients with Missing Data
-Version: 1.0.0
+Version: 1.1.0
 Authors@R:
     person("Jonas", "Moss", , "jonas.moss.statistics@gmail.com",
            role = c("aut", "cre"),
@@ -22,7 +22,8 @@ LazyData: true
 Depends:
     R (>= 4.0.0)
 Imports:
-    Rcpp
+    Rcpp,
+    stats
 LinkingTo:
     Rcpp,
     RcppEigen

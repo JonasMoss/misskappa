@@ -2,21 +2,19 @@
 
 Two independent oracles cover the port:
 
-## Primary: irrcacsmoke
+## Primary: frozen irrCAC oracle
 
-`dev/irrcacsmoke` is the local numeric oracle fork for complete-data
-agreement smoke tests. It is derived from `irrCAC`, but smoke-facing
-functions return named numeric vectors (`estimate`, `variance`, `se`,
-`pa`, `pe`) and use the asymptotic `Gamma / n` variance convention.
+`r-package/tests/testthat/test-parity-oracle.R` holds complete-data Conger,
+Fleiss, and Brennan-Prediger estimates plus diagonal variances frozen as
+numeric literals. They were generated from the irrCAC-based oracle (asymptotic
+`Gamma / n` variance convention) and committed, so the parity regression runs
+everywhere with no external package and no self-skip.
 
-- `r-package/tests/testthat/test-parity-irrcacsmoke.R` skips unless
-  `irrcacsmoke` is installed locally.
-- Raw complete-data smokes compare Conger, Fleiss, and Brennan-Prediger
-  estimates plus diagonal variances.
-- Counts-format smokes compare Fleiss and Brennan-Prediger estimates plus
-  diagonal variances on `dat.fleiss1971`.
-- CI should not install oracle packages from CRAN; checked JSON fixtures can
-  be added later if C++ golden tests need the same oracle.
+- Raw complete-data: Conger, Fleiss, Brennan-Prediger on a fixed 10x3 binary
+  matrix.
+- Counts-format: Fleiss and Brennan-Prediger on `dat.fleiss1971`.
+- To refresh the constants, install a local irrCAC oracle and recompute from
+  the same inputs; do not install oracle packages from CRAN in CI.
 
 ## Secondary: legacy misskappa (deleted, in git history)
 

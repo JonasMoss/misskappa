@@ -1,29 +1,40 @@
-# misskappa (development version)
+# misskappa 1.1.0
 
-## Raw cat_fiml: identification guard relaxed, flattening added
+## Breaking changes
 
-* The saturated raw-data FIML estimators (`kappa(estimator = "cat_fiml")`,
-  `alpha(estimator = "cat_fiml")`, and the g-wise variant) no longer hard-fail
-  when the saturated joint distribution is not uniquely identified but the
-  coefficient itself is. With every rater pair co-observed the coefficients
-  are estimable functions of the identified pattern margins, so the fit now
-  succeeds and reports a `null_frac` diagnostic (per-coefficient fraction of
-  the delta-method gradient in the truncated null space of the Louis
-  information), warning when it exceeds 0.01. The design-level guard — every
-  rater pair must be co-observed by at least one subject — still errors.
-* New `em_options$flatten` for the raw categorical FIML: total Dirichlet
-  pseudo-mass spread over the complete pattern table. Any positive value
-  makes the fitted table the unique interior posterior mode (the analytic
-  center of the flat maximum-likelihood face), shrinking it toward uniform
-  with weight `flatten / (n + flatten)`. Default `0` keeps strict ML and the
-  legacy deterministic-start behaviour. Flattening is a uniqueness device,
-  not an inference upgrade: calibration shows it leaves point estimates
-  essentially unchanged (RMSE within 0.5% of strict ML for `flatten <= 0.1`)
-  while making the reported standard errors conservative (roughly 50% too
-  wide), because the flattened fit retains the full data-supported table in
-  the variance step. Strict ML remains the recommended setting for
-  inference; use flattening when a unique, start-independent fit matters
-  more than SE sharpness.
+* `kappa_counts()` now selects the count moment estimator with
+  `estimator = "fleiss_cuzick"`. The old `"pairwise"` name is gone, though it
+  stays valid for `kappa()` and `alpha()`. Count moments now use Fleiss-Cuzick
+  unequal-judges weighting, so estimates and standard errors change for
+  subjects with unequal rater counts. Balanced data is unchanged.
+
+## New features
+
+* New exported `ratings_to_counts()` collapses a rater-identified
+  subjects-by-raters matrix to counts format. Feed it into
+  `kappa_counts(estimator = "cat_fiml")` for the exchangeable count-FIML.
+
+## Estimation and inference
+
+* Identification guards across the missing-data estimators. The design guard
+  (every rater pair co-observed by at least one subject) errors clearly.
+* Saturated `cat_fiml` no longer hard-fails when the joint distribution is
+  unidentified but the coefficient is. It reports a `null_frac` diagnostic and
+  warns when that exceeds 0.01.
+* New `em_options$flatten` for the raw categorical FIML gives a unique,
+  start-independent fit. It leaves point estimates essentially unchanged but
+  widens the standard errors, so strict ML (the default) stays recommended for
+  inference.
+
+## Performance
+
+* The robust normal-theory FIML (`nt_fiml`) runs on a new C++ backend with a
+  faster information pass. Results are unchanged.
+
+## Bug fixes
+
+* Declare `stats` in `Imports` and import the `influence` generic, so the
+  `stats::influence()` method registers and the namespace loads cleanly.
 
 # misskappa 1.0.0
 

@@ -11,7 +11,7 @@ behind it (so they are not relitigated), and the open items.
     categorical ratings (any `weight`); `"pairwise"`/`"nt_fiml"` for the
     quadratically weighted scored coefficient (treat `x` as numeric scores,
     require `weight = "quadratic"`). Absorbs the former `kappa_continuous`.
-  - `kappa_counts(x, estimator, weight, ...)` — `"pairwise"`/`"cat_fiml"`.
+  - `kappa_counts(x, estimator, weight, ...)` — `"fleiss_cuzick"`/`"cat_fiml"`.
   - `alpha(x, estimator, values, ...)` — `"pairwise"`/`"cat_fiml"`/`"nt_fiml"`
     (replaces `method` + `type`).
 - **Equality-test verbs.** `kappa_test()` / `alpha_test()` return an `htest`;

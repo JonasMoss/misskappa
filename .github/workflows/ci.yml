@@ -77,14 +77,6 @@ jobs:
             exit 1
           fi
 
-      - name: Install local irrCAC smoke oracle (kept local; optional)
-        run: |
-          if [ -d dev/irrcacsmoke ]; then
-            R CMD INSTALL --preclean dev/irrcacsmoke
-          else
-            echo "dev/irrcacsmoke not present (kept local, gitignored); irrCAC parity tests self-skip."
-          fi
-
       - name: Generate R documentation
         shell: Rscript {0}
         run: roxygen2::roxygenise("r-package")
@@ -107,8 +99,8 @@ jobs:
       # package with testthat's JunitReporter so Codecov Test Analytics gets a
       # per-test report. stop_on_failure = FALSE lets the reporter flush the
       # XML first; we then exit non-zero ourselves so a real failure still reds
-      # the job. Missing Suggests (lavaan/psych) and the gitignored irrcacsmoke
-      # oracle self-skip, exactly as in the check above.
+      # the job. Missing Suggests (lavaan/psych) self-skip, exactly as in the
+      # check above.
       - name: Install package for test reporting
         if: ${{ !cancelled() }}
         run: R CMD INSTALL r-package

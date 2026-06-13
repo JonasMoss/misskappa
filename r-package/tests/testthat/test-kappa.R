@@ -299,12 +299,9 @@ test_that("kappa_counts() reproduces Fleiss 1971", {
                tolerance = 1e-9)
 })
 
-test_that("kappa_counts() accepts historical pairwise alias", {
-  fit_fc <- kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
-  fit_old <- kappa_counts(dat.fleiss1971, estimator = "pairwise")
-  expect_identical(fit_old$method, "fleiss_cuzick")
-  expect_equal(unname(fit_old$estimates), unname(fit_fc$estimates),
-               tolerance = 1e-12)
+test_that("kappa_counts() rejects the obsolete pairwise name", {
+  expect_error(kappa_counts(dat.fleiss1971, estimator = "pairwise"),
+               "should be one of")
 })
 
 test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {
