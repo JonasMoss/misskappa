@@ -1560,6 +1560,10 @@ Result<Estimation> estimate_fiml_loglin2(
           }
         }
       }
+      // Checking every sweep costs another full pass over all pair margins;
+      // a short stride keeps the projection tolerance while avoiding most of
+      // that bookkeeping in the slow early IPF sweeps.
+      if ((cyc + 1) % 5 != 0 && cyc + 1 < 500) continue;
       double maxerr = 0.0;
       for (int pp = 0; pp < npairs; ++pp) {
         std::fill(cur.begin(), cur.end(), 0.0);
