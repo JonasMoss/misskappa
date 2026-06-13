@@ -1042,7 +1042,7 @@ struct Loglin2KappaMap {
 
 std::vector<Eigen::Index> build_loglin2_suff_indices(
     Eigen::Index n_cells, int R, int C, int npairs, Eigen::Index CC,
-    const std::vector<int>& cats, const std::vector<std::vector<int>>& pairbin) {
+    const std::vector<int>& cats, const std::vector<int>& pairbin) {
   const Eigen::Index nz = static_cast<Eigen::Index>(R + npairs);
   const Eigen::Index one_way = static_cast<Eigen::Index>(R) * C;
   std::vector<Eigen::Index> out(
@@ -1057,9 +1057,11 @@ std::vector<Eigen::Index> build_loglin2_suff_indices(
           + cats[static_cast<std::size_t>(cell) * R + j];
     }
     for (int pp = 0; pp < npairs; ++pp) {
+      const std::size_t pair_base =
+          static_cast<std::size_t>(pp) * static_cast<std::size_t>(n_cells);
       out[base + static_cast<std::size_t>(R + pp)] =
           one_way + static_cast<Eigen::Index>(pp) * CC
-          + pairbin[static_cast<std::size_t>(pp)][static_cast<std::size_t>(cell)];
+          + pairbin[pair_base + static_cast<std::size_t>(cell)];
     }
   }
   return out;
@@ -1258,7 +1260,7 @@ Loglin2KappaMap map_loglin2_kappa_from_margins(
 Result<Estimation> map_loglin2_kappa(
     const EmInput& in, const Eigen::VectorXd& p, RealMatView L,
     const std::vector<std::pair<int, int>>& pairs,
-    const std::vector<int>& cats, const std::vector<std::vector<int>>& pairbin,
+    const std::vector<int>& cats, const std::vector<int>& pairbin,
     const EmOptions& opts) {
   const int n = static_cast<int>(in.subject_groups.size());
   const int R = in.R;
@@ -1483,51 +1485,89 @@ Result<Estimation> estimate_fiml_loglin2(
   // Per-cell category codes, and per-pair cell -> (a*C + b) bin index.
   std::vector<int> cats(static_cast<std::size_t>(N) * static_cast<std::size_t>(R));
   for (Eigen::Index cell = 0; cell < N; ++cell) {
-    const std::vector<int> t = unrank_tuple(static_cast<std::uint64_t>(cell), R, C);
-    for (int j = 0; j < R; ++j)
-      cats[static_cast<std::size_t>(cell) * R + j] = t[static_cast<std::size_t>(j)];
+    std::uint64_t temp = static_cast<std::uint64_t>(cell);
+    for (int j = R - 1; j >= 0; --j) {
+      cats[static_cast<std::size_t>(cell) * static_cast<std::size_t>(R)
+           + static_cast<std::size_t>(j)] =
+          static_cast<int>(temp % static_cast<std::uint64_t>(C));
+      temp /= static_cast<std::uint64_t>(C);
+    }
   }
-  std::vector<std::vector<int>> pairbin(
-      static_cast<std::size_t>(npairs), std::vector<int>(static_cast<std::size_t>(N)));
+  std::vector<int> pairbin(
+      static_cast<std::size_t>(npairs) * static_cast<std::size_t>(N));
   for (int pp = 0; pp < npairs; ++pp) {
     const int j = pairs[pp].first, l = pairs[pp].second;
+    const std::size_t pair_base =
+        static_cast<std::size_t>(pp) * static_cast<std::size_t>(N);
     for (Eigen::Index cell = 0; cell < N; ++cell) {
-      pairbin[pp][static_cast<std::size_t>(cell)] =
+      pairbin[pair_base + static_cast<std::size_t>(cell)] =
           cats[static_cast<std::size_t>(cell) * R + j] * C +
           cats[static_cast<std::size_t>(cell) * R + l];
     }
   }
 
-  const Eigen::VectorXd uniform = Eigen::VectorXd::Constant(N, 1.0 / static_cast<double>(N));
+  std::vector<unsigned char> active_mask(static_cast<std::size_t>(N), 0);
+  std::vector<Eigen::Index> active_cells;
+  active_cells.reserve(in.completion_indices.size());
+  for (std::uint64_t idx64 : in.completion_indices) {
+    const Eigen::Index idx = static_cast<Eigen::Index>(idx64);
+    const std::size_t uidx = static_cast<std::size_t>(idx);
+    if (active_mask[uidx] == 0) {
+      active_mask[uidx] = 1;
+      active_cells.push_back(idx);
+    }
+  }
+
+  const double uniform_prob = 1.0 / static_cast<double>(N);
 
   // IPF projection onto the all-2-way model: scale a uniform table until its
   // bivariate margins match `target` (each a length-C*C vector summing to 1).
-  auto project = [&](const std::vector<Eigen::VectorXd>& target) -> Eigen::VectorXd {
-    Eigen::VectorXd w = uniform;
-    Eigen::VectorXd cur(CC);
+  std::vector<double> target(
+      static_cast<std::size_t>(npairs) * static_cast<std::size_t>(CC), 0.0);
+  std::vector<double> cur(static_cast<std::size_t>(CC), 0.0);
+  auto target_at = [CC](int pp, Eigen::Index b) -> std::size_t {
+    return static_cast<std::size_t>(pp) * static_cast<std::size_t>(CC)
+           + static_cast<std::size_t>(b);
+  };
+  auto project = [&](const std::vector<double>& target_margins,
+                     Eigen::VectorXd& out) -> bool {
+    out.setConstant(uniform_prob);
     for (int cyc = 0; cyc < 500; ++cyc) {
       for (int pp = 0; pp < npairs; ++pp) {
-        cur.setZero();
+        std::fill(cur.begin(), cur.end(), 0.0);
+        const std::size_t pair_base =
+            static_cast<std::size_t>(pp) * static_cast<std::size_t>(N);
         for (Eigen::Index cell = 0; cell < N; ++cell)
-          cur[pairbin[pp][static_cast<std::size_t>(cell)]] += w[cell];
+          cur[static_cast<std::size_t>(
+              pairbin[pair_base + static_cast<std::size_t>(cell)])] += out[cell];
         for (Eigen::Index cell = 0; cell < N; ++cell) {
-          const int b = pairbin[pp][static_cast<std::size_t>(cell)];
-          if (cur[b] > singular_tol) w[cell] *= target[pp][b] / cur[b];
+          const int b = pairbin[pair_base + static_cast<std::size_t>(cell)];
+          const double current = cur[static_cast<std::size_t>(b)];
+          if (current > singular_tol) {
+            out[cell] *= target_margins[target_at(pp, b)] / current;
+          }
         }
       }
       double maxerr = 0.0;
       for (int pp = 0; pp < npairs; ++pp) {
-        cur.setZero();
+        std::fill(cur.begin(), cur.end(), 0.0);
+        const std::size_t pair_base =
+            static_cast<std::size_t>(pp) * static_cast<std::size_t>(N);
         for (Eigen::Index cell = 0; cell < N; ++cell)
-          cur[pairbin[pp][static_cast<std::size_t>(cell)]] += w[cell];
+          cur[static_cast<std::size_t>(
+              pairbin[pair_base + static_cast<std::size_t>(cell)])] += out[cell];
         for (Eigen::Index b = 0; b < CC; ++b)
-          maxerr = std::max(maxerr, std::abs(cur[b] - target[pp][b]));
+          maxerr = std::max(
+              maxerr,
+              std::abs(cur[static_cast<std::size_t>(b)]
+                       - target_margins[target_at(pp, b)]));
       }
       if (maxerr < 1e-12) break;
     }
-    const double s = w.sum();
-    if (s > zero_tol) w /= s;
-    return w;
+    const double s = out.sum();
+    if (s <= zero_tol || !std::isfinite(s)) return false;
+    out /= s;
+    return out.allFinite();
   };
 
   // One EM map: p -> project(2-way margins of the E-step's expected table).
@@ -1558,13 +1598,19 @@ Result<Estimation> estimate_fiml_loglin2(
 
   auto em_map = [&](const Eigen::VectorXd& p, Eigen::VectorXd& out) -> bool {
     em_sweep(p, E, in, cfg);  // expected complete-data counts, summing to n
-    std::vector<Eigen::VectorXd> target(static_cast<std::size_t>(npairs),
-                                        Eigen::VectorXd::Zero(CC));
-    for (int pp = 0; pp < npairs; ++pp)
-      for (Eigen::Index cell = 0; cell < N; ++cell)
-        target[static_cast<std::size_t>(pp)][pairbin[pp][static_cast<std::size_t>(cell)]] +=
-            E[cell] * inv_n;
-    out = project(target);
+    std::fill(target.begin(), target.end(), 0.0);
+    for (Eigen::Index cell : active_cells) {
+      const double e = E[cell];
+      if (e == 0.0) continue;
+      const double prob = e * inv_n;
+      const std::size_t ucell = static_cast<std::size_t>(cell);
+      for (int pp = 0; pp < npairs; ++pp) {
+        const std::size_t pair_base =
+            static_cast<std::size_t>(pp) * static_cast<std::size_t>(N);
+        target[target_at(pp, pairbin[pair_base + ucell])] += prob;
+      }
+    }
+    if (!project(target, out)) return false;
     return valid_state(out);
   };
 
@@ -1572,11 +1618,11 @@ Result<Estimation> estimate_fiml_loglin2(
   // and slow, so the stabilised quadratic step cuts the iteration count. The
   // extrapolate is clamped to the nonneg simplex before re-mapping; a
   // non-finite result falls back to the plain double-EM step.
-  Eigen::VectorXd p = uniform;
+  Eigen::VectorXd p = Eigen::VectorXd::Constant(N, uniform_prob);
+  Eigen::VectorXd p1(N), p2(N), p_acc(N), p_try(N), r(N), v(N);
   EmIterStatus status;
   if (!valid_state(p)) return misskappa::unexpected(Error::numerical_error);
   while (status.iterations < opts.max_iter) {
-    Eigen::VectorXd p1(N), p2(N), p_acc(N);
     if (!em_map(p, p1)) return misskappa::unexpected(Error::numerical_error);
     ++status.iterations;
     // Fixed-point residual at p (the plain-EM step), the proper convergence
@@ -1598,8 +1644,9 @@ Result<Estimation> estimate_fiml_loglin2(
       status.converged = true;
       break;
     }
-    const Eigen::VectorXd r = p1 - p;
-    const Eigen::VectorXd v = (p2 - p1) - r;
+    r.noalias() = p1 - p;
+    v.noalias() = p2 - p1;
+    v -= r;
     const double sr = r.norm(), sv = v.norm();
     if (sv < 1e-14) {
       p = p2;
@@ -1607,7 +1654,7 @@ Result<Estimation> estimate_fiml_loglin2(
     }
     double alpha = -(sr / sv);
     if (alpha > -1.0) alpha = -1.0;
-    Eigen::VectorXd p_try = p - 2.0 * alpha * r + (alpha * alpha) * v;
+    p_try.noalias() = p - 2.0 * alpha * r + (alpha * alpha) * v;
     p_try = p_try.cwiseMax(0.0);
     const double s = p_try.sum();
     if (s <= zero_tol) {
