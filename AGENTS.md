@@ -69,19 +69,33 @@ paper") in notes that reference them.
 
 ```sh
 cmake --preset dev
-cmake --build --preset dev
+cmake --build --preset dev --parallel "$(nproc)"
 ctest --preset dev
 
 cmake --preset opt
-cmake --build --preset opt
+cmake --build --preset opt --parallel "$(nproc)"
 ctest --preset opt
 ```
 
-`dev` is the local debug build (AddressSanitizer + UBSan). `opt` is the release
-build (`-O3 -DNDEBUG -march=native`) and is the artifact the R package links.
+`dev` is the local debug build (`-O0 -g`, no sanitizers — the separate `asan`
+preset adds AddressSanitizer + UBSan). `opt` is the release build
+(`-O3 -DNDEBUG`, no `-march`, matching R's own flags); it produces
+`libmisskappa.a`, which the C++ unit tests link and which `just r-dev` links the
+R glue against (see "R package build" below).
+
+**Always build in parallel.** Pass `--parallel "$(nproc)"` (the `just` recipes
+do this for you); without it the Unix Makefiles generator compiles the ~26
+`-O3` Eigen-heavy translation units *serially*, which on a multi-core box is the
+difference between ~3 min and ~20 min for a clean `opt` build. Compiles also
+route through **ccache** when it is installed: `CMakeLists.txt` sets
+`CMAKE_CXX_COMPILER_LAUNCHER` via a guarded `find_program` (a no-op if ccache is
+absent), so a cache-warm rebuild after `just clean` or a branch switch is
+near-instant (only edited files miss). This is the CMake build's own ccache
+wiring, independent of the R-side `~/.R/Makevars` setup described below.
 
 Repo-root `justfile` wraps the common loops: `just build`, `just test`
 (`dev` build + ctest), `just opt`, `just test-opt`, `just r-install`,
+`just r-dev` (fast dev install — see "R package build" below),
 `just r-check` (reinstall + R-level tests), `just paper <slug>` (delegates
 to `papers/<slug>/justfile`, e.g. `just paper ipw pdf`), and
 `just regen-oracle` (regenerates `tests/fixtures/`). Coverage recipes are
@@ -92,9 +106,38 @@ C++ as hit through Rcpp), and `just cov` for both. Documentation recipes are
 `just docs-r` (pkgdown), `just docs-cpp` (Doxygen), `just docs` (combined
 local site), and `just docs-clean`. `just` with no recipe lists them.
 
-The R bindings link the prebuilt non-sanitized `opt` `libmisskappa.a`;
-`r-package/src/Makevars` makes the package objects depend on it, so a C++
-header change correctly forces the R glue to recompile against the new ABI.
+### R package build: vendored (release) vs linked (dev)
+
+The R package builds in two modes; pick by what you're doing.
+
+- **`just r-install` / `just r-check` — the release/self-contained form.**
+  `just vendor` copies the canonical C++ (`src/` + `include/`) into
+  `r-package/src/` so the package compiles every source itself, with no reach-up
+  to `../..` and no prebuilt library. This is the form that ships and that
+  `remotes::install_github` / CRAN build, so `r-package/src/Makevars` must stay
+  self-contained — never make it reference `../../build-opt/libmisskappa.a` or
+  any out-of-tree path (it would fail on CRAN's machines, which only unpack
+  `r-package/`). `just vendor-check` guards against the `@generated` vendored
+  copies drifting; never hand-edit them — edit the canonical sources and
+  re-`just vendor`.
+- **`just r-dev` — the fast dev loop.** Compiles only the Rcpp glue
+  (`RcppExports.cpp` + `rcpp_glue.cpp`) and links it against the prebuilt `opt`
+  `libmisskappa.a`, so an install does a lib-only `cmake` build plus a two-file
+  compile instead of recompiling the whole library. It works from a throwaway
+  `build-rdev/` mirror with the dev-only `dev/r-makevars-dev` swapped in for
+  `src/Makevars` (R only honours `OBJECTS=` set in the *package* Makevars, so the
+  override has to be a package-level file in a copy), which keeps the committed
+  self-contained Makevars untouched and keeps anything dev-only out of the
+  tarball. It deliberately skips `r-docs`: roxygenise → `pkgbuild::compile_dll`
+  would recompile every source, the exact cost we're avoiding. Run
+  `just r-install` after changing the R-facing interface (new `[[Rcpp::export]]`,
+  `@export`, NAMESPACE, man pages) — `r-dev` only relinks existing exports.
+
+For faster iteration, route R's compiler through ccache in `~/.R/Makevars`
+(`CXX17 = ccache g++`, and the other `CXX*`/`CC`): repeated R compiles — the
+vendored `r-install` path included — then return cached objects instead of
+rebuilding the ~40M-per-file Eigen objects. This is a personal/machine setup,
+not a repo file, and is invisible to CRAN.
 
 ## Documentation
 

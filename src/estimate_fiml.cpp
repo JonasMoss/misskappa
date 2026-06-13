@@ -18,8 +18,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace misskappa {
@@ -48,7 +46,6 @@ struct EmInput {
 
 struct EmRunResult {
   Eigen::VectorXd theta_hat;    // pruned, normalised
-  RealMat vcov;                 // covariance of theta_hat
   std::vector<std::uint64_t> pattern_indices;  // ranks of surviving patterns
   int c = 0;
   int R = 0;
@@ -65,7 +62,6 @@ struct LouisReducedInfo {
 };
 
 struct FimlVarianceCache {
-  RealMat theta_vcov;
   RealMat var_star;
   RealMat info_star;
   RealMat theta_jacobian;
@@ -97,17 +93,17 @@ std::vector<int> unrank_tuple(std::uint64_t rank, int R, int c) {
   return rt;
 }
 
-void enumerate_completions(
+void append_completion_ranks(
     std::vector<int>& row, const std::vector<int>& missing_positions,
-    std::size_t k, int c, std::vector<std::vector<int>>& out) {
+    std::size_t k, int c, std::vector<std::uint64_t>& out) {
   if (k == missing_positions.size()) {
-    out.push_back(row);
+    out.push_back(rank_tuple(row, c));
     return;
   }
   const int pos = missing_positions[k];
   for (int cat = 0; cat < c; ++cat) {
     row[pos] = cat;
-    enumerate_completions(row, missing_positions, k + 1, c, out);
+    append_completion_ranks(row, missing_positions, k + 1, c, out);
   }
 }
 
@@ -179,40 +175,36 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
     }
   }
 
-  // Bucket subjects by observed pattern (as a string key for stable ordering).
-  std::map<std::string, std::pair<std::vector<int>, std::uint32_t>> by_key;
-  std::vector<std::string> pattern_order;
-  std::vector<std::string> subject_keys;
+  // Bucket subjects by observed pattern, preserving first-seen group order.
+  std::map<std::vector<int>, std::uint32_t> row_to_group;
+  std::vector<std::vector<int>> pattern_order;
+  std::vector<std::uint32_t> group_counts;
   pattern_order.reserve(static_cast<std::size_t>(ratings.rows()));
-  subject_keys.reserve(static_cast<std::size_t>(ratings.rows()));
+  group_counts.reserve(static_cast<std::size_t>(ratings.rows()));
+  in.subject_groups.reserve(static_cast<std::size_t>(ratings.rows()));
   for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    std::string key;
     std::vector<int> row(static_cast<std::size_t>(in.R));
     for (int j = 0; j < in.R; ++j) {
       row[static_cast<std::size_t>(j)] = ratings(i, j);
-      key += std::to_string(ratings(i, j));
-      key += ',';
     }
-    subject_keys.push_back(key);
-    auto it = by_key.find(key);
-    if (it == by_key.end()) {
-      by_key.emplace(key, std::make_pair(std::move(row), std::uint32_t{1}));
-      pattern_order.push_back(key);
+    auto it = row_to_group.find(row);
+    if (it == row_to_group.end()) {
+      const auto group = static_cast<std::uint32_t>(pattern_order.size());
+      row_to_group.emplace(row, group);
+      pattern_order.push_back(std::move(row));
+      group_counts.push_back(std::uint32_t{1});
+      in.subject_groups.push_back(group);
     } else {
-      it->second.second += 1;
+      group_counts[it->second] += 1;
+      in.subject_groups.push_back(it->second);
     }
   }
 
   // For each unique observed pattern, enumerate compatible completions.
   std::uint32_t cum_offset = 0;
-  std::unordered_map<std::string, std::uint32_t> key_to_group;
-  key_to_group.reserve(pattern_order.size());
   for (std::size_t g = 0; g < pattern_order.size(); ++g) {
-    const auto& key = pattern_order[g];
-    key_to_group.emplace(key, static_cast<std::uint32_t>(g));
-    const auto& entry = by_key.at(key);
-    const std::vector<int>& observed = entry.first;
-    const std::uint32_t count = entry.second;
+    const std::vector<int>& observed = pattern_order[g];
+    const std::uint32_t count = group_counts[g];
 
     std::vector<int> missing_positions;
     missing_positions.reserve(observed.size());
@@ -220,25 +212,21 @@ Result<EmInput> preprocess_raw(IntMatView ratings, int c) {
       if (observed[j] == na_code) missing_positions.push_back(static_cast<int>(j));
     }
 
-    std::vector<std::vector<int>> completions;
+    std::vector<std::uint64_t> completion_ranks;
     if (missing_positions.empty()) {
-      completions.push_back(observed);
+      completion_ranks.push_back(rank_tuple(observed, c));
     } else {
       std::vector<int> scratch = observed;
-      enumerate_completions(scratch, missing_positions, 0, c, completions);
+      append_completion_ranks(scratch, missing_positions, 0, c, completion_ranks);
     }
 
     in.group_n_subjects.push_back(count);
     in.group_offsets.push_back(cum_offset);
-    in.group_n_completions.push_back(static_cast<std::uint32_t>(completions.size()));
-    for (const auto& comp : completions) {
-      in.completion_indices.push_back(rank_tuple(comp, c));
+    in.group_n_completions.push_back(static_cast<std::uint32_t>(completion_ranks.size()));
+    for (std::uint64_t rank : completion_ranks) {
+      in.completion_indices.push_back(rank);
     }
-    cum_offset += static_cast<std::uint32_t>(completions.size());
-  }
-  in.subject_groups.reserve(subject_keys.size());
-  for (const auto& key : subject_keys) {
-    in.subject_groups.push_back(key_to_group.at(key));
+    cum_offset += static_cast<std::uint32_t>(completion_ranks.size());
   }
 
   // Total pattern space: c^R.
@@ -386,6 +374,7 @@ EmIterStatus run_squarem_iterations(
     Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
   EmIterStatus status;
   Eigen::VectorXd t1(theta.size()), t2(theta.size()), tx(theta.size());
+  Eigen::VectorXd r(theta.size()), v(theta.size());
   while (status.iterations < cfg.iter_cap) {
     em_sweep(theta, t1, in, cfg);
     ++status.iterations;
@@ -407,8 +396,9 @@ EmIterStatus run_squarem_iterations(
       return status;
     }
 
-    const Eigen::VectorXd r = t1 - theta;
-    const Eigen::VectorXd v = (t2 - t1) - r;
+    r.noalias() = t1 - theta;
+    v.noalias() = t2 - t1;
+    v -= r;
     const double vnorm = v.norm();
     double alpha = (vnorm > 0.0) ? -r.norm() / vnorm : -1.0;
     if (alpha > -1.0) alpha = -1.0;
@@ -478,54 +468,60 @@ LouisReducedInfo build_louis_reduced_info(
   }
   out.ref = ref;
 
-  std::unordered_map<std::uint64_t, Eigen::Index> rank_to_pruned;
-  rank_to_pruned.reserve(pruned_ranks.size());
+  std::vector<Eigen::Index> rank_to_pruned(in.n_total_patterns, Eigen::Index{-1});
   for (Eigen::Index i = 0; i < n_final; ++i) {
-    rank_to_pruned.emplace(pruned_ranks[static_cast<std::size_t>(i)], i);
+    rank_to_pruned[static_cast<std::size_t>(
+        pruned_ranks[static_cast<std::size_t>(i)])] = i;
   }
 
   RealMat info_star = RealMat::Zero(n_final - 1, n_final - 1);
   RealMat group_scores = RealMat::Zero(
       static_cast<Eigen::Index>(in.group_n_subjects.size()), n_final - 1);
+  Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
+  std::vector<Eigen::Index> reduced_indices;
 
   for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
     const std::uint32_t n_comps = in.group_n_completions[g];
     const std::uint32_t offset = in.group_offsets[g];
 
     double sum_theta_subset = 0.0;
-    bool has_pruned_completion = false;
+    bool ref_present = false;
+    reduced_indices.clear();
+    reduced_indices.reserve(n_comps);
     for (std::uint32_t k = 0; k < n_comps; ++k) {
       const std::uint64_t rank = in.completion_indices[offset + k];
-      auto it = rank_to_pruned.find(rank);
-      if (it != rank_to_pruned.end()) {
-        has_pruned_completion = true;
-        sum_theta_subset += theta_pruned(it->second);
+      const Eigen::Index idx = rank_to_pruned[static_cast<std::size_t>(rank)];
+      if (idx >= 0) {
+        sum_theta_subset += theta_pruned(idx);
+        if (idx == ref) {
+          ref_present = true;
+        } else {
+          reduced_indices.push_back((idx < ref) ? idx : idx - 1);
+        }
       }
     }
-    if (!has_pruned_completion || sum_theta_subset <= singular_tol) continue;
+    if (sum_theta_subset <= singular_tol) continue;
 
     // Score for theta_pruned: posterior / theta_pruned. In raw FIML this is
     // constant across all compatible retained completions.
     const double retained_score = 1.0 / sum_theta_subset;
-    double ref_score = 0.0;
-    Eigen::VectorXd s_reduced = Eigen::VectorXd::Zero(n_final - 1);
-    for (std::uint32_t k = 0; k < n_comps; ++k) {
-      const std::uint64_t rank = in.completion_indices[offset + k];
-      auto it = rank_to_pruned.find(rank);
-      if (it == rank_to_pruned.end()) continue;
-      const Eigen::Index idx = it->second;
-      if (idx == ref) {
-        ref_score = retained_score;
-      } else {
-        const Eigen::Index reduced_idx = (idx < ref) ? idx : idx - 1;
-        s_reduced(reduced_idx) = retained_score;
+    const double n_g = static_cast<double>(in.group_n_subjects[g]);
+    if (ref_present) {
+      s_reduced.setConstant(-retained_score);
+      for (Eigen::Index idx : reduced_indices) {
+        s_reduced(idx) = 0.0;
+      }
+      group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
+      info_star.noalias() += n_g * s_reduced * s_reduced.transpose();
+    } else {
+      const double weighted_score_sq = n_g * retained_score * retained_score;
+      for (Eigen::Index a : reduced_indices) {
+        group_scores(static_cast<Eigen::Index>(g), a) = retained_score;
+        for (Eigen::Index b : reduced_indices) {
+          info_star(a, b) += weighted_score_sq;
+        }
       }
     }
-    if (ref_score != 0.0) s_reduced.array() -= ref_score;
-    group_scores.row(static_cast<Eigen::Index>(g)) = s_reduced.transpose();
-
-    info_star.noalias() += static_cast<double>(in.group_n_subjects[g])
-                          * s_reduced * s_reduced.transpose();
   }
 
   // Symmetrise for numerical safety before eigendecomposition.
@@ -535,25 +531,10 @@ LouisReducedInfo build_louis_reduced_info(
   return out;
 }
 
-// Louis observed-information variance for the pruned theta.
-RealMat em_variance(
-    const Eigen::VectorXd& theta_pruned,
-    const std::vector<std::uint64_t>& pruned_ranks,
-    const EmInput& in,
-    const EmOptions& opts) {
-  const Eigen::Index n_final = theta_pruned.size();
-  if (n_final <= 1) return RealMat::Zero(n_final, n_final);
-
-  const LouisReducedInfo info = build_louis_reduced_info(theta_pruned, pruned_ranks, in);
-  const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
-  return info.jacobian * var_star * info.jacobian.transpose();
-}
-
 FimlVarianceCache build_fiml_variance_cache(
     const EmRunResult& em, const EmInput& in, const EmOptions& opts) {
   FimlVarianceCache cache;
   const Eigen::Index n_final = em.theta_hat.size();
-  cache.theta_vcov = RealMat::Zero(n_final, n_final);
   cache.var_star = RealMat::Zero(0, 0);
   cache.info_star = RealMat::Zero(0, 0);
   cache.theta_jacobian = RealMat::Zero(n_final, 0);
@@ -569,8 +550,6 @@ FimlVarianceCache build_fiml_variance_cache(
   cache.info_star = info.info_star;
   cache.theta_jacobian = info.jacobian;
   cache.group_scores = info.group_scores;
-  cache.theta_vcov =
-      cache.theta_jacobian * cache.var_star * cache.theta_jacobian.transpose();
   return cache;
 }
 
@@ -623,7 +602,7 @@ Result<RealVec> reduced_gradient_null_fraction(
 }
 
 Result<EmRunResult> run_em_preprocessed(
-    const EmInput& in, int c, EmOptions opts, bool compute_vcov) {
+    const EmInput& in, int c, EmOptions opts) {
   EmRunResult out;
   out.c = c;
   out.R = in.R;
@@ -671,9 +650,6 @@ Result<EmRunResult> run_em_preprocessed(
 
   out.theta_hat = std::move(theta_pruned);
   out.pattern_indices = std::move(pruned_ranks);
-  if (compute_vcov) {
-    out.vcov = em_variance(out.theta_hat, out.pattern_indices, in, opts);
-  }
   return out;
 }
 
@@ -681,8 +657,10 @@ Result<EmRunResult> run_em_preprocessed(
 
 struct KappaMap {
   Eigen::VectorXd d_vec;       // length n_final
-  RealMat Qed_conger;          // n_final x n_final
-  RealMat Qed_fleiss;          // n_final x n_final
+  Eigen::VectorXd grad_pec;    // gradient of Conger expected disagreement
+  Eigen::VectorXd grad_pef;    // gradient of Fleiss expected disagreement
+  double pec = 0.0;
+  double pef = 0.0;
   double d_bp = 0.0;
 };
 
@@ -694,13 +672,16 @@ KappaMap build_kappa_map(const EmRunResult& em, RealMatView weights) {
   const int R = em.R;
   const Eigen::Index n_final = em.theta_hat.size();
   const double n_pairs = static_cast<double>(R) * (R - 1.0) / 2.0;
-  const double n_pairs_full = static_cast<double>(R) * (R - 1.0);
+  const double inv_n_pairs = 1.0 / n_pairs;
 
   // Per-pattern average within-subject disagreement.
   KappaMap m;
   m.d_vec = Eigen::VectorXd::Zero(n_final);
-  std::vector<std::vector<int>> pattern_matrix;
-  pattern_matrix.reserve(static_cast<std::size_t>(n_final));
+  m.grad_pec = Eigen::VectorXd::Zero(n_final);
+  m.grad_pef = Eigen::VectorXd::Zero(n_final);
+  std::vector<int> pattern_matrix(
+      static_cast<std::size_t>(n_final) * static_cast<std::size_t>(R), 0);
+  RealMat probs = RealMat::Zero(R, C);
   for (Eigen::Index j = 0; j < n_final; ++j) {
     auto row = unrank_tuple(em.pattern_indices[static_cast<std::size_t>(j)], R, em.c);
     double sum = 0.0;
@@ -709,40 +690,64 @@ KappaMap build_kappa_map(const EmRunResult& em, RealMatView weights) {
         sum += L(row[static_cast<std::size_t>(c1)], row[static_cast<std::size_t>(c2)]);
       }
     }
-    m.d_vec(j) = sum / n_pairs;
-    pattern_matrix.push_back(std::move(row));
+    m.d_vec(j) = sum * inv_n_pairs;
+    const std::size_t base =
+        static_cast<std::size_t>(j) * static_cast<std::size_t>(R);
+    for (int r = 0; r < R; ++r) {
+      const int cat = row[static_cast<std::size_t>(r)];
+      pattern_matrix[base + static_cast<std::size_t>(r)] = cat;
+      probs(r, cat) += em.theta_hat(j);
+    }
   }
 
-  // Conger: Qed_conger[u, v] = (1 / n_pairs) * sum_{c1 < c2} L(x_u[c1], x_v[c2]).
-  m.Qed_conger = RealMat::Zero(n_final, n_final);
-  for (Eigen::Index u = 0; u < n_final; ++u) {
-    for (Eigen::Index v = 0; v < n_final; ++v) {
-      double sum = 0.0;
-      for (int c1 = 0; c1 < R - 1; ++c1) {
-        for (int c2 = c1 + 1; c2 < R; ++c2) {
-          sum += L(pattern_matrix[static_cast<std::size_t>(u)][static_cast<std::size_t>(c1)],
-                   pattern_matrix[static_cast<std::size_t>(v)][static_cast<std::size_t>(c2)]);
+  for (int r1 = 0; r1 < R - 1; ++r1) {
+    for (int r2 = r1 + 1; r2 < R; ++r2) {
+      for (int a = 0; a < C; ++a) {
+        for (int b = 0; b < C; ++b) {
+          m.pec += probs(r1, a) * L(a, b) * probs(r2, b);
         }
       }
-      m.Qed_conger(u, v) = sum / n_pairs;
     }
   }
+  m.pec *= inv_n_pairs;
 
-  // Fleiss: M_fleiss[k, u] = (1 / R) * (# of raters in pattern u giving category k).
-  // Qed_fleiss = M^T L M.
-  RealMat M_fleiss = RealMat::Zero(em.c, n_final);
-  for (Eigen::Index u = 0; u < n_final; ++u) {
-    for (int j = 0; j < R; ++j) {
-      M_fleiss(pattern_matrix[static_cast<std::size_t>(u)][static_cast<std::size_t>(j)], u) += 1.0;
-    }
+  RealVec pooled = RealVec::Zero(C);
+  for (int r = 0; r < R; ++r) {
+    pooled += probs.row(r).transpose();
   }
-  M_fleiss /= static_cast<double>(R);
-  m.Qed_fleiss = M_fleiss.transpose() * L * M_fleiss;
+  pooled /= static_cast<double>(R);
+  m.pef = (pooled.transpose() * L * pooled).value();
+
+  const RealVec fleiss_grad_by_cat = (L + L.transpose()) * pooled;
+  for (Eigen::Index u = 0; u < n_final; ++u) {
+    const std::size_t base =
+        static_cast<std::size_t>(u) * static_cast<std::size_t>(R);
+
+    double grad_pec = 0.0;
+    for (int r1 = 0; r1 < R - 1; ++r1) {
+      const int a_u = pattern_matrix[base + static_cast<std::size_t>(r1)];
+      for (int r2 = r1 + 1; r2 < R; ++r2) {
+        const int b_u = pattern_matrix[base + static_cast<std::size_t>(r2)];
+        for (int b = 0; b < C; ++b) {
+          grad_pec += L(a_u, b) * probs(r2, b);
+        }
+        for (int a = 0; a < C; ++a) {
+          grad_pec += probs(r1, a) * L(a, b_u);
+        }
+      }
+    }
+    m.grad_pec(u) = grad_pec * inv_n_pairs;
+
+    double grad_pef = 0.0;
+    for (int r = 0; r < R; ++r) {
+      const int cat = pattern_matrix[base + static_cast<std::size_t>(r)];
+      grad_pef += fleiss_grad_by_cat(cat);
+    }
+    m.grad_pef(u) = grad_pef / static_cast<double>(R);
+  }
 
   // Brennan-Prediger.
   m.d_bp = L.sum() / (static_cast<double>(em.c) * static_cast<double>(em.c));
-
-  (void)n_pairs_full;
   return m;
 }
 
@@ -976,8 +981,8 @@ Result<Estimation> map_fiml_kappa(
 
   const Eigen::VectorXd& theta = em.theta_hat;
   const double pd  = m.d_vec.dot(theta);
-  const double pec = (theta.transpose() * m.Qed_conger * theta).value();
-  const double pef = (theta.transpose() * m.Qed_fleiss * theta).value();
+  const double pec = m.pec;
+  const double pef = m.pef;
 
   RealVec estimates(3);
   estimates(0) = (std::abs(pec) > singular_tol)
@@ -994,14 +999,10 @@ Result<Estimation> map_fiml_kappa(
   RealMat jacobian = RealMat::Zero(3, theta.size());
   const Eigen::VectorXd grad_pd = m.d_vec;
   if (std::abs(pec) > singular_tol) {
-    const RealMat sym = 0.5 * (m.Qed_conger + m.Qed_conger.transpose());
-    const Eigen::VectorXd grad_pec = 2.0 * sym * theta;
-    jacobian.row(0) = (-(grad_pd * pec - pd * grad_pec).transpose()) / (pec * pec);
+    jacobian.row(0) = (-(grad_pd * pec - pd * m.grad_pec).transpose()) / (pec * pec);
   }
   if (std::abs(pef) > singular_tol) {
-    const RealMat sym = 0.5 * (m.Qed_fleiss + m.Qed_fleiss.transpose());
-    const Eigen::VectorXd grad_pef = 2.0 * sym * theta;
-    jacobian.row(1) = (-(grad_pd * pef - pd * grad_pef).transpose()) / (pef * pef);
+    jacobian.row(1) = (-(grad_pd * pef - pd * m.grad_pef).transpose()) / (pef * pef);
   }
   if (std::abs(m.d_bp) > singular_tol) {
     jacobian.row(2) = -grad_pd.transpose() / m.d_bp;
@@ -1012,7 +1013,11 @@ Result<Estimation> map_fiml_kappa(
       cache.info_star, jacobian_reduced, cache.info_rcond);
   if (!null_frac) return misskappa::unexpected(null_frac.error());
 
-  RealMat vcov = jacobian * cache.theta_vcov * jacobian.transpose();
+  RealMat vcov = RealMat::Zero(3, 3);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
   RealMat psi = RealMat::Zero(n, 3);
   if (cache.var_star.rows() > 0) {
     const RealMat group_psi =
@@ -1044,7 +1049,7 @@ Result<Estimation> estimate_fiml(
   if (!in_res) return misskappa::unexpected(in_res.error());
   auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
   if (!identified) return misskappa::unexpected(identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
@@ -1072,7 +1077,7 @@ Result<std::vector<Estimation>> estimate_fiml_many(
   if (!in_res) return misskappa::unexpected(in_res.error());
   auto identified = detail::require_complete_pair_observation(detail::observed_mask(ratings));
   if (!identified) return misskappa::unexpected(identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
@@ -1104,9 +1109,10 @@ Result<Estimation> estimate_fiml_gwise(
   auto tuple_identified =
       detail::require_complete_tuple_observation(detail::observed_mask(ratings), g);
   if (!tuple_identified) return misskappa::unexpected(tuple_identified.error());
-  auto em = run_em_preprocessed(*in_res, distance.C, em_opts, true);
+  auto em = run_em_preprocessed(*in_res, distance.C, em_opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+  FimlVarianceCache cache = build_fiml_variance_cache(*em, *in_res, em_opts);
 
   auto map_res = build_gwise_fiml_map(*em, distance, gwise_opts);
   if (!map_res) return misskappa::unexpected(map_res.error());
@@ -1135,20 +1141,21 @@ Result<Estimation> estimate_fiml_gwise(
         (-(m.d_vec * pef - pd * m.grad_F).transpose()) / (pef * pef);
   }
 
-  RealMat vcov = jacobian * em->vcov * jacobian.transpose();
+  const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
+  auto frac = reduced_gradient_null_fraction(
+      cache.info_star, jacobian_reduced, cache.info_rcond);
+  if (!frac) return misskappa::unexpected(frac.error());
+
+  RealMat vcov = RealMat::Zero(2, 2);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
   RealMat psi = RealMat::Zero(n, 2);
-  RealVec null_frac;
-  const LouisReducedInfo info =
-      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
-  if (info.info_star.rows() > 0) {
-    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, em_opts.info_rcond);
-    const RealMat jacobian_reduced = jacobian * info.jacobian;
-    auto frac = reduced_gradient_null_fraction(
-        info.info_star, jacobian_reduced, em_opts.info_rcond);
-    if (!frac) return misskappa::unexpected(frac.error());
-    null_frac = std::move(*frac);
+  if (cache.var_star.rows() > 0) {
     const RealMat group_psi =
-        static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
+        static_cast<double>(n) * cache.group_scores * cache.var_star
+        * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
       psi.row(i) = group_psi.row(
           static_cast<Eigen::Index>(in_res->subject_groups[static_cast<std::size_t>(i)]));
@@ -1156,7 +1163,7 @@ Result<Estimation> estimate_fiml_gwise(
   }
 
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi),
-                    std::move(null_frac)};
+                    std::move(*frac)};
 }
 
 Result<Estimation> estimate_alpha_fiml(
@@ -1174,9 +1181,10 @@ Result<Estimation> estimate_alpha_fiml(
   auto pattern_identified =
       detail::require_complete_pair_observation(detail::observed_mask(ratings));
   if (!pattern_identified) return misskappa::unexpected(pattern_identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, true);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
+  FimlVarianceCache cache = build_fiml_variance_cache(*em, *in_res, opts);
 
   const AlphaMap m = build_alpha_map(*em, values);
   RealVec estimates(1);
@@ -1184,21 +1192,22 @@ Result<Estimation> estimate_alpha_fiml(
 
   RealMat jacobian(1, em->theta_hat.size());
   jacobian.row(0) = m.gradient.transpose();
-  RealMat vcov = jacobian * em->vcov * jacobian.transpose();
+  const RealMat jacobian_reduced = jacobian * cache.theta_jacobian;
+  auto frac = reduced_gradient_null_fraction(
+      cache.info_star, jacobian_reduced, cache.info_rcond);
+  if (!frac) return misskappa::unexpected(frac.error());
+
+  RealMat vcov = RealMat::Zero(1, 1);
+  if (cache.var_star.rows() > 0) {
+    vcov = jacobian_reduced * cache.var_star * jacobian_reduced.transpose();
+    vcov = 0.5 * (vcov + vcov.transpose());
+  }
 
   RealMat psi = RealMat::Zero(n, 1);
-  RealVec null_frac;
-  const LouisReducedInfo info =
-      build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);
-  if (info.info_star.rows() > 0) {
-    const RealMat var_star = detail::pseudo_inverse_psd(info.info_star, opts.info_rcond);
-    const RealMat jacobian_reduced = jacobian * info.jacobian;
-    auto frac = reduced_gradient_null_fraction(
-        info.info_star, jacobian_reduced, opts.info_rcond);
-    if (!frac) return misskappa::unexpected(frac.error());
-    null_frac = std::move(*frac);
+  if (cache.var_star.rows() > 0) {
     const RealMat group_psi =
-        static_cast<double>(n) * info.group_scores * var_star * jacobian_reduced.transpose();
+        static_cast<double>(n) * cache.group_scores * cache.var_star
+        * jacobian_reduced.transpose();
     for (Eigen::Index i = 0; i < n; ++i) {
       psi.row(i) = group_psi.row(
           static_cast<Eigen::Index>(in_res->subject_groups[static_cast<std::size_t>(i)]));
@@ -1206,7 +1215,7 @@ Result<Estimation> estimate_alpha_fiml(
   }
 
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi),
-                    std::move(null_frac)};
+                    std::move(*frac)};
 }
 
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(
@@ -1221,19 +1230,17 @@ Result<FimlLouisDiagnostic> diagnose_fiml_louis(
 
   auto in_res = preprocess_raw(ratings, C);
   if (!in_res) return misskappa::unexpected(in_res.error());
-  auto em = run_em_preprocessed(*in_res, C, opts, false);
+  auto em = run_em_preprocessed(*in_res, C, opts);
   if (!em) return misskappa::unexpected(em.error());
   if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
 
   const KappaMap m = build_kappa_map(*em, weights);
   const Eigen::VectorXd& theta = em->theta_hat;
   const double pd = m.d_vec.dot(theta);
-  const double pec = (theta.transpose() * m.Qed_conger * theta).value();
+  const double pec = m.pec;
   if (std::abs(pec) <= singular_tol) return misskappa::unexpected(Error::numerical_error);
 
-  const RealMat sym = 0.5 * (m.Qed_conger + m.Qed_conger.transpose());
-  const RealVec grad_pec = 2.0 * sym * theta;
-  const RealVec grad_full = -(m.d_vec * pec - pd * grad_pec) / (pec * pec);
+  const RealVec grad_full = -(m.d_vec * pec - pd * m.grad_pec) / (pec * pec);
 
   const LouisReducedInfo info =
       build_louis_reduced_info(em->theta_hat, em->pattern_indices, *in_res);

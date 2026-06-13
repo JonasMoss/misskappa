@@ -12,7 +12,7 @@ default:
 # C++ build + tests (dev preset: debug, no sanitizers).
 build:
   @cmake --preset dev
-  @cmake --build --preset dev
+  @cmake --build --preset dev --parallel $(nproc)
 
 test: build
   @ctest --preset dev
@@ -30,7 +30,7 @@ fmt-cpp:
 # Release build (no sanitizers). Used by the C++ unit tests (ctest).
 opt:
   @cmake --preset opt
-  @cmake --build --preset opt
+  @cmake --build --preset opt --parallel $(nproc)
 
 test-opt: opt
   @ctest --preset opt
@@ -69,7 +69,31 @@ r-docs:
   @cd r-package && Rscript -e 'roxygen2::roxygenise()'
 
 r-install: vendor r-docs
-  @R CMD INSTALL --preclean r-package
+  @MAKEFLAGS="-j$(nproc)" R CMD INSTALL --preclean r-package
+
+# Fast DEV install — for day-to-day C++/logic iteration, NOT release. Compiles
+# only the R glue (RcppExports.cpp + rcpp_glue.cpp) and links it against the
+# opt-preset libmisskappa.a, so an install does a lib-only cmake build + a 2-file
+# compile instead of recompiling the whole vendored library. Builds from a
+# throwaway mirror (build-rdev/) with the dev-only dev/r-makevars-dev swapped in
+# for src/Makevars, so the committed, CRAN-self-contained r-package/src/Makevars
+# is never touched.
+#
+# Deliberately does NOT run r-docs: roxygenise() calls pkgbuild::compile_dll(),
+# which recompiles all 14 files in r-package/ (the very thing we're avoiding).
+# When you change the R-facing interface — add/remove a [[Rcpp::export]],
+# edit roxygen/@export, touch NAMESPACE — run `just r-install` (or `just r-docs`)
+# to regenerate RcppExports/NAMESPACE/man. r-dev only re-links existing exports
+# against your new C++.
+r-dev:
+  @cmake --preset opt
+  @cmake --build --preset opt --target misskappa --parallel $(nproc)   # lib only — skip the unit-test exe
+  @root="$(pwd)"; \
+    rsync -a --delete \
+      --exclude='*.o' --exclude='*.so' --exclude='*.dll' --exclude='symbols.rds' \
+      r-package/ build-rdev/; \
+    cp dev/r-makevars-dev build-rdev/src/Makevars; \
+    MISSKAPPA_ROOT="$root" MAKEFLAGS="-j$(nproc)" R CMD INSTALL build-rdev
 
 irrcacsmoke-install:
   @R CMD INSTALL --preclean dev/irrcacsmoke
@@ -120,7 +144,7 @@ paper slug *args:
   @cd papers/{{slug}} && just {{args}}
 
 clean:
-  @rm -rf build-dev build-opt
+  @rm -rf build-dev build-opt build-rdev
   @rm -rf *.Rcheck
   @rm -f misskappa_*.tar.gz
   @rm -f r-package/src/*.o r-package/src/*.so r-package/src/*.dll r-package/src/symbols.rds

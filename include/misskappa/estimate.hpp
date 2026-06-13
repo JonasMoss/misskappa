@@ -72,6 +72,7 @@ Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);
 Result<std::vector<Estimation>> estimate_fiml_many(
     IntMatView ratings, const std::vector<RealMat>& weights, EmOptions opts);
+
 Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
 
 // --- Closed-form quadratic estimator (raw, real-valued) --------------------
