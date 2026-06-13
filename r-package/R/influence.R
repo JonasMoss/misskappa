@@ -20,6 +20,7 @@
 #' psi <- stats::influence(fit)
 #' all.equal(vcov(fit), crossprod(psi) / nrow(psi)^2)
 #'
+#' @importFrom stats influence
 #' @export
 influence.misskappa_estimate <- function(model, ...) {
   psi <- model$psi

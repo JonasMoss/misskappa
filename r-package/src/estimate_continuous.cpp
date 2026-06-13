@@ -163,7 +163,7 @@ Result<Estimation> estimate_continuous(
   RealMat kappa_cov = (J_combined * Gamma_hat * J_combined.transpose()) / static_cast<double>(n);
   RealMat psi_kappa = build_psi_from_phi(phi_matrix, J_combined);
 
-  return Estimation{std::move(estimates), std::move(kappa_cov), std::move(psi_kappa)};
+  return Estimation{std::move(estimates), std::move(kappa_cov), std::move(psi_kappa), {}};
 }
 
 }  // namespace

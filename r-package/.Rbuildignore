@@ -5,5 +5,5 @@
 ^data_raw$
 ^_pkgdown\.yml$
 ^vignettes/articles$
-^tests/testthat/test-parity-irrcacsmoke\.R$
+^vignettes/\.quarto$
 ^misskappa\.Rcheck$

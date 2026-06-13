@@ -95,10 +95,7 @@ r-dev:
     cp dev/r-makevars-dev build-rdev/src/Makevars; \
     MISSKAPPA_ROOT="$root" MAKEFLAGS="-j$(nproc)" R CMD INSTALL build-rdev
 
-irrcacsmoke-install:
-  @R CMD INSTALL --preclean dev/irrcacsmoke
-
-r-check: vendor r-docs irrcacsmoke-install
+r-check: vendor r-docs
   @cleanup() { rm -f misskappa_*.tar.gz; }; \
     cleanup; \
     trap cleanup EXIT; \

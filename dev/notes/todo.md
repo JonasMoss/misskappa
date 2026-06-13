@@ -194,8 +194,9 @@ not here. The port plan with the eight-step roadmap is at
 - [x] **Wire CI.**
       `.github/workflows/ci.yml` now runs a C++ dev build/test job and an
       R package check job on Ubuntu 24.04. The R job builds the opt static
-      library, installs the local `dev/irrcacsmoke` oracle, and runs
-      `R CMD check --no-manual` against `r-package/`.
+      library and runs `R CMD check --no-manual` against `r-package/`. The
+      irrCAC parity oracle is frozen into the testthat suite, so no external
+      oracle package is installed.
 - [x] **Add closed rectangular g-wise / Frechet agreement.**
       `estimate_gwise` and `kappa_gwise()` now cover complete
       subjects-by-raters designs with Frechet nominal, Frechet absolute,

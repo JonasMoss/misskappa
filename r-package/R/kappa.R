@@ -923,8 +923,6 @@ kappa_counts <- function(x,
                          values = NULL,
                          r_total = NULL,
                          em_options = list()) {
-  # Backward-compatible local alias; not documented as a public option.
-  if (identical(estimator, "pairwise")) estimator <- "fleiss_cuzick"
   estimator <- match.arg(estimator)
   weight <- match.arg(weight)
   cpp_weight <- if (weight == "nominal") "identity" else weight
