@@ -50,8 +50,37 @@ to 0.92–0.95 while the logit CI stays bounded and asymmetric. Confirms our rea
 ten Hove: a model-based delta SE is enough; the MC-CI buys ~nothing it can't get
 from a logit transform.
 
-**Status.** Estimator core + delta SEs DONE + verified. Not yet folded into
-package `src/` (would need the vendored-cpp path + an internal optimizer/Hessian
+### magmaan SEM route (2026-06-14) — PROVEN, `prototype_magmaan_sem.R`
+
+The estimator IS a constrained one-factor CFA (= ten Hove's MLE-CF = the
+parallel/tau-equivalent reliability model), so it needs NO bespoke estimator —
+it's a magmaan model string:
+```
+f =~ 1*r1 + ... + 1*rR        # unit loadings -> compound-symmetry Sigma
+f ~~ psi*f                      # psi = sigma^2_s
+rj ~~ e*rj  (all equal)         # e = sigma^2_sr
+rj ~ mj*1                       # rater means (latent mean fixed 0)
+kappa := (R(R-1)*psi)/(R(R-1)*(psi+e) + sum_{i<j}(mi-mj)^2)   # quadratic Conger kappa
+```
+fit `estimator="FIML"`. Verified: magmaan reproduces the lmer `struct` estimate
+to **1.1e-10**. The kappa `:=` gives a delta-method SE for free
+(`compute_defined`); the ROBUST sandwich SE comes from
+`core$estimate_fiml_robust_mlr(fit)$vcov` fed to `compute_defined` (naive 0.0226
+vs robust 0.0295 on a misspecified camps cell — robust correctly larger).
+
+magmaan capability audit: one-factor + fixed loadings + equality constraints +
+mean structure + FIML + robust sandwich + `:=` delta method + NLopt default — ALL
+present. **What's required to support the estimator: essentially no magmaan core
+work** — a thin generator (R-level or small C++) that emits the model string +
+`kappa :=` for given R and column names, calls magmaan FIML, returns kappa + SE.
+Mirrors how nt_fiml sits on magmaan's saturated path: nt_fiml = SATURATED Sigma;
+ten Hove = ONE-FACTOR Sigma; same FIML + conger_q `:=` pipeline, two covariance
+models -> host both on one path. BONUS: the wide/SEM form makes subjects i.i.d.
+rows, so the robust SE is trivial here (no crossed-clustering / merDeriv problem
+from the long-format lmer view).
+
+**Status.** Estimator core + delta SEs + magmaan SEM route DONE + verified. Not
+yet folded into package `src/` (would need the vendored-cpp path + an internal optimizer/Hessian
 to replace R `optim`/`numDeriv`).
 
 **Open / next.**
