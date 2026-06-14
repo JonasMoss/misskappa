@@ -174,7 +174,46 @@ preferable. NOTE the untested axis: study 23's mixture breaks FIML's MAR-consist
 so MAR is the place where a real (and honest) differentiator might live, NOT the loss
 and NOT MCAR quadratic performance.
 
-**Implication.** The honest differentiator for the papers is **loss generality**
+### Inconsistency MAP (2026-06-14) — `sweep_inconsistency.R`, `sweep_severity.R`
+
+Hunted for where the structured ten Hove estimator IS inconsistent for quadratic
+Conger kappa. DGP: rater "camps" — half the raters score a latent subject
+attribute higher, half lower (`y_sj = mu + b_j + a_s + delta*camp_j*w_s + e`),
+making the rater covariance BLOCK-structured (not compound-symmetric). `delta` =
+violation strength; `w` Gaussian (nt_fiml still correct) or binary (mixture,
+nt_fiml also wrong). Asymptotic absolute bias, n=30000, s2a=2 so agreement stays
+meaningful:
+
+| violation | truth | MCAR nt/struct | strong-MAR nt/struct |
+|---|---|---|---|
+| Gaussian d=0 (correct) | .656 | .001/.001 | −.001/**.000** |
+| Gaussian camps d=1 | .444 | .003/.001 | .002/**.002** |
+| Gaussian camps d=1.5 | .292 | .002/.001 | .003/**.030** |
+| Gaussian camps d=2 | .170 | .002/.000 | .001/**.061** |
+| non-Gaussian group d=1.5 | .292 | .001/.002 | **.044**/**.071** |
+
+**The complete, honest picture — a 2×2 (specification × missingness):**
+1. **MCAR ⇒ both consistent, ALWAYS** (≤.003 even at d=2, even non-Gaussian). Why
+   it's not bizarre: quadratic Conger kappa uses the covariance only through the
+   pooled sums ΣVᵢ, ΣCᵢⱼ, which the additive/compound-symmetry ML recovers under
+   MCAR regardless of the true covariance pattern. A genuine robustness theorem.
+2. **MAR + correctly specified (d=0) ⇒ both fine.** MAR alone is not the culprit.
+3. **MAR + Gaussian covariance misspecification ⇒ struct INCONSISTENT, smoothly
+   benign→severe** (d=1: +.002 benign; d=1.5: +.030; d=2: +.061 severe), while
+   **nt_fiml stays consistent** (saturated = correctly specified for Gaussian 2nd
+   moments). THE differentiator.
+4. **MAR + non-Gaussian ⇒ BOTH inconsistent** (nt_fiml +.044, struct +.071).
+   Honest limit on our own estimator: Gaussian FIML's MAR-validity needs
+   Gaussianity; the mixture (study 23) breaks it too — struct just worse.
+
+⇒ For the quadratic paper: the structured ICC/G-theory estimator is consistent &
+more efficient under MCAR, but breaks under MAR whenever the covariance departs
+from compound symmetry (realistic: rater camps / subgroup-dependent bias). The
+saturated nt_fiml is the fix there — for Gaussian data. Be explicit that
+non-Gaussian MAR degrades nt_fiml too (just less). The inconsistency is REAL and
+graded; don't claim blanket consistency.
+
+**Implication (loss axis, separate).** The other honest differentiator is **loss generality**
 (nt_fiml/our framework does nominal / absolute / vector losses MLE-RE structurally
 cannot), NOT beating MLE-RE on the quadratic coefficient. On quadratic they agree
 up to an R/(R−1) convention and a small-n CCC bias. Recommend: do NOT frame the
