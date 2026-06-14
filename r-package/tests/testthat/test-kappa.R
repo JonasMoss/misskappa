@@ -284,6 +284,43 @@ test_that("ratings_to_counts() -> cat_fiml equals exchangeable-restricted raw fi
                   "misskappa_estimate")
 })
 
+test_that("kappa_counts(nt_fiml) matches raw exchangeable normal FIML", {
+  set.seed(12)
+  X <- matrix(sample(c(1:5, NA), 240, replace = TRUE,
+                     prob = c(rep(0.18, 5), 0.10)), nrow = 60)
+  cnt <- ratings_to_counts(X, categories = 1:5)
+  opt <- list(covariance = "variance_components", mean = "equal")
+
+  raw <- kappa(X, estimator = "nt_fiml", weight = "quadratic", values = 1:5,
+               em_options = opt)
+  by_counts <- kappa_counts(cnt, estimator = "nt_fiml", weight = "quadratic",
+                            values = 1:5, r_total = ncol(X))
+
+  expect_named(coef(by_counts), c("Fleiss", "Brennan-Prediger"))
+  expect_equal(coef(by_counts), coef(raw)[c("Fleiss", "Brennan-Prediger")],
+               tolerance = 1e-8)
+  expect_equal(unname(vcov(by_counts)),
+               unname(vcov(raw)[c("Fleiss", "Brennan-Prediger"),
+                                c("Fleiss", "Brennan-Prediger")]),
+               tolerance = 1e-8)
+  expect_equal(unname(crossprod(by_counts$psi) / nrow(cnt)^2),
+               unname(vcov(by_counts)), tolerance = 1e-10)
+  expect_equal(by_counts$mean, "equal")
+  expect_equal(by_counts$covariance, "variance_components")
+})
+
+test_that("kappa_counts(nt_fiml) validates the exchangeable normal route", {
+  expect_error(
+    kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "nominal"),
+    "only defined for weight = \"quadratic\""
+  )
+  expect_error(
+    kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic",
+                 em_options = list(mean = "free")),
+    "requires em_options\\$covariance"
+  )
+})
+
 test_that("kappa_counts() reproduces Fleiss 1971", {
   fit_id <- kappa_counts(dat.fleiss1971, weight = "nominal")
   expect_s3_class(fit_id, "misskappa_estimate")

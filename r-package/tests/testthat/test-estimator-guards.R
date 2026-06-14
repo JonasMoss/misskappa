@@ -46,6 +46,12 @@ test_that("kappa_vector_quadratic validates the array, W, and observation", {
                "rater-feature cell")
   expect_error(kappa_vector_quadratic(arr, method = "nt_fiml"),
                "rater-feature cell")
+  expect_error(
+    kappa_vector_quadratic(array(rnorm(5 * 2 * 2), c(5, 2, 2)),
+                           method = "nt_fiml",
+                           em_options = list(mean = "equal")),
+    "equal-mean normal FIML is not yet implemented"
+  )
 })
 
 # ---- co-observation identifiability guard ---------------------------------

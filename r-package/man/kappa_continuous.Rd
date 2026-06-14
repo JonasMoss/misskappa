@@ -30,11 +30,13 @@ If `NULL`, the continuous uniform baseline on the observed score range is
 used.}
 
 \item{em_options}{Used only when `method = "fiml"`: named list with `tol`,
-`max_iter`, and `covariance`. `covariance = "saturated"` fits the
+`max_iter`, `covariance`, and `mean`. `covariance = "saturated"` fits the
 unrestricted covariance (default); `"variance_components"` fits
 the compound-symmetry (fixed-rater) covariance model
-\eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
-compatibility and ignored.}
+\eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per
+rater/item (default); `mean = "equal"` estimates a common mean and
+requires `covariance = "variance_components"`. `fd_h` is accepted for
+backward compatibility and ignored.}
 }
 \value{
 A `misskappa_estimate` object carrying named coefficients

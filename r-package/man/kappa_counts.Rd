@@ -6,7 +6,7 @@
 \usage{
 kappa_counts(
   x,
-  estimator = c("fleiss_cuzick", "cat_fiml"),
+  estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml"),
   weight = c("nominal", "linear", "quadratic"),
   values = NULL,
   r_total = NULL,
@@ -16,12 +16,13 @@ kappa_counts(
 \arguments{
 \item{x}{A subjects-by-categories non-negative integer matrix.}
 
-\item{estimator}{Either `"fleiss_cuzick"` (the Fleiss-Cuzick count-format
-moment estimator) or `"cat_fiml"` (EM over the composition simplex with
-multivariate hypergeometric weights for completing partial counts). The
-two agree exactly when every row of `x` sums to `r_total`; with partial
-counts (some `r_i < r_total`) the `"cat_fiml"` estimator can be more
-efficient.}
+\item{estimator}{One of `"fleiss_cuzick"` (the Fleiss-Cuzick count-format
+moment estimator), `"cat_fiml"` (EM over the composition simplex with
+multivariate hypergeometric weights for completing partial counts), or
+`"nt_fiml"` (quadratic normal-FIML under the exchangeable common-mean,
+compound-symmetry model). The first two agree exactly when every row of
+`x` sums to `r_total`; with partial counts (some `r_i < r_total`) the
+`"cat_fiml"` estimator can be more efficient.}
 
 \item{weight}{Weighting scheme: `"nominal"` (default), `"linear"`, or
 `"quadratic"`.}
@@ -30,13 +31,16 @@ efficient.}
 by the metric weightings. Defaults to `1:C`.}
 
 \item{r_total}{Total number of raters per subject. Defaults to the
-maximum observed row sum. Required for `estimator = "cat_fiml"` when rows
-have varying totals.}
+maximum observed row sum. Required for FIML estimators when rows have
+varying totals and the maximum observed total is not the design total.}
 
-\item{em_options}{Named list of EM options for `estimator = "cat_fiml"`:
+\item{em_options}{Named list of EM options. For `estimator = "cat_fiml"`:
 `tol`, `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`. The
-raw-data `flatten` option does not apply here: the count-data FIML fits
-a low-dimensional composition model, not the saturated joint.}
+raw-data `flatten` option does not apply there: count-data categorical
+FIML fits a low-dimensional composition model, not the saturated joint.
+For `estimator = "nt_fiml"`: `tol` and `max_iter`; `mean` and
+`covariance` are fixed to the exchangeable common-mean,
+compound-symmetry model.}
 }
 \value{
 A `misskappa_estimate` object with `Fleiss` and
@@ -60,13 +64,18 @@ Rows with fewer than two observed ratings contain no within-subject pair
 information and receive zero observed-disagreement weight; at least one row
 with two or more ratings is required.
 
-Counts data assumes **exchangeable iid raters** drawn from a single
-category distribution. For non-exchangeable raters, use rater-
-identified data and `kappa(x, estimator = "cat_fiml")` instead.
+Counts data discards rater identity, so all counts estimators impose
+exchangeability. The categorical count-FIML model treats full count
+compositions as exchangeable iid rater draws; the normal-FIML route uses the
+corresponding common-mean, compound-symmetry scored model. For
+non-exchangeable raters, use rater-identified data and `kappa()` instead.
 
 To obtain counts from a rater-identified subjects-by-raters matrix, use
 [ratings_to_counts()]; chaining it into `estimator = "cat_fiml"` fits the
-exchangeable count-FIML.
+exchangeable categorical count-FIML. With `weight = "quadratic"`,
+`estimator = "nt_fiml"` fits the exchangeable normal-FIML model with a
+common mean and compound-symmetry covariance
+\eqn{\Sigma = \psi J + e I}.
 
 Conger is not reported (raters are not identified in this input format),
 and neither IPW nor Gwet are meaningful (per-rater observation rates are

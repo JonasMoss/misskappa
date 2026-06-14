@@ -179,6 +179,16 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
       Rcpp::stop("Unknown normal-FIML covariance model: " + cov);
     }
   }
+  if (em_options.containsElementNamed("mean")) {
+    const std::string mean = Rcpp::as<std::string>(em_options["mean"]);
+    if (mean == "free") {
+      opts.mean = misskappa::NormalMeanModel::free;
+    } else if (mean == "equal" || mean == "common") {
+      opts.mean = misskappa::NormalMeanModel::equal;
+    } else {
+      Rcpp::stop("Unknown normal-FIML mean model: " + mean);
+    }
+  }
   return opts;
 }
 

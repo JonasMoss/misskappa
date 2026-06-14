@@ -23,13 +23,16 @@ When supplied, its length must equal the number of unique finite entries
 in `x`.}
 
 \item{em_options}{Named list tuning the EM fit for the likelihood
-estimators. For `"nt_fiml"`: `tol`, `max_iter`, and `covariance`.
+estimators. For `"nt_fiml"`: `tol`, `max_iter`, `covariance`, and `mean`.
 `covariance = "saturated"` fits the unrestricted normal covariance
 (default); `"variance_components"` fits the compound-symmetry
 (fixed-rater) covariance model \eqn{\Sigma = \psi J + e I}. This treats
-items as fixed and is not ten Hove's random-rater MLE-RE / ICC. `fd_h` is
-accepted for backward compatibility and ignored. For `"cat_fiml"`: `tol`,
-`max_iter`,
+items as fixed and is not ten Hove's random-rater MLE-RE / ICC.
+`mean = "free"` estimates one item mean each (default);
+`mean = "equal"` estimates a common mean and requires
+`covariance = "variance_components"`. `fd_h` is accepted for backward
+compatibility and ignored. For `"cat_fiml"`:
+`tol`, `max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
 `flatten` (total Dirichlet pseudo-mass spread over the complete pattern

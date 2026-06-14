@@ -24,6 +24,27 @@
        call. = FALSE)
 }
 
+.normal_mean_model <- function(em_options) {
+  mean <- em_options$mean
+  if (is.null(mean)) return("free")
+  if (!is.character(mean) || length(mean) != 1L || is.na(mean)) {
+    stop("em_options$mean must be a single string.", call. = FALSE)
+  }
+  mean <- gsub("-", "_", tolower(trimws(mean)), fixed = TRUE)
+  if (mean %in% c("free")) return("free")
+  if (mean %in% c("equal", "common")) return("equal")
+  stop("unsupported em_options$mean: ", em_options$mean, call. = FALSE)
+}
+
+.check_normal_mean_covariance <- function(mean, covariance) {
+  if (mean == "equal" && covariance != "variance_components") {
+    stop("em_options$mean = \"equal\" currently requires ",
+         "em_options$covariance = \"variance_components\".",
+         call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 .quadratic_bp_chance <- function(x, values = NULL) {
   if (is.null(values)) {
     observed <- x[is.finite(x)]
@@ -135,12 +156,15 @@
 #'   Brennan-Prediger chance baseline. If `NULL`, the continuous uniform
 #'   baseline on the observed score range is used.
 #' @param em_options Named list tuning the EM fit: `tol` (default `1e-8`),
-#'   `max_iter` (default `10000`), and `covariance`. `covariance = "saturated"`
-#'   fits the unrestricted normal FIML model; `"variance_components"` fits the
-#'   compound-symmetry (fixed-rater) covariance model
-#'   \eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `fd_h` is accepted for
-#'   backward compatibility and ignored because the observed information is
-#'   analytic. Pass any subset.
+#'   `max_iter` (default `10000`), `covariance`, and `mean`. `covariance =
+#'   "saturated"` fits the unrestricted normal FIML model;
+#'   `"variance_components"` fits the compound-symmetry covariance model
+#'   \eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `mean = "free"`
+#'   estimates one mean per rater/item (default); `mean = "equal"` estimates a
+#'   common mean and is supported with `covariance = "variance_components"`,
+#'   giving the exchangeable normal model used by counts-format normal FIML.
+#'   `fd_h` is accepted for backward compatibility and ignored because the
+#'   observed information is analytic. Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying the `Conger`,
 #'   `Fleiss`, and `Brennan-Prediger` coefficients and their 3x3 asymptotic
@@ -174,12 +198,18 @@ kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
     list(tol = 1e-8, max_iter = 10000L), em_options
   )
   covariance <- .normal_covariance_model(opt)
+  mean_model <- .normal_mean_model(opt)
+  .check_normal_mean_covariance(mean_model, covariance)
+  opt$covariance <- covariance
+  opt$mean <- mean_model
   bp_chance <- .quadratic_bp_chance(X, values)
 
   fit <- .normal_fiml_from_cpp(
     rcpp_kappa_quadratic_fiml(X, values, opt),
     estimate_names = c("Conger", "Fleiss", "Brennan-Prediger"),
-    method = if (covariance == "variance_components") {
+    method = if (covariance == "variance_components" && mean_model == "equal") {
+      "quadratic-fiml-exchangeable"
+    } else if (covariance == "variance_components") {
       "quadratic-fiml-variance-components"
     } else {
       "quadratic-fiml"
@@ -187,6 +217,7 @@ kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
     weight = "quadratic"
   )
   fit$covariance <- covariance
+  fit$mean <- mean_model
   fit$bp_chance <- bp_chance
   fit
 }

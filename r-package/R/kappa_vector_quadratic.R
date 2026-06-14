@@ -156,10 +156,18 @@
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L), em_options
   )
-  if (.normal_covariance_model(opt) != "saturated") {
+  covariance <- .normal_covariance_model(opt)
+  mean_model <- .normal_mean_model(opt)
+  if (covariance != "saturated") {
     stop("compound-symmetry covariance is not yet implemented for ",
          "vector-valued normal-FIML kappa.", call. = FALSE)
   }
+  if (mean_model != "free") {
+    stop("equal-mean normal FIML is not yet implemented for ",
+         "vector-valued normal-FIML kappa.", call. = FALSE)
+  }
+  opt$covariance <- covariance
+  opt$mean <- mean_model
   raw <- rcpp_kappa_vector_quadratic_fiml(X, p, W, opt)
   estimates <- as.numeric(raw$estimates)
   names(estimates) <- c("Conger", "Fleiss")
@@ -207,8 +215,10 @@
 #' @param W Optional features-by-features symmetric positive-semidefinite
 #'   weight matrix. Defaults to the identity matrix.
 #' @param em_options Used only by `"nt_fiml"`; named list with `tol` and
-#'   `max_iter`. `fd_h` is accepted for backward compatibility and ignored
-#'   because the observed information is analytic.
+#'   `max_iter`. If supplied, `covariance` must be `"saturated"` and `mean`
+#'   must be `"free"`; the scalar exchangeable normal model has not been
+#'   generalized to vector-valued ratings. `fd_h` is accepted for backward
+#'   compatibility and ignored because the observed information is analytic.
 #'
 #' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
 #'   coefficients, covariance matrix, per-subject influence functions, and

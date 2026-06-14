@@ -15,12 +15,15 @@ Brennan-Prediger chance baseline. If `NULL`, the continuous uniform
 baseline on the observed score range is used.}
 
 \item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`),
-`max_iter` (default `10000`), and `covariance`. `covariance = "saturated"`
-fits the unrestricted normal FIML model; `"variance_components"` fits the
-compound-symmetry (fixed-rater) covariance model
-\eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `fd_h` is accepted for
-backward compatibility and ignored because the observed information is
-analytic. Pass any subset.}
+`max_iter` (default `10000`), `covariance`, and `mean`. `covariance =
+"saturated"` fits the unrestricted normal FIML model;
+`"variance_components"` fits the compound-symmetry covariance model
+\eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `mean = "free"`
+estimates one mean per rater/item (default); `mean = "equal"` estimates a
+common mean and is supported with `covariance = "variance_components"`,
+giving the exchangeable normal model used by counts-format normal FIML.
+`fd_h` is accepted for backward compatibility and ignored because the
+observed information is analytic. Pass any subset.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the `Conger`,

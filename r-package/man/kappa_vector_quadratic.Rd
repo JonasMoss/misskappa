@@ -20,8 +20,10 @@ kappa_vector_quadratic(
 weight matrix. Defaults to the identity matrix.}
 
 \item{em_options}{Used only by `"nt_fiml"`; named list with `tol` and
-`max_iter`. `fd_h` is accepted for backward compatibility and ignored
-because the observed information is analytic.}
+`max_iter`. If supplied, `covariance` must be `"saturated"` and `mean`
+must be `"free"`; the scalar exchangeable normal model has not been
+generalized to vector-valued ratings. `fd_h` is accepted for backward
+compatibility and ignored because the observed information is analytic.}
 }
 \value{
 A `misskappa_estimate` object with `Conger` and `Fleiss`

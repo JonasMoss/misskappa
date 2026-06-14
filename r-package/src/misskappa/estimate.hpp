@@ -21,6 +21,11 @@ enum class NormalCovarianceModel {
   variance_components,
 };
 
+enum class NormalMeanModel {
+  free,
+  equal,
+};
+
 struct EmOptions {
   int max_iter = 10000;
   double tol = 1e-8;
@@ -46,6 +51,11 @@ struct EmOptions {
   // fixed-rater compound-symmetry model Sigma = psi * J + e * I with
   // psi >= 0, e > 0, fitted by the constrained EM M-step.
   NormalCovarianceModel covariance = NormalCovarianceModel::saturated;
+  // Normal-theory FIML mean model. `free` estimates one mean per rater/item.
+  // `equal` estimates a common mean and is currently supported with the
+  // variance-components covariance model, giving the exchangeable normal
+  // model appropriate when rater identity has been aggregated away.
+  NormalMeanModel mean = NormalMeanModel::free;
 };
 
 struct GwiseOptions {

@@ -216,10 +216,12 @@
 #'   missing entries. Rows that are entirely missing are dropped.
 #' @param em_options Named list tuning the EM fit: `tol` (convergence
 #'   tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
-#'   and `covariance`. `covariance = "saturated"` fits the unrestricted
-#'   normal covariance (default); `"variance_components"` fits
+#'   `covariance`, and `mean`. `covariance = "saturated"` fits the
+#'   unrestricted normal covariance (default); `"variance_components"` fits
 #'   the compound-symmetry (fixed-rater) covariance model
-#'   \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
+#'   \eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per item
+#'   (default); `mean = "equal"` estimates a common mean and is supported with
+#'   `covariance = "variance_components"`. `fd_h` is accepted for backward
 #'   compatibility and ignored because the observed information is analytic.
 #'   Pass any subset.
 #'
@@ -259,11 +261,17 @@ alpha_continuous <- function(x, em_options = list()) {
     list(tol = 1e-8, max_iter = 10000L), em_options
   )
   covariance <- .normal_covariance_model(opt)
+  mean_model <- .normal_mean_model(opt)
+  .check_normal_mean_covariance(mean_model, covariance)
+  opt$covariance <- covariance
+  opt$mean <- mean_model
 
   fit <- .normal_fiml_from_cpp(
     rcpp_alpha_normal_fiml(X, opt),
     estimate_names = "alpha",
-    method = if (covariance == "variance_components") {
+    method = if (covariance == "variance_components" && mean_model == "equal") {
+      "alpha-continuous-fiml-exchangeable"
+    } else if (covariance == "variance_components") {
       "alpha-continuous-fiml-variance-components"
     } else {
       "alpha-continuous-fiml"
@@ -271,5 +279,6 @@ alpha_continuous <- function(x, em_options = list()) {
     weight = "score"
   )
   fit$covariance <- covariance
+  fit$mean <- mean_model
   fit
 }

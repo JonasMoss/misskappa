@@ -53,8 +53,9 @@ is flat, shrinking the fitted table toward uniform with weight
 `flatten / (n + flatten)`; `0`, the default, is strict ML). Flattening
 is a uniqueness device, not an inference upgrade: it leaves the point
 estimate essentially unchanged but makes the reported standard errors
-conservative (roughly 50\% too wide in calibration). Pass any
-subset.}
+conservative (roughly 50\% too wide in calibration). For `"nt_fiml"`:
+`tol`, `max_iter`, `covariance`, and `mean`; `mean = "equal"` gives the
+common-mean compound-symmetry normal model. Pass any subset.}
 
 \item{...}{Mode-specific extras: `feature_weights` and `loss` (e.g.
 `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the

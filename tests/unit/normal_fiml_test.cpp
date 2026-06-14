@@ -34,6 +34,14 @@ Moments complete_moments(const RealMat& x) {
   return out;
 }
 
+Moments complete_equal_mean_moments(const RealMat& x) {
+  Moments out;
+  out.mu = RealVec::Constant(x.cols(), x.sum() / static_cast<double>(x.size()));
+  out.sigma = (x.transpose() * x) / static_cast<double>(x.rows()) -
+              out.mu * out.mu.transpose();
+  return out;
+}
+
 double alpha_from_sigma(const RealMat& sigma) {
   const int p = static_cast<int>(sigma.cols());
   return (static_cast<double>(p) / static_cast<double>(p - 1)) *
@@ -265,6 +273,37 @@ TEST_CASE("normal FIML quadratic kappa: variance components projects complete co
             .cwiseAbs()
             .maxCoeff() < tol);
   check_influence_contract(*r, static_cast<int>(x.rows()), 3);
+}
+
+TEST_CASE("normal FIML quadratic kappa: equal mean variance components are exchangeable") {
+  const RealMat x = complete_items();
+  const Moments m = complete_equal_mean_moments(x);
+  const RealMat sigma_vc = variance_component_projection(m.sigma);
+  const double bp_chance = continuous_bp_chance(x);
+  EmOptions opts{};
+  opts.covariance = ms::NormalCovarianceModel::variance_components;
+  opts.mean = ms::NormalMeanModel::equal;
+
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), opts);
+  REQUIRE(r.has_value());
+  CHECK(r->converged);
+  CHECK((r->mu - m.mu).cwiseAbs().maxCoeff() < tol);
+  CHECK((r->sigma - sigma_vc).cwiseAbs().maxCoeff() < tol);
+  CHECK((r->fit.estimates - scalar_quadratic_from_moments(m.mu, sigma_vc, bp_chance))
+            .cwiseAbs()
+            .maxCoeff() < tol);
+  CHECK(std::abs(r->fit.estimates(0) - r->fit.estimates(1)) < tol);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
+}
+
+TEST_CASE("normal FIML quadratic kappa: equal mean requires variance components") {
+  const RealMat x = complete_items();
+  EmOptions opts{};
+  opts.mean = ms::NormalMeanModel::equal;
+
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), opts);
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::invalid_argument);
 }
 
 TEST_CASE("normal FIML quadratic kappa: missing data returns finite IF covariance") {

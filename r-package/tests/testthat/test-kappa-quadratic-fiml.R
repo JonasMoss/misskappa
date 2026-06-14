@@ -84,6 +84,28 @@ test_that("variance-component covariance projects the complete-data covariance",
                tolerance = 1e-10)
 })
 
+test_that("equal-mean variance-component covariance gives exchangeable fit", {
+  X <- make_ratings(400L, 4L, miss = 0, seed = 14L, mu = c(0, 0.4, -0.3, 0.2))
+  fit <- kappa_quadratic_fiml(
+    X, em_options = list(covariance = "variance-components", mean = " Common ")
+  )
+  expect_equal(fit$covariance, "variance_components")
+  expect_equal(fit$mean, "equal")
+  expect_true(max(abs(fit$moments$mu - mean(X))) < 1e-8)
+  expect_equal(unname(coef(fit)["Conger"]), unname(coef(fit)["Fleiss"]),
+               tolerance = 1e-10)
+  expect_equal(unname(crossprod(fit$psi) / nrow(X)^2), unname(vcov(fit)),
+               tolerance = 1e-10)
+})
+
+test_that("equal-mean normal FIML requires variance-component covariance", {
+  X <- make_ratings(80L, 4L, miss = 0, seed = 15L)
+  expect_error(
+    kappa_quadratic_fiml(X, em_options = list(mean = "equal")),
+    "requires em_options\\$covariance = \"variance_components\""
+  )
+})
+
 test_that("variance-component kappa allows connected incomplete co-observation", {
   X <- matrix(c(
     1.0, 1.1, NA,
