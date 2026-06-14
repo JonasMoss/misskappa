@@ -109,6 +109,55 @@ shown two-sided so it's not a strawman:**
 - Sim ground truth is Monte-Carlo empirical coverage regardless; robust SE only
   matters for MLE-RE's *reported* interval. At build time: call merDeriv (their
   tool) or hand-roll the two-way sandwich on the kernel.
+
+---
+
+## Comparison sim result (2026-06-14) — the intended thesis FAILS
+
+`compare_sim.R`: MLE-RE (ICC(A,1)) vs nt_fiml (saturated Conger quadratic kappa),
+S=80 R=6 50% missing, B=150, 4 DGPs. Estimand = population fixed-rater quadratic
+Conger kappa. Plus `large-n diagnostic` at S=12000 to separate inconsistency from
+finite-sample bias.
+
+**Headline (large-n, % bias vs truth):**
+| DGP | nt_fiml | MLE-RE |
+|---|---|---|
+| true | +0.5% | +2.2% |
+| hetero | −0.2% | +1.4% |
+| congeneric | +0.1% | +1.2% |
+| categorical | 0.0% | +1.5% |
+
+**What this means — the planned "MLE-RE inconsistent under misspecification,
+nt_fiml robust/efficient-loses-when-true" story does NOT hold:**
+1. **nt_fiml is consistent** for the quadratic Conger kappa in *all* DGPs
+   (→truth at large n). Its ≈ −3% at S=80 is **finite-sample ratio/plug-in bias**
+   — the known CCC small-n bias (study 28), gone by large n.
+2. **MLE-RE is NOT meaningfully inconsistent** under hetero / congeneric /
+   categorical. The quadratic Conger kappa **pools over raters**, and the additive
+   variance-components model recovers the pooled moments (Σ Vᵢ, Σ Cᵢⱼ, Σ dᵢⱼ²), so
+   the per-rater misspecifications **average out**. Bias is the SAME ~+1.5% in
+   every DGP, including model-true.
+3. That residual **+1.5–2% is a definitional fixed-vs-random-rater gap**, NOT
+   misspecification: ICC(A,1) counts rater-mean variance as σ²_r, the fixed-rater
+   Conger kappa counts it as [R/(R−1)]·σ²_r (≈ ×1.2 at R=6). It appears identically
+   on the model-true DGP ⇒ it's a convention, vanishing as R→∞. Confirmed
+   numerically (predicted ICC 0.608 vs observed 0.610).
+4. At S=80, MLE-RE is therefore *lower* bias, *lower* SD/RMSE, and *better*
+   calibrated than nt_fiml (whose saturated covariance gives inflated/unstable SEs
+   under 50% missingness: mean_SE up to 2.6× the empirical SD). nt_fiml does **not**
+   "win when the model is true" — it modestly loses.
+
+**Implication.** The honest differentiator for the papers is **loss generality**
+(nt_fiml/our framework does nominal / absolute / vector losses MLE-RE structurally
+cannot), NOT beating MLE-RE on the quadratic coefficient. On quadratic they agree
+up to an R/(R−1) convention and a small-n CCC bias. Recommend: do NOT frame the
+appendix as an MLE-RE takedown. Either (a) a short paragraph "MLE-RE is the
+quadratic/Gaussian special case; it matches us on quadratic, our contribution is
+the losses it can't reach," or (b) if a sim is wanted, make it estimand-matched
+(plug MLE-RE's structured (μ,Σ) into the SAME conger_q the nt_fiml targets, killing
+the R/(R−1) gap) and present it as agreement + the loss-generality point. A genuine
+inconsistency would need a non-averaging misspecification (e.g. block-correlated
+rater subgroups) — untested, possibly contrived.
 - Decide estimand surface: expose ICC(A,1)/ICC(C,1) (single) and the `,k`
   averaged variants (Table 1) — all are functions of the same three components.
 - Positioning (for the papers): MLE-RE is ICC-only and MCAR/ignorable-by-design;
