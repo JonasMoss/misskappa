@@ -42,8 +42,8 @@ struct EmOptions {
   // pseudo-inverse policy movement in the reported SEs.
   EmAcceleration acceleration = EmAcceleration::none;
   // Normal-theory FIML covariance model. `saturated` is the existing
-  // unrestricted mean/covariance route. `variance_components` is the scalar
-  // ten Hove / fixed-rater random-subject model Sigma = psi * J + e * I with
+  // unrestricted mean/covariance route. `variance_components` is the
+  // fixed-rater compound-symmetry model Sigma = psi * J + e * I with
   // psi >= 0, e > 0, fitted by the constrained EM M-step.
   NormalCovarianceModel covariance = NormalCovarianceModel::saturated;
 };
@@ -158,14 +158,16 @@ Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::Cont
 
 // Normal-theory FIML estimators for smooth functions of the fitted mean and
 // covariance. The default covariance model is saturated; EmOptions may select
-// the scalar ten Hove variance-component covariance model. Inputs are
-// real-valued with non-finite entries treated as missing. Returned influence
-// rows correspond to rows with at least one observed entry; all-empty rows are
-// dropped, matching the R-level convention.
+// the fixed-rater compound-symmetry covariance model. Inputs are real-valued
+// with non-finite entries treated as missing. Returned influence rows
+// correspond to rows with at least one observed entry; all-empty rows are
+// dropped, matching the R-level convention. Scalar quadratic FIML returns
+// (Conger, Fleiss, Brennan-Prediger); pass an empty `values` vector to use the
+// continuous uniform BP baseline on the observed score range.
 Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
     RealMatView ratings, EmOptions opts);
 Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
-    RealMatView ratings, EmOptions opts);
+    RealMatView ratings, const RealVec& values, EmOptions opts);
 Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(
     RealMatView ratings, int features, RealMatView W, EmOptions opts);
 

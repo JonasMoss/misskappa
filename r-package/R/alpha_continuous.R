@@ -195,10 +195,11 @@
 #' via a multivariate-normal covariance fitted by full-information maximum
 #' likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
 #' missingness. The default covariance model is saturated; `em_options =
-#' list(covariance = "variance_components")` fits the scalar ten Hove
-#' covariance model \eqn{\Sigma = \psi J + e I}. The standard error is the
-#' sandwich delta-method contraction of the alpha gradient with the asymptotic
-#' covariance of the fitted moments.
+#' list(covariance = "variance_components")` fits the compound-symmetry
+#' (fixed-rater) covariance model \eqn{\Sigma = \psi J + e I}. It treats items
+#' as fixed and is not ten Hove's random-rater MLE-RE / ICC. The standard error
+#' is the sandwich delta-method contraction of the alpha gradient with the
+#' asymptotic covariance of the fitted moments.
 #'
 #' The fit and its sandwich covariance reproduce magmaan's
 #' `estimate_saturated_em_moments()` and lavaan's saturated estimator; the
@@ -217,6 +218,7 @@
 #'   tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
 #'   and `covariance`. `covariance = "saturated"` fits the unrestricted
 #'   normal covariance (default); `"variance_components"` fits
+#'   the compound-symmetry (fixed-rater) covariance model
 #'   \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
 #'   compatibility and ignored because the observed information is analytic.
 #'   Pass any subset.

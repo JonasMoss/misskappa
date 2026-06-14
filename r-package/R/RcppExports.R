@@ -33,8 +33,8 @@ rcpp_kappa_quadratic <- function(x, values) {
     .Call(`_misskappa_rcpp_kappa_quadratic`, x, values)
 }
 
-rcpp_kappa_quadratic_fiml <- function(x, em_options) {
-    .Call(`_misskappa_rcpp_kappa_quadratic_fiml`, x, em_options)
+rcpp_kappa_quadratic_fiml <- function(x, values, em_options) {
+    .Call(`_misskappa_rcpp_kappa_quadratic_fiml`, x, values, em_options)
 }
 
 rcpp_kappa_counts <- function(x, weight_type, values) {

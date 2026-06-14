@@ -18,6 +18,7 @@ namespace misskappa {
 namespace {
 
 constexpr double inverse_rcond_tol = 1e-12;
+constexpr double zero_tol = 1e-9;
 
 struct Pattern {
   std::vector<int> rows;
@@ -149,6 +150,38 @@ Result<RealMat> solve_matrix(const RealMat& a, const RealMat& b) {
   RealMat x = lu.solve(b);
   if (!x.allFinite()) return misskappa::unexpected(Error::numerical_error);
   return x;
+}
+
+Result<double> quadratic_bp_chance(RealMatView ratings, const RealVec& values) {
+  if (values.size() > 0) {
+    if (!values.allFinite()) return misskappa::unexpected(Error::invalid_argument);
+    const double C = static_cast<double>(values.size());
+    const double chance =
+        (2.0 / (C * C)) * (C * values.squaredNorm() - std::pow(values.sum(), 2));
+    if (!std::isfinite(chance) || chance <= zero_tol) {
+      return misskappa::unexpected(Error::invalid_argument);
+    }
+    return chance;
+  }
+
+  bool any = false;
+  double lo = std::numeric_limits<double>::infinity();
+  double hi = -std::numeric_limits<double>::infinity();
+  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
+    for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
+      const double x = ratings(i, j);
+      if (!std::isfinite(x)) continue;
+      any = true;
+      lo = std::min(lo, x);
+      hi = std::max(hi, x);
+    }
+  }
+  if (!any || !(hi > lo)) return misskappa::unexpected(Error::invalid_argument);
+  const double chance = (hi - lo) * (hi - lo) / 6.0;
+  if (!std::isfinite(chance) || chance <= zero_tol) {
+    return misskappa::unexpected(Error::invalid_argument);
+  }
+  return chance;
 }
 
 Result<RealMat> project_variance_components(const RealMat& sigma) {
@@ -567,7 +600,8 @@ GradientResult alpha_gradient(const RealVec& mu, const RealMat& sigma) {
   return out;
 }
 
-GradientResult scalar_quadratic_gradient(const RealVec& mu, const RealMat& sigma) {
+GradientResult scalar_quadratic_gradient(
+    const RealVec& mu, const RealMat& sigma, double bp_chance) {
   const int R = static_cast<int>(mu.size());
   const int pstar = vech_size(R);
   const int q = R + pstar;
@@ -580,6 +614,8 @@ GradientResult scalar_quadratic_gradient(const RealVec& mu, const RealMat& sigma
   const double nC = t1 - t2;
   const double dF = static_cast<double>(R - 1) * (t2 + t3);
   const double nF = t1 - t2 - t3;
+  const double d_obs =
+      (2.0 / static_cast<double>(R - 1)) * (t2 + t3 - t1 / static_cast<double>(R));
 
   RealMat At = RealMat::Zero(3, q);
   int k = 0;
@@ -593,7 +629,7 @@ GradientResult scalar_quadratic_gradient(const RealVec& mu, const RealMat& sigma
   }
   for (int j = 0; j < R; ++j) At(2, j) = 2.0 * (mu(j) - mubar);
 
-  RealMat Jh = RealMat::Zero(2, 3);
+  RealMat Jh = RealMat::Zero(3, 3);
   Jh(0, 0) = 1.0 / dC;
   Jh(0, 1) = -1.0 / dC - nC * static_cast<double>(R - 1) / (dC * dC);
   Jh(0, 2) = -nC * static_cast<double>(R) / (dC * dC);
@@ -601,11 +637,16 @@ GradientResult scalar_quadratic_gradient(const RealVec& mu, const RealMat& sigma
   Jh(1, 0) = 1.0 / dF;
   Jh(1, 1) = f_t23;
   Jh(1, 2) = f_t23;
+  const double bp_factor = -2.0 / (bp_chance * static_cast<double>(R - 1));
+  Jh(2, 0) = -bp_factor / static_cast<double>(R);
+  Jh(2, 1) = bp_factor;
+  Jh(2, 2) = bp_factor;
 
   GradientResult out;
-  out.estimates = RealVec(2);
+  out.estimates = RealVec(3);
   out.estimates(0) = nC / dC;
   out.estimates(1) = nF / dF;
+  out.estimates(2) = 1.0 - d_obs / bp_chance;
   out.gradient = Jh * At;
   return out;
 }
@@ -713,10 +754,13 @@ Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
 }
 
 Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
-    RealMatView ratings, EmOptions opts) {
-  return estimate_normal_fiml_impl(ratings, opts, [](const RealVec& mu, const RealMat& sigma) {
-    return scalar_quadratic_gradient(mu, sigma);
-  });
+    RealMatView ratings, const RealVec& values, EmOptions opts) {
+  auto bp_chance = quadratic_bp_chance(ratings, values);
+  if (!bp_chance) return misskappa::unexpected(bp_chance.error());
+  return estimate_normal_fiml_impl(
+      ratings, opts, [chance = *bp_chance](const RealVec& mu, const RealMat& sigma) {
+        return scalar_quadratic_gradient(mu, sigma, chance);
+      });
 }
 
 Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(

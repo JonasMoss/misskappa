@@ -1,4 +1,4 @@
-# Tests for the normal-FIML quadratic (Conger / Fleiss) kappa.
+# Tests for the normal-FIML quadratic (Conger / Fleiss / Brennan-Prediger) kappa.
 
 make_ratings <- function(n, R, rho = 0.5, miss = 0.15, seed = 1L,
                          mu = NULL) {
@@ -11,12 +11,15 @@ make_ratings <- function(n, R, rho = 0.5, miss = 0.15, seed = 1L,
   X
 }
 
-# Reference Conger / Fleiss from a mean vector and covariance matrix.
-ref_kappa <- function(mu, S) {
+# Reference Conger / Fleiss / Brennan-Prediger from a mean vector, covariance
+# matrix, and fixed BP chance baseline.
+ref_kappa <- function(mu, S, bp_chance) {
   R <- length(mu)
   t1 <- sum(S); t2 <- sum(diag(S)); t3 <- sum((mu - mean(mu))^2)
+  d_obs <- (2 / (R - 1)) * (t2 + t3 - t1 / R)
   c(Conger = (t1 - t2) / ((R - 1) * t2 + R * t3),
-    Fleiss = (t1 - t2 - t3) / ((R - 1) * (t2 + t3)))
+    Fleiss = (t1 - t2 - t3) / ((R - 1) * (t2 + t3)),
+    `Brennan-Prediger` = 1 - d_obs / bp_chance)
 }
 
 vc_project <- function(S) {
@@ -42,22 +45,27 @@ test_that("complete-data point matches the MLE-covariance plug-in", {
   fit <- kappa_quadratic_fiml(X)
   n <- nrow(X)
   Smle <- stats::cov(X) * (n - 1) / n
-  manual <- ref_kappa(colMeans(X), Smle)
-  expect_equal(coef(fit)[c("Conger", "Fleiss")], manual, tolerance = 1e-8)
+  manual <- ref_kappa(colMeans(X), Smle, fit$bp_chance)
+  expect_equal(coef(fit), manual, tolerance = 1e-8)
   expect_true(fit$moments$converged)
 })
 
 test_that("complete-data point matches kappa_quadratic(empirical)", {
   set.seed(21L)
   # scored 1..5 categorical ratings so kappa_quadratic's `values` is natural
-  X <- matrix(sample(1:5, 350L * 4L, replace = TRUE), 350L, 4L)
+  n <- 350L
+  R <- 4L
+  subject <- stats::rnorm(n)
+  X <- round(3 + subject + matrix(stats::rnorm(n * R, sd = 0.7), n, R))
+  X <- matrix(pmin(5, pmax(1, X)), n, R)
   storage.mode(X) <- "double"
-  fit <- kappa_quadratic_fiml(X)
+  fit <- kappa_quadratic_fiml(X, values = 1:5)
+  fit_vc <- kappa_quadratic_fiml(
+    X, values = 1:5, em_options = list(covariance = "variance_components")
+  )
   ref <- kappa_quadratic(X, values = 1:5)
-  expect_equal(unname(coef(fit)["Conger"]), unname(coef(ref)["Conger"]),
-               tolerance = 1e-8)
-  expect_equal(unname(coef(fit)["Fleiss"]), unname(coef(ref)["Fleiss"]),
-               tolerance = 1e-8)
+  expect_equal(coef(fit), coef(ref), tolerance = 1e-8)
+  expect_equal(coef(fit_vc), coef(ref), tolerance = 1e-8)
 })
 
 test_that("variance-component covariance projects the complete-data covariance", {
@@ -70,8 +78,8 @@ test_that("variance-component covariance projects the complete-data covariance",
   Svc <- vc_project(Smle)
   expect_equal(fit$covariance, "variance_components")
   expect_equal(fit$moments$Sigma, Svc, tolerance = 1e-8)
-  expect_equal(coef(fit)[c("Conger", "Fleiss")],
-               ref_kappa(colMeans(X), Svc), tolerance = 1e-8)
+  expect_equal(coef(fit), ref_kappa(colMeans(X), Svc, fit$bp_chance),
+               tolerance = 1e-8)
   expect_equal(unname(crossprod(fit$psi) / n^2), unname(vcov(fit)),
                tolerance = 1e-10)
 })
@@ -107,8 +115,8 @@ test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
   fit <- kappa_quadratic_fiml(X)
   psi <- fit$psi
   expect_true(is.matrix(psi))
-  expect_equal(dim(psi), c(nrow(X), 2L))
-  expect_equal(colnames(psi), c("Conger", "Fleiss"))
+  expect_equal(dim(psi), c(nrow(X), 3L))
+  expect_equal(colnames(psi), c("Conger", "Fleiss", "Brennan-Prediger"))
   n <- nrow(X)
   expect_equal(unname(crossprod(psi) / (n * n)), unname(vcov(fit)),
                tolerance = 1e-10)
@@ -118,15 +126,16 @@ test_that("analytic gradient G matches a numeric derivative wrt theta", {
   X <- make_ratings(300L, 4L, miss = 0.2, seed = 4L)
   em <- misskappa:::.amc_em(X, misskappa:::.amc_patterns(is.finite(X)))
   p <- ncol(X); pstar <- p * (p + 1L) / 2L
-  grad <- misskappa:::.kqf_grad(em$mu, em$Sigma)
+  bp_chance <- misskappa:::.quadratic_bp_chance(X)
+  grad <- misskappa:::.kqf_grad(em$mu, em$Sigma, bp_chance)
 
   kap_of_theta <- function(theta) {
     pr <- misskappa:::.amc_unpack(theta, p, pstar)
-    ref_kappa(pr$mu, pr$Sigma)
+    ref_kappa(pr$mu, pr$Sigma, bp_chance)
   }
   theta <- c(em$mu, misskappa:::.amc_vech(em$Sigma))
   h <- 1e-6
-  Gnum <- matrix(0, 2L, length(theta))
+  Gnum <- matrix(0, 3L, length(theta))
   for (k in seq_along(theta)) {
     tp <- theta; tp[k] <- tp[k] + h
     tm <- theta; tm[k] <- tm[k] - h
@@ -153,7 +162,7 @@ test_that("kappa_continuous(method = 'fiml') routes here and validates weight", 
   X <- make_ratings(300L, 4L, miss = 0.15, seed = 9L)
   fit <- kappa_continuous(X, method = "fiml", weight = "quadratic")
   expect_equal(fit$method, "quadratic-fiml")
-  expect_equal(names(coef(fit)), c("Conger", "Fleiss"))
+  expect_equal(names(coef(fit)), c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_error(
     kappa_continuous(X, method = "fiml", weight = "linear"),
     "quadratic"
@@ -165,7 +174,7 @@ test_that("fits plug into joint_vcov / wald_test", {
   fitA <- kappa_quadratic_fiml(X)
   fitB <- kappa_quadratic_fiml(X[, 1:4])
   V <- joint_vcov(full = fitA, sub = fitB)
-  expect_equal(dim(V), c(4L, 4L))
+  expect_equal(dim(V), c(6L, 6L))
   expect_true(isSymmetric(V))
   # Conger == Fleiss within a single fit (same subjects) is a valid contrast.
   wt <- wald_test(fitA, contrast = c("Conger" = 1, "Fleiss" = -1))
@@ -273,7 +282,7 @@ test_that("sandwich vcov matches magmaan's saturated-moment sandwich ACOV", {
   X <- make_ratings(500L, 4L, miss = 0.2, seed = 12L,
                     mu = c(-0.4, -0.1, 0.2, 0.5))
   fit <- kappa_quadratic_fiml(X)
-  G <- misskappa:::.kqf_grad(fit$moments$mu, fit$moments$Sigma)$G
+  G <- misskappa:::.kqf_grad(fit$moments$mu, fit$moments$Sigma, fit$bp_chance)$G
   mask <- is.finite(X); storage.mode(mask) <- "logical"
   acov <- as.matrix(magmaan::magmaan_core$estimate_saturated_em_moments(
     list(X = X, mask = mask))$acov)

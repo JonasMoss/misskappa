@@ -102,7 +102,7 @@
 #' entries, every item must be observed at least once. The pairwise,
 #' categorical-FIML, and default saturated normal-FIML estimators also require
 #' every item pair to be jointly observed by at least one subject. The
-#' structured normal-FIML variance-component covariance model only requires a
+#' structured normal-FIML compound-symmetry covariance model only requires a
 #' connected item co-observation graph.
 #'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` and other
@@ -115,9 +115,11 @@
 #' @param em_options Named list tuning the EM fit for the likelihood
 #'   estimators. For `"nt_fiml"`: `tol`, `max_iter`, and `covariance`.
 #'   `covariance = "saturated"` fits the unrestricted normal covariance
-#'   (default); `"variance_components"` fits the scalar ten Hove covariance
-#'   model \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
-#'   compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
+#'   (default); `"variance_components"` fits the compound-symmetry
+#'   (fixed-rater) covariance model \eqn{\Sigma = \psi J + e I}. This treats
+#'   items as fixed and is not ten Hove's random-rater MLE-RE / ICC. `fd_h` is
+#'   accepted for backward compatibility and ignored. For `"cat_fiml"`: `tol`,
+#'   `max_iter`,
 #'   `prune_tol`, `start_alpha`, `info_rcond` (the relative
 #'   eigenvalue cutoff used when inverting Louis' observed information), and
 #'   `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
@@ -164,7 +166,7 @@ alpha <- function(x,
   if (estimator == "nt_fiml" &&
       .normal_covariance_model(em_options) == "variance_components") {
     req <- "connected"
-    coef_label <- "coefficient alpha under the variance-component covariance model"
+    coef_label <- "coefficient alpha under the compound-symmetry covariance model"
   }
   .check_pattern_identifiable(.pattern_observed(x), unit = "item",
                               require = req,
@@ -503,7 +505,7 @@ kappa <- function(x,
     ## Every public scalar g = 2 path surfaces a fixed-rater coefficient
     ## (Conger, and Brennan-Prediger for the raw estimators), so the saturated
     ## functional needs a complete rater co-observation graph. The scalar
-    ## ten Hove variance-component normal-FIML route only needs a connected
+    ## compound-symmetry normal-FIML route only needs a connected
     ## co-observation graph; the reduced information check in C++ remains the
     ## final guard.
     req <- "complete"
@@ -511,7 +513,7 @@ kappa <- function(x,
     if (estimator == "nt_fiml" &&
         .normal_covariance_model(em_options) == "variance_components") {
       req <- "connected"
-      coef_label <- "Conger's kappa under the variance-component covariance model"
+      coef_label <- "Conger's kappa under the compound-symmetry covariance model"
     }
     .check_pattern_identifiable(
       .pattern_observed(x), unit = "rater",
@@ -543,6 +545,7 @@ kappa <- function(x,
       X,
       method = if (estimator == "pairwise") "available" else "fiml",
       weight = "quadratic",
+      values = values,
       em_options = em_options
     )
     fit$method <- estimator
@@ -1000,16 +1003,13 @@ kappa_counts <- function(x,
 #' normal-FIML route (`"fiml"`, quadratic kernel only) fits a multivariate-
 #' normal covariance by EM and is valid under ignorable (MCAR or MAR)
 #' missingness. The default covariance model is saturated; `em_options =
-#' list(covariance = "variance_components")` fits the scalar ten Hove
-#' covariance model. Missing entries are encoded as `NA` (or any non-finite
-#' value).
-#'
-#' Brennan-Prediger is not reported for continuous data; the chance-
-#' disagreement baseline requires a finite number of categories.
+#' list(covariance = "variance_components")` fits the compound-symmetry
+#' (fixed-rater) covariance model. Missing entries are encoded as `NA` (or any
+#' non-finite value).
 #'
 #' For the saturated missing-data routes here, every rater must be observed at
 #' least once and every rater pair must be jointly observed by at least one
-#' subject. The variance-component normal-FIML covariance model only requires
+#' subject. The compound-symmetry normal-FIML covariance model only requires
 #' a connected rater co-observation graph.
 #'
 #' @param x A subjects-by-raters numeric matrix.
@@ -1020,20 +1020,28 @@ kappa_counts <- function(x,
 #'   `"linear"`, `"quadratic"`, `"radical"`, or `"ratio"`. The data range
 #'   `[min(x), max(x)]` is used to parameterise the kernel. Only
 #'   `"quadratic"` is available with `method = "fiml"`.
+#' @param values Optional finite numeric score vector used only for
+#'   `method = "fiml"` to define Brennan-Prediger's uniform chance baseline.
+#'   If `NULL`, the continuous uniform baseline on the observed score range is
+#'   used.
 #' @param em_options Used only when `method = "fiml"`: named list with `tol`,
 #'   `max_iter`, and `covariance`. `covariance = "saturated"` fits the
 #'   unrestricted covariance (default); `"variance_components"` fits
+#'   the compound-symmetry (fixed-rater) covariance model
 #'   \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
 #'   compatibility and ignored.
 #'
 #' @return A `misskappa_estimate` object carrying named coefficients
-#'   (`Conger`, `Fleiss`) and the 2x2 asymptotic covariance matrix.
+#'   (`Conger`, `Fleiss`, `Brennan-Prediger`) and the 3x3 asymptotic
+#'   covariance matrix for `method = "fiml"`; other continuous methods carry
+#'   `Conger` and `Fleiss`.
 #'
 #' @keywords internal
 kappa_continuous <- function(x,
                              method = c("available", "ipw", "gwet", "fiml"),
                              weight = c("quadratic", "linear", "identity",
                                         "unweighted", "radical", "ratio"),
+                             values = NULL,
                              em_options = list()) {
   method <- match.arg(method)
   weight <- match.arg(weight)
@@ -1048,10 +1056,10 @@ kappa_continuous <- function(x,
   if (method == "fiml") {
     if (weight != "quadratic") {
       stop("method = \"fiml\" is only defined for the quadratic kernel; the ",
-           "Conger and Fleiss kappas are functions of the mean and covariance ",
+           "normal-FIML coefficients are functions of the mean and covariance ",
            "only under quadratic weighting.")
     }
-    return(kappa_quadratic_fiml(x_mat, em_options = em_options))
+    return(kappa_quadratic_fiml(x_mat, values = values, em_options = em_options))
   }
 
   out <- rcpp_kappa_continuous(

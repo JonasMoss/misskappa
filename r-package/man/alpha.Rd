@@ -25,9 +25,11 @@ in `x`.}
 \item{em_options}{Named list tuning the EM fit for the likelihood
 estimators. For `"nt_fiml"`: `tol`, `max_iter`, and `covariance`.
 `covariance = "saturated"` fits the unrestricted normal covariance
-(default); `"variance_components"` fits the scalar ten Hove covariance
-model \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
-compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
+(default); `"variance_components"` fits the compound-symmetry
+(fixed-rater) covariance model \eqn{\Sigma = \psi J + e I}. This treats
+items as fixed and is not ten Hove's random-rater MLE-RE / ICC. `fd_h` is
+accepted for backward compatibility and ignored. For `"cat_fiml"`: `tol`,
+`max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
 `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
@@ -70,7 +72,7 @@ All three estimators target fixed-item coefficient alpha. With missing
 entries, every item must be observed at least once. The pairwise,
 categorical-FIML, and default saturated normal-FIML estimators also require
 every item pair to be jointly observed by at least one subject. The
-structured normal-FIML variance-component covariance model only requires a
+structured normal-FIML compound-symmetry covariance model only requires a
 connected item co-observation graph.
 }
 \examples{

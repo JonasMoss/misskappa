@@ -2,6 +2,7 @@
 
 #include "misskappa/estimate.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <random>
@@ -39,14 +40,31 @@ double alpha_from_sigma(const RealMat& sigma) {
          (1.0 - sigma.diagonal().sum() / sigma.sum());
 }
 
-RealVec scalar_quadratic_from_moments(const RealVec& mu, const RealMat& sigma) {
+double continuous_bp_chance(const RealMat& x) {
+  double lo = std::numeric_limits<double>::infinity();
+  double hi = -std::numeric_limits<double>::infinity();
+  for (Eigen::Index i = 0; i < x.rows(); ++i) {
+    for (Eigen::Index j = 0; j < x.cols(); ++j) {
+      if (!std::isfinite(x(i, j))) continue;
+      lo = std::min(lo, x(i, j));
+      hi = std::max(hi, x(i, j));
+    }
+  }
+  return (hi - lo) * (hi - lo) / 6.0;
+}
+
+RealVec scalar_quadratic_from_moments(
+    const RealVec& mu, const RealMat& sigma, double bp_chance) {
   const int R = static_cast<int>(mu.size());
   const double t1 = sigma.sum();
   const double t2 = sigma.diagonal().sum();
   const double t3 = (mu.array() - mu.mean()).square().sum();
-  RealVec out(2);
+  const double d_obs =
+      (2.0 / static_cast<double>(R - 1)) * (t2 + t3 - t1 / static_cast<double>(R));
+  RealVec out(3);
   out(0) = (t1 - t2) / (static_cast<double>(R - 1) * t2 + static_cast<double>(R) * t3);
   out(1) = (t1 - t2 - t3) / (static_cast<double>(R - 1) * (t2 + t3));
+  out(2) = 1.0 - d_obs / bp_chance;
   return out;
 }
 
@@ -200,32 +218,53 @@ TEST_CASE("normal FIML alpha: variance components allows connected patterns") {
 TEST_CASE("normal FIML quadratic kappa: complete data matches moment formula") {
   const RealMat x = complete_items();
   const Moments m = complete_moments(x);
+  const double bp_chance = continuous_bp_chance(x);
 
-  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
   REQUIRE(r.has_value());
   CHECK(r->converged);
-  CHECK((r->fit.estimates - scalar_quadratic_from_moments(m.mu, m.sigma))
+  CHECK((r->fit.estimates - scalar_quadratic_from_moments(m.mu, m.sigma, bp_chance))
             .cwiseAbs()
             .maxCoeff() < tol);
-  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
+}
+
+TEST_CASE("normal FIML quadratic kappa: complete data matches empirical BP") {
+  const RealMat x = complete_items();
+  RealVec values(5);
+  values << 0.0, 1.0, 2.0, 3.0, 4.0;
+
+  auto empirical = ms::estimate_quadratic(x, values);
+  auto fiml = ms::estimate_quadratic_normal_fiml(x, values, EmOptions{});
+  EmOptions opts{};
+  opts.covariance = ms::NormalCovarianceModel::variance_components;
+  auto structured = ms::estimate_quadratic_normal_fiml(x, values, opts);
+  REQUIRE(empirical.has_value());
+  REQUIRE(fiml.has_value());
+  REQUIRE(structured.has_value());
+  CHECK((fiml->fit.estimates - empirical->estimates).cwiseAbs().maxCoeff() < tol);
+  CHECK((structured->fit.estimates - empirical->estimates).cwiseAbs().maxCoeff() < tol);
+  check_influence_contract(*fiml, static_cast<int>(x.rows()), 3);
+  check_influence_contract(*structured, static_cast<int>(x.rows()), 3);
 }
 
 TEST_CASE("normal FIML quadratic kappa: variance components projects complete covariance") {
   const RealMat x = complete_items();
   const Moments m = complete_moments(x);
   const RealMat sigma_vc = variance_component_projection(m.sigma);
+  const double bp_chance = continuous_bp_chance(x);
   EmOptions opts{};
   opts.covariance = ms::NormalCovarianceModel::variance_components;
 
-  auto r = ms::estimate_quadratic_normal_fiml(x, opts);
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), opts);
   REQUIRE(r.has_value());
   CHECK(r->converged);
   CHECK((r->mu - m.mu).cwiseAbs().maxCoeff() < tol);
   CHECK((r->sigma - sigma_vc).cwiseAbs().maxCoeff() < tol);
-  CHECK((r->fit.estimates - scalar_quadratic_from_moments(m.mu, sigma_vc))
+  CHECK((r->fit.estimates - scalar_quadratic_from_moments(m.mu, sigma_vc, bp_chance))
             .cwiseAbs()
             .maxCoeff() < tol);
-  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
 }
 
 TEST_CASE("normal FIML quadratic kappa: missing data returns finite IF covariance") {
@@ -234,11 +273,11 @@ TEST_CASE("normal FIML quadratic kappa: missing data returns finite IF covarianc
   x(3, 0) = na_d;
   x(5, 2) = na_d;
 
-  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
   REQUIRE(r.has_value());
   CHECK(r->fit.estimates.allFinite());
   CHECK(r->fit.vcov.allFinite());
-  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
 }
 
 TEST_CASE("normal FIML quadratic kappa: variance components allows connected patterns") {
@@ -252,30 +291,31 @@ TEST_CASE("normal FIML quadratic kappa: variance components allows connected pat
        1.5, na_d, na_d,
        na_d, na_d, 2.6;
 
-  auto saturated = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  auto saturated = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
   REQUIRE(!saturated.has_value());
   CHECK(saturated.error() == ms::Error::not_identified);
 
   EmOptions opts{};
   opts.covariance = ms::NormalCovarianceModel::variance_components;
-  auto structured = ms::estimate_quadratic_normal_fiml(x, opts);
+  auto structured = ms::estimate_quadratic_normal_fiml(x, RealVec(), opts);
   REQUIRE(structured.has_value());
   CHECK(structured->fit.estimates.allFinite());
   CHECK(structured->fit.vcov.allFinite());
-  check_influence_contract(*structured, static_cast<int>(x.rows()), 2);
+  check_influence_contract(*structured, static_cast<int>(x.rows()), 3);
 }
 
 TEST_CASE("normal FIML quadratic kappa: missing-data estimates and SEs are pinned") {
   const RealMat x = benchmark_items(500, 6, 0.2, 548);
 
-  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
   REQUIRE(r.has_value());
   CHECK(r->converged);
   CHECK(std::abs(r->fit.estimates(0) - 0.627565184290) < 1e-11);
   CHECK(std::abs(r->fit.estimates(1) - 0.627513328957) < 1e-11);
+  CHECK(std::isfinite(r->fit.estimates(2)));
   CHECK(std::abs(std::sqrt(r->fit.vcov(0, 0)) - 0.018896194796) < 1e-8);
   CHECK(std::abs(std::sqrt(r->fit.vcov(1, 1)) - 0.018902343240) < 1e-8);
-  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
 }
 
 TEST_CASE("normal FIML quadratic kappa: fd_h is compatibility-only with analytic information") {
@@ -285,8 +325,8 @@ TEST_CASE("normal FIML quadratic kappa: fd_h is compatibility-only with analytic
   EmOptions fine{};
   fine.fd_h = 1e-8;
 
-  auto a = ms::estimate_quadratic_normal_fiml(x, coarse);
-  auto b = ms::estimate_quadratic_normal_fiml(x, fine);
+  auto a = ms::estimate_quadratic_normal_fiml(x, RealVec(), coarse);
+  auto b = ms::estimate_quadratic_normal_fiml(x, RealVec(), fine);
   REQUIRE(a.has_value());
   REQUIRE(b.has_value());
   CHECK((a->fit.estimates - b->fit.estimates).cwiseAbs().maxCoeff() < 1e-14);
@@ -304,7 +344,7 @@ TEST_CASE("normal FIML quadratic kappa: singular covariance returns numerical er
        7.0, 7.0, 6.7,
        8.0, 8.0, 7.5;
 
-  auto r = ms::estimate_quadratic_normal_fiml(x, EmOptions{});
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::numerical_error);
 }

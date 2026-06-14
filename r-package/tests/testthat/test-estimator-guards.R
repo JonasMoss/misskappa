@@ -20,6 +20,10 @@ test_that("kappa_quadratic_fiml validates input", {
   expect_error(kappa_quadratic_fiml(list(1, 2)), "matrix or data frame")
   expect_error(kappa_quadratic_fiml(matrix("a", 5, 3)), "must be numeric")
   expect_error(kappa_quadratic_fiml(matrix(1, 5, 1)), "at least two raters")
+  expect_error(
+    kappa_quadratic_fiml(matrix(rnorm(40), 10, 4),
+                         em_options = list(covariance = "ten_hove")),
+    "unsupported em_options\\$covariance")
 
   set.seed(2)
   X <- matrix(rnorm(100), 25, 4)

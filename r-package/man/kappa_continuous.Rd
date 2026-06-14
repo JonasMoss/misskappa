@@ -8,6 +8,7 @@ kappa_continuous(
   x,
   method = c("available", "ipw", "gwet", "fiml"),
   weight = c("quadratic", "linear", "identity", "unweighted", "radical", "ratio"),
+  values = NULL,
   em_options = list()
 )
 }
@@ -23,15 +24,23 @@ kappa_continuous(
 `[min(x), max(x)]` is used to parameterise the kernel. Only
 `"quadratic"` is available with `method = "fiml"`.}
 
+\item{values}{Optional finite numeric score vector used only for
+`method = "fiml"` to define Brennan-Prediger's uniform chance baseline.
+If `NULL`, the continuous uniform baseline on the observed score range is
+used.}
+
 \item{em_options}{Used only when `method = "fiml"`: named list with `tol`,
 `max_iter`, and `covariance`. `covariance = "saturated"` fits the
 unrestricted covariance (default); `"variance_components"` fits
+the compound-symmetry (fixed-rater) covariance model
 \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
 compatibility and ignored.}
 }
 \value{
 A `misskappa_estimate` object carrying named coefficients
-  (`Conger`, `Fleiss`) and the 2x2 asymptotic covariance matrix.
+  (`Conger`, `Fleiss`, `Brennan-Prediger`) and the 3x3 asymptotic
+  covariance matrix for `method = "fiml"`; other continuous methods carry
+  `Conger` and `Fleiss`.
 }
 \description{
 Estimates Conger / Fleiss weighted agreement coefficients for raw
@@ -40,16 +49,13 @@ real-valued ratings under missing data. The MCAR moment routes
 normal-FIML route (`"fiml"`, quadratic kernel only) fits a multivariate-
 normal covariance by EM and is valid under ignorable (MCAR or MAR)
 missingness. The default covariance model is saturated; `em_options =
-list(covariance = "variance_components")` fits the scalar ten Hove
-covariance model. Missing entries are encoded as `NA` (or any non-finite
-value).
-
-Brennan-Prediger is not reported for continuous data; the chance-
-disagreement baseline requires a finite number of categories.
+list(covariance = "variance_components")` fits the compound-symmetry
+(fixed-rater) covariance model. Missing entries are encoded as `NA` (or any
+non-finite value).
 
 For the saturated missing-data routes here, every rater must be observed at
 least once and every rater pair must be jointly observed by at least one
-subject. The variance-component normal-FIML covariance model only requires
+subject. The compound-symmetry normal-FIML covariance model only requires
 a connected rater co-observation graph.
 }
 \keyword{internal}

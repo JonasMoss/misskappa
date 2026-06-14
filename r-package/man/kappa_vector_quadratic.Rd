@@ -52,7 +52,7 @@ numerically strict: it inverts per-pattern covariance blocks and can return a
 numerical error when the fitted covariance is singular or nearly singular
 (for example, a deterministic or non-varying feature within a missingness
 pattern). There is no ridge or rank-aware fallback yet. The scalar
-variance-component covariance model is not applied to vector-valued ratings;
+compound-symmetry covariance model is not applied to vector-valued ratings;
 the corresponding block-structured vector model is a separate follow-up.
 }
 \references{

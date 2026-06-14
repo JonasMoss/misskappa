@@ -2,41 +2,45 @@
 % Please edit documentation in R/kappa_quadratic_fiml.R
 \name{kappa_quadratic_fiml}
 \alias{kappa_quadratic_fiml}
-\title{Quadratic (Conger / Fleiss) kappa under missing data (normal FIML)}
+\title{Quadratic kappa under missing data (normal FIML)}
 \usage{
-kappa_quadratic_fiml(x, em_options = list())
+kappa_quadratic_fiml(x, values = NULL, em_options = list())
 }
 \arguments{
 \item{x}{A subjects-by-raters numeric matrix or data frame; `NA` marks
-missing entries. Rows that are entirely missing are dropped. The Conger
-and Fleiss quadratic kappas are scale-invariant, so no category-score
-vector is required.}
+missing entries. Rows that are entirely missing are dropped.}
+
+\item{values}{Optional finite numeric score vector defining the uniform
+Brennan-Prediger chance baseline. If `NULL`, the continuous uniform
+baseline on the observed score range is used.}
 
 \item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`),
 `max_iter` (default `10000`), and `covariance`. `covariance = "saturated"`
 fits the unrestricted normal FIML model; `"variance_components"` fits the
-scalar ten Hove covariance model \eqn{\Sigma = \psi J + e I} with
-\eqn{\psi \ge 0}. `fd_h` is accepted for backward compatibility and
-ignored because the observed information is analytic. Pass any subset.}
+compound-symmetry (fixed-rater) covariance model
+\eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `fd_h` is accepted for
+backward compatibility and ignored because the observed information is
+analytic. Pass any subset.}
 }
 \value{
-An object of class `misskappa_estimate` carrying the `Conger` and
-  `Fleiss` coefficients and their 2x2 asymptotic covariance. Additional
-  fields: `moments` (the fitted `mu`, `Sigma`, EM `iterations`, and
-  `converged` flag) and `psi` (per-subject influence-function rows).
-  Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
-  `stats::influence`.
+An object of class `misskappa_estimate` carrying the `Conger`,
+  `Fleiss`, and `Brennan-Prediger` coefficients and their 3x3 asymptotic
+  covariance. Additional fields: `moments` (the fitted `mu`, `Sigma`, EM
+  `iterations`, and `converged` flag) and `psi` (per-subject
+  influence-function rows). Methods: `print`, `coef`, `vcov`, `confint`,
+  `as.data.frame`, and `stats::influence`.
 }
 \description{
-Backend for `kappa(estimator = "nt_fiml")`. Estimates the
-quadratically weighted Conger and Fleiss agreement coefficients for
+Backend for `kappa(estimator = "nt_fiml")`. Estimates the quadratically
+weighted Conger, Fleiss, and Brennan-Prediger agreement coefficients for
 continuous (or numerically scored) ratings with missing entries, via a
 multivariate-normal covariance fitted by full-information maximum likelihood
 (the EM algorithm), valid under ignorable (MCAR or MAR) missingness. The
 default covariance model is saturated; `em_options = list(covariance =
-"variance_components")` fits the scalar ten Hove covariance model
-\eqn{\Sigma = \psi J + e I}. The coefficients are smooth functions of the
-fitted mean and covariance, and the standard error is a delta-method
+"variance_components")` fits the compound-symmetry (fixed-rater) covariance
+model \eqn{\Sigma = \psi J + e I}. It treats raters as fixed; it is not ten
+Hove's random-rater MLE-RE / ICC. The coefficients are smooth functions of
+the fitted mean and covariance, and the standard error is a delta-method
 contraction of their gradient with the asymptotic covariance of the fitted
 moments. This is the quadratic-kappa counterpart of [alpha_continuous()] and
 shares its EM, casewise-score, and sandwich machinery.

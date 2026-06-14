@@ -173,8 +173,7 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     const std::string cov = Rcpp::as<std::string>(em_options["covariance"]);
     if (cov == "saturated") {
       opts.covariance = misskappa::NormalCovarianceModel::saturated;
-    } else if (cov == "variance_components" || cov == "variance-components" ||
-               cov == "ten_hove" || cov == "ten-hove") {
+    } else if (cov == "variance_components" || cov == "variance-components") {
       opts.covariance = misskappa::NormalCovarianceModel::variance_components;
     } else {
       Rcpp::stop("Unknown normal-FIML covariance model: " + cov);
@@ -408,14 +407,22 @@ Rcpp::List rcpp_kappa_quadratic(
 // [[Rcpp::export]]
 Rcpp::List rcpp_kappa_quadratic_fiml(
     const Rcpp::NumericMatrix& x,
+    Rcpp::Nullable<Rcpp::NumericVector> values,
     Rcpp::List em_options) {
   Eigen::MatrixXd ratings(x.nrow(), x.ncol());
   for (int i = 0; i < x.nrow(); ++i) {
     for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
   }
 
+  Eigen::VectorXd v(0);
+  if (values.isNotNull()) {
+    Rcpp::NumericVector vv(values);
+    v.resize(vv.size());
+    for (int i = 0; i < vv.size(); ++i) v(i) = vv[i];
+  }
+
   misskappa::EmOptions opts = parse_em_options(em_options);
-  auto r = unwrap(misskappa::estimate_quadratic_normal_fiml(ratings, opts));
+  auto r = unwrap(misskappa::estimate_quadratic_normal_fiml(ratings, v, opts));
   if (!r.converged) {
     Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
   }
