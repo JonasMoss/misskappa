@@ -1,0 +1,21 @@
+
+Estimand-matched: both -> quadratic Conger kappa via conger_q(mu,Sigma)
+S=80, MCAR 40%, B=150; asymp = large-n complete-ish check
+
+           DGP truth R reps       estimator asymp_pct bias_pct     SD   RMSE
+  gauss_normal 0.537 6  139    nt_fiml(sat)       0.4     -0.8 0.0545 0.0545
+  gauss_normal 0.537 6  139 struct(tenHove)       0.3      0.2 0.0534 0.0533
+    gauss_skew 0.538 6  142    nt_fiml(sat)      -0.3     -1.2 0.0667 0.0667
+    gauss_skew 0.538 6  142 struct(tenHove)      -0.2     -0.9 0.0662 0.0662
+ gauss_mixture 0.685 6  139    nt_fiml(sat)       0.3     -1.7 0.0462 0.0474
+ gauss_mixture 0.685 6  139 struct(tenHove)       0.4     -0.9 0.0443 0.0445
+     cat_skill 0.559 5  149    nt_fiml(sat)       0.3     -2.8 0.0713 0.0727
+     cat_skill 0.559 5  149 struct(tenHove)       0.4     -1.7 0.0713 0.0716
+ cat_copula_hi 0.665 6  138    nt_fiml(sat)       0.0     -1.1 0.0462 0.0466
+ cat_copula_hi 0.665 6  138 struct(tenHove)       0.0     -0.1 0.0454 0.0452
+ cat_copula_sk 0.482 6  130    nt_fiml(sat)       0.1     -3.0 0.0631 0.0645
+ cat_copula_sk 0.482 6  130 struct(tenHove)       0.1     -1.1 0.0624 0.0624
+    cat_ds_sev 0.793 6  138    nt_fiml(sat)       0.1     -1.2 0.0407 0.0416
+    cat_ds_sev 0.793 6  138 struct(tenHove)       0.1     -0.5 0.0392 0.0392
+   cat_moss_80 0.798 5  108    nt_fiml(sat)      -1.0     -2.7 0.0631 0.0664
+   cat_moss_80 0.798 5  108 struct(tenHove)      -1.0     -1.7 0.0597 0.0610

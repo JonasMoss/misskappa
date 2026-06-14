@@ -147,6 +147,33 @@ nt_fiml robust/efficient-loses-when-true" story does NOT hold:**
    under 50% missingness: mean_SE up to 2.6× the empirical SD). nt_fiml does **not**
    "win when the model is true" — it modestly loses.
 
+### Estimand-matched smorgasbord (2026-06-14) — `compare_smorgasbord.R`
+
+Fixed the estimand mismatch: BOTH estimators now target the same object — the
+population quadratic Conger kappa via `conger_q(mu, Sigma)`. `struct` = ten Hove
+structured model with raters FIXED (`lmer(y ~ rat + (1|subj))`) → mu_r + compound
+covariance σ²_s J + σ²_sr I → `conger_q`. 8 canonical DGPs reused from studies
+23 & 29 (Gaussian normal/skew/mixture; categorical skill/copula-hi/copula-skew/
+Dawid-Skene/Moss-knowledge), MCAR 40%, S=80, B=150, plus a large-n asymptotic-bias
+column.
+
+Result, robust across all 8 DGPs:
+1. **Same object** — asymptotic bias ~0 for BOTH (−1.0% … +0.4%); the R/(R−1)
+   fixed-vs-random convention is gone.
+2. **Both consistent** for quadratic Conger kappa, struct included — NO genuine
+   inconsistency under any DGP (MCAR). The quadratic functional pools over raters;
+   the structured model recovers the pooled moments (Σ Vᵢ, Σ Cᵢⱼ, Σ dᵢⱼ²).
+3. **struct is uniformly slightly BETTER at finite n** — lower bias (≈ half of
+   nt_fiml's CCC ratio bias), lower SD, lower RMSE in essentially every cell. It's
+   the correctly-restricted submodel; misspecification doesn't bias the functional.
+
+⇒ The "MLE-RE inconsistent / nt_fiml wins when model true" thesis is dead. On the
+quadratic coefficient under MCAR the two agree and the structured one is marginally
+preferable. NOTE the untested axis: study 23's mixture breaks FIML's MAR-consistency
+(conditional covariance depends on the anchor) — that hits the SATURATED nt_fiml too,
+so MAR is the place where a real (and honest) differentiator might live, NOT the loss
+and NOT MCAR quadratic performance.
+
 **Implication.** The honest differentiator for the papers is **loss generality**
 (nt_fiml/our framework does nominal / absolute / vector losses MLE-RE structurally
 cannot), NOT beating MLE-RE on the quadratic coefficient. On quadratic they agree
