@@ -41,13 +41,16 @@
 # Gate a fit on the identifiability of the requested coefficient given `observed`
 # (logical subjects-by-columns, from .pattern_observed). `require = "complete"`
 # enforces complete arity-wise co-observation for the saturated coefficients;
+# `"connected"` enforces a connected pairwise co-observation graph for
+# structured fixed-column covariance models;
 # `"each_subject_2"` is the exchangeable relaxation (each subject has >= 2
 # observed columns). For `arity = 2`, returns the pairwise co-observation count
 # matrix invisibly. Errors with call. = FALSE so the message reads as a
 # user-facing precondition, not an internal trace.
 .check_pattern_identifiable <- function(observed,
                                         unit = c("item", "rater"),
-                                        require = c("complete", "each_subject_2"),
+                                        require = c("complete", "connected",
+                                                    "each_subject_2"),
                                         coefficient = "the coefficient",
                                         arity = 2L) {
   unit <- match.arg(unit)
@@ -87,9 +90,37 @@
     return(invisible(crossprod(obs)))
   }
 
+  N <- crossprod(obs)                 # p-by-p co-observation counts n_jk
+
+  if (require == "connected") {
+    parent <- seq_len(p)
+    find <- function(x) {
+      while (parent[[x]] != x) {
+        parent[[x]] <<- parent[[parent[[x]]]]
+        x <- parent[[x]]
+      }
+      x
+    }
+    unite <- function(a, b) {
+      ra <- find(a); rb <- find(b)
+      if (ra != rb) parent[[rb]] <<- ra
+    }
+    edges <- which(N > 0 & upper.tri(N), arr.ind = TRUE)
+    if (nrow(edges) > 0L) {
+      for (i in seq_len(nrow(edges))) unite(edges[i, 1L], edges[i, 2L])
+    }
+    root <- find(1L)
+    if (any(vapply(seq_len(p), find, integer(1)) != root)) {
+      stop(sprintf(paste0(
+        "the %s co-observation graph is disconnected, so %s is not identified ",
+        "from this missing-data pattern under the structured covariance model."),
+        unit, coefficient), call. = FALSE)
+    }
+    return(invisible(N))
+  }
+
   # Saturated pairwise functional: complete co-observation graph
   # (every n_jk >= 1).
-  N <- crossprod(obs)                 # p-by-p co-observation counts n_jk
   if (arity > 2L) {
     tuples <- t(utils::combn(p, arity))
     counts <- apply(tuples, 1L, function(cols) {

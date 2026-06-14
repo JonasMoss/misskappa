@@ -7,6 +7,7 @@
 
 #include <Eigen/Core>
 #include <cmath>
+#include <numeric>
 #include <vector>
 
 namespace misskappa::detail {
@@ -60,6 +61,60 @@ inline Result<void> require_complete_pair_observation(
         }
       }
       if (!jointly_seen) return misskappa::unexpected(Error::not_identified);
+    }
+  }
+  return {};
+}
+
+inline Result<void> require_connected_observation(
+    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>& mask) {
+  const Eigen::Index n = mask.rows();
+  const Eigen::Index R = mask.cols();
+  if (n < 1 || R < 2) return misskappa::unexpected(Error::invalid_argument);
+
+  for (Eigen::Index j = 0; j < R; ++j) {
+    bool seen = false;
+    for (Eigen::Index i = 0; i < n; ++i) {
+      if (mask(i, j) != 0) {
+        seen = true;
+        break;
+      }
+    }
+    if (!seen) return misskappa::unexpected(Error::not_identified);
+  }
+
+  std::vector<int> parent(static_cast<std::size_t>(R));
+  std::iota(parent.begin(), parent.end(), 0);
+  auto find = [&parent](int x) {
+    while (parent[static_cast<std::size_t>(x)] != x) {
+      parent[static_cast<std::size_t>(x)] =
+          parent[static_cast<std::size_t>(parent[static_cast<std::size_t>(x)])];
+      x = parent[static_cast<std::size_t>(x)];
+    }
+    return x;
+  };
+  auto unite = [&parent, &find](int a, int b) {
+    a = find(a);
+    b = find(b);
+    if (a != b) parent[static_cast<std::size_t>(b)] = a;
+  };
+
+  for (Eigen::Index i = 0; i < n; ++i) {
+    int first = -1;
+    for (Eigen::Index j = 0; j < R; ++j) {
+      if (mask(i, j) == 0) continue;
+      if (first < 0) {
+        first = static_cast<int>(j);
+      } else {
+        unite(first, static_cast<int>(j));
+      }
+    }
+  }
+
+  const int root = find(0);
+  for (Eigen::Index j = 1; j < R; ++j) {
+    if (find(static_cast<int>(j)) != root) {
+      return misskappa::unexpected(Error::not_identified);
     }
   }
   return {};

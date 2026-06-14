@@ -156,6 +156,10 @@
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L), em_options
   )
+  if (.normal_covariance_model(opt) != "saturated") {
+    stop("variance-component covariance is not yet implemented for ",
+         "vector-valued normal-FIML kappa.", call. = FALSE)
+  }
   raw <- rcpp_kappa_vector_quadratic_fiml(X, p, W, opt)
   estimates <- as.numeric(raw$estimates)
   names(estimates) <- c("Conger", "Fleiss")
@@ -194,7 +198,9 @@
 #' numerically strict: it inverts per-pattern covariance blocks and can return a
 #' numerical error when the fitted covariance is singular or nearly singular
 #' (for example, a deterministic or non-varying feature within a missingness
-#' pattern). There is no ridge or rank-aware fallback yet.
+#' pattern). There is no ridge or rank-aware fallback yet. The scalar
+#' variance-component covariance model is not applied to vector-valued ratings;
+#' the corresponding block-structured vector model is a separate follow-up.
 #'
 #' @param x Numeric array with dimensions subjects, raters, features.
 #' @param method `"pairwise"` or `"nt_fiml"`.

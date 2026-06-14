@@ -83,9 +83,13 @@ not here. The port plan with the eight-step roadmap is at
       document whether it is the true variance-component estimator or only the
       weaker compound-symmetry covariance estimator. Repeated-measure/vector
       profiles are the main follow-up requirement: the natural target is a
-      rater-exchangeable variance-component SEM with PSD subject-profile and
+      fixed-rater variance-component SEM with PSD subject-profile and
       residual-profile components, not an unconstrained block average. Alpha
       can reuse the same covariance fit after the quadratic-kappa path is
+      validated. Status 2026-06-14: branch `ten-hove` has the scalar
+      variance-component covariance option for quadratic `kappa()` and
+      continuous `alpha()`; vector-valued ratings explicitly reject that option
+      until the block-structured repeated-measure model is implemented and
       validated.
 - [ ] **Add an alpha experiment suite.**
       Simulate simple complete-data, MCAR, and MAR categorical item batteries;

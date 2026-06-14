@@ -19,6 +19,24 @@ ref_kappa <- function(mu, S) {
     Fleiss = (t1 - t2 - t3) / ((R - 1) * (t2 + t3)))
 }
 
+vc_project <- function(S) {
+  R <- ncol(S)
+  tr <- sum(diag(S))
+  total <- sum(S)
+  contrast <- (tr - total / R) / (R - 1)
+  mean_eig <- total / R
+  if (mean_eig >= contrast) {
+    e <- contrast
+    psi <- (mean_eig - contrast) / R
+  } else {
+    e <- tr / R
+    psi <- 0
+  }
+  out <- matrix(psi, R, R)
+  diag(out) <- diag(out) + e
+  out
+}
+
 test_that("complete-data point matches the MLE-covariance plug-in", {
   X <- make_ratings(400L, 4L, miss = 0, seed = 11L, mu = c(0, 0.4, -0.3, 0.2))
   fit <- kappa_quadratic_fiml(X)
@@ -40,6 +58,48 @@ test_that("complete-data point matches kappa_quadratic(empirical)", {
                tolerance = 1e-8)
   expect_equal(unname(coef(fit)["Fleiss"]), unname(coef(ref)["Fleiss"]),
                tolerance = 1e-8)
+})
+
+test_that("variance-component covariance projects the complete-data covariance", {
+  X <- make_ratings(400L, 4L, miss = 0, seed = 13L, mu = c(0, 0.4, -0.3, 0.2))
+  fit <- kappa_quadratic_fiml(
+    X, em_options = list(covariance = "variance_components")
+  )
+  n <- nrow(X)
+  Smle <- stats::cov(X) * (n - 1) / n
+  Svc <- vc_project(Smle)
+  expect_equal(fit$covariance, "variance_components")
+  expect_equal(fit$moments$Sigma, Svc, tolerance = 1e-8)
+  expect_equal(coef(fit)[c("Conger", "Fleiss")],
+               ref_kappa(colMeans(X), Svc), tolerance = 1e-8)
+  expect_equal(unname(crossprod(fit$psi) / n^2), unname(vcov(fit)),
+               tolerance = 1e-10)
+})
+
+test_that("variance-component kappa allows connected incomplete co-observation", {
+  X <- matrix(c(
+    1.0, 1.1, NA,
+    2.0, 2.1, NA,
+    3.0, 3.2, NA,
+    NA, 1.0, 1.2,
+    NA, 2.0, 2.3,
+    NA, 3.1, 3.4,
+    1.5, NA, NA,
+    NA, NA, 2.6
+  ), ncol = 3, byrow = TRUE)
+
+  expect_error(
+    kappa(X, estimator = "nt_fiml"),
+    "co-observation graph is incomplete"
+  )
+  fit <- kappa(
+    X,
+    estimator = "nt_fiml",
+    em_options = list(covariance = "variance_components")
+  )
+  expect_equal(fit$covariance, "variance_components")
+  expect_true(all(is.finite(coef(fit))))
+  expect_true(all(is.finite(vcov(fit))))
 })
 
 test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
@@ -184,6 +244,13 @@ test_that("vector quadratic validates the full feature metric", {
   expect_error(
     kappa_vector_quadratic(X, W = matrix(c(1, 2, 2, 1), 2L, 2L)),
     "positive semidefinite"
+  )
+  expect_error(
+    kappa_vector_quadratic(
+      X, method = "nt_fiml",
+      em_options = list(covariance = "variance_components")
+    ),
+    "not yet implemented for vector-valued"
   )
 })
 

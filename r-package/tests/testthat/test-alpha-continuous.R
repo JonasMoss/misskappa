@@ -9,6 +9,24 @@ make_data <- function(n, p, rho = 0.4, miss = 0.15, seed = 1L) {
   X
 }
 
+vc_project_alpha <- function(S) {
+  p <- ncol(S)
+  tr <- sum(diag(S))
+  total <- sum(S)
+  contrast <- (tr - total / p) / (p - 1)
+  mean_eig <- total / p
+  if (mean_eig >= contrast) {
+    e <- contrast
+    psi <- (mean_eig - contrast) / p
+  } else {
+    e <- tr / p
+    psi <- 0
+  }
+  out <- matrix(psi, p, p)
+  diag(out) <- diag(out) + e
+  out
+}
+
 test_that("complete-data alpha equals the MLE-covariance plug-in formula", {
   X <- make_data(300L, 5L, miss = 0)
   fit <- alpha_continuous(X)
@@ -17,6 +35,48 @@ test_that("complete-data alpha equals the MLE-covariance plug-in formula", {
   manual <- (p / (p - 1)) * (1 - sum(diag(Smle)) / sum(Smle))
   expect_equal(unname(coef(fit)["alpha"]), manual, tolerance = 1e-8)
   expect_true(fit$moments$converged)
+})
+
+test_that("variance-component covariance projects the complete-data covariance", {
+  X <- make_data(300L, 5L, miss = 0, seed = 11L)
+  fit <- alpha_continuous(
+    X, em_options = list(covariance = "variance_components")
+  )
+  Smle <- stats::cov(X) * (nrow(X) - 1) / nrow(X)
+  Svc <- vc_project_alpha(Smle)
+  p <- ncol(X)
+  manual <- (p / (p - 1)) * (1 - sum(diag(Svc)) / sum(Svc))
+  expect_equal(fit$covariance, "variance_components")
+  expect_equal(fit$moments$Sigma, Svc, tolerance = 1e-8)
+  expect_equal(unname(coef(fit)["alpha"]), manual, tolerance = 1e-8)
+  expect_equal(unname(crossprod(fit$psi) / nrow(X)^2), unname(vcov(fit)),
+               tolerance = 1e-10)
+})
+
+test_that("variance-component alpha allows connected incomplete co-observation", {
+  X <- matrix(c(
+    1.0, 1.1, NA,
+    2.0, 2.1, NA,
+    3.0, 3.2, NA,
+    NA, 1.0, 1.2,
+    NA, 2.0, 2.3,
+    NA, 3.1, 3.4,
+    1.5, NA, NA,
+    NA, NA, 2.6
+  ), ncol = 3, byrow = TRUE)
+
+  expect_error(
+    alpha(X, estimator = "nt_fiml"),
+    "co-observation graph is incomplete"
+  )
+  fit <- alpha(
+    X,
+    estimator = "nt_fiml",
+    em_options = list(covariance = "variance_components")
+  )
+  expect_equal(fit$covariance, "variance_components")
+  expect_true(all(is.finite(coef(fit))))
+  expect_true(all(is.finite(vcov(fit))))
 })
 
 test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {

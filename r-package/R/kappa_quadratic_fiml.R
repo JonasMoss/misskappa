@@ -1,7 +1,7 @@
 # Quadratic (Conger / Fleiss) kappa for continuous ratings under ignorable
-# missingness, via a saturated normal FIML / EM covariance and a delta-method
+# missingness, via a normal FIML / EM covariance and a delta-method
 # standard error. This is the quadratic-kappa counterpart of
-# alpha_continuous(): the two share the saturated-normal EM, the analytic
+# alpha_continuous(): the two share the normal EM, the analytic
 # casewise scores, the observed information, and the sandwich contraction. The
 # only coefficient-specific piece is the gradient .kqf_grad().
 #
@@ -10,6 +10,19 @@
 #
 # Unlike alpha, the quadratic kappas depend on the rater means through
 # t3 = sum_j (mu_j - mubar)^2, so the gradient carries a non-zero mean block.
+
+.normal_covariance_model <- function(em_options) {
+  cov <- em_options$covariance
+  if (is.null(cov)) return("saturated")
+  if (!is.character(cov) || length(cov) != 1L || is.na(cov)) {
+    stop("em_options$covariance must be a single string.", call. = FALSE)
+  }
+  cov <- gsub("-", "_", tolower(trimws(cov)), fixed = TRUE)
+  if (cov %in% c("saturated")) return("saturated")
+  if (cov %in% c("variance_components", "ten_hove")) return("variance_components")
+  stop("unsupported em_options$covariance: ", em_options$covariance,
+       call. = FALSE)
+}
 
 # ---- coefficient gradient ---------------------------------------------------
 
@@ -71,28 +84,32 @@
 #' Backend for `kappa(estimator = "nt_fiml")`. Estimates the
 #' quadratically weighted Conger and Fleiss agreement coefficients for
 #' continuous (or numerically scored) ratings with missing entries, via a
-#' saturated multivariate-normal covariance fitted by full-information maximum
-#' likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
-#' missingness. The coefficients are smooth functions of the fitted mean and
-#' covariance, and the standard error is a delta-method contraction of their
-#' gradient with the asymptotic covariance of the fitted moments. This is the
-#' quadratic-kappa counterpart of [alpha_continuous()] and shares its EM,
-#' casewise-score, and sandwich machinery.
+#' multivariate-normal covariance fitted by full-information maximum likelihood
+#' (the EM algorithm), valid under ignorable (MCAR or MAR) missingness. The
+#' default covariance model is saturated; `em_options = list(covariance =
+#' "variance_components")` fits the scalar ten Hove covariance model
+#' \eqn{\Sigma = \psi J + e I}. The coefficients are smooth functions of the
+#' fitted mean and covariance, and the standard error is a delta-method
+#' contraction of their gradient with the asymptotic covariance of the fitted
+#' moments. This is the quadratic-kappa counterpart of [alpha_continuous()] and
+#' shares its EM, casewise-score, and sandwich machinery.
 #'
 #' This backend is normally reached through [kappa()], which checks that every
-#' rater is observed and every rater pair is jointly observed before dispatch.
-#' Direct callers should enforce the same fixed-rater condition; otherwise the
-#' saturated covariance functional is not identified from the observed
-#' missing-data pattern.
+#' rater is observed and, for the default saturated covariance model, every
+#' rater pair is jointly observed before dispatch. Direct callers should
+#' enforce the same fixed-rater condition; for `covariance =
+#' "variance_components"` this is a connected rater co-observation graph.
 #'
 #' @param x A subjects-by-raters numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped. The Conger
 #'   and Fleiss quadratic kappas are scale-invariant, so no category-score
 #'   vector is required.
-#' @param em_options Named list tuning the EM fit: `tol` (default `1e-8`) and
-#'   `max_iter` (default `10000`). `fd_h` is accepted for backward
-#'   compatibility and ignored because the observed information is analytic.
-#'   Pass any subset.
+#' @param em_options Named list tuning the EM fit: `tol` (default `1e-8`),
+#'   `max_iter` (default `10000`), and `covariance`. `covariance = "saturated"`
+#'   fits the unrestricted normal FIML model; `"variance_components"` fits the
+#'   scalar ten Hove covariance model \eqn{\Sigma = \psi J + e I} with
+#'   \eqn{\psi \ge 0}. `fd_h` is accepted for backward compatibility and
+#'   ignored because the observed information is analytic. Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying the `Conger` and
 #'   `Fleiss` coefficients and their 2x2 asymptotic covariance. Additional
@@ -125,11 +142,18 @@ kappa_quadratic_fiml <- function(x, em_options = list()) {
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L), em_options
   )
+  covariance <- .normal_covariance_model(opt)
 
-  .normal_fiml_from_cpp(
+  fit <- .normal_fiml_from_cpp(
     rcpp_kappa_quadratic_fiml(X, opt),
     estimate_names = c("Conger", "Fleiss"),
-    method = "quadratic-fiml",
+    method = if (covariance == "variance_components") {
+      "quadratic-fiml-variance-components"
+    } else {
+      "quadratic-fiml"
+    },
     weight = "quadratic"
   )
+  fit$covariance <- covariance
+  fit
 }

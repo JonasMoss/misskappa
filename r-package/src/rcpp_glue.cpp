@@ -169,6 +169,17 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     opts.info_rcond = Rcpp::as<double>(em_options["info_rcond"]);
   if (em_options.containsElementNamed("flatten"))
     opts.flatten = Rcpp::as<double>(em_options["flatten"]);
+  if (em_options.containsElementNamed("covariance")) {
+    const std::string cov = Rcpp::as<std::string>(em_options["covariance"]);
+    if (cov == "saturated") {
+      opts.covariance = misskappa::NormalCovarianceModel::saturated;
+    } else if (cov == "variance_components" || cov == "variance-components" ||
+               cov == "ten_hove" || cov == "ten-hove") {
+      opts.covariance = misskappa::NormalCovarianceModel::variance_components;
+    } else {
+      Rcpp::stop("Unknown normal-FIML covariance model: " + cov);
+    }
+  }
   return opts;
 }
 

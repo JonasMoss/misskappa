@@ -151,6 +151,54 @@ Result<RealMat> solve_matrix(const RealMat& a, const RealMat& b) {
   return x;
 }
 
+Result<RealMat> project_variance_components(const RealMat& sigma) {
+  const int p = static_cast<int>(sigma.rows());
+  if (p < 2 || sigma.cols() != p || !sigma.allFinite()) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+  const double trace = sigma.diagonal().sum();
+  const double total = sigma.sum();
+  const double contrast_eigen =
+      (trace - total / static_cast<double>(p)) / static_cast<double>(p - 1);
+  const double mean_eigen = total / static_cast<double>(p);
+
+  double e = 0.0;
+  double psi = 0.0;
+  if (mean_eigen >= contrast_eigen) {
+    e = contrast_eigen;
+    psi = (mean_eigen - contrast_eigen) / static_cast<double>(p);
+  } else {
+    e = trace / static_cast<double>(p);
+    psi = 0.0;
+  }
+
+  const double lambda_mean = e + static_cast<double>(p) * psi;
+  constexpr double min_eigen = 1e-12;
+  if (!std::isfinite(e) || !std::isfinite(psi) || !std::isfinite(lambda_mean) ||
+      e <= min_eigen || lambda_mean <= min_eigen || psi < -1e-12) {
+    return misskappa::unexpected(Error::numerical_error);
+  }
+
+  RealMat out = RealMat::Constant(p, p, std::max(0.0, psi));
+  out.diagonal().array() += e;
+  return out;
+}
+
+RealMat variance_component_jacobian(int p) {
+  const int q = p + vech_size(p);
+  RealMat A = RealMat::Zero(q, p + 2);
+  A.block(0, 0, p, p).setIdentity();
+  int k = 0;
+  for (int j = 0; j < p; ++j) {
+    for (int i = j; i < p; ++i) {
+      A(p + k, p) = 1.0;       // d Sigma_ij / d psi
+      if (i == j) A(p + k, p + 1) = 1.0;  // d Sigma_jj / d e
+      ++k;
+    }
+  }
+  return A;
+}
+
 Result<std::vector<Pattern>> build_patterns(const RealMat& x) {
   const int n = static_cast<int>(x.rows());
   const int p = static_cast<int>(x.cols());
@@ -204,7 +252,9 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
   if (n < 1 || p < 2) return misskappa::unexpected(Error::invalid_argument);
 
   const auto mask = detail::finite_mask(out.x);
-  auto identified = detail::require_complete_pair_observation(mask);
+  auto identified = (opts.covariance == NormalCovarianceModel::variance_components)
+      ? detail::require_connected_observation(mask)
+      : detail::require_complete_pair_observation(mask);
   if (!identified) return misskappa::unexpected(identified.error());
 
   auto patterns = build_patterns(out.x);
@@ -299,6 +349,11 @@ Result<NormalEmFit> fit_saturated_normal(RealMatView ratings, EmOptions opts) {
     RealVec mu_new = t1 / static_cast<double>(n);
     RealMat sigma_new = t2 / static_cast<double>(n) - mu_new * mu_new.transpose();
     sigma_new = 0.5 * (sigma_new + sigma_new.transpose());
+    if (opts.covariance == NormalCovarianceModel::variance_components) {
+      auto projected = project_variance_components(sigma_new);
+      if (!projected) return misskappa::unexpected(projected.error());
+      sigma_new = std::move(*projected);
+    }
     const double delta = std::max(
         (mu_new - out.mu).cwiseAbs().maxCoeff(),
         (sigma_new - out.sigma).cwiseAbs().maxCoeff());
@@ -454,8 +509,18 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   if (!scores) return misskappa::unexpected(scores.error());
   auto H = observed_information(em->mu, em->sigma, em->patterns, vech_pos, n, p);
   if (!H) return misskappa::unexpected(H.error());
-  auto solved = solve_matrix(*H, grad.gradient.transpose());
-  if (!solved) return misskappa::unexpected(solved.error());
+  Result<RealMat> solved = misskappa::unexpected(Error::numerical_error);
+  if (opts.covariance == NormalCovarianceModel::variance_components) {
+    const RealMat A = variance_component_jacobian(p);
+    const RealMat H_reduced = A.transpose() * (*H) * A;
+    const RealMat G_reduced_t = (grad.gradient * A).transpose();
+    auto reduced = solve_matrix(H_reduced, G_reduced_t);
+    if (!reduced) return misskappa::unexpected(reduced.error());
+    solved = RealMat(A * (*reduced));
+  } else {
+    solved = solve_matrix(*H, grad.gradient.transpose());
+    if (!solved) return misskappa::unexpected(solved.error());
+  }
 
   RealMat psi = (*scores) * (*solved);
   RealMat vcov = (psi.transpose() * psi) / std::pow(static_cast<double>(n), 2);
@@ -656,6 +721,9 @@ Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
 
 Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(
     RealMatView ratings, int features, RealMatView W, EmOptions opts) {
+  if (opts.covariance != NormalCovarianceModel::saturated) {
+    return misskappa::unexpected(Error::invalid_argument);
+  }
   const int cols = static_cast<int>(ratings.cols());
   if (features < 1 || cols < 1 || cols % features != 0) {
     return misskappa::unexpected(Error::dimension_mismatch);

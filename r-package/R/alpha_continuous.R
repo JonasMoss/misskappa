@@ -1,5 +1,5 @@
 # Coefficient alpha for continuous items under ignorable missingness, via a
-# saturated normal FIML / EM covariance and a sandwich delta-method standard
+# normal FIML / EM covariance and a sandwich delta-method standard
 # error. The estimator itself lives in the C++ backend; the R code keeps the
 # user-facing validation and object shape.
 #
@@ -192,10 +192,13 @@
 #' @description
 #' Backend for `alpha(estimator = "nt_fiml")`. Estimates Cronbach's
 #' coefficient alpha for a battery of continuous items with missing entries,
-#' via a saturated multivariate-normal covariance fitted by full-information
-#' maximum likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
-#' missingness. The standard error is the sandwich delta-method contraction of
-#' the alpha gradient with the asymptotic covariance of the fitted moments.
+#' via a multivariate-normal covariance fitted by full-information maximum
+#' likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
+#' missingness. The default covariance model is saturated; `em_options =
+#' list(covariance = "variance_components")` fits the scalar ten Hove
+#' covariance model \eqn{\Sigma = \psi J + e I}. The standard error is the
+#' sandwich delta-method contraction of the alpha gradient with the asymptotic
+#' covariance of the fitted moments.
 #'
 #' The fit and its sandwich covariance reproduce magmaan's
 #' `estimate_saturated_em_moments()` and lavaan's saturated estimator; the
@@ -203,17 +206,20 @@
 #' case bootstrap.
 #'
 #' This backend is normally reached through [alpha()], which checks that every
-#' item is observed and every item pair is jointly observed before dispatch.
-#' Direct callers should enforce the same fixed-item condition; otherwise the
-#' saturated covariance functional is not identified from the observed
-#' missing-data pattern.
+#' item is observed and, for the default saturated covariance model, every item
+#' pair is jointly observed before dispatch. Direct callers should enforce the
+#' same fixed-item condition; for `covariance = "variance_components"` this is
+#' a connected item co-observation graph.
 #'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` marks
 #'   missing entries. Rows that are entirely missing are dropped.
 #' @param em_options Named list tuning the EM fit: `tol` (convergence
-#'   tolerance on the moments, default `1e-8`) and `max_iter` (default
-#'   `10000`). `fd_h` is accepted for backward compatibility and ignored
-#'   because the observed information is analytic. Pass any subset.
+#'   tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
+#'   and `covariance`. `covariance = "saturated"` fits the unrestricted
+#'   normal covariance (default); `"variance_components"` fits
+#'   \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
+#'   compatibility and ignored because the observed information is analytic.
+#'   Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance. Additional fields: `moments`
@@ -250,11 +256,18 @@ alpha_continuous <- function(x, em_options = list()) {
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L), em_options
   )
+  covariance <- .normal_covariance_model(opt)
 
-  .normal_fiml_from_cpp(
+  fit <- .normal_fiml_from_cpp(
     rcpp_alpha_normal_fiml(X, opt),
     estimate_names = "alpha",
-    method = "alpha-continuous-fiml",
+    method = if (covariance == "variance_components") {
+      "alpha-continuous-fiml-variance-components"
+    } else {
+      "alpha-continuous-fiml"
+    },
     weight = "score"
   )
+  fit$covariance <- covariance
+  fit
 }

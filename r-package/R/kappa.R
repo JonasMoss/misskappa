@@ -99,10 +99,11 @@
 #' to `values` before estimation.
 #'
 #' All three estimators target fixed-item coefficient alpha. With missing
-#' entries, every item must be observed at least once and every item pair must
-#' be jointly observed by at least one subject. If that complete pairwise
-#' co-observation condition fails, alpha is not identified from the observed
-#' missing-data pattern and the fit errors before running the estimator.
+#' entries, every item must be observed at least once. The pairwise,
+#' categorical-FIML, and default saturated normal-FIML estimators also require
+#' every item pair to be jointly observed by at least one subject. The
+#' structured normal-FIML variance-component covariance model only requires a
+#' connected item co-observation graph.
 #'
 #' @param x A subjects-by-items numeric matrix or data frame; `NA` and other
 #'   non-finite values indicate missing entries. For `estimator = "cat_fiml"`,
@@ -112,8 +113,11 @@
 #'   When supplied, its length must equal the number of unique finite entries
 #'   in `x`.
 #' @param em_options Named list tuning the EM fit for the likelihood
-#'   estimators. For `"nt_fiml"`: `tol`, `max_iter`; `fd_h` is accepted for
-#'   backward compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
+#'   estimators. For `"nt_fiml"`: `tol`, `max_iter`, and `covariance`.
+#'   `covariance = "saturated"` fits the unrestricted normal covariance
+#'   (default); `"variance_components"` fits the scalar ten Hove covariance
+#'   model \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
+#'   compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
 #'   `prune_tol`, `start_alpha`, `info_rcond` (the relative
 #'   eigenvalue cutoff used when inverting Louis' observed information), and
 #'   `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
@@ -155,8 +159,16 @@ alpha <- function(x,
                   values = NULL,
                   em_options = list()) {
   estimator <- match.arg(estimator)
+  req <- "complete"
+  coef_label <- "coefficient alpha"
+  if (estimator == "nt_fiml" &&
+      .normal_covariance_model(em_options) == "variance_components") {
+    req <- "connected"
+    coef_label <- "coefficient alpha under the variance-component covariance model"
+  }
   .check_pattern_identifiable(.pattern_observed(x), unit = "item",
-                              coefficient = "coefficient alpha")
+                              require = req,
+                              coefficient = coef_label)
 
   if (estimator == "pairwise") {
     X <- .alpha_score_matrix(x, values)
@@ -490,10 +502,21 @@ kappa <- function(x,
   if (weight == "quadratic" || g == 2L) {
     ## Every public scalar g = 2 path surfaces a fixed-rater coefficient
     ## (Conger, and Brennan-Prediger for the raw estimators), so the saturated
-    ## functional needs a complete rater co-observation graph.
+    ## functional needs a complete rater co-observation graph. The scalar
+    ## ten Hove variance-component normal-FIML route only needs a connected
+    ## co-observation graph; the reduced information check in C++ remains the
+    ## final guard.
+    req <- "complete"
+    coef_label <- "Conger's kappa (and Brennan-Prediger)"
+    if (estimator == "nt_fiml" &&
+        .normal_covariance_model(em_options) == "variance_components") {
+      req <- "connected"
+      coef_label <- "Conger's kappa under the variance-component covariance model"
+    }
     .check_pattern_identifiable(
       .pattern_observed(x), unit = "rater",
-      coefficient = "Conger's kappa (and Brennan-Prediger)",
+      require = req,
+      coefficient = coef_label,
       arity = 2L)
     return(.kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
                             em_options))
@@ -610,6 +633,9 @@ print.misskappa_estimate <- function(x, digits = 4, level = 0.95,
                                      transform = c("none", "fisher"), ...) {
   transform <- match.arg(transform)
   hdr <- sprintf("misskappa: estimator=%s, weight=%s", x$method, x$weight)
+  if (!is.null(x$covariance)) {
+    hdr <- sprintf("%s, covariance=%s", hdr, x$covariance)
+  }
   if (!is.null(x$g) && x$g > 2L) hdr <- sprintf("%s, g=%d", hdr, x$g)
   cat(hdr, "\n", sep = "")
   se <- sqrt(diag(x$vcov))
@@ -971,16 +997,20 @@ kappa_counts <- function(x,
 #' Estimates Conger / Fleiss weighted agreement coefficients for raw
 #' real-valued ratings under missing data. The MCAR moment routes
 #' (`"available"`, `"ipw"`, `"gwet"`) cover any continuous loss kernel; the
-#' normal-FIML route (`"fiml"`, quadratic kernel only) fits a saturated
-#' multivariate-normal covariance by EM and is valid under ignorable (MCAR or
-#' MAR) missingness. Missing entries are encoded as `NA` (or any non-finite
+#' normal-FIML route (`"fiml"`, quadratic kernel only) fits a multivariate-
+#' normal covariance by EM and is valid under ignorable (MCAR or MAR)
+#' missingness. The default covariance model is saturated; `em_options =
+#' list(covariance = "variance_components")` fits the scalar ten Hove
+#' covariance model. Missing entries are encoded as `NA` (or any non-finite
 #' value).
 #'
 #' Brennan-Prediger is not reported for continuous data; the chance-
 #' disagreement baseline requires a finite number of categories.
 #'
-#' For all missing-data routes here, every rater must be observed at least once
-#' and every rater pair must be jointly observed by at least one subject.
+#' For the saturated missing-data routes here, every rater must be observed at
+#' least once and every rater pair must be jointly observed by at least one
+#' subject. The variance-component normal-FIML covariance model only requires
+#' a connected rater co-observation graph.
 #'
 #' @param x A subjects-by-raters numeric matrix.
 #' @param method One of `"available"`, `"ipw"`, `"gwet"`, or `"fiml"`.
@@ -990,8 +1020,11 @@ kappa_counts <- function(x,
 #'   `"linear"`, `"quadratic"`, `"radical"`, or `"ratio"`. The data range
 #'   `[min(x), max(x)]` is used to parameterise the kernel. Only
 #'   `"quadratic"` is available with `method = "fiml"`.
-#' @param em_options Used only when `method = "fiml"`: named list with `tol`
-#'   and `max_iter`. `fd_h` is accepted for backward compatibility and ignored.
+#' @param em_options Used only when `method = "fiml"`: named list with `tol`,
+#'   `max_iter`, and `covariance`. `covariance = "saturated"` fits the
+#'   unrestricted covariance (default); `"variance_components"` fits
+#'   \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
+#'   compatibility and ignored.
 #'
 #' @return A `misskappa_estimate` object carrying named coefficients
 #'   (`Conger`, `Fleiss`) and the 2x2 asymptotic covariance matrix.

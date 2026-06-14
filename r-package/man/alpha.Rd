@@ -23,8 +23,11 @@ When supplied, its length must equal the number of unique finite entries
 in `x`.}
 
 \item{em_options}{Named list tuning the EM fit for the likelihood
-estimators. For `"nt_fiml"`: `tol`, `max_iter`; `fd_h` is accepted for
-backward compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
+estimators. For `"nt_fiml"`: `tol`, `max_iter`, and `covariance`.
+`covariance = "saturated"` fits the unrestricted normal covariance
+(default); `"variance_components"` fits the scalar ten Hove covariance
+model \eqn{\Sigma = \psi J + e I}. `fd_h` is accepted for backward
+compatibility and ignored. For `"cat_fiml"`: `tol`, `max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
 `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
@@ -64,10 +67,11 @@ category codes with `values`; the observed categories are sorted and mapped
 to `values` before estimation.
 
 All three estimators target fixed-item coefficient alpha. With missing
-entries, every item must be observed at least once and every item pair must
-be jointly observed by at least one subject. If that complete pairwise
-co-observation condition fails, alpha is not identified from the observed
-missing-data pattern and the fit errors before running the estimator.
+entries, every item must be observed at least once. The pairwise,
+categorical-FIML, and default saturated normal-FIML estimators also require
+every item pair to be jointly observed by at least one subject. The
+structured normal-FIML variance-component covariance model only requires a
+connected item co-observation graph.
 }
 \examples{
 # Continuous item battery: the textual subscale of the Holzinger-Swineford

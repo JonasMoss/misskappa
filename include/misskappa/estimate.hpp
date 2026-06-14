@@ -15,6 +15,11 @@ enum class EmAcceleration {
   squarem,
 };
 
+enum class NormalCovarianceModel {
+  saturated,
+  variance_components,
+};
+
 struct EmOptions {
   int max_iter = 10000;
   double tol = 1e-8;
@@ -35,6 +40,11 @@ struct EmOptions {
   // this knob yet; calibration showed stable point estimates but support/
   // pseudo-inverse policy movement in the reported SEs.
   EmAcceleration acceleration = EmAcceleration::none;
+  // Normal-theory FIML covariance model. `saturated` is the existing
+  // unrestricted mean/covariance route. `variance_components` is the scalar
+  // ten Hove / fixed-rater random-subject model Sigma = psi * J + e * I with
+  // psi >= 0, e > 0, fitted by the constrained EM M-step.
+  NormalCovarianceModel covariance = NormalCovarianceModel::saturated;
 };
 
 struct GwiseOptions {
@@ -145,10 +155,12 @@ Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::Cont
 Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
 Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
 
-// Saturated normal-theory FIML estimators for smooth functions of the fitted
-// mean and covariance. Inputs are real-valued with non-finite entries treated
-// as missing. Returned influence rows correspond to rows with at least one
-// observed entry; all-empty rows are dropped, matching the R-level convention.
+// Normal-theory FIML estimators for smooth functions of the fitted mean and
+// covariance. The default covariance model is saturated; EmOptions may select
+// the scalar ten Hove variance-component covariance model. Inputs are
+// real-valued with non-finite entries treated as missing. Returned influence
+// rows correspond to rows with at least one observed entry; all-empty rows are
+// dropped, matching the R-level convention.
 Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
     RealMatView ratings, EmOptions opts);
 Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(

@@ -12,10 +12,12 @@ missing entries. Rows that are entirely missing are dropped. The Conger
 and Fleiss quadratic kappas are scale-invariant, so no category-score
 vector is required.}
 
-\item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`) and
-`max_iter` (default `10000`). `fd_h` is accepted for backward
-compatibility and ignored because the observed information is analytic.
-Pass any subset.}
+\item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`),
+`max_iter` (default `10000`), and `covariance`. `covariance = "saturated"`
+fits the unrestricted normal FIML model; `"variance_components"` fits the
+scalar ten Hove covariance model \eqn{\Sigma = \psi J + e I} with
+\eqn{\psi \ge 0}. `fd_h` is accepted for backward compatibility and
+ignored because the observed information is analytic. Pass any subset.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the `Conger` and
@@ -29,18 +31,20 @@ An object of class `misskappa_estimate` carrying the `Conger` and
 Backend for `kappa(estimator = "nt_fiml")`. Estimates the
 quadratically weighted Conger and Fleiss agreement coefficients for
 continuous (or numerically scored) ratings with missing entries, via a
-saturated multivariate-normal covariance fitted by full-information maximum
-likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
-missingness. The coefficients are smooth functions of the fitted mean and
-covariance, and the standard error is a delta-method contraction of their
-gradient with the asymptotic covariance of the fitted moments. This is the
-quadratic-kappa counterpart of [alpha_continuous()] and shares its EM,
-casewise-score, and sandwich machinery.
+multivariate-normal covariance fitted by full-information maximum likelihood
+(the EM algorithm), valid under ignorable (MCAR or MAR) missingness. The
+default covariance model is saturated; `em_options = list(covariance =
+"variance_components")` fits the scalar ten Hove covariance model
+\eqn{\Sigma = \psi J + e I}. The coefficients are smooth functions of the
+fitted mean and covariance, and the standard error is a delta-method
+contraction of their gradient with the asymptotic covariance of the fitted
+moments. This is the quadratic-kappa counterpart of [alpha_continuous()] and
+shares its EM, casewise-score, and sandwich machinery.
 
 This backend is normally reached through [kappa()], which checks that every
-rater is observed and every rater pair is jointly observed before dispatch.
-Direct callers should enforce the same fixed-rater condition; otherwise the
-saturated covariance functional is not identified from the observed
-missing-data pattern.
+rater is observed and, for the default saturated covariance model, every
+rater pair is jointly observed before dispatch. Direct callers should
+enforce the same fixed-rater condition; for `covariance =
+"variance_components"` this is a connected rater co-observation graph.
 }
 \keyword{internal}
