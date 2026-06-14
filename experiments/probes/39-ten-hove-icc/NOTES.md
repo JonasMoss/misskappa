@@ -61,6 +61,54 @@ to replace R `optim`/`numDeriv`).
   stronger oracle anyway).
 - A real coverage sim (vs nominal 95%) would quantify the boundary optimism;
   out of scope for "add SEs".
+
+---
+
+## Decision (2026-06-14): scope, packaging, SEs
+
+**No C++, no core changes.** MLE-RE is a smooth 3-param profile likelihood; R
+`optim` on the probe-39 Woodbury kernel is sufficient. It is sim-only and *not
+recommended*, so it is NOT exported and NOT compiled into core — confirmed no
+NLOPT in the package, and a 3-param profile needs none. **magmaan / misskappa
+core stay untouched.** If it ever needs reuse across studies, expose as an
+unexported R internal (cf. `joint_vcov`), never a `kappa()` estimator.
+
+**Home.** Online appendix of the **quadratic/Conger paper**, next to the Gwet
+comparison. Claim scoped: MLE-RE is the literature's estimator for
+*continuous/quadratic* agreement from incomplete raw data *with inference*
+(categorical lit = De Raadt / Warrens / Gwet, point-estimate only).
+
+**Story = structured (MLE-RE) vs saturated (nt_fiml `fit_saturated_normal`),
+shown two-sided so it's not a strawman:**
+- *model true* (additive Gaussian, homoscedastic, parallel raters): both
+  consistent; MLE-RE likely **more efficient** (correctly-specified nested
+  3-param submodel of the saturated cov). Own it.
+- *model false* (heteroscedastic / congeneric / genuinely categorical): MLE-RE's
+  additive ICC ≠ true quadratic kappa → **inconsistent**; nt_fiml robust. Same
+  moral as study 29's structured-cat_fiml bias, roles flipped.
+- Recommendation rests on "parallel/homoscedastic/Gaussian raters implausible for
+  real rating data," not on MLE-RE being bad.
+
+**SEs — robust ARE needed.**
+- Point estimate is normality-free (quasi-likelihood: consistent under correct
+  2nd moments + MAR). The model-based delta SE built above (inverse profile
+  Hessian) is correct ONLY under Gaussianity (validated == parametric bootstrap
+  *on the Gaussian DGP*).
+- ten Hove's *recommended* interval = merDeriv **robust (sandwich) acov** → delta.
+  To quote their method honestly the appendix must use the robust SE, not ours.
+- Correct robust SE for a CROSSED design is a **multiway (subject × rater)
+  cluster-robust** sandwich (Cameron–Gelbach–Miller) / merDeriv casewise scores —
+  NOT one-way (subjects share raters ⇒ not independent).
+- Load-bearing in exactly one cell: **non-normal DGP, correct 2nd moments** →
+  estimate good, naive CI under-covers, sandwich restores calibration (= the
+  robustness lesson). Elsewhere (model true) model-based ≈ robust; (model false)
+  bias dominates and SE choice is second-order.
+- Hard limit to flag: σ²_r — hence **ICC(A,1)** — is governed by R (few rater
+  clusters); no SE gives nominal ICC(A,1) coverage at small R (Fig. 7 + our
+  boundary cell). ICC(C,1) is fine.
+- Sim ground truth is Monte-Carlo empirical coverage regardless; robust SE only
+  matters for MLE-RE's *reported* interval. At build time: call merDeriv (their
+  tool) or hand-roll the two-way sandwich on the kernel.
 - Decide estimand surface: expose ICC(A,1)/ICC(C,1) (single) and the `,k`
   averaged variants (Table 1) — all are functions of the same three components.
 - Positioning (for the papers): MLE-RE is ICC-only and MCAR/ignorable-by-design;
