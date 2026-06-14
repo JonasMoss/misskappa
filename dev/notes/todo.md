@@ -68,6 +68,25 @@ not here. The port plan with the eight-step roadmap is at
       grids, and only then consider approximate or sparse EM variants
       (active-support EM, low-rank/composite-likelihood starts, or other
       approximations) as a separate follow-up.
+- [ ] **Ten Hove / variance-component SEM route for quadratic agreement.**
+      Decision 2026-06-14: start with the variance-component SEM target, not
+      the looser unconstrained exchangeable covariance projection. The
+      variance-component model is the stronger assumption: it imposes the
+      latent random-effect interpretation and nonnegative/PSD component
+      constraints, while exchangeability only constrains the marginal
+      covariance pattern. Treat `magmaan` as an external/off-limits validation
+      oracle for this repo: the misskappa work should not edit or depend on
+      that sibling package. Use `experiments/probes/39-ten-hove-icc/` as the
+      validation seed: lmer/SEM point-estimate parity, robust-vs-naive SE
+      checks, estimand-matched comparison to saturated `nt_fiml`, and the MAR
+      rater-camps failure mode. If a misskappa shortcut is added, name and
+      document whether it is the true variance-component estimator or only the
+      weaker compound-symmetry covariance estimator. Repeated-measure/vector
+      profiles are the main follow-up requirement: the natural target is a
+      rater-exchangeable variance-component SEM with PSD subject-profile and
+      residual-profile components, not an unconstrained block average. Alpha
+      can reuse the same covariance fit after the quadratic-kappa path is
+      validated.
 - [ ] **Add an alpha experiment suite.**
       Simulate simple complete-data, MCAR, and MAR categorical item batteries;
       compare complete-data alpha, pairwise/available covariance alpha, and
