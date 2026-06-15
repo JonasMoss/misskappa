@@ -24,9 +24,10 @@ missing entries.}
 \item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
 `"nt_fiml"`, or `"nt_fiml_cs"` (the `_cs` names are the compound-symmetry
 covariance variants of `"pairwise"` and `"nt_fiml"`).
-Vector-valued ratings support `"pairwise"` and `"ipw"` only; continuous
-g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
-`"ipw"` only.}
+Vector-valued ratings support `"pairwise"` and `"ipw"` (component-separable)
+and, with a full feature metric `W`, `"pairwise"`, `"nt_fiml"`, and
+`"nt_fiml_cs"` (full-`W` squared loss); continuous g-wise kernels
+(`weight = "linear"`, `g > 2`) support `"pairwise"` and `"ipw"` only.}
 
 \item{weight}{Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
 default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"pairwise_cs"` /
@@ -63,8 +64,11 @@ by the estimator name). `covariance` and `mean` are deprecated here (use
 Pass any subset.}
 
 \item{...}{Mode-specific extras: `feature_weights` and `loss` (e.g.
-`"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the
-number of chance tuples enumerated) for `g > 2`.}
+`"rms"`) for component-separable vector-valued ratings; `W`, a full
+features-by-features symmetric positive-semidefinite feature metric, for
+the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
+`"nt_fiml_cs"`, defaulting to the identity); and `max_chance_tuples` (cap on
+the number of chance tuples enumerated) for `g > 2`.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the named
@@ -107,9 +111,14 @@ integer codes with `values`) and require `weight = "quadratic"`.
 Two generalizations are reached through the same call. Set `g > 2` for the
 Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
 (distinct rater combinations) and Fleiss-type coefficients. Pass a
-subjects-by-raters-by-features array to score vector-valued ratings with a
-component-separable loss. See the arguments for the estimator / weight
-combinations supported in each mode.
+subjects-by-raters-by-features array to score vector-valued ratings. With
+`"pairwise"` or `"ipw"` and no feature metric the loss is component-separable
+(diagonal feature weights via `feature_weights` / `loss`). Pass a full
+feature metric `W` (or use `"nt_fiml"` / `"nt_fiml_cs"`) for the squared
+vector loss `(x - y)' W (x - y)`: `"pairwise"` is the moment estimator and
+`"nt_fiml"` / `"nt_fiml_cs"` the saturated / block compound-symmetry
+normal-FIML (`Sigma = J_R \%x\% Psi + I_R \%x\% E`). See the arguments for the
+estimator / weight combinations supported in each mode.
 
 For scalar fixed-rater coefficients with missing entries, the observed-data
 pattern must identify the requested functional. For ordinary pairwise kappa
@@ -153,6 +162,11 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 # four expert observers classifies crackles at six chest sites, so a rating
 # is a six-vector; the default Hamming loss counts disagreeing sites.
 kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
+
+# Full feature-metric quadratic vector agreement under the block
+# compound-symmetry normal FIML, with a feature metric W over the six sites.
+sites <- dat.vanbelle2019[, 1:4, ]
+kappa(sites, estimator = "nt_fiml_cs", W = diag(dim(sites)[3]))
 
 }
 \references{

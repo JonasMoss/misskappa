@@ -259,6 +259,35 @@ test_that("vector quadratic block compound symmetry fits and reduces to scalar a
   expect_equal(unname(vcov(vec1)), unname(vcov(scl1)), tolerance = 1e-9)
 })
 
+test_that("kappa() exposes the full-W vector estimators on the array surface", {
+  set.seed(44L)
+  arr <- array(rnorm(150L * 4L * 2L), dim = c(150L, 4L, 2L))
+  arr[, 2L, ] <- arr[, 2L, ] + 0.3
+  W <- matrix(c(1, 0.3, 0.3, 1.4), 2L, 2L)
+
+  # public array dispatch matches the internal full-W backend
+  for (est in c("nt_fiml", "nt_fiml_cs")) {
+    pub <- kappa(arr, estimator = est, W = W)
+    ref <- kappa_vector_quadratic(arr, method = est, W = W)
+    expect_equal(pub$method, est)
+    expect_equal(coef(pub), coef(ref))
+    expect_equal(names(coef(pub)), c("Conger", "Fleiss", "Brennan-Prediger"))
+  }
+  pub_pair <- kappa(arr, estimator = "pairwise", W = W)
+  expect_equal(coef(pub_pair),
+               coef(kappa_vector_quadratic(arr, method = "pairwise", W = W)))
+
+  # no W -> component-separable path is unchanged (diagonal weights, 2 coefs)
+  comp <- kappa(arr, estimator = "pairwise")
+  expect_equal(names(coef(comp)), c("Conger", "Fleiss"))
+
+  # guards
+  expect_error(kappa(arr, estimator = "ipw", W = W), "not supported")
+  expect_error(kappa(arr, estimator = "pairwise_cs"), "not available")
+  expect_error(kappa(arr, estimator = "nt_fiml_cs", W = W, weight = "linear"),
+               "quadratic")
+})
+
 test_that("vector quadratic diagonal W matches component-separable squared loss", {
   X <- array(c(
     0, 1,  0, 1,  1, 1,

@@ -167,5 +167,9 @@ test_that("kappa() detects 3-D arrays as vector-valued ratings", {
   expect_equal(unname(fit_rms$estimates), unname(direct_rms$estimates))
 
   expect_error(kappa(arr, estimator = "cat_fiml"), "pairwise")
-  expect_error(kappa(arr, estimator = "nt_fiml"), "pairwise")
+  # nt_fiml / nt_fiml_cs are now supported on arrays (full-W quadratic FIML,
+  # default identity metric); they return Conger / Fleiss / Brennan-Prediger
+  fit_ml <- kappa(arr, estimator = "nt_fiml")
+  expect_equal(names(coef(fit_ml)), c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_equal(fit_ml$method, "nt_fiml")
 })

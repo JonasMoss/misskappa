@@ -431,9 +431,14 @@ estimate_kappa_fiml_multi <- function(x,
 #' Two generalizations are reached through the same call. Set `g > 2` for the
 #' Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
 #' (distinct rater combinations) and Fleiss-type coefficients. Pass a
-#' subjects-by-raters-by-features array to score vector-valued ratings with a
-#' component-separable loss. See the arguments for the estimator / weight
-#' combinations supported in each mode.
+#' subjects-by-raters-by-features array to score vector-valued ratings. With
+#' `"pairwise"` or `"ipw"` and no feature metric the loss is component-separable
+#' (diagonal feature weights via `feature_weights` / `loss`). Pass a full
+#' feature metric `W` (or use `"nt_fiml"` / `"nt_fiml_cs"`) for the squared
+#' vector loss `(x - y)' W (x - y)`: `"pairwise"` is the moment estimator and
+#' `"nt_fiml"` / `"nt_fiml_cs"` the saturated / block compound-symmetry
+#' normal-FIML (`Sigma = J_R \%x\% Psi + I_R \%x\% E`). See the arguments for the
+#' estimator / weight combinations supported in each mode.
 #'
 #' For scalar fixed-rater coefficients with missing entries, the observed-data
 #' pattern must identify the requested functional. For ordinary pairwise kappa
@@ -451,9 +456,10 @@ estimate_kappa_fiml_multi <- function(x,
 #' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
 #'   `"nt_fiml"`, or `"nt_fiml_cs"` (the `_cs` names are the compound-symmetry
 #'   covariance variants of `"pairwise"` and `"nt_fiml"`).
-#'   Vector-valued ratings support `"pairwise"` and `"ipw"` only; continuous
-#'   g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
-#'   `"ipw"` only.
+#'   Vector-valued ratings support `"pairwise"` and `"ipw"` (component-separable)
+#'   and, with a full feature metric `W`, `"pairwise"`, `"nt_fiml"`, and
+#'   `"nt_fiml_cs"` (full-`W` squared loss); continuous g-wise kernels
+#'   (`weight = "linear"`, `g > 2`) support `"pairwise"` and `"ipw"` only.
 #' @param weight Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
 #'   default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"pairwise_cs"` /
 #'   `"nt_fiml"` / `"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
@@ -485,8 +491,11 @@ estimate_kappa_fiml_multi <- function(x,
 #'   `estimator = "nt_fiml_cs"`; the surface is mean-free) and warn if supplied.
 #'   Pass any subset.
 #' @param ... Mode-specific extras: `feature_weights` and `loss` (e.g.
-#'   `"rms"`) for vector-valued ratings, and `max_chance_tuples` (cap on the
-#'   number of chance tuples enumerated) for `g > 2`.
+#'   `"rms"`) for component-separable vector-valued ratings; `W`, a full
+#'   features-by-features symmetric positive-semidefinite feature metric, for
+#'   the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
+#'   `"nt_fiml_cs"`, defaulting to the identity); and `max_chance_tuples` (cap on
+#'   the number of chance tuples enumerated) for `g > 2`.
 #'
 #' @details
 #' The public R API deliberately exposes only the main weighting schemes used in
@@ -537,6 +546,11 @@ estimate_kappa_fiml_multi <- function(x,
 #' # is a six-vector; the default Hamming loss counts disagreeing sites.
 #' kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
 #'
+#' # Full feature-metric quadratic vector agreement under the block
+#' # compound-symmetry normal FIML, with a feature metric W over the six sites.
+#' sites <- dat.vanbelle2019[, 1:4, ]
+#' kappa(sites, estimator = "nt_fiml_cs", W = diag(dim(sites)[3]))
+#'
 #' @export
 kappa <- function(x,
                   estimator = c("ipw", "cat_fiml", "pairwise", "pairwise_cs",
@@ -553,12 +567,12 @@ kappa <- function(x,
 
   ## Vector-valued ratings: subjects-by-raters-by-features array.
   if (is.array(x) && length(dim(x)) == 3L) {
-    if (estimator %in% c("pairwise_cs", "nt_fiml_cs")) {
-      stop(sprintf(
-        'estimator = "%s" is not available for vector-valued ratings.', estimator),
-        call. = FALSE)
+    if (estimator == "pairwise_cs") {
+      stop('estimator = "pairwise_cs" is not available for vector-valued ratings.',
+           call. = FALSE)
     }
-    return(.kappa_vector_dispatch(x, estimator, weight, dots))
+    return(.kappa_vector_dispatch(x, estimator, weight, weight_supplied,
+                                  em_options, dots))
   }
 
   if (!is.numeric(g) || length(g) != 1L || !is.finite(g) || g < 2 ||
@@ -702,10 +716,43 @@ kappa <- function(x,
 
 # Vector-valued ratings (subjects-by-raters-by-features array). Maps the public
 # weight to a component loss and delegates to kappa_vector(); `g` is ignored.
-.kappa_vector_dispatch <- function(x, estimator, weight, dots) {
+.kappa_vector_dispatch <- function(x, estimator, weight, weight_supplied,
+                                   em_options, dots) {
+  W <- dots$W
+  # Full-matrix-W quadratic family. The normal-FIML covariance models
+  # ("nt_fiml" saturated, "nt_fiml_cs" block compound symmetry) and the full-W
+  # pairwise moment estimator use the squared vector loss (x - y)' W (x - y)
+  # with a full feature metric W (default identity); they report Conger, Fleiss,
+  # and Brennan-Prediger.
+  if (estimator %in% c("nt_fiml", "nt_fiml_cs")) {
+    if (weight_supplied && weight != "quadratic") {
+      stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
+    }
+    fit <- kappa_vector_quadratic(x, method = estimator, W = W,
+                                  em_options = em_options)
+    fit$method <- estimator
+    fit$weight <- "quadratic"
+    return(fit)
+  }
+  if (estimator == "pairwise" && !is.null(W)) {
+    if (weight_supplied && weight != "quadratic") {
+      stop('a full feature metric W requires weight = "quadratic".')
+    }
+    fit <- kappa_vector_quadratic(x, method = "pairwise", W = W)
+    fit$method <- estimator
+    fit$weight <- "quadratic"
+    return(fit)
+  }
+  if (!is.null(W)) {
+    stop(sprintf(
+      paste0('a full feature metric W is not supported with estimator = "%s"; ',
+             'use "pairwise", "nt_fiml", or "nt_fiml_cs".'),
+      estimator), call. = FALSE)
+  }
+  # Component-separable (diagonal-weight) path.
   if (!estimator %in% c("pairwise", "ipw")) {
     stop(sprintf(
-      'vector-valued ratings support estimator = "pairwise" or "ipw"; got "%s".',
+      'vector-valued ratings support estimator = "pairwise", "ipw", "nt_fiml", or "nt_fiml_cs"; got "%s".',
       estimator))
   }
   loss <- if (!is.null(dots$loss)) {

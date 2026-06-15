@@ -19,11 +19,14 @@
   moment companion to `"nt_fiml_cs"`. It rater-centers by the available column
   means and fits the compound-symmetry components from pooled within-subject
   pairwise moments, with an analytic influence-function sandwich standard error.
-* Vector-valued quadratic FIML (internal `kappa_vector_quadratic()`) gains the
-  block compound-symmetry covariance `Sigma = J_R %x% Psi + I_R %x% E` via
-  `method = "nt_fiml_cs"`, the structured counterpart to the saturated vector
-  fit, and now also returns the Brennan-Prediger coefficient alongside Conger
-  and Fleiss.
+* `kappa()` exposes the full feature-metric quadratic vector estimators on the
+  array (subjects-by-raters-by-features) surface: pass a full feature metric `W`
+  to `estimator = "pairwise"`, `"nt_fiml"`, or `"nt_fiml_cs"` for the squared
+  vector loss `(x - y)' W (x - y)`. `"nt_fiml_cs"` fits the block
+  compound-symmetry covariance `Sigma = J_R %x% Psi + I_R %x% E`, the structured
+  counterpart to the saturated `"nt_fiml"`. These report Conger, Fleiss, and
+  Brennan-Prediger. Without `W`, `"pairwise"` / `"ipw"` stay the
+  component-separable (diagonal-weight) estimators as before.
 
 ## API
 
