@@ -69,12 +69,8 @@ test_that("variance-component alpha allows connected incomplete co-observation",
     alpha(X, estimator = "nt_fiml"),
     "co-observation graph is incomplete"
   )
-  fit <- alpha(
-    X,
-    estimator = "nt_fiml",
-    em_options = list(covariance = "variance_components")
-  )
-  expect_equal(fit$covariance, "variance_components")
+  fit <- alpha(X, estimator = "nt_fiml_cs")
+  expect_equal(fit$method, "nt_fiml_cs")
   expect_true(all(is.finite(coef(fit))))
   expect_true(all(is.finite(vcov(fit))))
 })

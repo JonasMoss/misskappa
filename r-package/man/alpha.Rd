@@ -6,7 +6,7 @@
 \usage{
 alpha(
   x,
-  estimator = c("pairwise", "cat_fiml", "nt_fiml"),
+  estimator = c("pairwise", "cat_fiml", "nt_fiml", "nt_fiml_cs"),
   values = NULL,
   em_options = list()
 )
@@ -16,22 +16,19 @@ alpha(
 non-finite values indicate missing entries. For `estimator = "cat_fiml"`,
 entries are integer category codes.}
 
-\item{estimator}{One of `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`.}
+\item{estimator}{One of `"pairwise"`, `"cat_fiml"`, `"nt_fiml"`, or
+`"nt_fiml_cs"` (the compound-symmetry covariance variant of `"nt_fiml"`).}
 
 \item{values}{Optional numeric vector of scores for observed categories.
 When supplied, its length must equal the number of unique finite entries
 in `x`.}
 
 \item{em_options}{Named list tuning the EM fit for the likelihood
-estimators. For `"nt_fiml"`: `tol`, `max_iter`, `covariance`, and `mean`.
-`covariance = "saturated"` fits the unrestricted normal covariance
-(default); `"variance_components"` fits the compound-symmetry
-(fixed-rater) covariance model \eqn{\Sigma = \psi J + e I}. This treats
-items as fixed and is not ten Hove's random-rater MLE-RE / ICC.
-`mean = "free"` estimates one item mean each (default);
-`mean = "equal"` estimates a common mean and requires
-`covariance = "variance_components"`. `fd_h` is accepted for backward
-compatibility and ignored. For `"cat_fiml"`:
+estimators. For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter` (the
+covariance structure is selected by the estimator name, not here). `fd_h`
+is accepted for backward compatibility and ignored; `covariance` and `mean`
+are deprecated (use `estimator = "nt_fiml_cs"` for the compound-symmetry
+model; the surface is mean-free) and warn if supplied. For `"cat_fiml"`:
 `tol`, `max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
@@ -63,7 +60,11 @@ item scores with missing entries. Pick the estimator with `estimator`:
     likelihood for finite-category items under ignorable missingness;
   \item `"nt_fiml"` --- robust normal-theory FIML (saturated Gaussian
     covariance by EM, sandwich delta-method SE) for continuous items under
-    ignorable missingness.
+    ignorable missingness;
+  \item `"nt_fiml_cs"` --- the same normal FIML under the compound-symmetry
+    covariance model \eqn{\Sigma = \psi J + e I} (fixed items; needs only a
+    connected item co-observation graph). Not ten Hove's random-rater
+    MLE-RE / ICC.
 }
 
 For ordinal or otherwise categorical responses under `"pairwise"` or

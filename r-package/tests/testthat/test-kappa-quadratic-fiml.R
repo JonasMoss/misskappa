@@ -122,12 +122,8 @@ test_that("variance-component kappa allows connected incomplete co-observation",
     kappa(X, estimator = "nt_fiml"),
     "co-observation graph is incomplete"
   )
-  fit <- kappa(
-    X,
-    estimator = "nt_fiml",
-    em_options = list(covariance = "variance_components")
-  )
-  expect_equal(fit$covariance, "variance_components")
+  fit <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  expect_equal(fit$method, "nt_fiml_cs")
   expect_true(all(is.finite(coef(fit))))
   expect_true(all(is.finite(vcov(fit))))
 })

@@ -126,6 +126,55 @@ not here. The port plan with the eight-step roadmap is at
       parity against Fleiss/irrCAC and add an unequal-row test showing the
       difference from both current pooled pairs and irrCAC's unit-weighted
       count convention.
+- [x] **Fold direct-on-counts CS kappa in + add listwise/pairwise companions.**
+      Done 2026-06-15. `r-package/R/kappa_counts_cs.R` fits the exchangeable
+      common-mean compound-symmetry (CS) normal kappa **directly on the counts**
+      from the per-subject sufficient statistics (m, s, q) — no realizing table,
+      no `r_total`, no EM. `kappa_counts(estimator = "nt_fiml")` now uses it
+      (reproduces the old table expansion to ≤2.6e-7, point + robust SE; the
+      `.counts_exchangeable_scores()` helper is removed). The moment/available-
+      case slot stays `fleiss_cuzick`. Prototyped `"pairwise"` and `"listwise"`
+      were both **dropped**: pairwise redundant with `fleiss_cuzick` (same moment
+      slot, different weighting); listwise is caller-side `na.omit()` row
+      dropping, not a baked-in estimator. Shipped counts surface:
+      `{fleiss_cuzick, cat_fiml, nt_fiml}`. Tests + regenerated
+      `kappa_counts.Rd`; full testthat suite green. Probe 41 /
+      `dev/notes/counts-exchangeable-cs-direct.md` are the record.
+
+- [x] **Normal-FIML covariance structure moved into the estimator name; `mean` dropped.**
+      Done 2026-06-15. `kappa()`/`alpha()` gained `estimator = "nt_fiml_cs"` (the
+      compound-symmetry covariance variant); `"nt_fiml"` stays saturated. The
+      `mean` axis is removed from the public surface entirely — alpha is a
+      mean-free covariance functional, and for kappa "equal means" *is* the
+      counts/exchangeable case (`kappa_counts`), so it was redundant. `covariance`
+      and `mean` in `em_options` are deprecated (honoured one release with a
+      warning via `.resolve_nt_fiml()`); the internal backends
+      (`kappa_quadratic_fiml`, `alpha_continuous`, `kappa_continuous`) keep their
+      `covariance`/`mean` params. Rationale: with `mean` gone, `covariance` is a
+      lone binary knob on a single estimator, so an orthogonal argument
+      over-advertised impossible/redundant cells — the name encodes it instead.
+      Tests + regenerated man; suite green.
+
+- [ ] **Free-mean CS moment foil — PROBED + confirmed principled; wiring pending.**
+      The estimator story pairs each FIML with a moment foil: saturated/free-mean
+      = raw `nt_fiml` vs raw `pairwise` (available-case cov); CS/equal-mean =
+      counts `nt_fiml` vs `fleiss_cuzick`; CS/**free-mean** = raw
+      `kappa(estimator="nt_fiml_cs")` (Conger) vs the open cell. **Probe 42**
+      (`experiments/workbench/42-free-mean-cs-pairwise/`)
+      built the foil (rater-center → pooled within-subject pairwise moments on
+      residuals → `t3 = sum(mu_j-bar)^2 - tr(AV)`) and confirmed it: nests the
+      equal-mean pairwise by mean-model restriction (|free−equal|→5.7e-5),
+      matches the free-mean CS FIML to <0.001 (shared limit), the `t3` correction
+      removes a spurious small-n Conger bias, MCAR-consistent / MAR-biased (FIML
+      robust). Sound but no capability gain over FIML (MCAR-only, less efficient
+      at equal means). **Decision still: ship FIML only**, unless the grid is
+      wanted in the public API — then wire as `kappa(estimator = "pairwise_cs")`
+      (parallel to the `nt_fiml`/`nt_fiml_cs` naming); the one non-trivial bit is
+      an analytic robust IF (probe used a bootstrap SE) reusing
+      the raw-pairwise IF + mean/`t3` terms. Notes:
+      `papers/00_wip/quadratic/dev/notes/cs-fixed-rater-pairwise.md`,
+      `dev/refs/icc-stuff/refs.md`.
+
 - [x] **Step 8: paper conversion (LyX -> .tex) + scripts wiring.**
       Moved out of this repo: the manuscripts now live in the separate private
       papers repo, each with its own paper-local todo. Nothing paper-side
