@@ -2,13 +2,18 @@
 #
 # Experiment 23: paper simulation for the quadratic (Conger / Fleiss) kappas
 # under missing data. One question: how do listwise deletion, the
-# pairwise-available moment estimator, and robust normal-theory FIML compare
-# across data types, missingness mechanisms, sample sizes, and rater counts?
+# pairwise-available moment estimator, robust normal-theory FIML, and its
+# compound-symmetry variant compare across data types, missingness mechanisms,
+# sample sizes, and rater counts?
 #
-# Estimators (all run on the numeric / scored rating matrix):
-#   listwise  -- complete-case rows only, then the available-case estimator
-#   pairwise  -- pairwise-available moment estimator (kappa_continuous available)
-#   nt_fiml   -- robust normal-theory FIML (saturated EM + sandwich SE)
+# Estimators (all run on the numeric / scored rating matrix via the public
+# kappa() interface, weight = "quadratic"):
+#   listwise    -- complete-case rows, then the pairwise-available estimator
+#   pairwise    -- pairwise-available moment estimator (estimator = "pairwise")
+#   nt_fiml     -- robust normal-theory FIML, saturated covariance
+#                  (estimator = "nt_fiml", saturated EM + sandwich SE)
+#   nt_fiml_cs  -- normal-theory FIML, block compound-symmetry covariance
+#                  Sigma = J (x) Psi + I (x) E (estimator = "nt_fiml_cs")
 #
 # Data-generating processes:
 #   normal      -- multivariate normal ratings
@@ -166,17 +171,16 @@ one_rep <- function(dist, mech, n, R, rate) {
     listwise = local({
       Xc <- X[stats::complete.cases(X), , drop = FALSE]
       if (nrow(Xc) >= 3L) {
-        tryCatch(kappa_continuous(Xc, method = "available", weight = "quadratic"),
+        tryCatch(kappa(Xc, estimator = "pairwise", weight = "quadratic"),
                  error = function(e) NULL)
       } else NULL
     }),
-    pairwise = tryCatch(kappa_continuous(X, method = "available",
-                                         weight = "quadratic"),
+    pairwise = tryCatch(kappa(X, estimator = "pairwise", weight = "quadratic"),
                         error = function(e) NULL),
-    nt_fiml = tryCatch(kappa_continuous(X, method = "fiml",
-                                        weight = "quadratic",
-                                        se_type = "sandwich"),
-                       error = function(e) NULL)
+    nt_fiml = tryCatch(kappa(X, estimator = "nt_fiml", weight = "quadratic"),
+                       error = function(e) NULL),
+    nt_fiml_cs = tryCatch(kappa(X, estimator = "nt_fiml_cs", weight = "quadratic"),
+                          error = function(e) NULL)
   )
   do.call(rbind, lapply(names(fits), function(m) {
     f <- fits[[m]]
