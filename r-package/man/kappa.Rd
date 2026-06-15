@@ -6,7 +6,7 @@
 \usage{
 kappa(
   x,
-  estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml", "nt_fiml_cs"),
+  estimator = c("ipw", "cat_fiml", "pairwise", "pairwise_cs", "nt_fiml", "nt_fiml_cs"),
   weight = c("nominal", "linear", "quadratic", "hubert"),
   g = 2L,
   values = NULL,
@@ -21,15 +21,16 @@ array form is auto-detected). Integer category codes for `"ipw"` /
 `"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
 missing entries.}
 
-\item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`, or
-`"nt_fiml_cs"` (the compound-symmetry covariance variant of `"nt_fiml"`).
+\item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
+`"nt_fiml"`, or `"nt_fiml_cs"` (the `_cs` names are the compound-symmetry
+covariance variants of `"pairwise"` and `"nt_fiml"`).
 Vector-valued ratings support `"pairwise"` and `"ipw"` only; continuous
 g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
 `"ipw"` only.}
 
 \item{weight}{Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
-default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"nt_fiml"` /
-`"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
+default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"pairwise_cs"` /
+`"nt_fiml"` / `"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
 `"linear"`, `"hubert"`, and
 `"quadratic"` are defined, where `"hubert"` is the all-raters-equal
 multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
@@ -86,6 +87,10 @@ coefficients for raw ratings with missing entries. Pick the estimator with
     likelihood for categorical ratings under ignorable missingness;
   \item `"pairwise"` --- pairwise-available moment estimator for the
     quadratically weighted (scored) coefficient under MCAR;
+  \item `"pairwise_cs"` --- the MCAR moment estimator under the
+    compound-symmetry covariance model \eqn{\Sigma = \psi J + e I} (fixed
+    raters with free means; the distribution-free companion to
+    `"nt_fiml_cs"`, needing only a connected rater co-observation graph);
   \item `"nt_fiml"` --- robust normal-theory FIML (saturated covariance) for
     the quadratically weighted coefficient under ignorable missingness;
   \item `"nt_fiml_cs"` --- the same FIML under the compound-symmetry
@@ -95,9 +100,9 @@ coefficients for raw ratings with missing entries. Pick the estimator with
 
 `"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
 linear, or quadratic `weight`.
-`"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"` are quadratic by construction:
-they treat `x` as numeric scores (pass scores directly, or integer codes with
-`values`) and require `weight = "quadratic"`.
+`"pairwise"`, `"pairwise_cs"`, `"nt_fiml"`, and `"nt_fiml_cs"` are quadratic
+by construction: they treat `x` as numeric scores (pass scores directly, or
+integer codes with `values`) and require `weight = "quadratic"`.
 
 Two generalizations are reached through the same call. Set `g > 2` for the
 Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
@@ -131,6 +136,15 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
 # Scored coefficient (quadratic loss) via the pairwise-available moment
 # estimator; treats the columns as numeric scores.
 kappa(dat.zapf2016, estimator = "pairwise")
+
+# Compound-symmetry covariance variant of the normal-theory FIML: the
+# fixed-rater variance-component model. Consistent and slightly more
+# efficient than "nt_fiml" when the structure holds, and identified by a
+# connected (not necessarily complete) rater co-observation graph.
+kappa(dat.zapf2016, estimator = "nt_fiml_cs")
+
+# The distribution-free MCAR moment companion to "nt_fiml_cs".
+kappa(dat.zapf2016, estimator = "pairwise_cs")
 
 # g-wise (multirater) nominal kappa over triples of raters.
 kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)

@@ -101,8 +101,29 @@ int vcol(int rater, int feature, int features) {
   return rater * features + feature;
 }
 
+// Brennan-Prediger uniform chance for vector ratings: sum_a W_aa * range_a^2/6
+// over the observed score range of feature a across raters.
+double vector_bp_chance_ref(const RealMat& x, int R, int features, const RealMat& W) {
+  double chance = 0.0;
+  for (int a = 0; a < features; ++a) {
+    double lo = std::numeric_limits<double>::infinity();
+    double hi = -std::numeric_limits<double>::infinity();
+    for (int r = 0; r < R; ++r) {
+      for (int i = 0; i < x.rows(); ++i) {
+        const double v = x(i, vcol(r, a, features));
+        if (!std::isfinite(v)) continue;
+        lo = std::min(lo, v);
+        hi = std::max(hi, v);
+      }
+    }
+    chance += W(a, a) * (hi - lo) * (hi - lo) / 6.0;
+  }
+  return chance;
+}
+
 RealVec vector_quadratic_from_moments(
-    const RealVec& mu, const RealMat& sigma, int R, int features, const RealMat& W) {
+    const RealVec& mu, const RealMat& sigma, int R, int features, const RealMat& W,
+    double bp_chance) {
   double tB = 0.0;
   double tT = 0.0;
   double tG = 0.0;
@@ -120,9 +141,12 @@ RealVec vector_quadratic_from_moments(
       }
     }
   }
-  RealVec out(2);
+  const double d_obs =
+      (2.0 / static_cast<double>(R - 1)) * (tT + tG - tB / static_cast<double>(R));
+  RealVec out(3);
   out(0) = (tB - tT) / (static_cast<double>(R - 1) * tT + static_cast<double>(R) * tG);
   out(1) = (tB - tT - tG) / (static_cast<double>(R - 1) * (tT + tG));
+  out(2) = 1.0 - d_obs / bp_chance;
   return out;
 }
 
@@ -402,16 +426,17 @@ TEST_CASE("normal FIML vector quadratic: complete data matches vector moment for
        0.25, 1.5;
   const Moments m = complete_moments(x);
 
+  const double bp = vector_bp_chance_ref(x, 3, 2, W);
   auto r = ms::estimate_vector_quadratic_normal_fiml(x, 2, W, EmOptions{});
   REQUIRE(r.has_value());
   CHECK(r->converged);
-  CHECK((r->fit.estimates - vector_quadratic_from_moments(m.mu, m.sigma, 3, 2, W))
+  CHECK((r->fit.estimates - vector_quadratic_from_moments(m.mu, m.sigma, 3, 2, W, bp))
             .cwiseAbs()
             .maxCoeff() < tol);
-  check_influence_contract(*r, static_cast<int>(x.rows()), 2);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
 }
 
-TEST_CASE("normal FIML vector quadratic: variance components are not flat-scaled") {
+TEST_CASE("normal FIML vector quadratic: block compound symmetry is fitted") {
   RealMat x(7, 6);
   x << 0.0, 1.0, 0.2, 1.1, 0.4, 1.2,
        1.0, 0.0, 1.1, 0.2, 1.2, 0.5,
@@ -421,10 +446,53 @@ TEST_CASE("normal FIML vector quadratic: variance components are not flat-scaled
        1.2, 1.5, 1.1, 1.7, 1.4, 1.8,
        0.8, 0.7, 0.9, 1.0, 1.0, 1.1;
   RealMat W = RealMat::Identity(2, 2);
+  const int R = 3, d = 2;
   EmOptions opts{};
   opts.covariance = ms::NormalCovarianceModel::variance_components;
 
-  auto r = ms::estimate_vector_quadratic_normal_fiml(x, 2, W, opts);
-  REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::invalid_argument);
+  auto sat = ms::estimate_vector_quadratic_normal_fiml(x, d, W, EmOptions{});
+  auto r = ms::estimate_vector_quadratic_normal_fiml(x, d, W, opts);
+  REQUIRE(r.has_value());
+  CHECK(r->converged);
+  REQUIRE(sat.has_value());
+
+  // fitted Sigma is block compound symmetric: every off-diagonal d x d block is
+  // a common Psi, every diagonal block is Psi + E.
+  const RealMat& S = r->sigma;
+  const RealMat Psi = S.block(0, d, d, d);
+  const RealMat E = S.block(0, 0, d, d) - Psi;
+  for (int a = 0; a < R; ++a) {
+    for (int b = 0; b < R; ++b) {
+      const RealMat ref = (a == b) ? (Psi + E).eval() : Psi;
+      CHECK((S.block(a * d, b * d, d, d) - ref).cwiseAbs().maxCoeff() < 1e-9);
+    }
+  }
+  // genuine constraint: differs from the saturated fit
+  CHECK((r->sigma - sat->sigma).cwiseAbs().maxCoeff() > 1e-6);
+  check_influence_contract(*r, static_cast<int>(x.rows()), 3);
+}
+
+TEST_CASE("normal FIML vector quadratic: block CS reduces to scalar CS at d=1") {
+  // d = 1 (one feature) must reproduce the scalar quadratic CS fit exactly.
+  RealMat x(8, 4);
+  x << 1.0, 1.2, 0.9, 1.1,
+       2.0, 2.2, 1.8, 2.1,
+       3.0, 2.8, 3.2, 3.1,
+       2.0, 2.4, 2.1, 2.3,
+       1.0, 1.5, 1.2, 1.3,
+       3.0, 2.9, 2.7, 2.8,
+       2.5, 2.3, 2.6, 2.4,
+       1.5, 1.7, 1.4, 1.6;
+  RealMat W = RealMat::Identity(1, 1);
+  RealVec values(0);
+  EmOptions opts{};
+  opts.covariance = ms::NormalCovarianceModel::variance_components;
+
+  auto vec = ms::estimate_vector_quadratic_normal_fiml(x, 1, W, opts);
+  auto scl = ms::estimate_quadratic_normal_fiml(x, values, opts);
+  REQUIRE(vec.has_value());
+  REQUIRE(scl.has_value());
+  CHECK((vec->fit.estimates - scl->fit.estimates).cwiseAbs().maxCoeff() < 1e-9);
+  CHECK((vec->fit.vcov - scl->fit.vcov).cwiseAbs().maxCoeff() < 1e-9);
+  CHECK((vec->sigma - scl->sigma).cwiseAbs().maxCoeff() < 1e-9);
 }

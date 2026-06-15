@@ -151,6 +151,11 @@
 #' coef(fit)
 #' confint(fit)
 #'
+#' # Compound-symmetry covariance variant: the same FIML under
+#' # Sigma = psi J + e I, which needs only a connected item co-observation
+#' # graph rather than every item pair jointly observed.
+#' alpha(textual, estimator = "nt_fiml_cs")
+#'
 #' @examplesIf requireNamespace("psych", quietly = TRUE)
 #' # Real item-level missing data: the Neuroticism scale of psych::bfi
 #' # (2800 respondents, ~360 with at least one missing item). The FIML
@@ -406,6 +411,10 @@ estimate_kappa_fiml_multi <- function(x,
 #'     likelihood for categorical ratings under ignorable missingness;
 #'   \item `"pairwise"` --- pairwise-available moment estimator for the
 #'     quadratically weighted (scored) coefficient under MCAR;
+#'   \item `"pairwise_cs"` --- the MCAR moment estimator under the
+#'     compound-symmetry covariance model \eqn{\Sigma = \psi J + e I} (fixed
+#'     raters with free means; the distribution-free companion to
+#'     `"nt_fiml_cs"`, needing only a connected rater co-observation graph);
 #'   \item `"nt_fiml"` --- robust normal-theory FIML (saturated covariance) for
 #'     the quadratically weighted coefficient under ignorable missingness;
 #'   \item `"nt_fiml_cs"` --- the same FIML under the compound-symmetry
@@ -415,9 +424,9 @@ estimate_kappa_fiml_multi <- function(x,
 #'
 #' `"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
 #' linear, or quadratic `weight`.
-#' `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"` are quadratic by construction:
-#' they treat `x` as numeric scores (pass scores directly, or integer codes with
-#' `values`) and require `weight = "quadratic"`.
+#' `"pairwise"`, `"pairwise_cs"`, `"nt_fiml"`, and `"nt_fiml_cs"` are quadratic
+#' by construction: they treat `x` as numeric scores (pass scores directly, or
+#' integer codes with `values`) and require `weight = "quadratic"`.
 #'
 #' Two generalizations are reached through the same call. Set `g > 2` for the
 #' Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
@@ -439,14 +448,15 @@ estimate_kappa_fiml_multi <- function(x,
 #'   array form is auto-detected). Integer category codes for `"ipw"` /
 #'   `"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
 #'   missing entries.
-#' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`, or
-#'   `"nt_fiml_cs"` (the compound-symmetry covariance variant of `"nt_fiml"`).
+#' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
+#'   `"nt_fiml"`, or `"nt_fiml_cs"` (the `_cs` names are the compound-symmetry
+#'   covariance variants of `"pairwise"` and `"nt_fiml"`).
 #'   Vector-valued ratings support `"pairwise"` and `"ipw"` only; continuous
 #'   g-wise kernels (`weight = "linear"`, `g > 2`) support `"pairwise"` and
 #'   `"ipw"` only.
 #' @param weight Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
-#'   default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"nt_fiml"` /
-#'   `"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
+#'   default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"pairwise_cs"` /
+#'   `"nt_fiml"` / `"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
 #'   `"linear"`, `"hubert"`, and
 #'   `"quadratic"` are defined, where `"hubert"` is the all-raters-equal
 #'   multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
@@ -510,6 +520,15 @@ estimate_kappa_fiml_multi <- function(x,
 #' # estimator; treats the columns as numeric scores.
 #' kappa(dat.zapf2016, estimator = "pairwise")
 #'
+#' # Compound-symmetry covariance variant of the normal-theory FIML: the
+#' # fixed-rater variance-component model. Consistent and slightly more
+#' # efficient than "nt_fiml" when the structure holds, and identified by a
+#' # connected (not necessarily complete) rater co-observation graph.
+#' kappa(dat.zapf2016, estimator = "nt_fiml_cs")
+#'
+#' # The distribution-free MCAR moment companion to "nt_fiml_cs".
+#' kappa(dat.zapf2016, estimator = "pairwise_cs")
+#'
 #' # g-wise (multirater) nominal kappa over triples of raters.
 #' kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 #'
@@ -520,8 +539,8 @@ estimate_kappa_fiml_multi <- function(x,
 #'
 #' @export
 kappa <- function(x,
-                  estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml",
-                                "nt_fiml_cs"),
+                  estimator = c("ipw", "cat_fiml", "pairwise", "pairwise_cs",
+                                "nt_fiml", "nt_fiml_cs"),
                   weight = c("nominal", "linear", "quadratic", "hubert"),
                   g = 2L,
                   values = NULL,
@@ -534,9 +553,10 @@ kappa <- function(x,
 
   ## Vector-valued ratings: subjects-by-raters-by-features array.
   if (is.array(x) && length(dim(x)) == 3L) {
-    if (estimator == "nt_fiml_cs") {
-      stop('estimator = "nt_fiml_cs" is not available for vector-valued ratings.',
-           call. = FALSE)
+    if (estimator %in% c("pairwise_cs", "nt_fiml_cs")) {
+      stop(sprintf(
+        'estimator = "%s" is not available for vector-valued ratings.', estimator),
+        call. = FALSE)
     }
     return(.kappa_vector_dispatch(x, estimator, weight, dots))
   }
@@ -572,6 +592,11 @@ kappa <- function(x,
           "Conger's kappa under the compound-symmetry covariance model"
       }
     }
+    if (estimator == "pairwise_cs") {
+      req <- "connected"
+      coef_label <-
+        "Conger's kappa under the compound-symmetry covariance model"
+    }
     .check_pattern_identifiable(
       .pattern_observed(x), unit = "rater",
       require = req,
@@ -593,6 +618,13 @@ kappa <- function(x,
 # any quadratic request because quadratic kappa does not depend on g.
 .kappa_scalar_g2 <- function(x, estimator, weight, weight_supplied, values,
                              em_options) {
+  if (estimator == "pairwise_cs") {
+    if (weight_supplied && weight != "quadratic") {
+      stop('estimator = "pairwise_cs" requires weight = "quadratic".')
+    }
+    X <- .score_matrix(x, values)
+    return(.kappa_pairwise_cs(X, values = values))
+  }
   if (estimator %in% c("pairwise", "nt_fiml", "nt_fiml_cs")) {
     if (weight_supplied && weight != "quadratic") {
       stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
@@ -646,7 +678,11 @@ kappa <- function(x,
       'estimator = "cat_fiml" has no continuous g-wise variant; use ',
       'weight = "nominal"/"hubert", or estimator = "ipw".'),
     nt_fiml  = stop('estimator = "nt_fiml" is only available for ',
-                    'weight = "quadratic" (where g is ignored).')
+                    'weight = "quadratic" (where g is ignored).'),
+    pairwise_cs = stop('estimator = "pairwise_cs" is only available for ',
+                       'weight = "quadratic" (where g is ignored).'),
+    nt_fiml_cs  = stop('estimator = "nt_fiml_cs" is only available for ',
+                       'weight = "quadratic" (where g is ignored).')
   )
 
   max_chance_tuples <- if (!is.null(dots$max_chance_tuples)) {

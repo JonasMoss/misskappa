@@ -45,6 +45,18 @@ and agreement coefficients are computed from the fitted full-data
 distribution. The implementation returns Wald covariance estimates through
 Louis' observed information when available.
 
+For scored (quadratically weighted) ratings the normal-theory FIML fits a
+Gaussian mean and covariance by EM and reads the coefficient off the fitted
+moments with a sandwich delta-method standard error. Two covariance models are
+available, selected by the estimator name: `"nt_fiml"` fits a *saturated*
+covariance, while `"nt_fiml_cs"` fits the *compound-symmetry*
+$\Sigma = \psi J + e I$ (the fixed-rater variance-component model, with free
+rater means). Compound symmetry needs only a connected co-observation graph and
+is consistent and slightly more efficient when that structure holds, and is
+robust under MCAR even when the covariance is misspecified; the saturated model
+is the safer choice under MAR when the covariance may depart from compound
+symmetry.
+
 Gwet's estimator is retained for comparison with the agreement-coefficient
 literature. It uses its own chance-disagreement convention and should be
 interpreted as a comparator rather than the default missing-data target.

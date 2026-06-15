@@ -87,6 +87,11 @@ fit <- alpha(textual, estimator = "nt_fiml")
 coef(fit)
 confint(fit)
 
+# Compound-symmetry covariance variant: the same FIML under
+# Sigma = psi J + e I, which needs only a connected item co-observation
+# graph rather than every item pair jointly observed.
+alpha(textual, estimator = "nt_fiml_cs")
+
 \dontshow{if (requireNamespace("psych", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 # Real item-level missing data: the Neuroticism scale of psych::bfi
 # (2800 respondents, ~360 with at least one missing item). The FIML

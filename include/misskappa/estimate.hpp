@@ -55,6 +55,12 @@ struct EmOptions {
   // variance-components covariance model, giving the exchangeable normal
   // model appropriate when rater identity has been aggregated away.
   NormalMeanModel mean = NormalMeanModel::free;
+  // Feature-block size for the variance-components covariance model. 1 is the
+  // scalar compound symmetry Sigma = psi J + e I. For vector-valued ratings
+  // with d features per rater, block_size = d selects the block compound
+  // symmetry Sigma = J_R (x) Psi + I_R (x) E (Psi, E both d x d), with the
+  // stacked columns ordered rater-major (rater 0 feature 0..d-1, ...).
+  int block_size = 1;
 };
 
 struct GwiseOptions {

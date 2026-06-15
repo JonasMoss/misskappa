@@ -217,8 +217,46 @@ test_that("vector quadratic complete data matches tensor plug-in and FIML", {
   manual <- misskappa:::.kvq_grad(colMeans(flat), Smle, 3L, 2L, W)$estimates
 
   expect_equal(coef(fit_pair), manual, tolerance = 1e-8)
-  expect_equal(coef(fit_ml), manual, tolerance = 1e-8)
+  # the FIML path additionally returns Brennan-Prediger; Conger/Fleiss match
+  expect_equal(coef(fit_ml)[c("Conger", "Fleiss")], manual, tolerance = 1e-8)
+  expect_equal(names(coef(fit_ml)), c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_false("kappa_vector_quadratic" %in% getNamespaceExports("misskappa"))
+})
+
+test_that("vector quadratic block compound symmetry fits and reduces to scalar at d=1", {
+  set.seed(43L)
+  R <- 4L; d <- 2L; n <- 400L
+  Psi <- matrix(c(1, .4, .4, .8), 2, 2); E <- matrix(c(.6, .1, .1, .5), 2, 2)
+  mu <- matrix(c(0, .2, .5, .1, 1, -.3, .7, .4), R, d, byrow = TRUE)
+  Lb <- chol(Psi); Le <- chol(E)
+  arr <- array(NA_real_, c(n, R, d))
+  for (i in seq_len(n)) {
+    b <- as.numeric(rnorm(d) %*% Lb)
+    for (r in seq_len(R)) arr[i, r, ] <- mu[r, ] + b + as.numeric(rnorm(d) %*% Le)
+  }
+  fit_cs <- kappa_vector_quadratic(arr, method = "nt_fiml_cs")
+  expect_equal(names(coef(fit_cs)), c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_true(all(is.finite(coef(fit_cs))))
+  expect_equal(unname(crossprod(fit_cs$psi) / n^2), unname(vcov(fit_cs)),
+               tolerance = 1e-10)
+  # fitted Sigma is block compound symmetric
+  S <- fit_cs$moments$Sigma
+  Psi_hat <- S[1:d, (d + 1):(2 * d)]
+  E_hat <- S[1:d, 1:d] - Psi_hat
+  for (a in seq_len(R)) for (bb in seq_len(R)) {
+    ref <- if (a == bb) Psi_hat + E_hat else Psi_hat
+    expect_equal(S[((a - 1) * d + 1):(a * d), ((bb - 1) * d + 1):(bb * d)], ref,
+                 tolerance = 1e-8, ignore_attr = TRUE)
+  }
+
+  # d = 1 reduces exactly to the scalar nt_fiml_cs
+  X <- matrix(c(1, 1.2, 0.9, 1.1, 2, 2.2, 1.8, 2.1, 3, 2.8, 3.2, 3.1,
+                2, 2.4, 2.1, 2.3, 1, 1.5, 1.2, 1.3, 3, 2.9, 2.7, 2.8,
+                2.5, 2.3, 2.6, 2.4, 1.5, 1.7, 1.4, 1.6), 8, 4, byrow = TRUE)
+  vec1 <- kappa_vector_quadratic(array(X, c(8, 4, 1)), method = "nt_fiml_cs")
+  scl1 <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  expect_equal(unname(coef(vec1)), unname(coef(scl1)), tolerance = 1e-9)
+  expect_equal(unname(vcov(vec1)), unname(vcov(scl1)), tolerance = 1e-9)
 })
 
 test_that("vector quadratic diagonal W matches component-separable squared loss", {
@@ -249,7 +287,7 @@ test_that("vector quadratic handles full-W missing data and IF covariance", {
   )
 
   expect_equal(dim(fit_pair$psi), c(dim(X)[1L], 2L))
-  expect_equal(dim(fit_ml$psi), c(dim(X)[1L], 2L))
+  expect_equal(dim(fit_ml$psi), c(dim(X)[1L], 3L))   # FIML adds Brennan-Prediger
   expect_equal(unname(crossprod(fit_pair$psi) / dim(X)[1L]^2),
                unname(vcov(fit_pair)), tolerance = 1e-10)
   expect_equal(unname(crossprod(fit_ml$psi) / dim(X)[1L]^2),
@@ -272,12 +310,15 @@ test_that("vector quadratic validates the full feature metric", {
     kappa_vector_quadratic(X, W = matrix(c(1, 2, 2, 1), 2L, 2L)),
     "positive semidefinite"
   )
+  # the block compound-symmetry covariance is now supported via the estimator
+  # name; the equal-mean model is still not generalized to vector ratings
+  fit_cs <- kappa_vector_quadratic(
+    X, method = "nt_fiml", em_options = list(covariance = "variance_components"))
+  expect_equal(coef(fit_cs), coef(kappa_vector_quadratic(X, method = "nt_fiml_cs")))
   expect_error(
     kappa_vector_quadratic(
-      X, method = "nt_fiml",
-      em_options = list(covariance = "variance_components")
-    ),
-    "not yet implemented for vector-valued"
+      X, method = "nt_fiml", em_options = list(mean = "equal")),
+    "equal-mean normal FIML is not yet implemented"
   )
 })
 

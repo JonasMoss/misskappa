@@ -70,3 +70,18 @@ and `t3` terms) — the probe used a bootstrap SE instead. Recommend wiring it a
 `kappa(estimator = "pairwise", covariance = "variance_components")` only if the
 grid is wanted in the public API; otherwise this probe + the quadratic-paper note
 stand as the validated record.
+
+## Update (2026-06-15): analytic IF built, validated, and SHIPPED
+
+`analytic_if.R` + `validate_if.R`. The estimator is a stacked M-estimator in
+theta = (mu_1..mu_R, psi, e); the expected cross-Jacobian d g_{psi,e}/d mu = 0 at
+the truth (E[r]=0), so A is block diagonal and the per-subject influence is closed
+form (IF_mu_j = obs*(Y-mu_j)/n_j; IF_psi, IF_e = pooled-pair scores / Ptot; t3 via
+d t3/d mu_j = 2(mu_j-mubar), bias correction O(1/n) negligible at first order).
+bp_chance is a fixed function of the support (constant, as in the other quadratic
+paths). Validation: analytic SE / bootstrap SE = 0.95-1.01 for Conger/Fleiss; for
+BP it matches too once `values` is supplied so bp_chance is constant (the
+values=NULL range-fallback inflates the bootstrap's BP SE only). MCAR coverage
+0.93-0.94 at n=120-200. Shipped as `kappa(estimator = "pairwise_cs")`
+(r-package/R/kappa_pairwise_cs.R); package output reproduces this probe to ~1e-18
+and satisfies vcov == crossprod(psi)/n^2 exactly.

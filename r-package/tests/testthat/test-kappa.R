@@ -390,6 +390,46 @@ test_that("nt_fiml / nt_fiml_cs select the covariance structure by name", {
   expect_gt(max(abs(coef(sat) - coef(cs))), 1e-4)
 })
 
+test_that("pairwise_cs is the moment companion to nt_fiml_cs", {
+  set.seed(131)
+  n <- 4000L; R <- 4L; mu <- c(0, .3, .6, 1)
+  b <- rnorm(n, 0, 1)
+  X <- matrix(mu, n, R, byrow = TRUE) + b + matrix(rnorm(n * R, 0, sqrt(.5)), n, R)
+
+  fit <- kappa(X, estimator = "pairwise_cs", weight = "quadratic")
+  expect_equal(fit$method, "pairwise_cs")
+  expect_equal(fit$weight, "quadratic")
+  expect_equal(names(coef(fit)), c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_equal(dim(vcov(fit)), c(3L, 3L))
+  # influence contract
+  expect_equal(unname(crossprod(fit$psi) / n^2), unname(vcov(fit)),
+               tolerance = 1e-10)
+  # shares the probability limit with nt_fiml_cs (both consistent for the same
+  # CS estimand); agree on large complete data
+  cs <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  expect_equal(unname(coef(fit)), unname(coef(cs)), tolerance = 0.01)
+})
+
+test_that("pairwise_cs allows connected incomplete co-observation and guards inputs", {
+  set.seed(132)
+  n <- 300L; R <- 4L
+  b <- rnorm(n, 0, 1)
+  X <- matrix(0, n, R) + b + matrix(rnorm(n * R, 0, sqrt(.5)), n, R)
+  # connected but NOT complete: group A sees raters 1-3, group B sees 2-4, so the
+  # pair (1, 4) is never co-observed yet the co-observation graph is connected.
+  half <- n / 2
+  X[seq_len(half), 4L] <- NA
+  X[(half + 1L):n, 1L] <- NA
+  fit <- expect_silent(kappa(X, estimator = "pairwise_cs", weight = "quadratic"))
+  expect_true(all(is.finite(coef(fit))))
+  expect_true(all(is.finite(diag(vcov(fit)))))
+
+  expect_error(kappa(X, estimator = "pairwise_cs", weight = "linear"),
+               "quadratic")
+  arr <- array(rnorm(2 * 3 * 2), dim = c(2, 3, 2))
+  expect_error(kappa(arr, estimator = "pairwise_cs"), "vector-valued")
+})
+
 test_that("alpha gains nt_fiml_cs and it matches the CS backend", {
   set.seed(32)
   X <- matrix(rnorm(150 * 5), 150, 5)

@@ -1,3 +1,51 @@
+# misskappa 1.2.0
+
+## New features
+
+* New `estimator = "nt_fiml_cs"` for `kappa()` and `alpha()`: normal-theory
+  FIML under the compound-symmetry (variance-component) covariance model
+  `Sigma = psi J + e I`, the fixed-rater structure `Y_ij = mu_j + b_i + eps_ij`.
+  It estimates free rater (item) means and is identified by a *connected* item
+  co-observation graph, whereas the saturated `"nt_fiml"` needs every item pair
+  jointly observed. The point estimate matches the fixed-rater maximum
+  likelihood (`lmer(value ~ 0 + item + (1 | subject), REML = FALSE)`) and a
+  one-factor SEM, with the usual sandwich standard error.
+* New `estimator = "nt_fiml"` for `kappa_counts()` (with `weight = "quadratic"`):
+  the exchangeable common-mean compound-symmetry quadratic kappa, fit directly on
+  the per-subject count sufficient statistics without realizing the ratings
+  table. It is `r_total`-invariant and equals the categorical-FIML exchangeable
+  fit.
+* New `estimator = "pairwise_cs"` for `kappa()`: the distribution-free MCAR
+  moment companion to `"nt_fiml_cs"`. It rater-centers by the available column
+  means and fits the compound-symmetry components from pooled within-subject
+  pairwise moments, with an analytic influence-function sandwich standard error.
+* Vector-valued quadratic FIML (internal `kappa_vector_quadratic()`) gains the
+  block compound-symmetry covariance `Sigma = J_R %x% Psi + I_R %x% E` via
+  `method = "nt_fiml_cs"`, the structured counterpart to the saturated vector
+  fit, and now also returns the Brennan-Prediger coefficient alongside Conger
+  and Fleiss.
+
+## API
+
+* The covariance structure of the normal-theory FIML is now carried by the
+  estimator name: `"nt_fiml"` is the saturated model and `"nt_fiml_cs"` the
+  compound-symmetry one. The old `em_options$covariance` and `em_options$mean`
+  are deprecated -- they warn for one release and are otherwise ignored on
+  `kappa()` / `alpha()` (the coefficients are mean-free; use `kappa_counts()`
+  for the exchangeable equal-mean model). The internal `"ten_hove"` covariance
+  alias is removed.
+
+## Documentation
+
+* `kappa()`, `alpha()`, and `kappa_counts()` document the compound-symmetry
+  estimators, and the getting-started vignette's estimator table gains a
+  saturated-versus-compound-symmetry recommendation. Compound symmetry is
+  consistent and best-calibrated under MCAR (even when the covariance is
+  misspecified) and under correctly-specified MAR, but can be inconsistent
+  under MAR when the true covariance departs from compound symmetry (for
+  example rater subgroups with different bias); the saturated `"nt_fiml"` is
+  the robust choice there.
+
 # misskappa 1.1.0
 
 ## Breaking changes

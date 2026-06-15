@@ -64,10 +64,22 @@ The right `estimator=` depends on the data and the missingness assumption:
 | Categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
 | Categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
 | Scored ratings (quadratic) | `"pairwise"` | MCAR, distribution-free |
-| Scored ratings (quadratic) | `"nt_fiml"` | Ignorable, normal-theory |
+| Scored ratings (quadratic) | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
+| Scored ratings (quadratic) | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
 
 The scored estimators treat the categories as numbers and use the quadratic
 loss. Pass the scores directly, or integer codes together with `values`.
+
+The two normal-theory FIMLs differ only in the within-subject covariance they
+fit. `"nt_fiml"` is *saturated* (an unrestricted covariance) and `"nt_fiml_cs"`
+is *compound symmetry* `Sigma = psi J + e I`, the fixed-rater variance-component
+model. Compound symmetry needs only a connected rater co-observation graph (not
+every pair jointly observed) and is consistent and slightly more efficient when
+that structure holds; it is also best-calibrated under MCAR even when the
+covariance is misspecified. Prefer the saturated `"nt_fiml"` when the
+missingness may be MAR and the covariance could depart from compound symmetry
+(for example, rater subgroups with systematically different bias), where the
+structured model can become inconsistent but the saturated one stays robust.
 
 ```{r}
 kappa(dat.zapf2016, estimator = "pairwise")
