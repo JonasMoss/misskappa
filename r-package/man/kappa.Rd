@@ -67,8 +67,12 @@ Pass any subset.}
 `"rms"`) for component-separable vector-valued ratings; `W`, a full
 features-by-features symmetric positive-semidefinite feature metric, for
 the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
-`"nt_fiml_cs"`, defaulting to the identity); and `max_chance_tuples` (cap on
-the number of chance tuples enumerated) for `g > 2`.}
+`"nt_fiml_cs"`, defaulting to the identity); `ranges`, a features-by-2
+matrix of `(lo, hi)` score bounds that fixes the Brennan-Prediger chance
+baseline for the full-`W` `"nt_fiml"` / `"nt_fiml_cs"` estimators instead of
+estimating it from the observed range (see [kappa_vector_quadratic()]); and
+`max_chance_tuples` (cap on the number of chance tuples enumerated) for
+`g > 2`.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the named

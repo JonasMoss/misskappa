@@ -173,8 +173,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_kappa_vector_quadratic_fiml
-Rcpp::List rcpp_kappa_vector_quadratic_fiml(const Rcpp::NumericMatrix& x, int features, const Rcpp::NumericMatrix& W, Rcpp::List em_options);
-RcppExport SEXP _misskappa_rcpp_kappa_vector_quadratic_fiml(SEXP xSEXP, SEXP featuresSEXP, SEXP WSEXP, SEXP em_optionsSEXP) {
+Rcpp::List rcpp_kappa_vector_quadratic_fiml(const Rcpp::NumericMatrix& x, int features, const Rcpp::NumericMatrix& W, Rcpp::List em_options, Rcpp::NumericVector ranges);
+RcppExport SEXP _misskappa_rcpp_kappa_vector_quadratic_fiml(SEXP xSEXP, SEXP featuresSEXP, SEXP WSEXP, SEXP em_optionsSEXP, SEXP rangesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -182,7 +182,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type features(featuresSEXP);
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type W(WSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type em_options(em_optionsSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_vector_quadratic_fiml(x, features, W, em_options));
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type ranges(rangesSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_kappa_vector_quadratic_fiml(x, features, W, em_options, ranges));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -231,7 +232,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_misskappa_rcpp_kappa_counts", (DL_FUNC) &_misskappa_rcpp_kappa_counts, 3},
     {"_misskappa_rcpp_kappa_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_continuous, 3},
     {"_misskappa_rcpp_kappa_vector", (DL_FUNC) &_misskappa_rcpp_kappa_vector, 5},
-    {"_misskappa_rcpp_kappa_vector_quadratic_fiml", (DL_FUNC) &_misskappa_rcpp_kappa_vector_quadratic_fiml, 4},
+    {"_misskappa_rcpp_kappa_vector_quadratic_fiml", (DL_FUNC) &_misskappa_rcpp_kappa_vector_quadratic_fiml, 5},
     {"_misskappa_rcpp_kappa_gwise_categorical", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_categorical, 6},
     {"_misskappa_rcpp_kappa_gwise_continuous", (DL_FUNC) &_misskappa_rcpp_kappa_gwise_continuous, 5},
     {NULL, NULL, 0}

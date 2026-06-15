@@ -494,8 +494,12 @@ estimate_kappa_fiml_multi <- function(x,
 #'   `"rms"`) for component-separable vector-valued ratings; `W`, a full
 #'   features-by-features symmetric positive-semidefinite feature metric, for
 #'   the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
-#'   `"nt_fiml_cs"`, defaulting to the identity); and `max_chance_tuples` (cap on
-#'   the number of chance tuples enumerated) for `g > 2`.
+#'   `"nt_fiml_cs"`, defaulting to the identity); `ranges`, a features-by-2
+#'   matrix of `(lo, hi)` score bounds that fixes the Brennan-Prediger chance
+#'   baseline for the full-`W` `"nt_fiml"` / `"nt_fiml_cs"` estimators instead of
+#'   estimating it from the observed range (see [kappa_vector_quadratic()]); and
+#'   `max_chance_tuples` (cap on the number of chance tuples enumerated) for
+#'   `g > 2`.
 #'
 #' @details
 #' The public R API deliberately exposes only the main weighting schemes used in
@@ -719,17 +723,19 @@ kappa <- function(x,
 .kappa_vector_dispatch <- function(x, estimator, weight, weight_supplied,
                                    em_options, dots) {
   W <- dots$W
+  ranges <- dots$ranges
   # Full-matrix-W quadratic family. The normal-FIML covariance models
   # ("nt_fiml" saturated, "nt_fiml_cs" block compound symmetry) and the full-W
   # pairwise moment estimator use the squared vector loss (x - y)' W (x - y)
   # with a full feature metric W (default identity); they report Conger, Fleiss,
-  # and Brennan-Prediger.
+  # and Brennan-Prediger. `ranges` optionally fixes the Brennan-Prediger chance
+  # baseline (see kappa_vector_quadratic()).
   if (estimator %in% c("nt_fiml", "nt_fiml_cs")) {
     if (weight_supplied && weight != "quadratic") {
       stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
     }
     fit <- kappa_vector_quadratic(x, method = estimator, W = W,
-                                  em_options = em_options)
+                                  em_options = em_options, ranges = ranges)
     fit$method <- estimator
     fit$weight <- "quadratic"
     return(fit)
@@ -738,7 +744,7 @@ kappa <- function(x,
     if (weight_supplied && weight != "quadratic") {
       stop('a full feature metric W requires weight = "quadratic".')
     }
-    fit <- kappa_vector_quadratic(x, method = "pairwise", W = W)
+    fit <- kappa_vector_quadratic(x, method = "pairwise", W = W, ranges = ranges)
     fit$method <- estimator
     fit$weight <- "quadratic"
     return(fit)

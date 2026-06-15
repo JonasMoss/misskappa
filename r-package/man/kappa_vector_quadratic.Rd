@@ -8,7 +8,8 @@ kappa_vector_quadratic(
   x,
   method = c("pairwise", "nt_fiml", "nt_fiml_cs"),
   W = NULL,
-  em_options = list()
+  em_options = list(),
+  ranges = NULL
 )
 }
 \arguments{
@@ -25,6 +26,16 @@ estimator name), so `mean` must be `"free"`; the exchangeable equal-mean
 model has not been generalized to vector-valued ratings. `fd_h` is accepted
 for backward compatibility and ignored because the observed information is
 analytic.}
+
+\item{ranges}{Optional features-by-2 matrix of `(lo, hi)` score bounds, one
+row per feature, that fixes the Brennan-Prediger chance baseline
+`sum_a W_aa (hi_a - lo_a)^2 / 6` instead of estimating each width from the
+observed data range. Fixing the range makes the chance denominator
+deterministic, so the Brennan-Prediger standard error is exact and the
+estimand no longer drifts with the sample range; it is the vector analogue
+of the scalar `values` argument. `NULL` (default) keeps the observed-range
+behaviour. Used by the `"nt_fiml"` / `"nt_fiml_cs"` methods only (the
+`"pairwise"` method does not report Brennan-Prediger).}
 }
 \value{
 A `misskappa_estimate` object with `Conger`, `Fleiss`, and

@@ -578,7 +578,8 @@ Rcpp::List rcpp_kappa_vector_quadratic_fiml(
     const Rcpp::NumericMatrix& x,
     int features,
     const Rcpp::NumericMatrix& W,
-    Rcpp::List em_options) {
+    Rcpp::List em_options,
+    Rcpp::NumericVector ranges) {
   Eigen::MatrixXd ratings(x.nrow(), x.ncol());
   for (int i = 0; i < x.nrow(); ++i) {
     for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
@@ -587,10 +588,14 @@ Rcpp::List rcpp_kappa_vector_quadratic_fiml(
   for (int i = 0; i < W.nrow(); ++i) {
     for (int j = 0; j < W.ncol(); ++j) metric(i, j) = W(i, j);
   }
+  // Empty `ranges` -> observed-range Brennan-Prediger baseline; otherwise a
+  // length-`features` vector of fixed per-feature score widths (hi - lo).
+  Eigen::VectorXd widths(ranges.size());
+  for (R_xlen_t i = 0; i < ranges.size(); ++i) widths(i) = ranges[i];
 
   misskappa::EmOptions opts = parse_em_options(em_options);
   auto r = unwrap(misskappa::estimate_vector_quadratic_normal_fiml(
-      ratings, features, metric, opts));
+      ratings, features, metric, opts, widths));
   if (!r.converged) {
     Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
   }

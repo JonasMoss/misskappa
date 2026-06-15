@@ -823,26 +823,46 @@ Result<void> validate_feature_metric(const RealMat& W) {
 // per-feature continuous-uniform baselines over the observed score range. This
 // is the vector generalisation of the scalar continuous BP baseline (under the
 // independent-uniform chance model the off-diagonal W terms drop out).
-Result<double> vector_bp_chance(RealMatView ratings, int features, const RealMat& W) {
+// `ranges`, when non-empty, fixes the per-feature score width (hi_a - lo_a)
+// instead of reading it from the observed data, mirroring the scalar `values`
+// hook: it makes the chance denominator deterministic so the Brennan-Prediger
+// SE is exact and the estimand no longer drifts with the sample range. It must
+// be length `features` (one width per feature); an empty vector keeps the
+// observed-range behaviour.
+Result<double> vector_bp_chance(RealMatView ratings, int features, const RealMat& W,
+                                const RealVec& ranges) {
+  const bool user_ranges = ranges.size() == static_cast<Eigen::Index>(features);
+  if (ranges.size() != 0 && !user_ranges) {
+    return misskappa::unexpected(Error::dimension_mismatch);
+  }
   const int cols = static_cast<int>(ratings.cols());
   const int R = cols / features;
   double chance = 0.0;
   for (int a = 0; a < features; ++a) {
-    double lo = std::numeric_limits<double>::infinity();
-    double hi = -std::numeric_limits<double>::infinity();
-    for (int r = 0; r < R; ++r) {
-      const int col = vector_col(r, a, features);
-      for (int i = 0; i < ratings.rows(); ++i) {
-        const double v = ratings(i, col);
-        if (!std::isfinite(v)) continue;
-        lo = std::min(lo, v);
-        hi = std::max(hi, v);
+    double width;
+    if (user_ranges) {
+      width = ranges(a);
+      if (!std::isfinite(width) || width <= 0.0) {
+        return misskappa::unexpected(Error::invalid_argument);
       }
+    } else {
+      double lo = std::numeric_limits<double>::infinity();
+      double hi = -std::numeric_limits<double>::infinity();
+      for (int r = 0; r < R; ++r) {
+        const int col = vector_col(r, a, features);
+        for (int i = 0; i < ratings.rows(); ++i) {
+          const double v = ratings(i, col);
+          if (!std::isfinite(v)) continue;
+          lo = std::min(lo, v);
+          hi = std::max(hi, v);
+        }
+      }
+      if (!std::isfinite(lo) || !std::isfinite(hi)) {
+        return misskappa::unexpected(Error::invalid_argument);
+      }
+      width = hi - lo;
     }
-    if (!std::isfinite(lo) || !std::isfinite(hi)) {
-      return misskappa::unexpected(Error::invalid_argument);
-    }
-    chance += W(a, a) * (hi - lo) * (hi - lo) / 6.0;
+    chance += W(a, a) * width * width / 6.0;
   }
   if (!std::isfinite(chance) || chance <= 1e-12) {
     return misskappa::unexpected(Error::invalid_argument);
@@ -916,7 +936,8 @@ Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
 }
 
 Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(
-    RealMatView ratings, int features, RealMatView W, EmOptions opts) {
+    RealMatView ratings, int features, RealMatView W, EmOptions opts,
+    const RealVec& ranges) {
   if (opts.covariance != NormalCovarianceModel::saturated &&
       opts.covariance != NormalCovarianceModel::variance_components) {
     return misskappa::unexpected(Error::invalid_argument);
@@ -933,7 +954,7 @@ Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(
   auto valid = validate_feature_metric(W);
   if (!valid) return misskappa::unexpected(valid.error());
   RealMat Wsym = 0.5 * (W + W.transpose());
-  auto bp_chance = vector_bp_chance(ratings, features, Wsym);
+  auto bp_chance = vector_bp_chance(ratings, features, Wsym, ranges);
   if (!bp_chance) return misskappa::unexpected(bp_chance.error());
   // The block compound-symmetry covariance Sigma = J_R (x) Psi + I_R (x) E is
   // selected by the feature block size; the saturated route keeps block_size 1.

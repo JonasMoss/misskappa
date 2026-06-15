@@ -40,6 +40,18 @@
   W
 }
 
+.kvq_validate_ranges <- function(ranges, p) {
+  if (is.null(ranges)) return(numeric(0))
+  ranges <- as.matrix(ranges)
+  if (!is.numeric(ranges) || nrow(ranges) != p || ncol(ranges) != 2L ||
+      any(!is.finite(ranges))) {
+    stop("'ranges' must be a finite features-by-2 matrix of (lo, hi) per feature.")
+  }
+  widths <- ranges[, 2L] - ranges[, 1L]
+  if (any(widths <= 0)) stop("'ranges' must have hi > lo for every feature.")
+  as.numeric(widths)
+}
+
 .kvq_design <- function(R, p, W) {
   one <- matrix(1, R, R)
   P <- diag(R) - one / R
@@ -147,7 +159,7 @@
        vcov = vcov_mat, psi = psi, summaries = grad$summaries)
 }
 
-.kvq_fiml <- function(X, R, p, W, em_options = list()) {
+.kvq_fiml <- function(X, R, p, W, em_options = list(), widths = numeric(0)) {
   X <- X[rowSums(is.finite(X)) > 0L, , drop = FALSE]
   Rmiss <- is.finite(X)
   if (any(colSums(Rmiss) == 0L)) {
@@ -167,7 +179,7 @@
   }
   opt$covariance <- covariance
   opt$mean <- mean_model
-  raw <- rcpp_kappa_vector_quadratic_fiml(X, p, W, opt)
+  raw <- rcpp_kappa_vector_quadratic_fiml(X, p, W, opt, widths)
   nm <- c("Conger", "Fleiss", "Brennan-Prediger")
   estimates <- as.numeric(raw$estimates)
   names(estimates) <- nm
@@ -223,6 +235,15 @@
 #'   model has not been generalized to vector-valued ratings. `fd_h` is accepted
 #'   for backward compatibility and ignored because the observed information is
 #'   analytic.
+#' @param ranges Optional features-by-2 matrix of `(lo, hi)` score bounds, one
+#'   row per feature, that fixes the Brennan-Prediger chance baseline
+#'   `sum_a W_aa (hi_a - lo_a)^2 / 6` instead of estimating each width from the
+#'   observed data range. Fixing the range makes the chance denominator
+#'   deterministic, so the Brennan-Prediger standard error is exact and the
+#'   estimand no longer drifts with the sample range; it is the vector analogue
+#'   of the scalar `values` argument. `NULL` (default) keeps the observed-range
+#'   behaviour. Used by the `"nt_fiml"` / `"nt_fiml_cs"` methods only (the
+#'   `"pairwise"` method does not report Brennan-Prediger).
 #'
 #' @return A `misskappa_estimate` object with `Conger`, `Fleiss`, and
 #'   `Brennan-Prediger` coefficients (`"pairwise"` reports `Conger` and `Fleiss`
@@ -249,17 +270,25 @@
 kappa_vector_quadratic <- function(x,
                                    method = c("pairwise", "nt_fiml", "nt_fiml_cs"),
                                    W = NULL,
-                                   em_options = list()) {
+                                   em_options = list(),
+                                   ranges = NULL) {
   method <- match.arg(method)
   prep <- .kvq_flatten(x)
   W <- .kvq_validate_W(W, prep$features)
+  widths <- .kvq_validate_ranges(ranges, prep$features)
   fit <- if (method == "pairwise") {
+    if (length(widths)) {
+      warning("'ranges' is ignored for method = \"pairwise\" ",
+              "(it only fixes the Brennan-Prediger baseline, which ",
+              "\"pairwise\" does not report).", call. = FALSE)
+    }
     .kvq_pairwise(prep$X, prep$R, prep$features, W)
   } else {
     # the estimator name selects the covariance structure, mirroring the scalar
     # surface: nt_fiml is saturated, nt_fiml_cs the block compound symmetry.
     if (method == "nt_fiml_cs") em_options$covariance <- "variance_components"
-    .kvq_fiml(prep$X, prep$R, prep$features, W, em_options = em_options)
+    .kvq_fiml(prep$X, prep$R, prep$features, W, em_options = em_options,
+              widths = widths)
   }
 
   structure(

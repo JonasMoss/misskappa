@@ -288,6 +288,35 @@ test_that("kappa() exposes the full-W vector estimators on the array surface", {
                "quadratic")
 })
 
+test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
+  set.seed(44L)
+  arr <- array(rnorm(150L * 4L * 2L), dim = c(150L, 4L, 2L))
+  arr[, 2L, ] <- arr[, 2L, ] + 0.3
+  W <- matrix(c(1, 0.3, 0.3, 1.4), 2L, 2L)
+
+  # passing the OBSERVED per-feature (lo, hi) must reproduce the default
+  obs <- t(vapply(seq_len(2L), function(a) range(arr[, , a]), numeric(2L)))
+  for (est in c("nt_fiml", "nt_fiml_cs")) {
+    base <- kappa(arr, estimator = est, W = W)
+    same <- kappa(arr, estimator = est, W = W, ranges = obs)
+    expect_equal(coef(same), coef(base))
+    # a different fixed range moves Brennan-Prediger but not Conger / Fleiss
+    wide <- kappa(arr, estimator = est, W = W, ranges = rbind(c(-5, 5), c(-4, 4)))
+    expect_equal(coef(wide)[c("Conger", "Fleiss")],
+                 coef(base)[c("Conger", "Fleiss")])
+    expect_false(isTRUE(all.equal(coef(wide)[["Brennan-Prediger"]],
+                                  coef(base)[["Brennan-Prediger"]])))
+  }
+
+  # validation + pairwise (no Brennan-Prediger) warns and ignores
+  expect_error(kappa(arr, estimator = "nt_fiml", W = W,
+                     ranges = rbind(c(1, 1), c(0, 2))), "hi > lo")
+  expect_error(kappa(arr, estimator = "nt_fiml", W = W,
+                     ranges = matrix(1:6, 3L, 2L)), "features-by-2")
+  expect_warning(kappa(arr, estimator = "pairwise", W = W, ranges = obs),
+                 "ignored for method")
+})
+
 test_that("vector quadratic diagonal W matches component-separable squared loss", {
   X <- array(c(
     0, 1,  0, 1,  1, 1,

@@ -49,8 +49,8 @@ rcpp_kappa_vector <- function(x, features, method, loss_type, feature_weights) {
     .Call(`_misskappa_rcpp_kappa_vector`, x, features, method, loss_type, feature_weights)
 }
 
-rcpp_kappa_vector_quadratic_fiml <- function(x, features, W, em_options) {
-    .Call(`_misskappa_rcpp_kappa_vector_quadratic_fiml`, x, features, W, em_options)
+rcpp_kappa_vector_quadratic_fiml <- function(x, features, W, em_options, ranges) {
+    .Call(`_misskappa_rcpp_kappa_vector_quadratic_fiml`, x, features, W, em_options, ranges)
 }
 
 rcpp_kappa_gwise_categorical <- function(x, distance_type, method, g, max_chance_tuples, em_options) {

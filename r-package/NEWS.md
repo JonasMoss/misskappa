@@ -27,6 +27,13 @@
   counterpart to the saturated `"nt_fiml"`. These report Conger, Fleiss, and
   Brennan-Prediger. Without `W`, `"pairwise"` / `"ipw"` stay the
   component-separable (diagonal-weight) estimators as before.
+* The full-`W` vector `"nt_fiml"` / `"nt_fiml_cs"` estimators accept a `ranges`
+  argument (a features-by-2 matrix of `(lo, hi)` score bounds) that fixes the
+  Brennan-Prediger chance baseline `sum_a W_aa (hi_a - lo_a)^2 / 6` instead of
+  estimating each width from the observed data range — the vector analogue of the
+  scalar `values` hook. Fixing the range makes the chance denominator
+  deterministic, so the Brennan-Prediger standard error is exact and the estimand
+  no longer drifts with the sample range.
 
 ## API
 

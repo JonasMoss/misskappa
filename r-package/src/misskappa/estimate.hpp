@@ -184,8 +184,13 @@ Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
     RealMatView ratings, EmOptions opts);
 Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
     RealMatView ratings, const RealVec& values, EmOptions opts);
+// `ranges`, when non-empty, fixes the per-feature score width (hi - lo) used by
+// the Brennan-Prediger chance baseline instead of estimating it from the
+// observed data, the vector analogue of the scalar `values` hook. It must be
+// length `features`; an empty vector keeps the observed-range behaviour.
 Result<NormalFimlEstimation> estimate_vector_quadratic_normal_fiml(
-    RealMatView ratings, int features, RealMatView W, EmOptions opts);
+    RealMatView ratings, int features, RealMatView W, EmOptions opts,
+    const RealVec& ranges = RealVec());
 
 // --- Component-separable vector-rating estimators ---------------------------
 //
