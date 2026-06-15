@@ -96,7 +96,8 @@ wiring, independent of the R-side `~/.R/Makevars` setup described below.
 Repo-root `justfile` wraps the common loops: `just build`, `just test`
 (`dev` build + ctest), `just opt`, `just test-opt`, `just r-install`,
 `just r-dev` (fast dev install — see "R package build" below),
-`just r-check` (reinstall + R-level tests), `just paper <slug>` (delegates
+`just r-check` (fast `R CMD check` — no vignettes; `just r-check-release` for
+the full vignette-building release check), `just paper <slug>` (delegates
 to `papers/<slug>/justfile`, e.g. `just paper ipw pdf`), and
 `just regen-oracle` (regenerates `tests/fixtures/`). Coverage recipes are
 `just cpp-cov` (clang source-based instrumentation + `llvm-cov` over the
@@ -110,7 +111,8 @@ local site), and `just docs-clean`. `just` with no recipe lists them.
 
 The R package builds in two modes; pick by what you're doing.
 
-- **`just r-install` / `just r-check` — the release/self-contained form.**
+- **`just r-install` / `just r-check` / `just r-check-release` — the
+  release/self-contained form.**
   `just vendor` copies the canonical C++ (`src/` + `include/`) into
   `r-package/src/` so the package compiles every source itself, with no reach-up
   to `../..` and no prebuilt library. This is the form that ships and that
@@ -133,11 +135,24 @@ The R package builds in two modes; pick by what you're doing.
   `just r-install` after changing the R-facing interface (new `[[Rcpp::export]]`,
   `@export`, NAMESPACE, man pages) — `r-dev` only relinks existing exports.
 
+**Fast vs. full `R CMD check`.** Use `just r-check` in the dev loop: it skips the
+Quarto vignettes and downgrades absent Suggests to a NOTE (mirroring CI), so it is
+much cheaper than the old behaviour. Run `just r-check-release` **only before a
+release/tag** — that is the one that renders the vignettes and checks the full
+tarball as `remotes::install_github` / CRAN and the Docs workflow do. Vignette
+breakage is caught there and in the Docs workflow, not in the inner loop. Skipping
+vignettes leaves two expected WARNINGs (`checking files in 'vignettes'` and
+`checking package vignettes`, both because `inst/doc` is absent) — benign and
+identical to CI; treat anything beyond those two as a real finding.
+
 For faster iteration, route R's compiler through ccache in `~/.R/Makevars`
 (`CXX17 = ccache g++`, and the other `CXX*`/`CC`): repeated R compiles — the
 vendored `r-install` path included — then return cached objects instead of
 rebuilding the ~40M-per-file Eigen objects. This is a personal/machine setup,
-not a repo file, and is invisible to CRAN.
+not a repo file, and is invisible to CRAN. The fast `just r-check` additionally
+sets `CCACHE_NOHASHDIR`/`CCACHE_BASEDIR` so even `R CMD check`'s throwaway temp
+build dir hits the cache (in-place `r-install` always did; the temp dir otherwise
+busts ccache's path-sensitive hash).
 
 ## Documentation
 

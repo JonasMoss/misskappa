@@ -95,7 +95,28 @@ r-dev:
     cp dev/r-makevars-dev build-rdev/src/Makevars; \
     MISSKAPPA_ROOT="$root" MAKEFLAGS="-j$(nproc)" R CMD INSTALL build-rdev
 
+# Skips the Quarto vignettes (the dominant cost; exercised by the Docs workflow and
+# `r-check-release`), downgrades absent Suggests to a NOTE, and keeps ccache warm
+# across R CMD check's temp build dir (CCACHE_NOHASHDIR/BASEDIR — harmless no-ops
+# when the compiler isn't ccache). Run `r-check-release` before a release/tag.
+# Fast R CMD check for the dev loop — no vignettes (full check: r-check-release).
 r-check: vendor r-docs
+  @cleanup() { rm -f misskappa_*.tar.gz; }; \
+    cleanup; \
+    trap cleanup EXIT; \
+    export _R_CHECK_FORCE_SUGGESTS_=false \
+           MAKEFLAGS="-j$(nproc)" \
+           CCACHE_NOHASHDIR=1 \
+           CCACHE_BASEDIR="$(pwd)" \
+           CCACHE_SLOPPINESS=include_file_ctime,include_file_mtime,time_macros; \
+    R CMD build r-package --no-build-vignettes; \
+    R CMD check --no-manual --no-build-vignettes misskappa_*.tar.gz
+
+# Builds the Quarto vignettes (needs quarto/lavaan/psych) and checks the full
+# tarball, as `remotes::install_github` / CRAN would. The fast `r-check` is the
+# day-to-day dev check.
+# Full R CMD check with vignettes — run before a release/tag, not in the dev loop.
+r-check-release: vendor r-docs
   @cleanup() { rm -f misskappa_*.tar.gz; }; \
     cleanup; \
     trap cleanup EXIT; \

@@ -105,7 +105,11 @@ Build/run loop (edit canonical `src/`, never the vendored `r-package/src/`):
 - `just r-dev` — fast R reinstall (links the prebuilt `.a`).
 - `just vendor-check` — drift guard; must pass (vendored mirror == `src/`).
 - `just r-docs` — regenerate `man/*.Rd` after docstring edits.
-- `just r-check` — `R CMD check`; must stay clean.
+- `just r-check` — fast `R CMD check` (no vignettes); run this in the loop. Expect
+  exactly two benign vignette WARNINGs (`files in 'vignettes'` / `package vignettes`,
+  from `--no-build-vignettes`); anything beyond those two must be fixed.
+- `just r-check-release` — full check *with* vignettes; release-only, not needed for
+  this task's iteration.
 
 **Oracles (all in-repo / installed — no new deps):**
 - `lme4` fixed-rater MLE `lmer(value ~ 0 + item + (1|subject), REML=FALSE)` —
@@ -121,7 +125,7 @@ Build/run loop (edit canonical `src/`, never the vendored `r-package/src/`):
 - `covariance="variance_components"` still works; `covariance="ten_hove"` now
   errors. Update/remove any test asserting the old alias
   (`tests/testthat/test-kappa-quadratic-fiml.R`, `test-alpha-continuous.R`).
-- `just r-docs` + `just r-check` clean; `just vendor-check` passes.
+- `just r-docs` + `just r-check` (fast, no vignettes) clean; `just vendor-check` passes.
 
 **Task 2 (BP) — checks:**
 - New unit test (C++ in `normal_fiml_test.cpp`, mirrored in testthat): on
