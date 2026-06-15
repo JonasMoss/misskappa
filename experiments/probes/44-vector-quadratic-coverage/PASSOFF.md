@@ -20,6 +20,28 @@ Estimators: `pairwise` (MCAR moment, Conger/Fleiss), `nt_fiml` (saturated), `nt_
 
 ---
 
+## RESOLVED this session (2026-06-15)
+
+- **Framing Q1/Q2/Q3/Q4 → DECIDED: split by mechanism.** `nt_fiml_cs` is a *recommended*
+  estimator under MCAR / connected-incomplete designs and a *studied-but-cautioned* comparator
+  under MAR (saturated `nt_fiml` is the MAR recommendation). Presentation = Proposition
+  (MCAR contraction-invariance) + a spec×mechanism 2×2. Anchor = repeated-measures CCC under
+  missing data (KCC / `cccrm::cccUst`, study 28). Home = quadratic paper §2 (one sentence) +
+  shared appendix comparator. Written into `papers/00_wip/quadratic/dev/notes/cs-reframing-memo.md`.
+- **Sim-mod 1 (well-conditioned knob) → DONE.** `regime1_wc.R` (latent camp-factor DGP, min-eig
+  pinned at λ_min(E)). The CS MAR-bias curve is now clean/graded across the full `s` range; see
+  NOTES "Regime 1 REBUILD".
+- **Sim-mod 2 (ridge rescue) → NOT BUILT, motivation dissolved.** The well-conditioned rebuild
+  shows saturated `nt_fiml` converges (conv=1) at ALL `s` — the old "fails at s≥2" was a
+  DGP-degeneracy artifact, so there is no consistency-vs-stability tradeoff to rescue. Residual
+  sparse corner is owned by CS; scalar precedent shows the rescue's SE goes optimistic.
+
+**Still open (paper-table generation, not framing-critical):** targeted breadth run (mod 4) with
+analytic fixed-range BP truth (mod 5); interval/`n_eff` conventions (mod 6); BP `ranges=` warning
+UX (mod 3, lean warn-on-observed-range); MCAR-efficiency loose end (mod 7, low priority).
+
+---
+
 ## Open framing questions (the real work)
 
 1. **Headline or appendix?** The MAR inconsistency argues for an honest "online-appendix comparator," but the MCAR consistency + robustness + connected-graph identifiability is a real selling point. Mirror the scalar decision in `papers/00_wip/quadratic/dev/notes/cs-reframing-memo.md` (and the structured-ICC framing, memory `project_ten_hove_icc`). **Decide: is vector block-CS a recommended estimator, or a studied-but-cautioned one?**

@@ -108,6 +108,13 @@ Three targeted regimes (mclapply-parallel) chasing what the screen run left open
 
 ### Regime 1 — adversarial MAR (this overturns the screen "benign" verdict)
 
+> **PARTIALLY SUPERSEDED (2026-06-15) — see "Regime 1 REBUILD" below.** The
+> `camps_sigma` knob drives diagonal rater blocks negative for `s > 1.67`, so it is
+> PSD-floored into a near-singular truth at `s ≥ 2`. The CS bias curve at `s ≤ 1` is
+> sound, but the "saturated fails to converge at `s ≥ 2`" finding is a **DGP-degeneracy
+> artifact**, not a strong-covariance effect. The well-conditioned rebuild
+> (`regime1_wc.R`) shows saturated `nt_fiml` converges (`conv = 1`) at ALL `s`.
+
 Two-camp `camps` covariance with a tunable misspecification strength `s` (`s=0` is
 exact block-CS; camps {1,2} and {3,4} get unequal rater variances + extra within-camp
 coupling), plus a **camp-aimed MAR** (anchor camp A, drop camp B on the anchor value, so
@@ -138,6 +145,10 @@ the cross-camp blocks the CS model averages away are under-observed in a value-d
   itself is near-singular and PSD-floored, so read `s≥2` as "extreme".) Net: under MAR there
   is a real **consistency-vs-stability tradeoff** — CS is stable but biased off-model;
   saturated is consistent but numerically fragile exactly where the structure is strong.
+  **[SUPERSEDED — the `s ≥ 2` non-convergence and hence the "consistency-vs-stability
+  tradeoff" are artifacts of the PSD-floored degenerate truth. On the well-conditioned
+  rebuild (below) saturated converges at ALL `s` and stays consistent + calibrated: under MAR
+  on a non-degenerate truth, saturated `nt_fiml` is the all-around answer, no tradeoff.]**
 
 ### Regime 2 — robustness / conv-rate (the selling point the screen run couldn't show)
 
@@ -164,11 +175,72 @@ the one BP weak spot — BP is trustworthy once the range is supplied.
 
 - **MCAR:** `nt_fiml_cs` is the recommendation — consistent at any misspecification,
   connected-graph-only, numerically robust, BP calibrated with `ranges=`.
-- **MAR:** consistency-vs-stability tradeoff. Use `nt_fiml_cs` only when block-CS is
-  approximately right (its bias is graded in the misspecification); saturated `nt_fiml` is the
-  consistent choice but can fail to converge under strong covariance structure + missingness.
-  Frame this honestly (mirrors the structured-ICC story in probe 39).
-- Artifacts: `stress_regime{1,2,3}.rds`. Re-run: `Rscript .../stress.R [regimes…]`.
+- **MAR:** saturated `nt_fiml` is the recommendation — on a well-conditioned truth it is
+  consistent, stable (`conv = 1`), and calibrated at ANY misspecification strength (see the
+  rebuild below; the old "fails to converge / consistency-vs-stability tradeoff" was a
+  degeneracy artifact). `nt_fiml_cs` is graded-inconsistent under MAR (bias +0.01→+0.05,
+  coverage collapses with n) and should be used only when block-CS is approximately right OR
+  the design is too sparse for saturated to fit (the regime-2 corner). Frame honestly
+  (mirrors the structured-ICC story in probe 39).
+- Artifacts: `stress_regime{1,2,3}.rds` + `stress_regime1_wc.rds`. Re-run:
+  `Rscript .../stress.R [regimes…]`, `Rscript .../regime1_wc.R`.
+
+## Regime 1 REBUILD — well-conditioned adversarial knob (`regime1_wc.R`, 2026-06-15)
+
+Disentangles the two things the original `camps` knob confounded: (i) `nt_fiml_cs`'s MAR
+bias from block-CS misspecification, and (ii) saturated `nt_fiml` "non-convergence" — which
+at `s ≥ 2` was really *the truth is degenerate* (PSD-floored), not *missingness broke the EM*.
+
+**New DGP — latent camp factor, PD at every `s`.** `Y_ij = μ_j + b_i + c_i^{camp(j)} + ε_ij`
+with `b_i~N(0,Ψ)`, `c_i^{camp}~N(0,sG)`, `ε~N(0,E)` ⇒
+`Σ = J_R⊗Ψ + I_R⊗E + Σ_camp (1_camp 1_camp')⊗(sG)`. Diagonal blocks `= Ψ + sG + E` (constant),
+within-camp off-diag `= Ψ + sG`, cross-camp off-diag `= Ψ`. `s=0` is exact block-CS; `s>0`
+makes it false in a graded way. **Smallest eigenvalue is PINNED at `λ_min(E)=0.4382` for all
+`s`** (rcond 0.074→0.036 over `s∈{0,…,4}`), so every per-pattern `Σ_oo ⪰ I⊗E ≻ 0` — the
+saturated EM's inversions are never population-singular. Knob is provably clean. `B=300`,
+`n∈{400,1500}`, `R=4`, `d=2`, `W=I`, mech {mcar 30%, camp-aimed mar}.
+
+**Finding A — clean graded CS inconsistency under MAR (Conger):**
+
+| s | bias n=400 | bias n=1500 | cov n=400 | cov n=1500 |
+|---|---|---|---|---|
+| 0   | −0.001 | −0.001 | 0.95 | 0.96 |
+| 0.5 | +0.012 | +0.010 | 0.90 | 0.83 |
+| 1   | +0.018 | +0.018 | 0.86 | 0.61 |
+| 2   | +0.032 | +0.033 | 0.70 | 0.19 |
+| 4   | +0.049 | +0.045 | 0.49 | **0.07** |
+
+Bias persists (n-stable), coverage collapses with n — asymptotic-inconsistency signature, now
+monotone across the FULL `s` range with no degeneracy confound (the old run could only trust
+`s ≤ 1`).
+
+**Finding B — the disentangling headline. Saturated `nt_fiml` converges at ALL `s`.**
+`conv = 1.000` for every `s`, both mechanisms, both n; MAR bias `|·| ≤ 0.0023`, coverage
+0.92–0.96 throughout. So the original "saturated fails at `s ≥ 2`" was **entirely a
+DGP-degeneracy artifact**. On a well-conditioned truth there is **no consistency-vs-stability
+tradeoff under MAR**: saturated is consistent, stable, AND calibrated even at extreme
+misspecification. Saturated's only genuine failure is regime-2 *sample* singularity
+(sparse/small-n), independent of the population conditioning — that is where CS's stability
+edge actually lives.
+
+**Finding C — contraction-invariance re-confirmed to `s=4`.** MCAR `nt_fiml_cs` bias
+`|·| ≤ 0.0028`, coverage 0.93–0.97 at every `s`: the block-CS projection is consistent no
+matter how false block-CS is, now stress-tested on a non-degenerate truth.
+
+**Consequence — ridge rescue (PASSOFF sim-mod 2) is moot, not built.** Its motivation was
+"save saturated from strong-covariance non-convergence," which Finding B shows does not occur.
+The residual sparse corner (regime 2) is owned by CS already (consistent + stable there); a
+ridge would only help the narrow MAR+sparse+misspec triple-corner, at the SE-optimism cost the
+scalar precedent already documented (`project_nt_fiml_degenerate_sigma`, study 33: rescue
+recovers failures but coverage drops to ~0.35, smoked + rejected).
+
+**Revised paper framing (split by mechanism, both coefficients):**
+- **MCAR** → recommend `nt_fiml_cs`: consistent at any misspecification, connected-graph-only,
+  numerically robust, no efficiency cost vs saturated (constraint-invariant contractions),
+  BP-calibrated with `ranges=`.
+- **MAR** → recommend saturated `nt_fiml`: consistent, stable, calibrated at any
+  well-conditioned misspecification. `nt_fiml_cs` is graded-inconsistent (Finding A) — use it
+  under MAR only if block-CS is ≈right or the design is too sparse for saturated to fit.
 
 ## Artifacts
 
