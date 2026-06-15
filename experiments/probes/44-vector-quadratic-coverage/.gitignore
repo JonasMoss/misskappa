@@ -1,0 +1,3 @@
+# Raw per-replicate dump (4.8M, fully regenerable from the seeded script).
+# The aggregated coverage_summary.{rds,csv} + stress_regime*.rds are kept.
+replicates.csv
