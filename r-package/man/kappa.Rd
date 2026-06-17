@@ -159,6 +159,11 @@ kappa(dat.zapf2016, estimator = "nt_fiml_cs")
 # The distribution-free MCAR moment companion to "nt_fiml_cs".
 kappa(dat.zapf2016, estimator = "pairwise_cs")
 
+# Planned-incomplete design (synthetic): some rater pairs are never
+# co-observed, so the saturated estimators are not identified -- but the
+# compound-symmetry estimator needs only a connected co-observation graph.
+kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
+
 # g-wise (multirater) nominal kappa over triples of raters.
 kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 
@@ -174,6 +179,14 @@ kappa(sites, estimator = "nt_fiml_cs", W = diag(dim(sites)[3]))
 
 }
 \references{
+Moss, J. (in preparation). *Agreement coefficients with missing ratings.*
+Working paper (kappa-missing); citation to be updated on preprint and
+publication.
+
+Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
+Working paper (quadratic); citation to be updated on preprint and
+publication.
+
 Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
 
 Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement

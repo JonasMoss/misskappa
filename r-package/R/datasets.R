@@ -176,3 +176,42 @@
 #' kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 #' @keywords datasets
 "dat.vanbelle2019"
+
+#' Synthetic planned-incomplete ratings (compound-symmetry illustration)
+#'
+#' A small *synthetic* inter-rater dataset built to illustrate the
+#' compound-symmetry (variance-component) estimators. It is **not real data**:
+#' 60 subjects are scored on an ordinal `1`--`5` scale by 6 raters drawn from a
+#' fixed-rater variance-component model `y_ij = mu_j + b_i + e_ij`, in the style
+#' of the *planned-incomplete* ICC designs of ten Hove, Jorgensen, and van der
+#' Ark (2025). Each subject is rated by only three of the six raters, in three
+#' overlapping panels (raters `1,2,3`; then `3,4,5`; then `5,6,1`), so the rater
+#' co-observation graph is *connected but not complete* --- some rater pairs
+#' (for example raters 2 and 4) never rate the same subject. That is exactly the
+#' regime where the saturated coefficients are not identified: `kappa()` with
+#' `estimator = "pairwise"`, `"nt_fiml"`, or `"cat_fiml"` stops with an
+#' identifiability error, while the compound-symmetry estimators
+#' `"nt_fiml_cs"` and `"pairwise_cs"`, which need only a connected graph, still
+#' fit. The build script `data_raw/tenhove2025.R` regenerates it from a fixed
+#' seed.
+#'
+#' @format A 60 x 6 integer matrix; columns `rater1`--`rater6` hold ordinal
+#'   scores `1`--`5`, with `NA` marking the (planned) unobserved ratings. Every
+#'   row has exactly three observed entries.
+#' @source Simulated. Inspired by the planned-incomplete ICC designs of ten Hove
+#'   et al. (2025); no real measurements are used.
+#' @references
+#'   ten Hove, D., Jorgensen, T. D., & van der Ark, L. A. (2025). How to
+#'   Estimate ICCs for Interrater Reliability from Planned Incomplete Data.
+#'   \emph{Multivariate Behavioral Research}, 60(5).
+#'   \doi{10.1080/00273171.2025.2507745}
+#' @examples
+#' # The co-observation graph is connected but incomplete, so the saturated
+#' # estimators are not identified ...
+#' try(kappa(dat.tenhove2025, estimator = "nt_fiml"))
+#'
+#' # ... while the compound-symmetry estimators need only connectivity.
+#' kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
+#' kappa(dat.tenhove2025, estimator = "pairwise_cs")
+#' @keywords datasets
+"dat.tenhove2025"

@@ -1,0 +1,39 @@
+# Citation entries for misskappa.
+#
+# The two methods papers are works in preparation, referenced here under their
+# repository working titles ("kappa-missing" and "quadratic"). Their entries are
+# PLACEHOLDERS: update the year, add the arXiv id + URL when each is posted as a
+# preprint, and swap in the journal / volume / DOI on publication. See
+# dev/notes/todo.md ("Forward-reference the two methods papers ...").
+
+if (!exists("meta") || is.null(meta)) meta <- packageDescription("misskappa")
+ver <- meta[["Version"]]
+
+citHeader("To cite misskappa in publications, use:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "{misskappa}: Agreement Coefficients with Missing Data",
+  author  = person("Jonas", "Moss"),
+  year    = "2026",
+  note    = paste("R package version", ver),
+  url     = "https://jonasmoss.github.io/misskappa"
+)
+
+bibentry(
+  bibtype = "Unpublished",
+  key     = "moss-kappa-missing",
+  title   = "Agreement Coefficients with Missing Ratings",
+  author  = person("Jonas", "Moss"),
+  year    = "2026",
+  note    = "Working paper (in preparation); citation to be updated on preprint and publication"
+)
+
+bibentry(
+  bibtype = "Unpublished",
+  key     = "moss-quadratic",
+  title   = "Quadratically Weighted Agreement Coefficients",
+  author  = person("Jonas", "Moss"),
+  year    = "2026",
+  note    = "Working paper (in preparation); citation to be updated on preprint and publication"
+)

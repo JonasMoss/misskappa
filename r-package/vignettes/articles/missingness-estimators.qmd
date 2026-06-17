@@ -2,6 +2,12 @@
 title: "Missingness And Estimators"
 ---
 
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(misskappa)
+```
+
 The package distinguishes missing completely at random (MCAR) estimators from
 missing at random (MAR) likelihood estimators. In raw rater matrices, `NA`
 means the rating was not observed. In the C++ API, categorical missingness is
@@ -60,3 +66,49 @@ symmetry.
 Gwet's estimator is retained for comparison with the agreement-coefficient
 literature. It uses its own chance-disagreement convention and should be
 interpreted as a comparator rather than the default missing-data target.
+
+## Compound symmetry on a planned-incomplete design
+
+The saturated coefficients (`"pairwise"`, `"nt_fiml"`, `"cat_fiml"`) are
+functions of *every* pairwise second moment, so they are identified only when
+every rater pair is jointly observed by some subject --- a *complete*
+co-observation graph. The compound-symmetry estimators need only a *connected*
+graph, and that is the whole point of a planned-incomplete design: you can rate
+each subject with a rotating subset of raters and still recover the coefficient.
+
+The synthetic `dat.tenhove2025` data (60 subjects, 6 raters, ordinal `1`--`5`)
+is such a design, in the style of the planned-incomplete ICC studies of ten Hove
+et al. (2025). Each subject is rated by three of the six raters in overlapping
+panels, so the graph is connected but some pairs (raters 2 and 4, for example)
+never co-occur:
+
+```{r}
+# Each subject has exactly three of the six ratings.
+table(rowSums(is.finite(dat.tenhove2025)))
+
+# Off-diagonal zeros are rater pairs that never rate the same subject.
+co <- crossprod(is.finite(dat.tenhove2025))
+diag(co) <- 0
+co
+```
+
+Asking for a saturated coefficient on this pattern stops with an
+identifiability error before the estimator runs:
+
+```{r}
+#| error: true
+kappa(dat.tenhove2025, estimator = "nt_fiml")
+```
+
+The compound-symmetry estimators fit the same data. The likelihood
+(`"nt_fiml_cs"`) and its distribution-free MCAR moment companion
+(`"pairwise_cs"`) agree closely:
+
+```{r}
+kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
+kappa(dat.tenhove2025, estimator = "pairwise_cs")
+```
+
+Both report the usual Conger, Fleiss, and Brennan-Prediger coefficients with
+sandwich standard errors, recovered from a design where the saturated estimators
+cannot be computed at all.

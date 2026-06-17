@@ -1,3 +1,26 @@
+# misskappa (development version)
+
+## New features
+
+* New dataset `dat.tenhove2025`: a *synthetic* planned-incomplete inter-rater
+  design (60 subjects, 6 raters, ordinal `1`--`5` scores) whose rater
+  co-observation graph is connected but not complete, in the style of the
+  planned-incomplete ICC designs of ten Hove et al. (2025). It illustrates the
+  compound-symmetry estimators (`"nt_fiml_cs"`, `"pairwise_cs"`) recovering the
+  coefficient on a design where the saturated estimators are not identified.
+
+## Documentation
+
+* New "Working With Influence Functions" how-to article: the
+  `vcov == crossprod(psi) / n^2` identity, and building custom contrasts and
+  paired comparisons by hand from `fit$psi` / `influence()`.
+* The "Missingness And Estimators" article gains a worked compound-symmetry
+  example on `dat.tenhove2025` (saturated non-identified versus CS fit).
+* `kappa()`, `alpha()`, and `kappa_counts()` now reference the two methods
+  papers (in preparation), and `inst/CITATION` lists them as placeholders to be
+  updated on preprint and on publication.
+* `kappa_counts()` examples now include the exchangeable `estimator = "nt_fiml"`.
+
 # misskappa 1.2.0
 
 ## New features

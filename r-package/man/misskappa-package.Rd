@@ -8,7 +8,7 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Estimation and inference for weighted agreement coefficients (Cohen, Fleiss, Conger, Brennan-Prediger) with arbitrary numbers of raters and arbitrary pairwise loss functions, plus coefficient alpha for scored categorical and continuous item batteries. Supports incomplete data under MCAR (available-case, IPW) and MAR (saturated categorical or normal FIML / EM), with sandwich standard errors. Wraps the standalone C++17 'misskappa' library.
+Estimation and inference for weighted agreement coefficients (Cohen, Fleiss, Conger, Brennan-Prediger) with arbitrary numbers of raters and arbitrary pairwise loss functions, plus coefficient alpha for scored categorical and continuous item batteries. Supports incomplete data under MCAR (available-case, IPW) and MAR (saturated categorical or normal FIML / EM), with sandwich standard errors. Wraps the standalone C++17 'misskappa' library. The underlying methods are described in two companion papers, currently in preparation.
 }
 \seealso{
 Useful links:

@@ -101,3 +101,8 @@ N <- paste0("N", 1:5)
 alpha(bfi[, N], estimator = "nt_fiml")
 \dontshow{\}) # examplesIf}
 }
+\references{
+Moss, J. (in preparation). *Agreement coefficients with missing ratings.*
+Working paper (kappa-missing); citation to be updated on preprint and
+publication.
+}

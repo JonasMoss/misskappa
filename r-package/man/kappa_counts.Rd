@@ -109,8 +109,16 @@ kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 # Treat the categories as ordered scores with a quadratic loss.
 kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
 
+# Exchangeable common-mean compound-symmetry FIML, fit directly on the
+# per-subject counts (the count-format counterpart of "nt_fiml_cs").
+kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic")
+
 }
 \references{
+Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
+Working paper (quadratic); citation to be updated on preprint and
+publication.
+
 Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
 
 Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement

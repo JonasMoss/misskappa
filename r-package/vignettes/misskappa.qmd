@@ -63,7 +63,8 @@ The right `estimator=` depends on the data and the missingness assumption:
 |---|---|---|
 | Categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
 | Categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
-| Scored ratings (quadratic) | `"pairwise"` | MCAR, distribution-free |
+| Scored ratings (quadratic) | `"pairwise"` | MCAR, distribution-free, saturated covariance |
+| Scored ratings (quadratic) | `"pairwise_cs"` | MCAR, distribution-free, compound-symmetry covariance |
 | Scored ratings (quadratic) | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
 | Scored ratings (quadratic) | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
 
@@ -80,6 +81,11 @@ covariance is misspecified. Prefer the saturated `"nt_fiml"` when the
 missingness may be MAR and the covariance could depart from compound symmetry
 (for example, rater subgroups with systematically different bias), where the
 structured model can become inconsistent but the saturated one stays robust.
+`"pairwise_cs"` is the distribution-free MCAR moment companion to `"nt_fiml_cs"`:
+same compound-symmetry structure, no normality assumption. Because the
+compound-symmetry estimators need only a *connected* co-observation graph, they
+recover the coefficient on planned-incomplete designs where the saturated
+estimators are not even identified --- see `vignette("missingness-estimators")`.
 
 ```{r}
 kappa(dat.zapf2016, estimator = "pairwise")

@@ -164,6 +164,11 @@
 #' N <- paste0("N", 1:5)
 #' alpha(bfi[, N], estimator = "nt_fiml")
 #'
+#' @references
+#' Moss, J. (in preparation). *Agreement coefficients with missing ratings.*
+#' Working paper (kappa-missing); citation to be updated on preprint and
+#' publication.
+#'
 #' @export
 alpha <- function(x,
                   estimator = c("pairwise", "cat_fiml", "nt_fiml", "nt_fiml_cs"),
@@ -511,6 +516,14 @@ estimate_kappa_fiml_multi <- function(x,
 #' interface.
 #'
 #' @references
+#' Moss, J. (in preparation). *Agreement coefficients with missing ratings.*
+#' Working paper (kappa-missing); citation to be updated on preprint and
+#' publication.
+#'
+#' Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
+#' Working paper (quadratic); citation to be updated on preprint and
+#' publication.
+#'
 #' Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
 #'
 #' Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
@@ -541,6 +554,11 @@ estimate_kappa_fiml_multi <- function(x,
 #'
 #' # The distribution-free MCAR moment companion to "nt_fiml_cs".
 #' kappa(dat.zapf2016, estimator = "pairwise_cs")
+#'
+#' # Planned-incomplete design (synthetic): some rater pairs are never
+#' # co-observed, so the saturated estimators are not identified -- but the
+#' # compound-symmetry estimator needs only a connected co-observation graph.
+#' kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
 #'
 #' # g-wise (multirater) nominal kappa over triples of raters.
 #' kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
@@ -1102,6 +1120,10 @@ ratings_to_counts <- function(x, categories = NULL) {
 #' recommended R interface.
 #'
 #' @references
+#' Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
+#' Working paper (quadratic); citation to be updated on preprint and
+#' publication.
+#'
 #' Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
 #'
 #' Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
@@ -1118,6 +1140,10 @@ ratings_to_counts <- function(x, categories = NULL) {
 #'
 #' # Treat the categories as ordered scores with a quadratic loss.
 #' kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
+#'
+#' # Exchangeable common-mean compound-symmetry FIML, fit directly on the
+#' # per-subject counts (the count-format counterpart of "nt_fiml_cs").
+#' kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic")
 #'
 #' @export
 kappa_counts <- function(x,

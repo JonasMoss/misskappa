@@ -155,7 +155,41 @@ not here. The port plan with the eight-step roadmap is at
       over-advertised impossible/redundant cells — the name encodes it instead.
       Tests + regenerated man; suite green.
 
-- [ ] **Free-mean CS moment foil — PROBED + confirmed principled; wiring pending.**
+- [ ] **MASS-RENAME the two methods-paper citations on preprint + publication.**
+      WIP scaffold LANDED 2026-06-17: the two papers are now forward-referenced
+      under working titles in `inst/CITATION` (keys `moss-kappa-missing`,
+      `moss-quadratic`), in the DESCRIPTION `Description` field, and in the
+      roxygen `@references` of `kappa()` / `alpha()` / `kappa_counts()` — all
+      marked "(in preparation)". What remains is to **update those same spots
+      TWICE** as the papers progress:
+        * **On arXiv:** add the arXiv id + URL and switch the wording from "in
+          preparation" to "preprint".
+        * **On publication:** swap in the journal name / volume / DOI and drop the
+          preprint wording.
+      Touch points to grep when renaming: `inst/CITATION`, `DESCRIPTION`, and
+      `@references` blocks in `R/kappa.R` (search `in preparation`). Lock the
+      final titles first; the quadratic paper is still untitled (coefficient-led,
+      Biometrics-target), so its working title "Quadratically weighted agreement
+      coefficients" is provisional.
+
+- [x] **Example the CS estimator where it earns its keep (incomplete design).**
+      Done 2026-06-17. Added the *synthetic* `dat.tenhove2025` (60×6, connected-
+      but-incomplete planned-missing design; `data_raw/tenhove2025.R` regenerates
+      it from a fixed seed) and used it to show "saturated non-identified → CS
+      fits": worked section in `articles/missingness-estimators.qmd`, an
+      `@examples` entry in `kappa.Rd`, and `test-cs-estimators.R` (CS fits +
+      IF-identity + saturated errors). Also closed the smaller gaps —
+      `kappa_counts.Rd` now examples `estimator = "nt_fiml"`, the getting-started
+      vignette names `pairwise_cs` and links the new worked example. Still open
+      (minor, parked): the counts `nt_fiml` print header surfaces the deprecated
+      `covariance=…, mean=…` labels.
+
+- [x] **Free-mean CS moment foil — SHIPPED as `pairwise_cs` in v1.2.0.**
+      Decision flipped from "FIML only": the analytic robust IF (the one
+      non-trivial bit flagged below) was built, so `kappa(estimator =
+      "pairwise_cs")` ships as the distribution-free MCAR moment companion to
+      `nt_fiml_cs` (NEWS 1.2.0, exampled in `kappa.Rd`). History below kept as the
+      probe record.
       The estimator story pairs each FIML with a moment foil: saturated/free-mean
       = raw `nt_fiml` vs raw `pairwise` (available-case cov); CS/equal-mean =
       counts `nt_fiml` vs `fleiss_cuzick`; CS/**free-mean** = raw
