@@ -7,7 +7,7 @@
 kappa_quadratic(x, values)
 }
 \arguments{
-\item{x}{A subjects-by-raters numeric matrix of category scores; `NA`
+\item{x}{A subjects-by-raters numeric matrix of category scores. `NA`
 marks missing entries.}
 
 \item{values}{Length-C numeric vector of category scores. The quadratic
@@ -28,7 +28,7 @@ as numeric scores and uses per-rater means and covariances.
 Use this when the quadratic weighting is the right loss and a parametric
 moment-based estimate is preferred over the U-statistic version
 (`kappa(x, estimator = "pairwise")`). The two
-agree under the usual asymptotics; the closed form can be faster on
+agree under the usual asymptotics. The closed form can be faster on
 large `n`.
 
 With missing ratings, every rater must be observed at least once and every

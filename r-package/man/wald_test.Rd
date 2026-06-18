@@ -8,8 +8,8 @@ wald_test(..., contrast, value = 0)
 }
 \arguments{
 \item{...}{One or more `misskappa_estimate` objects. Multiple fits may be
-named; names become prefixes such as `"ac.Conger"` in the stacked
-coefficient vector. Unnamed multiple fits are prefixed as `"fit1"`,
+named, in which case names become prefixes such as `"ac.Conger"` in the
+stacked coefficient vector. Unnamed multiple fits are prefixed as `"fit1"`,
 `"fit2"`, and so on.}
 
 \item{contrast}{Numeric vector or matrix defining the linear contrast. For

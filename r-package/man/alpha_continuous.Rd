@@ -7,16 +7,16 @@
 alpha_continuous(x, em_options = list())
 }
 \arguments{
-\item{x}{A subjects-by-items numeric matrix or data frame; `NA` marks
+\item{x}{A subjects-by-items numeric matrix or data frame. `NA` marks
 missing entries. Rows that are entirely missing are dropped.}
 
 \item{em_options}{Named list tuning the EM fit: `tol` (convergence
 tolerance on the moments, default `1e-8`), `max_iter` (default `10000`),
 `covariance`, and `mean`. `covariance = "saturated"` fits the
-unrestricted normal covariance (default); `"variance_components"` fits
+unrestricted normal covariance (default). `"variance_components"` fits
 the compound-symmetry (fixed-rater) covariance model
 \eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per item
-(default); `mean = "equal"` estimates a common mean and is supported with
+(default). `mean = "equal"` estimates a common mean and is supported with
 `covariance = "variance_components"`. `fd_h` is accepted for backward
 compatibility and ignored because the observed information is analytic.
 Pass any subset.}
@@ -33,22 +33,22 @@ Backend for `alpha(estimator = "nt_fiml")`. Estimates Cronbach's
 coefficient alpha for a battery of continuous items with missing entries,
 via a multivariate-normal covariance fitted by full-information maximum
 likelihood (the EM algorithm), valid under ignorable (MCAR or MAR)
-missingness. The default covariance model is saturated; `em_options =
+missingness. The default covariance model is saturated. `em_options =
 list(covariance = "variance_components")` fits the compound-symmetry
 (fixed-rater) covariance model \eqn{\Sigma = \psi J + e I}. It treats items
-as fixed and is not ten Hove's random-rater MLE-RE / ICC. The standard error
+as fixed, distinct from ten Hove's random-rater MLE-RE / ICC. The standard error
 is the sandwich delta-method contraction of the alpha gradient with the
 asymptotic covariance of the fitted moments.
 
 The fit and its sandwich covariance reproduce magmaan's
-`estimate_saturated_em_moments()` and lavaan's saturated estimator; the
+`estimate_saturated_em_moments()` and lavaan's saturated estimator. The
 interval matches `coefficientalpha::alpha(varphi = 0)` and a nonparametric
 case bootstrap.
 
 This backend is normally reached through [alpha()], which checks that every
 item is observed and, for the default saturated covariance model, every item
 pair is jointly observed before dispatch. Direct callers should enforce the
-same fixed-item condition; for `covariance = "variance_components"` this is
+same fixed-item condition. For `covariance = "variance_components"` this is
 a connected item co-observation graph.
 }
 \references{

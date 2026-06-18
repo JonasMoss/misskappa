@@ -10,7 +10,7 @@ A 301 x 15 data frame:
     \item{id}{subject identifier.}
     \item{sex}{1 = male, 2 = female.}
     \item{ageyr, agemo}{age, years and months.}
-    \item{school}{factor; `"Pasteur"` (n = 156) or `"Grant-White"` (n = 145).}
+    \item{school}{factor, with levels `"Pasteur"` (n = 156) and `"Grant-White"` (n = 145).}
     \item{grade}{school grade.}
     \item{x1, x2, x3}{visual subscale: visual perception, cubes, lozenges.}
     \item{x4, x5, x6}{textual subscale: paragraph comprehension, sentence
@@ -21,7 +21,7 @@ A 301 x 15 data frame:
 }
 \source{
 The `HolzingerSwineford1939` data frame distributed with the
-  \pkg{lavaan} package; originally Holzinger & Swineford (1939).
+  \pkg{lavaan} package, originally Holzinger & Swineford (1939).
 }
 \usage{
 dat.holzinger1939
@@ -29,8 +29,8 @@ dat.holzinger1939
 \description{
 The classic factor-analysis teaching dataset: 301 seventh- and eighth-grade
 students from two schools each take nine cognitive-ability tests. The nine
-continuous scored items split into three subscales --- *visual* (`x1`--`x3`),
-*textual* (`x4`--`x6`), and *speed* (`x7`--`x9`) --- which makes it a compact,
+continuous scored items split into three subscales, *visual* (`x1`--`x3`),
+*textual* (`x4`--`x6`), and *speed* (`x7`--`x9`), which makes it a compact,
 complete real battery for coefficient alpha: estimate a subscale's alpha with
 [alpha()], compare reliabilities across the three subscales with a G-way
 [alpha_test()], or compare a subscale across the two schools with an

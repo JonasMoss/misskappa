@@ -5,7 +5,7 @@
 \alias{dat.zapf2016}
 \title{Zapf (2016) example ratings}
 \format{
-A 50 x 4 data frame; columns `Rater A`--`Rater D` hold category
+A 50 x 4 data frame. Columns `Rater A`--`Rater D` hold category
   codes `1`--`5`.
 }
 \source{

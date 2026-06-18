@@ -25,7 +25,7 @@ library(misskappa)
 
 ## The influence matrix
 
-`stats::influence()` is the registered accessor; it returns the same matrix as
+`stats::influence()` is the registered accessor. It returns the same matrix as
 `fit$psi`.
 
 ```{r}
@@ -62,7 +62,7 @@ c(estimate = est, se = se, z = z, p = 2 * pnorm(-abs(z)))
 
 When two fits share the same subjects in the same row order, their influence
 rows are aligned, so the contrast's influence function is the *row-wise*
-difference of the two columns --- the cross-fit dependence is recovered with no
+difference of the two columns. The cross-fit dependence is recovered with no
 independence assumption. Here the Conger coefficient from the likelihood
 (`"nt_fiml_cs"`) and moment (`"pairwise_cs"`) compound-symmetry estimators is
 compared on the same planned-incomplete data:
@@ -78,14 +78,19 @@ c(estimate = est, se = se, z = est / se)
 ```
 
 The packaged version of exactly this calculation is `kappa_test(..., paired =
-TRUE)` (see `vignette("equality-tests")`); rolling it by hand is only worthwhile
+TRUE)` (see `vignette("equality-tests")`). Rolling it by hand is only worthwhile
 for contrasts the test front door does not cover.
 
 ## Which estimates carry an influence matrix
 
-Every estimator in `misskappa` returns `psi`: the available-case, IPW, and Gwet
-moment estimators; the `"pairwise"` and `"pairwise_cs"` covariance estimators;
-the categorical and normal-theory FIMLs (saturated `"nt_fiml"` and
-compound-symmetry `"nt_fiml_cs"`); and the counts-format estimators. Any two
+Every estimator in `misskappa` returns `psi`:
+
+* the available-case, IPW, and Gwet moment estimators
+* the `"pairwise"` and `"pairwise_cs"` covariance estimators
+* the categorical and normal-theory FIMLs (saturated `"nt_fiml"` and
+  compound-symmetry `"nt_fiml_cs"`)
+* the counts-format estimators
+
+Any two
 fits on the same subjects can therefore be combined through their aligned
 influence rows.

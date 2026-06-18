@@ -7,10 +7,10 @@
 \format{
 A 1365 x 4 data frame with one row per (item, judge) rating:
   \describe{
-    \item{rating_positive}{numeric; rated positivity of the image.}
-    \item{rating_smile}{numeric; rated presence of a smile in the image.}
-    \item{item}{integer; the image rated.}
-    \item{judge}{integer; the MTurk judge giving the rating.}
+    \item{rating_positive}{numeric, the rated positivity of the image.}
+    \item{rating_smile}{numeric, the rated presence of a smile in the image.}
+    \item{item}{integer, the image rated.}
+    \item{judge}{integer, the MTurk judge giving the rating.}
   }
 }
 \source{
@@ -21,14 +21,14 @@ dat.mcduff2019
 }
 \description{
 Agreement study from McDuff & Girard (2019) in long format: MTurk judges
-rate images of people smiling. The design is large and incomplete --- many
-items and judges, and no judge rates every image --- which makes it a useful
+rate images of people smiling. The design is large and incomplete (many
+items and judges, and no judge rates every image), which makes it a useful
 missing-data example. There are 273 items, 121 judges, and 1365 rows.
 }
 \examples{
 # Each image is rated on a 1-6 smile scale by 5 of the 121 MTurk judges, and
 # almost no two judges share images, so the judges are not individually
-# identified -- this is a crowdsourced design with exchangeable raters.
+# identified. This is a crowdsourced design with exchangeable raters.
 # Reshape to an (items x judges) matrix, collapse to per-image category
 # counts with ratings_to_counts(), then estimate the scored (quadratically
 # weighted) agreement.

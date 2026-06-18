@@ -53,7 +53,7 @@
 * The full-`W` vector `"nt_fiml"` / `"nt_fiml_cs"` estimators accept a `ranges`
   argument (a features-by-2 matrix of `(lo, hi)` score bounds) that fixes the
   Brennan-Prediger chance baseline `sum_a W_aa (hi_a - lo_a)^2 / 6` instead of
-  estimating each width from the observed data range — the vector analogue of the
+  estimating each width from the observed data range, the vector analogue of the
   scalar `values` hook. Fixing the range makes the chance denominator
   deterministic, so the Brennan-Prediger standard error is exact and the estimand
   no longer drifts with the sample range.
@@ -63,8 +63,8 @@
 * The covariance structure of the normal-theory FIML is now carried by the
   estimator name: `"nt_fiml"` is the saturated model and `"nt_fiml_cs"` the
   compound-symmetry one. The old `em_options$covariance` and `em_options$mean`
-  are deprecated -- they warn for one release and are otherwise ignored on
-  `kappa()` / `alpha()` (the coefficients are mean-free; use `kappa_counts()`
+  are deprecated. They warn for one release and are otherwise ignored on
+  `kappa()` / `alpha()` (the coefficients are mean-free, so use `kappa_counts()`
   for the exchangeable equal-mean model). The internal `"ten_hove"` covariance
   alias is removed.
 
@@ -76,7 +76,7 @@
   consistent and best-calibrated under MCAR (even when the covariance is
   misspecified) and under correctly-specified MAR, but can be inconsistent
   under MAR when the true covariance departs from compound symmetry (for
-  example rater subgroups with different bias); the saturated `"nt_fiml"` is
+  example rater subgroups with different bias). The saturated `"nt_fiml"` is
   the robust choice there.
 
 # misskappa 1.1.0
@@ -128,17 +128,17 @@ Each estimator returns a `misskappa_estimate` carrying named coefficients and
 their asymptotic covariance matrix, selected with a single `estimator=`
 argument.
 
-* `kappa()` — weighted agreement coefficients (Conger, Fleiss,
-  Brennan–Prediger) for raw ratings, any number of raters, nominal or quadratic
-  loss. `estimator` is `"ipw"` or `"cat_fiml"` for categorical ratings;
+* `kappa()`: weighted agreement coefficients (Conger, Fleiss,
+  Brennan-Prediger) for raw ratings, any number of raters, nominal or quadratic
+  loss. `estimator` is `"ipw"` or `"cat_fiml"` for categorical ratings, and
   `"pairwise"` or `"nt_fiml"` for the quadratically weighted scored coefficient.
-* `kappa_counts()` — counts-format input (subjects × categories); `estimator`
+* `kappa_counts()`: counts-format input (subjects × categories). `estimator`
   is `"fleiss_cuzick"` or `"cat_fiml"`.
-* `alpha()` — coefficient alpha for scored categorical and continuous item
-  batteries; `estimator` is `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`.
+* `alpha()`: coefficient alpha for scored categorical and continuous item
+  batteries. `estimator` is `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`.
 
 The two FIMLs are distinct: `cat_fiml` (saturated multinomial) and `nt_fiml`
-(robust normal-theory). `"pairwise"` is the MCAR moment estimator; `"ipw"` adds
+(robust normal-theory). `"pairwise"` is the MCAR moment estimator. `"ipw"` adds
 inverse-probability weighting.
 
 ## Inference
@@ -152,7 +152,7 @@ inverse-probability weighting.
 
 ## Hypothesis tests
 
-* `kappa_test()` / `alpha_test()` — Wald tests that a coefficient is equal
+* `kappa_test()` / `alpha_test()`: Wald tests that a coefficient is equal
   across fits, returning an `htest`: one-sample, independent two-sample, paired
   (same subjects), and G-way homogeneity.
 

@@ -76,7 +76,7 @@ fit. `"nt_fiml"` is *saturated* (an unrestricted covariance) and `"nt_fiml_cs"`
 is *compound symmetry* `Sigma = psi J + e I`, the fixed-rater variance-component
 model. Compound symmetry needs only a connected rater co-observation graph (not
 every pair jointly observed) and is consistent and slightly more efficient when
-that structure holds; it is also best-calibrated under MCAR even when the
+that structure holds. It is also best-calibrated under MCAR even when the
 covariance is misspecified. Prefer the saturated `"nt_fiml"` when the
 missingness may be MAR and the covariance could depart from compound symmetry
 (for example, rater subgroups with systematically different bias), where the
@@ -85,7 +85,7 @@ structured model can become inconsistent but the saturated one stays robust.
 same compound-symmetry structure, no normality assumption. Because the
 compound-symmetry estimators need only a *connected* co-observation graph, they
 recover the coefficient on planned-incomplete designs where the saturated
-estimators are not even identified --- see `vignette("missingness-estimators")`.
+estimators are not even identified. See `vignette("missingness-estimators")`.
 
 ```{r}
 kappa(dat.zapf2016, estimator = "pairwise")

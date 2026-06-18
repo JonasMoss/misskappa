@@ -16,7 +16,7 @@ dat.fleiss1971
 }
 \description{
 Counts-format rating data from Fleiss (1971), n = 30 subjects, six raters,
-five categories. Each row is one subject; each column counts the number of
+five categories. Each row is one subject, and each column counts the number of
 raters who assigned that subject to that category.
 }
 \examples{

@@ -6,12 +6,12 @@
 #' scaling
 #' \deqn{\mathrm{vcov}(\hat\theta) = n^{-2} \Psi^\top \Psi.}
 #'
-#' This is the public S3 adapter for R's `stats::influence()` generic; `fit$psi`
-#' remains the stored component used internally by `joint_vcov()` and the
-#' equality-test helpers.
+#' This is the public S3 adapter for R's `stats::influence()` generic. The
+#' `fit$psi` component remains the stored component used internally by
+#' `joint_vcov()` and the equality-test helpers.
 #'
 #' @param model A `misskappa_estimate` object.
-#' @param ... Unused; present for S3 generic conformance.
+#' @param ... Unused. Present for S3 generic conformance.
 #'
 #' @return A numeric matrix of per-subject influence-function rows.
 #'

@@ -17,12 +17,12 @@ kappa_counts(
 \item{x}{A subjects-by-categories non-negative integer matrix.}
 
 \item{estimator}{One of `"fleiss_cuzick"` (the Fleiss-Cuzick count-format
-moment estimator; the available-case / moment member of the
+moment estimator, the available-case / moment member of the
 compound-symmetry family), `"cat_fiml"` (EM over the composition simplex
 with multivariate hypergeometric weights for completing partial counts), or
 `"nt_fiml"` (the exchangeable common-mean normal FIML, `weight =
-"quadratic"` only; the efficient ignorable-missingness MLE). All agree when
-every row of `x` sums to `r_total`; with partial counts (some
+"quadratic"` only, the efficient ignorable-missingness MLE). All agree when
+every row of `x` sums to `r_total`. With partial counts (some
 `r_i < r_total`) `"cat_fiml"` and `"nt_fiml"` are the efficient routes and
 `"fleiss_cuzick"` is the consistent-under-MCAR moment estimator. For a
 complete-case (listwise) analysis, drop the incomplete rows yourself and
@@ -44,7 +44,7 @@ totals and the maximum observed total is not the design total.
 `info_rcond`. The raw-data `flatten` option does not apply there:
 count-data categorical FIML fits a low-dimensional composition model, not
 the saturated joint. For `estimator = "nt_fiml"`: `tol` and `max_iter` tune
-the optimiser; `mean` and `covariance`, if supplied, must be the
+the optimiser. `mean` and `covariance`, if supplied, must be the
 exchangeable common-mean compound-symmetry model.}
 }
 \value{
@@ -54,24 +54,24 @@ A `misskappa_estimate` object with `Fleiss` and
 }
 \description{
 Estimates Fleiss and Brennan-Prediger weighted agreement coefficients
-for counts-format data: each row is one subject; each column is a
-category; `x[i, k]` is the number of raters who assigned subject `i`
+for counts-format data: each row is one subject, each column is a
+category, and `x[i, k]` is the number of raters who assigned subject `i`
 to category `k`. Row sums (number of raters per subject) need not be
 uniform across subjects.
 
 The count-format moment estimator follows the Fleiss-Cuzick unequal-judges
 convention: observed row disagreement is weighted by `r_i - 1`, and chance
 disagreement uses the pooled rating-token margin. This differs from the
-unit-weighted distribution/count convention used by some software; the
+unit-weighted distribution/count convention used by some software. The
 unit-weighted comparator is kept only in the C++ API for validation studies.
 
 Rows with fewer than two observed ratings contain no within-subject pair
-information and receive zero observed-disagreement weight; at least one row
+information and receive zero observed-disagreement weight. At least one row
 with two or more ratings is required.
 
 Counts data discards rater identity, so all counts estimators impose
 exchangeability. The categorical count-FIML model treats full count
-compositions as exchangeable iid rater draws; the compound-symmetry
+compositions as exchangeable iid rater draws. The compound-symmetry
 estimators (`"nt_fiml"` and the moment estimator `"fleiss_cuzick"`) fit the
 corresponding common-mean, compound-symmetry scored model
 \eqn{\Sigma = \psi J + e I}. For non-exchangeable raters, use rater-identified
@@ -87,7 +87,7 @@ coefficients are the `r_total`-invariant maps
 robust (sandwich) standard errors.
 
 To obtain counts from a rater-identified subjects-by-raters matrix, use
-[ratings_to_counts()]; chaining it into `estimator = "cat_fiml"` fits the
+[ratings_to_counts()]. Chaining it into `estimator = "cat_fiml"` fits the
 exchangeable categorical count-FIML.
 
 Conger is not reported (raters are not identified in this input format),
@@ -97,8 +97,8 @@ aggregated away by the counts representation).
 \details{
 Older Krippendorff / irrCAC-style categorical schemes (`"ordinal"`,
 `"radical"`, `"ratio"`, `"circular"`, `"bipolar"`) remain available only
-through unsupported internal helpers and the C++ `misskappa::loss` factories;
-they are retained for validation and parity work, not as part of the
+through unsupported internal helpers and the C++ `misskappa::loss` factories.
+They are retained for validation and parity work, not as part of the
 recommended R interface.
 }
 \examples{

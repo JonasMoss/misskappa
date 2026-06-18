@@ -5,11 +5,11 @@
 \alias{dat.gwet2014}
 \title{Gwet (2014) example ratings with missing data}
 \format{
-A 20 x 5 data frame; columns `rater1`--`rater5` hold category codes
+A 20 x 5 data frame. Columns `rater1`--`rater5` hold category codes
   `0`--`3`, with `NA` marking unobserved ratings.
 }
 \source{
-Carried over from the legacy `misskappa` package; appears as an
+Carried over from the legacy `misskappa` package. It appears as an
   example in Gwet, K. L. (2014), \emph{Handbook of Inter-Rater Reliability}.
 }
 \usage{

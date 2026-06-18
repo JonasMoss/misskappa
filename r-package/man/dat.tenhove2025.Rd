@@ -5,13 +5,13 @@
 \alias{dat.tenhove2025}
 \title{Synthetic planned-incomplete ratings (compound-symmetry illustration)}
 \format{
-A 60 x 6 integer matrix; columns `rater1`--`rater6` hold ordinal
+A 60 x 6 integer matrix. Columns `rater1`--`rater6` hold ordinal
   scores `1`--`5`, with `NA` marking the (planned) unobserved ratings. Every
   row has exactly three observed entries.
 }
 \source{
 Simulated. Inspired by the planned-incomplete ICC designs of ten Hove
-  et al. (2025); no real measurements are used.
+  et al. (2025). No real measurements are used.
 }
 \usage{
 dat.tenhove2025
@@ -23,8 +23,8 @@ compound-symmetry (variance-component) estimators. It is **not real data**:
 fixed-rater variance-component model `y_ij = mu_j + b_i + e_ij`, in the style
 of the *planned-incomplete* ICC designs of ten Hove, Jorgensen, and van der
 Ark (2025). Each subject is rated by only three of the six raters, in three
-overlapping panels (raters `1,2,3`; then `3,4,5`; then `5,6,1`), so the rater
-co-observation graph is *connected but not complete* --- some rater pairs
+overlapping panels (raters `1,2,3`, then `3,4,5`, then `5,6,1`), so the rater
+co-observation graph is *connected but not complete*. Some rater pairs
 (for example raters 2 and 4) never rate the same subject. That is exactly the
 regime where the saturated coefficients are not identified: `kappa()` with
 `estimator = "pairwise"`, `"nt_fiml"`, or `"cat_fiml"` stops with an

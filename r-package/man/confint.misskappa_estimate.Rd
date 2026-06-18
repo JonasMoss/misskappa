@@ -15,7 +15,7 @@
 \arguments{
 \item{object}{A `misskappa_estimate` object.}
 
-\item{parm}{Optional subset of coefficients (names or indices); defaults to
+\item{parm}{Optional subset of coefficients (names or indices), defaults to
 all.}
 
 \item{level}{Confidence level.}
@@ -25,7 +25,7 @@ all.}
 `tanh`). Coefficients with \eqn{|\hat\theta| \ge 1} yield `NA` limits
 under `"fisher"`.}
 
-\item{...}{Unused; present for S3 generic conformance.}
+\item{...}{Unused, present for S3 generic conformance.}
 }
 \value{
 A two-column numeric matrix of lower and upper limits, one row per
@@ -43,6 +43,6 @@ small-sample coverage near the upper boundary.
 \examples{
 fit <- kappa(dat.gwet2014, estimator = "ipw")
 confint(fit)                       # natural-scale Wald interval
-confint(fit, transform = "fisher") # Fisher z interval; always within (-1, 1)
+confint(fit, transform = "fisher") # Fisher z interval, always within (-1, 1)
 
 }

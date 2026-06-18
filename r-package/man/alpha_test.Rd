@@ -22,7 +22,7 @@ An `htest` object.
 \description{
 Wald test that coefficient alpha is equal across two or more [alpha()] fits
 (or, with a single fit, equal to `value`). See [kappa_test()] for the
-`paired` semantics; `alpha` is the only coefficient, so there is no `coef`
+`paired` semantics. `alpha` is the only coefficient, so there is no `coef`
 argument.
 }
 \examples{
@@ -37,7 +37,7 @@ do.call(alpha_test, c(fits, list(paired = TRUE)))
 
 \dontshow{if (requireNamespace("psych", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 # Real missing data with groups: psych::bfi. The same 2800 respondents take
-# all five Big Five scales; reverse-key the negatively-worded items first.
+# all five Big Five scales. Reverse-key the negatively-worded items first.
 data(bfi, package = "psych")
 neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
 bfi[neg] <- 7 - bfi[neg]

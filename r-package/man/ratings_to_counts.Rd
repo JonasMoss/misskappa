@@ -8,8 +8,8 @@ ratings_to_counts(x, categories = NULL)
 }
 \arguments{
 \item{x}{A subjects-by-raters matrix or data frame of category labels
-(integer codes, characters, or factors). `NA` --- and, for numeric
-input, any non-finite value --- marks a missing rating.}
+(integer codes, characters, or factors). `NA` (and, for numeric
+input, any non-finite value) marks a missing rating.}
 
 \item{categories}{Optional vector giving the full set of categories and
 their column order in the output. Defaults to the sorted unique observed
@@ -54,6 +54,6 @@ kappa_counts(counts, estimator = "fleiss_cuzick")
 
 }
 \seealso{
-[kappa_counts()] for the count-format estimators;
+[kappa_counts()] for the count-format estimators.
   [kappa()] for the rater-identified (non-exchangeable) estimators.
 }

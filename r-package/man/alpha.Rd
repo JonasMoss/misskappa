@@ -12,7 +12,7 @@ alpha(
 )
 }
 \arguments{
-\item{x}{A subjects-by-items numeric matrix or data frame; `NA` and other
+\item{x}{A subjects-by-items numeric matrix or data frame. `NA` and other
 non-finite values indicate missing entries. For `estimator = "cat_fiml"`,
 entries are integer category codes.}
 
@@ -26,18 +26,18 @@ in `x`.}
 \item{em_options}{Named list tuning the EM fit for the likelihood
 estimators. For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter` (the
 covariance structure is selected by the estimator name, not here). `fd_h`
-is accepted for backward compatibility and ignored; `covariance` and `mean`
+is accepted for backward compatibility and ignored. `covariance` and `mean`
 are deprecated (use `estimator = "nt_fiml_cs"` for the compound-symmetry
-model; the surface is mean-free) and warn if supplied. For `"cat_fiml"`:
+model, the surface is mean-free) and warn if supplied. For `"cat_fiml"`:
 `tol`, `max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
 `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
-table; any positive value makes the fitted table the unique interior
+table. Any positive value makes the fitted table the unique interior
 posterior mode when the saturated likelihood is flat, at the cost of
-shrinking it toward uniform with weight `flatten / (n + flatten)`;
-`0`, the default, is strict ML). Flattening is a uniqueness device,
-not an inference upgrade: it leaves the point estimate essentially
+shrinking it toward uniform with weight `flatten / (n + flatten)`.
+`0`, the default, is strict ML). Flattening is a uniqueness device
+that leaves the point estimate essentially
 unchanged but makes the reported standard errors conservative
 (roughly 50\% too wide in calibration), so leave it at `0` unless a
 unique reproducible fit matters more than SE sharpness. Pass any
@@ -54,22 +54,22 @@ An object of class `misskappa_estimate` carrying one coefficient
 Estimates Cronbach's coefficient alpha for a subjects-by-items matrix of
 item scores with missing entries. Pick the estimator with `estimator`:
 \itemize{
-  \item `"pairwise"` --- pairwise-available covariance moments under MCAR,
-    with an influence-function sandwich standard error;
-  \item `"cat_fiml"` --- saturated-multinomial full-information maximum
-    likelihood for finite-category items under ignorable missingness;
-  \item `"nt_fiml"` --- robust normal-theory FIML (saturated Gaussian
+  \item `"pairwise"`: pairwise-available covariance moments under MCAR,
+    with an influence-function sandwich standard error.
+  \item `"cat_fiml"`: saturated-multinomial full-information maximum
+    likelihood for finite-category items under ignorable missingness.
+  \item `"nt_fiml"`: robust normal-theory FIML (saturated Gaussian
     covariance by EM, sandwich delta-method SE) for continuous items under
-    ignorable missingness;
-  \item `"nt_fiml_cs"` --- the same normal FIML under the compound-symmetry
-    covariance model \eqn{\Sigma = \psi J + e I} (fixed items; needs only a
+    ignorable missingness.
+  \item `"nt_fiml_cs"`: the same normal FIML under the compound-symmetry
+    covariance model \eqn{\Sigma = \psi J + e I} (fixed items, needs only a
     connected item co-observation graph). Not ten Hove's random-rater
     MLE-RE / ICC.
 }
 
 For ordinal or otherwise categorical responses under `"pairwise"` or
 `"nt_fiml"`, either pass the scored numeric matrix directly or pass integer
-category codes with `values`; the observed categories are sorted and mapped
+category codes with `values`. The observed categories are sorted and mapped
 to `values` before estimation.
 
 All three estimators target fixed-item coefficient alpha. With missing

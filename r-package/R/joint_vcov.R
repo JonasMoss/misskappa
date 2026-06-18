@@ -19,8 +19,9 @@
 #' that the number of subjects matches across inputs and stacks `psi`
 #' column-wise.
 #'
-#' @param ... Two or more `misskappa_estimate` objects. Optionally named;
-#'   names are used as prefixes for the output `dimnames`.
+#' @param ... Two or more `misskappa_estimate` objects. They may optionally be
+#'   named, in which case the names are used as prefixes for the output
+#'   `dimnames`.
 #'
 #' @return A square numeric matrix of dimension `K_total x K_total`, where
 #'   `K_total` is the total number of coefficients across all inputs.
@@ -29,7 +30,8 @@
 #' @examples
 #' \dontrun{
 #' set.seed(1)
-#' n <- 500; R <- 4
+#' n <- 500
+#' R <- 4
 #' x <- matrix(sample.int(5, n * R, replace = TRUE), n, R)
 #' x[matrix(runif(n * R) < 0.3, n, R)] <- NA
 #' ac  <- estimate_kappa_raw(x, method = "available")
@@ -92,8 +94,8 @@ joint_vcov <- function(...) {
 #' rows aligned to the same subjects.
 #'
 #' @param ... One or more `misskappa_estimate` objects. Multiple fits may be
-#'   named; names become prefixes such as `"ac.Conger"` in the stacked
-#'   coefficient vector. Unnamed multiple fits are prefixed as `"fit1"`,
+#'   named, in which case names become prefixes such as `"ac.Conger"` in the
+#'   stacked coefficient vector. Unnamed multiple fits are prefixed as `"fit1"`,
 #'   `"fit2"`, and so on.
 #' @param contrast Numeric vector or matrix defining the linear contrast. For
 #'   multiple fits, named vector entries or matrix column names are matched

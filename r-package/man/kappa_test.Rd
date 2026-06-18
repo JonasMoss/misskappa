@@ -10,7 +10,7 @@ kappa_test(..., coef = "Conger", paired = TRUE, value = 0)
 \item{...}{Two or more `misskappa_estimate` objects from [kappa()] (a single
 fit tests `coef = value`). Names become labels in the output.}
 
-\item{coef}{Coefficient to compare; default `"Conger"`.}
+\item{coef}{Coefficient to compare. Default `"Conger"`.}
 
 \item{paired}{`TRUE` (default) for same-subject fits, `FALSE` for independent
 samples.}
@@ -24,11 +24,11 @@ An `htest` object.
 \description{
 Wald test that a chosen kappa coefficient is equal across two or more
 [kappa()] fits (or, with a single fit, equal to `value`). Pass the fits to
-`...`; name them to label the output.
+`...`, naming them to label the output.
 
 Set `paired = TRUE` when the fits are computed on the **same subjects in the
 same row order** (two estimators, two weight schemes, two rated attributes,
-rater pairs, ...); the dependence is taken from the per-subject influence
+rater pairs, ...). The dependence is taken from the per-subject influence
 functions (`fit$psi`). Set `paired = FALSE` for independent samples, where
 the variances add. With more than two fits this is the joint hypothesis that
 all are equal (`G - 1` degrees of freedom).

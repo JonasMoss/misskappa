@@ -17,7 +17,7 @@
 #'
 #' - `sim$mar_truth(n, R, C, p, pi_truth, seed = NULL)`: like `mcar` but
 #'   the per-cell missingness probability depends on the unobserved truth
-#'   category; `pi_truth` is a length-C vector of missing probabilities,
+#'   category. `pi_truth` is a length-C vector of missing probabilities,
 #'   one per category. MAR via the underlying truth.
 #'
 #' - `sim$jsm(n, s, model, true_dist, guessing_dist)`: port of the legacy
@@ -25,7 +25,7 @@
 #'   the legacy docs for details. Returns the simulated rating matrix with
 #'   `"kappa"` (true latent agreement) attached.
 #'
-#' All generators accept a `seed` argument; if non-NULL it is passed to
+#' All generators accept a `seed` argument. If non-NULL it is passed to
 #' `set.seed()` before sampling.
 #'
 #' @examples

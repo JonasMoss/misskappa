@@ -17,13 +17,13 @@ kappa_gwise(
 \item{x}{A subjects-by-raters matrix or data frame.}
 
 \item{distance}{Multirater disagreement kernel. `"nominal"` uses Frechet
-mode disagreement for categorical ratings; `"absolute"` uses median
-absolute deviation; `"quadratic"` uses mean squared deviation; `"hubert"`
+mode disagreement for categorical ratings. `"absolute"` uses median
+absolute deviation. `"quadratic"` uses mean squared deviation. `"hubert"`
 uses all-raters-equal disagreement.}
 
 \item{method}{`"complete"` (complete-data), `"ipw"` (MCAR inverse-probability
 weighting), or `"fiml"` (categorical full-information ML under ignorable
-missingness; not defined for the continuous kernels).}
+missingness, not defined for the continuous kernels).}
 
 \item{g}{Arity of the multirater distance. Defaults to all raters
 (`ncol(x)`). Must be between 2 and `ncol(x)`.}
@@ -41,7 +41,7 @@ A `misskappa_estimate` object with `Conger` and `Fleiss`
 \description{
 Estimates g-wise Conger-type and Fleiss-type agreement coefficients using
 multirater disagreement kernels (the Frechet / Hubert family). The
-`"complete"` estimator requires every entry observed; `"ipw"` and `"fiml"`
+`"complete"` estimator requires every entry observed. `"ipw"` and `"fiml"`
 admit missing entries (FIML is categorical only) when every requested rater
 g-tuple is jointly observed by at least one subject.
 }

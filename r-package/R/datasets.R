@@ -1,7 +1,7 @@
 #' Fleiss (1971) psychiatric diagnoses dataset
 #'
 #' Counts-format rating data from Fleiss (1971), n = 30 subjects, six raters,
-#' five categories. Each row is one subject; each column counts the number of
+#' five categories. Each row is one subject, and each column counts the number of
 #' raters who assigned that subject to that category.
 #'
 #' @format A 30 x 5 integer matrix.
@@ -19,9 +19,9 @@
 #' (`0`--`3`). Some ratings are missing (`NA`), so it is a compact worked
 #' example for the missing-data categorical estimators.
 #'
-#' @format A 20 x 5 data frame; columns `rater1`--`rater5` hold category codes
+#' @format A 20 x 5 data frame. Columns `rater1`--`rater5` hold category codes
 #'   `0`--`3`, with `NA` marking unobserved ratings.
-#' @source Carried over from the legacy `misskappa` package; appears as an
+#' @source Carried over from the legacy `misskappa` package. It appears as an
 #'   example in Gwet, K. L. (2014), \emph{Handbook of Inter-Rater Reliability}.
 #' @examples
 #' kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
@@ -34,7 +34,7 @@
 #' subjects, five raters, three categories (`1`--`3`), with some ratings missing
 #' (`NA`). A minimal example for the missing-data categorical estimators.
 #'
-#' @format A 10 x 5 data frame; columns `rater1`--`rater5` hold category codes
+#' @format A 10 x 5 data frame. Columns `rater1`--`rater5` hold category codes
 #'   `1`--`3`, with `NA` marking unobserved ratings.
 #' @source Carried over from the legacy `misskappa` package (Klein, 2018).
 #' @references Klein, D. (2018). Implementing a general framework for assessing
@@ -52,7 +52,7 @@
 #' missing entries, it is a convenient base for the complete-data coefficients
 #' and for illustrating the equality tests across rater pairs.
 #'
-#' @format A 50 x 4 data frame; columns `Rater A`--`Rater D` hold category
+#' @format A 50 x 4 data frame. Columns `Rater A`--`Rater D` hold category
 #'   codes `1`--`5`.
 #' @source Carried over from the legacy `misskappa` package (Zapf et al., 2016).
 #' @examples
@@ -63,16 +63,16 @@
 #' McDuff & Girard (2019) smiling-images agreement study
 #'
 #' Agreement study from McDuff & Girard (2019) in long format: MTurk judges
-#' rate images of people smiling. The design is large and incomplete --- many
-#' items and judges, and no judge rates every image --- which makes it a useful
+#' rate images of people smiling. The design is large and incomplete (many
+#' items and judges, and no judge rates every image), which makes it a useful
 #' missing-data example. There are 273 items, 121 judges, and 1365 rows.
 #'
 #' @format A 1365 x 4 data frame with one row per (item, judge) rating:
 #'   \describe{
-#'     \item{rating_positive}{numeric; rated positivity of the image.}
-#'     \item{rating_smile}{numeric; rated presence of a smile in the image.}
-#'     \item{item}{integer; the image rated.}
-#'     \item{judge}{integer; the MTurk judge giving the rating.}
+#'     \item{rating_positive}{numeric, the rated positivity of the image.}
+#'     \item{rating_smile}{numeric, the rated presence of a smile in the image.}
+#'     \item{item}{integer, the image rated.}
+#'     \item{judge}{integer, the MTurk judge giving the rating.}
 #'   }
 #' @source The file \code{04_MTurk.csv} at \url{https://osf.io/n4grd/}.
 #' @references McDuff, D., & Girard, J. M. (2019). Democratizing Psychological
@@ -82,7 +82,7 @@
 #' @examples
 #' # Each image is rated on a 1-6 smile scale by 5 of the 121 MTurk judges, and
 #' # almost no two judges share images, so the judges are not individually
-#' # identified -- this is a crowdsourced design with exchangeable raters.
+#' # identified. This is a crowdsourced design with exchangeable raters.
 #' # Reshape to an (items x judges) matrix, collapse to per-image category
 #' # counts with ratings_to_counts(), then estimate the scored (quadratically
 #' # weighted) agreement.
@@ -97,8 +97,8 @@
 #'
 #' The classic factor-analysis teaching dataset: 301 seventh- and eighth-grade
 #' students from two schools each take nine cognitive-ability tests. The nine
-#' continuous scored items split into three subscales --- *visual* (`x1`--`x3`),
-#' *textual* (`x4`--`x6`), and *speed* (`x7`--`x9`) --- which makes it a compact,
+#' continuous scored items split into three subscales, *visual* (`x1`--`x3`),
+#' *textual* (`x4`--`x6`), and *speed* (`x7`--`x9`), which makes it a compact,
 #' complete real battery for coefficient alpha: estimate a subscale's alpha with
 #' [alpha()], compare reliabilities across the three subscales with a G-way
 #' [alpha_test()], or compare a subscale across the two schools with an
@@ -111,7 +111,7 @@
 #'     \item{id}{subject identifier.}
 #'     \item{sex}{1 = male, 2 = female.}
 #'     \item{ageyr, agemo}{age, years and months.}
-#'     \item{school}{factor; `"Pasteur"` (n = 156) or `"Grant-White"` (n = 145).}
+#'     \item{school}{factor, with levels `"Pasteur"` (n = 156) and `"Grant-White"` (n = 145).}
 #'     \item{grade}{school grade.}
 #'     \item{x1, x2, x3}{visual subscale: visual perception, cubes, lozenges.}
 #'     \item{x4, x5, x6}{textual subscale: paragraph comprehension, sentence
@@ -120,7 +120,7 @@
 #'       speeded discrimination of straight and curved capitals.}
 #'   }
 #' @source The `HolzingerSwineford1939` data frame distributed with the
-#'   \pkg{lavaan} package; originally Holzinger & Swineford (1939).
+#'   \pkg{lavaan} package, originally Holzinger & Swineford (1939).
 #' @references
 #'   Holzinger, K. J., & Swineford, F. (1939). \emph{A study in factor analysis:
 #'   The stability of a bi-factor solution}. Supplementary Educational
@@ -185,8 +185,8 @@
 #' fixed-rater variance-component model `y_ij = mu_j + b_i + e_ij`, in the style
 #' of the *planned-incomplete* ICC designs of ten Hove, Jorgensen, and van der
 #' Ark (2025). Each subject is rated by only three of the six raters, in three
-#' overlapping panels (raters `1,2,3`; then `3,4,5`; then `5,6,1`), so the rater
-#' co-observation graph is *connected but not complete* --- some rater pairs
+#' overlapping panels (raters `1,2,3`, then `3,4,5`, then `5,6,1`), so the rater
+#' co-observation graph is *connected but not complete*. Some rater pairs
 #' (for example raters 2 and 4) never rate the same subject. That is exactly the
 #' regime where the saturated coefficients are not identified: `kappa()` with
 #' `estimator = "pairwise"`, `"nt_fiml"`, or `"cat_fiml"` stops with an
@@ -195,11 +195,11 @@
 #' fit. The build script `data_raw/tenhove2025.R` regenerates it from a fixed
 #' seed.
 #'
-#' @format A 60 x 6 integer matrix; columns `rater1`--`rater6` hold ordinal
+#' @format A 60 x 6 integer matrix. Columns `rater1`--`rater6` hold ordinal
 #'   scores `1`--`5`, with `NA` marking the (planned) unobserved ratings. Every
 #'   row has exactly three observed entries.
 #' @source Simulated. Inspired by the planned-incomplete ICC designs of ten Hove
-#'   et al. (2025); no real measurements are used.
+#'   et al. (2025). No real measurements are used.
 #' @references
 #'   ten Hove, D., Jorgensen, T. D., & van der Ark, L. A. (2025). How to
 #'   Estimate ICCs for Interrater Reliability from Planned Incomplete Data.

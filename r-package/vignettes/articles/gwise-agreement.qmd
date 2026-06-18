@@ -15,13 +15,13 @@ library(misskappa)
 Conger's and Fleiss' kappa are already *multirater* coefficients: with more than
 two raters they average a **pairwise** disagreement kernel over every rater pair
 and correct it against a pairwise chance baseline. So "many raters" by itself is
-not a new construction — it is what the pairwise estimators in the
+not a new construction. It is what the pairwise estimators in the
 [getting-started vignette](../misskappa.html) already do.
 
 The genuine generalization is to let the disagreement kernel look at **more than
 two raters at once**. This is *g-wise* agreement: the kernel is a symmetric
-function of `g` ratings, and `g` — its *arity* — is the new knob. The default
-`g = 2` recovers ordinary pairwise kappa; `g > 2` measures how often a whole
+function of `g` ratings, and `g` (its *arity*) is the new knob. The default
+`g = 2` recovers ordinary pairwise kappa. `g > 2` measures how often a whole
 group of `g` raters fails to coincide, which a sequence of pairwise comparisons
 cannot express. The kernels come from the Fréchet / Hubert multirater family
 [Hubert 1977; Moss 2024].
@@ -35,7 +35,7 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "nominal")
 kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 ```
 
-The `g = 3` coefficient is not a reweighting of the pairwise one; it asks a
+The `g = 3` coefficient is not a reweighting of the pairwise one. It asks a
 strictly harder question (do three raters coincide, not just two), so it is a
 different estimand with its own standard error.
 
@@ -61,7 +61,7 @@ C_{d} \;=\; \binom{R}{g}^{-1} \sum_{j_{1}<\cdots<j_{g}}
             \mathbb{E}\, d\!\left(X_{j_{1}}^{(1)},\ldots,X_{j_{g}}^{(g)}\right),
 $$
 
-with each $X^{(t)}$ from an independent copy of the subject; the Fleiss-type
+with each $X^{(t)}$ from an independent copy of the subject. The Fleiss-type
 baseline instead pools the rater margins, averaging over all $R^{g}$ ordered
 rater tuples. The two coefficients are then
 
@@ -86,7 +86,7 @@ and taking $d = V(l)$ supplies a symmetric multirater kernel for any $l$. With
 $g = 2$ this is half the pairwise loss, so the construction is a genuine
 extension of the loss-matrix picture in the
 [agreement-coefficients article](agreement-coefficients.html). Nominal and
-absolute losses give the `"nominal"` and `"linear"` kernels; the all-raters-equal
+absolute losses give the `"nominal"` and `"linear"` kernels. The all-raters-equal
 kernel of Hubert (1977) is exposed as `"hubert"`.
 
 ## Estimators and weights
@@ -102,7 +102,7 @@ all-raters-equal kernel, defined only for `g > 2`).
 
 Quadratic (squared-error) disagreement is special: it decomposes into pairwise
 terms, so the combinatorial constant cancels in the kappa ratio and the g-wise
-coefficient equals the pairwise one for *every* `g`. `kappa()` exploits this —
+coefficient equals the pairwise one for *every* `g`. `kappa()` exploits this:
 with `weight = "quadratic"` the `g` argument is ignored and the cheap closed form
 is used instead of the $g^{\text{th}}$-order enumeration.
 
@@ -115,7 +115,7 @@ rbind(g2 = g2, g4 = g4)
 Because the quadratic coefficient is a smooth functional of the rater means and
 covariance, it also admits the normal-theory FIML estimator
 (`estimator = "nt_fiml"`) under ignorable missingness, exactly as in the scalar
-pairwise case — there is no separate g-wise machinery to invoke.
+pairwise case. There is no separate g-wise machinery to invoke.
 
 ## References
 

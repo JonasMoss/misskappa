@@ -74,18 +74,18 @@
 #' @description
 #' Wald test that a chosen kappa coefficient is equal across two or more
 #' [kappa()] fits (or, with a single fit, equal to `value`). Pass the fits to
-#' `...`; name them to label the output.
+#' `...`, naming them to label the output.
 #'
 #' Set `paired = TRUE` when the fits are computed on the **same subjects in the
 #' same row order** (two estimators, two weight schemes, two rated attributes,
-#' rater pairs, ...); the dependence is taken from the per-subject influence
+#' rater pairs, ...). The dependence is taken from the per-subject influence
 #' functions (`fit$psi`). Set `paired = FALSE` for independent samples, where
 #' the variances add. With more than two fits this is the joint hypothesis that
 #' all are equal (`G - 1` degrees of freedom).
 #'
 #' @param ... Two or more `misskappa_estimate` objects from [kappa()] (a single
 #'   fit tests `coef = value`). Names become labels in the output.
-#' @param coef Coefficient to compare; default `"Conger"`.
+#' @param coef Coefficient to compare. Default `"Conger"`.
 #' @param paired `TRUE` (default) for same-subject fits, `FALSE` for independent
 #'   samples.
 #' @param value Null value: the coefficient (single fit) or the pairwise
@@ -119,7 +119,7 @@ kappa_test <- function(..., coef = "Conger", paired = TRUE, value = 0) {
 #' @description
 #' Wald test that coefficient alpha is equal across two or more [alpha()] fits
 #' (or, with a single fit, equal to `value`). See [kappa_test()] for the
-#' `paired` semantics; `alpha` is the only coefficient, so there is no `coef`
+#' `paired` semantics. `alpha` is the only coefficient, so there is no `coef`
 #' argument.
 #'
 #' @param ... Two or more `misskappa_estimate` objects from [alpha()]. Names
@@ -143,7 +143,7 @@ kappa_test <- function(..., coef = "Conger", paired = TRUE, value = 0) {
 #'
 #' @examplesIf requireNamespace("psych", quietly = TRUE)
 #' # Real missing data with groups: psych::bfi. The same 2800 respondents take
-#' # all five Big Five scales; reverse-key the negatively-worded items first.
+#' # all five Big Five scales. Reverse-key the negatively-worded items first.
 #' data(bfi, package = "psych")
 #' neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
 #' bfi[neg] <- 7 - bfi[neg]

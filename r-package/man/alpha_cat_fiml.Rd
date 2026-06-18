@@ -7,7 +7,7 @@
 alpha_cat_fiml(x, values = NULL, em_options = list())
 }
 \arguments{
-\item{x}{A subjects-by-items matrix of integer category codes; `NA`s
+\item{x}{A subjects-by-items matrix of integer category codes. `NA`s
 indicate missing entries.}
 
 \item{values}{Optional numeric vector of category scores. Defaults to the
@@ -27,6 +27,6 @@ distribution to the implied scored covariance matrix.
 
 This fixed-item functional requires every item to be observed and every item
 pair to be jointly observed by at least one subject. The public [alpha()]
-wrapper checks this before dispatch; direct callers reach the C++ guard.
+wrapper checks this before dispatch. Direct callers reach the C++ guard.
 }
 \keyword{internal}

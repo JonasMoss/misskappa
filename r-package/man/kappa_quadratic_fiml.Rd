@@ -7,7 +7,7 @@
 kappa_quadratic_fiml(x, values = NULL, em_options = list())
 }
 \arguments{
-\item{x}{A subjects-by-raters numeric matrix or data frame; `NA` marks
+\item{x}{A subjects-by-raters numeric matrix or data frame. `NA` marks
 missing entries. Rows that are entirely missing are dropped.}
 
 \item{values}{Optional finite numeric score vector defining the uniform
@@ -16,10 +16,10 @@ baseline on the observed score range is used.}
 
 \item{em_options}{Named list tuning the EM fit: `tol` (default `1e-8`),
 `max_iter` (default `10000`), `covariance`, and `mean`. `covariance =
-"saturated"` fits the unrestricted normal FIML model;
+"saturated"` fits the unrestricted normal FIML model.
 `"variance_components"` fits the compound-symmetry covariance model
 \eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `mean = "free"`
-estimates one mean per rater/item (default); `mean = "equal"` estimates a
+estimates one mean per rater/item (default). `mean = "equal"` estimates a
 common mean and is supported with `covariance = "variance_components"`,
 giving the exchangeable normal model used by counts-format normal FIML.
 `fd_h` is accepted for backward compatibility and ignored because the
@@ -39,10 +39,10 @@ weighted Conger, Fleiss, and Brennan-Prediger agreement coefficients for
 continuous (or numerically scored) ratings with missing entries, via a
 multivariate-normal covariance fitted by full-information maximum likelihood
 (the EM algorithm), valid under ignorable (MCAR or MAR) missingness. The
-default covariance model is saturated; `em_options = list(covariance =
+default covariance model is saturated. `em_options = list(covariance =
 "variance_components")` fits the compound-symmetry (fixed-rater) covariance
-model \eqn{\Sigma = \psi J + e I}. It treats raters as fixed; it is not ten
-Hove's random-rater MLE-RE / ICC. The coefficients are smooth functions of
+model \eqn{\Sigma = \psi J + e I}. It treats raters as fixed, distinct from
+ten Hove's random-rater MLE-RE / ICC. The coefficients are smooth functions of
 the fitted mean and covariance, and the standard error is a delta-method
 contraction of their gradient with the asymptotic covariance of the fitted
 moments. This is the quadratic-kappa counterpart of [alpha_continuous()] and
@@ -51,7 +51,7 @@ shares its EM, casewise-score, and sandwich machinery.
 This backend is normally reached through [kappa()], which checks that every
 rater is observed and, for the default saturated covariance model, every
 rater pair is jointly observed before dispatch. Direct callers should
-enforce the same fixed-rater condition; for `covariance =
+enforce the same fixed-rater condition. For `covariance =
 "variance_components"` this is a connected rater co-observation graph.
 }
 \keyword{internal}

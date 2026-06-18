@@ -18,7 +18,7 @@ kappa(
 \item{x}{A subjects-by-raters matrix or data frame of scalar ratings, or a
 subjects-by-raters-by-features 3-D array of vector-valued ratings (the
 array form is auto-detected). Integer category codes for `"ipw"` /
-`"cat_fiml"`; numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
+`"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
 missing entries.}
 
 \item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
@@ -26,7 +26,7 @@ missing entries.}
 covariance variants of `"pairwise"` and `"nt_fiml"`).
 Vector-valued ratings support `"pairwise"` and `"ipw"` (component-separable)
 and, with a full feature metric `W`, `"pairwise"`, `"nt_fiml"`, and
-`"nt_fiml_cs"` (full-`W` squared loss); continuous g-wise kernels
+`"nt_fiml_cs"` (full-`W` squared loss). Continuous g-wise kernels
 (`weight = "linear"`, `g > 2`) support `"pairwise"` and `"ipw"` only.}
 
 \item{weight}{Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
@@ -39,7 +39,7 @@ the component loss (`"nominal"` -> Hamming, `"linear"` -> L1,
 `"quadratic"` -> squared).}
 
 \item{g}{Arity of the multirater disagreement kernel. `g = 2` (the default)
-is ordinary pairwise kappa; `g > 2` uses the Frechet / Hubert g-wise
+is ordinary pairwise kappa. `g > 2` uses the Frechet / Hubert g-wise
 family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
 the cheap closed form is used. Ignored for vector-valued ratings.}
 
@@ -51,36 +51,36 @@ categories.}
 \item{em_options}{Named list of EM options for the likelihood estimators
 (`"cat_fiml"`, `"nt_fiml"`). For `"cat_fiml"`: `tol`, `max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total Dirichlet
-pseudo-mass spread over the complete pattern table; any positive value
+pseudo-mass spread over the complete pattern table. Any positive value
 selects the unique interior posterior mode when the saturated likelihood
 is flat, shrinking the fitted table toward uniform with weight
-`flatten / (n + flatten)`; `0`, the default, is strict ML). Flattening
-is a uniqueness device, not an inference upgrade: it leaves the point
+`flatten / (n + flatten)`. `0`, the default, is strict ML). Flattening
+is a uniqueness device that leaves the point
 estimate essentially unchanged but makes the reported standard errors
 conservative (roughly 50\% too wide in calibration). For `"nt_fiml"` /
 `"nt_fiml_cs"`: `tol` and `max_iter` (the covariance structure is selected
 by the estimator name). `covariance` and `mean` are deprecated here (use
-`estimator = "nt_fiml_cs"`; the surface is mean-free) and warn if supplied.
+`estimator = "nt_fiml_cs"`, the surface is mean-free) and warn if supplied.
 Pass any subset.}
 
-\item{...}{Mode-specific extras: `feature_weights` and `loss` (e.g.
-`"rms"`) for component-separable vector-valued ratings; `W`, a full
+\item{...}{Mode-specific extras. `feature_weights` and `loss` (e.g.
+`"rms"`) for component-separable vector-valued ratings. `W`, a full
 features-by-features symmetric positive-semidefinite feature metric, for
 the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
-`"nt_fiml_cs"`, defaulting to the identity); `ranges`, a features-by-2
+`"nt_fiml_cs"`, defaulting to the identity). `ranges`, a features-by-2
 matrix of `(lo, hi)` score bounds that fixes the Brennan-Prediger chance
 baseline for the full-`W` `"nt_fiml"` / `"nt_fiml_cs"` estimators instead of
-estimating it from the observed range (see [kappa_vector_quadratic()]); and
-`max_chance_tuples` (cap on the number of chance tuples enumerated) for
-`g > 2`.}
+estimating it from the observed range (see [kappa_vector_quadratic()]).
+Finally, `max_chance_tuples` (cap on the number of chance tuples enumerated)
+for `g > 2`.}
 }
 \value{
 An object of class `misskappa_estimate` carrying the named
   coefficient estimates and their asymptotic covariance matrix. Methods:
   `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
-  `stats::influence`. The object also carries a `psi` component --- the
+  `stats::influence`. The object also carries a `psi` component (the
   n-by-K matrix of per-subject influence functions, satisfying
-  `vcov == crossprod(psi) / n^2` --- for power users who want to build
+  `vcov == crossprod(psi) / n^2`) for power users who want to build
   their own contrasts or joint tests.
 }
 \description{
@@ -88,21 +88,21 @@ Estimates Conger / Fleiss / Brennan-Prediger weighted agreement
 coefficients for raw ratings with missing entries. Pick the estimator with
 `estimator`:
 \itemize{
-  \item `"ipw"` --- inverse-probability-weighted moment estimator for
+  \item `"ipw"`: inverse-probability-weighted moment estimator for
     categorical ratings under MCAR, consistent under non-exchangeable raters
-    with rater-varying observation rates;
-  \item `"cat_fiml"` --- saturated-multinomial full-information maximum
-    likelihood for categorical ratings under ignorable missingness;
-  \item `"pairwise"` --- pairwise-available moment estimator for the
-    quadratically weighted (scored) coefficient under MCAR;
-  \item `"pairwise_cs"` --- the MCAR moment estimator under the
+    with rater-varying observation rates.
+  \item `"cat_fiml"`: saturated-multinomial full-information maximum
+    likelihood for categorical ratings under ignorable missingness.
+  \item `"pairwise"`: pairwise-available moment estimator for the
+    quadratically weighted (scored) coefficient under MCAR.
+  \item `"pairwise_cs"`: the MCAR moment estimator under the
     compound-symmetry covariance model \eqn{\Sigma = \psi J + e I} (fixed
-    raters with free means; the distribution-free companion to
-    `"nt_fiml_cs"`, needing only a connected rater co-observation graph);
-  \item `"nt_fiml"` --- robust normal-theory FIML (saturated covariance) for
-    the quadratically weighted coefficient under ignorable missingness;
-  \item `"nt_fiml_cs"` --- the same FIML under the compound-symmetry
-    covariance model \eqn{\Sigma = \psi J + e I} (fixed raters; needs only a
+    raters with free means, the distribution-free companion to
+    `"nt_fiml_cs"`, needing only a connected rater co-observation graph).
+  \item `"nt_fiml"`: robust normal-theory FIML (saturated covariance) for
+    the quadratically weighted coefficient under ignorable missingness.
+  \item `"nt_fiml_cs"`: the same FIML under the compound-symmetry
+    covariance model \eqn{\Sigma = \psi J + e I} (fixed raters, needs only a
     connected rater co-observation graph).
 }
 
@@ -147,7 +147,7 @@ interface.
 kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
 
 # Scored coefficient (quadratic loss) via the pairwise-available moment
-# estimator; treats the columns as numeric scores.
+# estimator. Treats the columns as numeric scores.
 kappa(dat.zapf2016, estimator = "pairwise")
 
 # Compound-symmetry covariance variant of the normal-theory FIML: the
@@ -160,7 +160,7 @@ kappa(dat.zapf2016, estimator = "nt_fiml_cs")
 kappa(dat.zapf2016, estimator = "pairwise_cs")
 
 # Planned-incomplete design (synthetic): some rater pairs are never
-# co-observed, so the saturated estimators are not identified -- but the
+# co-observed, so the saturated estimators are not identified, but the
 # compound-symmetry estimator needs only a connected co-observation graph.
 kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
 
@@ -169,7 +169,7 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 
 # Vector-valued ratings: a subjects-by-raters-by-features array. Each of the
 # four expert observers classifies crackles at six chest sites, so a rating
-# is a six-vector; the default Hamming loss counts disagreeing sites.
+# is a six-vector. The default Hamming loss counts disagreeing sites.
 kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
 
 # Full feature-metric quadratic vector agreement under the block

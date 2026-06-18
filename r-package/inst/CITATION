@@ -26,7 +26,7 @@ bibentry(
   title   = "Agreement Coefficients with Missing Ratings",
   author  = person("Jonas", "Moss"),
   year    = "2026",
-  note    = "Working paper (in preparation); citation to be updated on preprint and publication"
+  note    = "Working paper (in preparation). Citation to be updated on preprint and publication"
 )
 
 bibentry(
@@ -35,5 +35,5 @@ bibentry(
   title   = "Quadratically Weighted Agreement Coefficients",
   author  = person("Jonas", "Moss"),
   year    = "2026",
-  note    = "Working paper (in preparation); citation to be updated on preprint and publication"
+  note    = "Working paper (in preparation). Citation to be updated on preprint and publication"
 )

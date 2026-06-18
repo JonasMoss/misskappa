@@ -31,26 +31,26 @@ used.}
 
 \item{em_options}{Used only when `method = "fiml"`: named list with `tol`,
 `max_iter`, `covariance`, and `mean`. `covariance = "saturated"` fits the
-unrestricted covariance (default); `"variance_components"` fits
+unrestricted covariance (default). `"variance_components"` fits
 the compound-symmetry (fixed-rater) covariance model
 \eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per
-rater/item (default); `mean = "equal"` estimates a common mean and
+rater/item (default). `mean = "equal"` estimates a common mean and
 requires `covariance = "variance_components"`. `fd_h` is accepted for
 backward compatibility and ignored.}
 }
 \value{
 A `misskappa_estimate` object carrying named coefficients
   (`Conger`, `Fleiss`, `Brennan-Prediger`) and the 3x3 asymptotic
-  covariance matrix for `method = "fiml"`; other continuous methods carry
+  covariance matrix for `method = "fiml"`. Other continuous methods carry
   `Conger` and `Fleiss`.
 }
 \description{
 Estimates Conger / Fleiss weighted agreement coefficients for raw
 real-valued ratings under missing data. The MCAR moment routes
-(`"available"`, `"ipw"`, `"gwet"`) cover any continuous loss kernel; the
+(`"available"`, `"ipw"`, `"gwet"`) cover any continuous loss kernel. The
 normal-FIML route (`"fiml"`, quadratic kernel only) fits a multivariate-
 normal covariance by EM and is valid under ignorable (MCAR or MAR)
-missingness. The default covariance model is saturated; `em_options =
+missingness. The default covariance model is saturated. `em_options =
 list(covariance = "variance_components")` fits the compound-symmetry
 (fixed-rater) covariance model. Missing entries are encoded as `NA` (or any
 non-finite value).

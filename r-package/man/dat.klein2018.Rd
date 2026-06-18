@@ -5,7 +5,7 @@
 \alias{dat.klein2018}
 \title{Klein (2018) example ratings with missing data}
 \format{
-A 10 x 5 data frame; columns `rater1`--`rater5` hold category codes
+A 10 x 5 data frame. Columns `rater1`--`rater5` hold category codes
   `1`--`3`, with `NA` marking unobserved ratings.
 }
 \source{

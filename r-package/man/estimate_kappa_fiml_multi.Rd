@@ -12,7 +12,7 @@ estimate_kappa_fiml_multi(
 )
 }
 \arguments{
-\item{x}{A subjects-by-raters matrix of integer category codes; `NA`s
+\item{x}{A subjects-by-raters matrix of integer category codes. `NA`s
 indicate missing entries.}
 
 \item{weights}{Character vector containing any of `"identity"`,
@@ -34,7 +34,7 @@ Cat-FIML coefficients for the same data matrix. The public [kappa()] API
 deliberately keeps one `weight` per call.
 
 This fixed-rater functional requires every rater to be observed and every
-rater pair to be jointly observed by at least one subject; otherwise the
+rater pair to be jointly observed by at least one subject. Otherwise the
 requested saturated pairwise agreement functional is not identified.
 }
 \keyword{internal}

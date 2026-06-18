@@ -7,8 +7,9 @@
 joint_vcov(...)
 }
 \arguments{
-\item{...}{Two or more `misskappa_estimate` objects. Optionally named;
-names are used as prefixes for the output `dimnames`.}
+\item{...}{Two or more `misskappa_estimate` objects. They may optionally be
+named, in which case the names are used as prefixes for the output
+`dimnames`.}
 }
 \value{
 A square numeric matrix of dimension `K_total x K_total`, where
@@ -37,7 +38,8 @@ column-wise.
 \examples{
 \dontrun{
 set.seed(1)
-n <- 500; R <- 4
+n <- 500
+R <- 4
 x <- matrix(sample.int(5, n * R, replace = TRUE), n, R)
 x[matrix(runif(n * R) < 0.3, n, R)] <- NA
 ac  <- estimate_kappa_raw(x, method = "available")
