@@ -334,7 +334,7 @@ dgp_defs <- list(
 
 valid_dgps <- names(dgp_defs)
 valid_mechanisms <- c("complete", "mcar30", "mar_linear30", "mar_lowgate45")
-valid_methods <- c("pairwise", "cat_fiml", "normal_fiml", "listwise")
+valid_methods <- c("pairwise", "cat_fiml", "normal_fiml", "nt_fiml_cs", "listwise")
 
 if (!all(opts$dgps %in% valid_dgps)) {
   stop("--dgps must contain only: ", paste(valid_dgps, collapse = ","), call. = FALSE)
@@ -446,6 +446,19 @@ fit_normal_fiml <- function(X) {
   )
 }
 
+fit_nt_fiml_cs <- function(X) {
+  X_num <- matrix(as.numeric(X), nrow = nrow(X), ncol = ncol(X))
+  fit <- misskappa::alpha(
+    X_num,
+    estimator = "nt_fiml_cs",
+    em_options = list(tol = 1e-8, max_iter = 10000L)
+  )
+  iter <- tryCatch(fit$moments$iterations, error = function(e) NA_integer_)
+  if (is.null(iter)) iter <- NA_integer_
+  list(estimate = as.numeric(stats::coef(fit)[["alpha"]]),
+       se = se_from_fit(fit), iter = iter)
+}
+
 fit_listwise <- function(X) {
   cc <- stats::complete.cases(X)
   if (sum(cc) < ncol(X)) stop("too few complete rows for listwise alpha.")
@@ -462,6 +475,7 @@ fit_one <- function(X, method) {
       pairwise = fit_pairwise(X),
       cat_fiml = fit_cat_fiml(X),
       normal_fiml = fit_normal_fiml(X),
+      nt_fiml_cs = fit_nt_fiml_cs(X),
       listwise = fit_listwise(X)
     )
     ans$error <- ""
