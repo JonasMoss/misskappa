@@ -158,6 +158,26 @@ IntMat pairwise_only_3rater_2cat() {
   return x;
 }
 
+IntMat pairwise_balanced_5rater_4cat() {
+  constexpr int R = 5;
+  constexpr int C = 4;
+  IntMat x((R * (R - 1) / 2) * C * C, R);
+  x.setConstant(na_code);
+  Eigen::Index row = 0;
+  for (int a = 0; a < R - 1; ++a) {
+    for (int b = a + 1; b < R; ++b) {
+      for (int ca = 0; ca < C; ++ca) {
+        for (int cb = 0; cb < C; ++cb) {
+          x(row, a) = ca;
+          x(row, b) = cb;
+          ++row;
+        }
+      }
+    }
+  }
+  return x;
+}
+
 IntMat chain_missing_pair_3rater_2cat() {
   IntMat x(12, 3);
   x << 0, 0, na_code,
@@ -326,6 +346,22 @@ TEST_CASE("estimate_fiml: benign nuisance non-identification succeeds") {
   const RealMat psi_vcov =
       (r->psi.transpose() * r->psi) / std::pow(static_cast<double>(x.rows()), 2);
   CHECK((psi_vcov - r->vcov).cwiseAbs().maxCoeff() < 1e-10);
+}
+
+TEST_CASE("estimate_fiml: broad retained support uses low-rank Louis variance") {
+  IntMat x = pairwise_balanced_5rater_4cat();
+  auto W = ms::loss::identity_weights(4);
+  REQUIRE(W.has_value());
+
+  auto r = ms::estimate_fiml(x, *W, EmOptions{});
+  REQUIRE(r.has_value());
+  CHECK(r->estimates.cwiseAbs().maxCoeff() < 1e-8);
+  check_three_coef_variance_contract(*r, static_cast<int>(x.rows()));
+
+  auto d = ms::diagnose_fiml_louis(x, *W, EmOptions{});
+  REQUIRE(d.has_value());
+  CHECK(d->n_patterns == 1024u);
+  CHECK(d->n_patterns > static_cast<std::size_t>(x.rows()));
 }
 
 TEST_CASE("estimate_fiml: missing rater-pair coefficient non-identification errors") {
