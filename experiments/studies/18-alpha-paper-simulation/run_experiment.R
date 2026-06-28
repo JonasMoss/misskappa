@@ -240,7 +240,8 @@ dgp_defs <- list(
 )
 
 valid_dgps <- names(dgp_defs)
-valid_mechanisms <- c("complete", "mcar15", "mcar30", "mar_anchor15", "mar_anchor30")
+valid_mechanisms <- c("complete", "mcar15", "mcar30", "mar_anchor15",
+                      "mar_anchor30", "incomplete_twoform")
 valid_methods <- c("pairwise", "cat_em", "normal_fiml", "nt_fiml_cs", "listwise")
 
 if (!all(opts$dgps %in% valid_dgps)) {
@@ -357,12 +358,27 @@ apply_anchor_mar <- function(X, rate) {
   out
 }
 
+# Planned-incomplete two-form design: half the respondents omit item 2, the
+# other half omit item 3, so items 2 and 3 are NEVER co-observed. The
+# co-observation graph is connected (both reach every other item) but not
+# complete, so the saturated routes (pairwise, cat-FIML, normal FIML) are
+# unidentified, while the compound-symmetry plug-in -- a single off-diagonal --
+# is estimable. MCAR-type (form is assigned independently of the responses).
+apply_incomplete_twoform <- function(X) {
+  out <- X
+  form_a <- stats::runif(nrow(X)) < 0.5
+  out[form_a, 2L] <- NA_integer_
+  out[!form_a, 3L] <- NA_integer_
+  out
+}
+
 apply_missing <- function(X, mechanism) {
   if (mechanism == "complete") return(X)
   if (mechanism == "mcar15") return(apply_mcar(X, 0.15))
   if (mechanism == "mcar30") return(apply_mcar(X, 0.30))
   if (mechanism == "mar_anchor15") return(apply_anchor_mar(X, 0.15))
   if (mechanism == "mar_anchor30") return(apply_anchor_mar(X, 0.30))
+  if (mechanism == "incomplete_twoform") return(apply_incomplete_twoform(X))
   stop("Unknown mechanism: ", mechanism, call. = FALSE)
 }
 
@@ -419,7 +435,7 @@ fit_nt_fiml_cs <- function(X) {
     em_options = list(tol = 1e-8, max_iter = 10000L)
   )
   iter <- tryCatch(fit$moments$iterations, error = function(e) NA_integer_)
-  if (is.null(iter)) iter <- NA_integer_
+  if (length(iter) != 1L) iter <- NA_integer_
   list(estimate = as.numeric(stats::coef(fit)[["alpha"]]),
        se = se_from_fit(fit), iter = iter)
 }
@@ -455,7 +471,16 @@ run_with_guard <- function(fun, timeout, mem_mb) {
   t0 <- proc.time()[["elapsed"]]
   repeat {
     res <- parallel::mccollect(job, wait = FALSE, timeout = 0.5)
-    if (!is.null(res)) return(list(status = "ok", value = res[[1L]]))
+    if (!is.null(res)) {
+      v <- res[[1L]]
+      # a child that threw comes back as a try-error; unwrap to the condition
+      # so the caller's inherits(., "error") branch handles it.
+      if (inherits(v, "try-error")) {
+        cond <- attr(v, "condition", exact = TRUE)
+        v <- if (!is.null(cond)) cond else simpleError(as.character(v))
+      }
+      return(list(status = "ok", value = v))
+    }
     over_time <- is.finite(timeout) && (proc.time()[["elapsed"]] - t0) > timeout
     rss <- if (is.finite(mem_mb)) proc_rss_mb(job$pid) else NA_real_
     over_mem <- is.finite(mem_mb) && !is.na(rss) && rss > mem_mb
