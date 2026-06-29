@@ -19,6 +19,57 @@ not here. The port plan with the eight-step roadmap is at
 
 ## Active backlog
 
+- [ ] **Reliability family (omega): closed-form core + fit-based tier; rename to `missrel`.**
+      Add McDonald's omega and the multidimensional family as misskappa coefficients
+      (omega is alpha's congeneric sibling; keep all internal-consistency + inter-rater
+      reliability here, SEM proper stays in magmaan). Method + paper live in
+      `magmaan/papers/closed-form-omega`: the closed forms are already implemented in
+      pure R there (`r-package/R/harness-h.R`: `closed_form_general_loadings`,
+      `closed_form_h_general`, ...) and in the magmaan C++ core
+      (`measures::frontier::reliability`); the fit-free path is ~100 lines of
+      covariance algebra and needs NO SEM machinery. **RENAME to `missrel` while
+      pre-CRAN** (continues the `miss*` brand; "reliability" covers both inter-rater
+      [kappa] and internal-consistency [alpha/omega]).
+
+      Three tiers by dependency:
+      - **Core (no SEM dep):** closed-form `omega_total` / `omega_h` / `H` /
+        `H_general` as covariance functionals from the (missing-data) covariance, with
+        ADF / missing-data analytic SE. REUSES the existing FIML/EM covariance +
+        sandwich/influence-function scaffold (same machinery as `alpha`; omega is just
+        a different `g(Sigma)`). Headline novelty = the omega family **under missing
+        data**, fit-free, with an analytic interval — genuinely unserved (gap below).
+      - **Fit-based (`Suggests: lavaan`):** categorical/polychoric omega, free
+        (non-proportional) bifactor `omega_h`, correlated-error omega, general-structure
+        (Raykov-Shrout) reliability. Fit in lavaan, delta SE over `vcov()` (robust
+        under MLR/WLSMV). Value-add over `semTools::compRelSEM` = the SE/CI
+        (compRelSEM is POINT-ONLY for every coefficient) + missing data. Point
+        estimates are not novel (RS2002 / Green-Yang / semTools); the interval +
+        missing-data handling are.
+      - **Speed backend (magmaan, optional, NOT declared):** magmaan is not an
+        installable R package yet, so it CANNOT go in `Suggests` today. Wire via a
+        runtime flag `backend = c("lavaan","magmaan")`, default `"lavaan"`; reach
+        magmaan only on explicit opt-in through a SOFT reference
+        (`asNamespace("magmaan")`, guarded by `requireNamespace`), never `magmaan::`
+        — keeps `R CMD check` clean while undeclared and is forward-compatible:
+        promote to `Suggests` once the Saga packaging makes magmaan
+        `install_github`-able. DEFAULT lavaan for reproducibility (do NOT
+        auto-pick-magmaan-if-present, or published numbers become backend-dependent).
+        magmaan is purely a sim/throughput accelerator (~50x).
+
+      Dividing line (which tier a coefficient lands in): simple structure + diagonal
+      residuals -> closed form, no fit (core); cross-loadings / correlated errors /
+      polychoric / free bifactor -> fit (lavaan tier).
+
+      SOFTWARE GAP this fills (verified 2026-06-29): `semTools::compRelSEM` (the
+      confirmatory reliability tool) returns POINT ESTIMATES ONLY for every coefficient
+      (no SE/CI for anything); analytic intervals are packaged only for single-factor
+      omega (`MBESS::ci.reliability`); multidimensional `omega_total` / bifactor
+      `omega_h` have only bootstrap (psych) or Bayesian (Pfadt 2022 / `Bayesrel`). No
+      frequentist analytic distribution-free CI for multidim/bifactor omega exists in
+      software, and none under missing data. NOTE package scope ⊃ paper scope: the
+      paper is the fit-free closed form; the lavaan tier is package completeness, not a
+      paper claim.
+
 - [x] **R package release (GitHub-first): unified-API refactor shipped at v1.0.0.**
       Decided 2026-06-06, landed and committed check-clean as `v1.0.0`. The
       public surface is one entry point per input shape driven by a shared
