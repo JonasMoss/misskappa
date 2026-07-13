@@ -1,9 +1,0 @@
-*
-!.gitignore
-!summary.csv
-!diagnostics.csv
-!metadata.csv
-!extension_summary.csv
-!extension_diagnostics.csv
-!extension_metadata.csv
-!extension_dgps.csv

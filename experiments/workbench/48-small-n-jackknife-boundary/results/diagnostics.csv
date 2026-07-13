@@ -1,3 +1,0 @@
-"n","exact_agreement_reps","exact_agreement_rate","leave_one_out_boundary_reps","leave_one_out_boundary_rate","one_or_fewer_disagreement_events","mean_valid_bootstrap_t_fraction","min_valid_bootstrap_t_fraction","mean_bootstrap_boundary_fraction","max_abs_package_delta_estimate","max_abs_package_delta_se","median_seconds_per_replicate"
-20,20,0.02,88,0.088,88,0.926779448621554,0,0.0732205513784461,9.99200722162641e-16,2.08166817117217e-16,0.027000000000001
-30,0,0,16,0.016,16,0.98137343358396,0.593984962406015,0.0186265664160401,4.44089209850063e-16,1.80411241501588e-16,0.0350000000000037
