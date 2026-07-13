@@ -22,6 +22,7 @@ add_executable(misskappa_tests
   unit/gwise_test.cpp
   unit/quadratic_test.cpp
   unit/fiml_counts_test.cpp
+  unit/inference_test.cpp
 )
 target_link_libraries(misskappa_tests PRIVATE misskappa doctest)
 add_test(NAME misskappa_tests COMMAND misskappa_tests)

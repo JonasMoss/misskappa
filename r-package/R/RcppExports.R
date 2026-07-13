@@ -5,6 +5,10 @@ rcpp_kappa_raw <- function(x, method, weight_type, values, em_options) {
     .Call(`_misskappa_rcpp_kappa_raw`, x, method, weight_type, values, em_options)
 }
 
+rcpp_kappa_delete_one <- function(x, weight_type, values) {
+    .Call(`_misskappa_rcpp_kappa_delete_one`, x, weight_type, values)
+}
+
 rcpp_kappa_fiml_multi <- function(x, weight_types, values, em_options) {
     .Call(`_misskappa_rcpp_kappa_fiml_multi`, x, weight_types, values, em_options)
 }
@@ -15,6 +19,10 @@ rcpp_alpha_raw <- function(x, method, values, em_options) {
 
 rcpp_alpha_available_continuous <- function(x) {
     .Call(`_misskappa_rcpp_alpha_available_continuous`, x)
+}
+
+rcpp_alpha_delete_one <- function(x) {
+    .Call(`_misskappa_rcpp_alpha_delete_one`, x)
 }
 
 rcpp_alpha_normal_fiml <- function(x, em_options) {
@@ -41,8 +49,16 @@ rcpp_kappa_counts <- function(x, weight_type, values) {
     .Call(`_misskappa_rcpp_kappa_counts`, x, weight_type, values)
 }
 
+rcpp_kappa_counts_delete_one <- function(x, weight_type, values) {
+    .Call(`_misskappa_rcpp_kappa_counts_delete_one`, x, weight_type, values)
+}
+
 rcpp_kappa_continuous <- function(x, method, weight_type) {
     .Call(`_misskappa_rcpp_kappa_continuous`, x, method, weight_type)
+}
+
+rcpp_kappa_continuous_delete_one <- function(x, weight_type) {
+    .Call(`_misskappa_rcpp_kappa_continuous_delete_one`, x, weight_type)
 }
 
 rcpp_kappa_vector <- function(x, features, method, loss_type, feature_weights) {

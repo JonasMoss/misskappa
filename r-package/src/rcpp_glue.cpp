@@ -16,6 +16,7 @@
 
 #include "misskappa/estimate.hpp"
 #include "misskappa/diagnostics.hpp"
+#include "misskappa/inference.hpp"
 #include "misskappa/loss.hpp"
 
 // [[Rcpp::depends(RcppEigen)]]
@@ -206,6 +207,25 @@ Rcpp::NumericMatrix to_numeric_matrix(const Eigen::MatrixXd& x) {
   return out;
 }
 
+Rcpp::List delete_one_to_list(const misskappa::DeleteOneEstimation& e) {
+  return Rcpp::List::create(
+      Rcpp::Named("estimate") = to_numeric_vector(e.estimate),
+      Rcpp::Named("leave_one_out") = to_numeric_matrix(e.leave_one_out));
+}
+
+Rcpp::List kappa_delete_one_to_list(
+    const misskappa::KappaDeleteOneEstimation& e) {
+  return Rcpp::List::create(
+      Rcpp::Named("estimate") = to_numeric_vector(e.coefficient.estimate),
+      Rcpp::Named("leave_one_out") =
+          to_numeric_matrix(e.coefficient.leave_one_out),
+      Rcpp::Named("item_disagreement") =
+          to_numeric_vector(e.item_disagreement),
+      Rcpp::Named("chance") = to_numeric_vector(e.chance),
+      Rcpp::Named("chance_leave_one_out") =
+          to_numeric_matrix(e.chance_leave_one_out));
+}
+
 Rcpp::List normal_fiml_to_list(const misskappa::NormalFimlEstimation& e) {
   return Rcpp::List::create(
       Rcpp::Named("estimates") = to_numeric_vector(e.fit.estimates),
@@ -243,6 +263,17 @@ Rcpp::List rcpp_kappa_raw(
     Rcpp::stop("Unknown method: " + method);
   }
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_delete_one(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values);
+  auto r = misskappa::delete_one_kappa_complete(
+      in.ratings_indexed, in.weights);
+  return kappa_delete_one_to_list(unwrap(std::move(r)));
 }
 
 // [[Rcpp::export]]
@@ -305,6 +336,16 @@ Rcpp::List rcpp_alpha_available_continuous(const Rcpp::NumericMatrix& x) {
 
   auto r = misskappa::estimate_alpha_available_continuous(ratings);
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_alpha_delete_one(const Rcpp::NumericMatrix& x) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
+  }
+  auto r = misskappa::delete_one_alpha_complete(ratings);
+  return delete_one_to_list(unwrap(std::move(r)));
 }
 
 // [[Rcpp::export]]
@@ -487,6 +528,32 @@ Rcpp::List rcpp_kappa_counts(
 }
 
 // [[Rcpp::export]]
+Rcpp::List rcpp_kappa_counts_delete_one(
+    const Rcpp::IntegerMatrix& x,
+    std::string weight_type,
+    Rcpp::Nullable<Rcpp::NumericVector> values) {
+  const int C = x.ncol();
+  if (C < 1) Rcpp::stop("Counts matrix must have at least one category column.");
+
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mapped(x.nrow(), x.ncol());
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) mapped(i, j) = x(i, j);
+  }
+
+  Eigen::VectorXd v(C);
+  if (values.isNotNull()) {
+    Rcpp::NumericVector vv(values);
+    if (vv.size() != C) Rcpp::stop("Length of 'values' must equal the number of category columns.");
+    for (int i = 0; i < C; ++i) v(i) = vv[i];
+  } else {
+    for (int i = 0; i < C; ++i) v(i) = static_cast<double>(i + 1);
+  }
+  Eigen::MatrixXd W = make_agreement_weights(C, weight_type, v);
+  auto r = misskappa::delete_one_kappa_counts_complete(mapped, W);
+  return kappa_delete_one_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_continuous(
     const Rcpp::NumericMatrix& x,
     std::string method,
@@ -532,6 +599,44 @@ Rcpp::List rcpp_kappa_continuous(
     Rcpp::stop("Unknown method for continuous data: " + method);
   }
   return estimation_to_list(unwrap(std::move(r)));
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_kappa_continuous_delete_one(
+    const Rcpp::NumericMatrix& x,
+    std::string weight_type) {
+  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
+  double mn = std::numeric_limits<double>::infinity();
+  double mx = -std::numeric_limits<double>::infinity();
+  for (int i = 0; i < x.nrow(); ++i) {
+    for (int j = 0; j < x.ncol(); ++j) {
+      const double v = x(i, j);
+      ratings(i, j) = v;
+      if (std::isfinite(v)) {
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+    }
+  }
+  if (!std::isfinite(mn)) Rcpp::stop("All ratings are missing.");
+
+  misskappa::loss::ContinuousLoss loss;
+  if (weight_type == "identity" || weight_type == "unweighted") {
+    loss = unwrap(misskappa::loss::identity_loss());
+  } else if (weight_type == "linear") {
+    loss = unwrap(misskappa::loss::linear_loss(mn, mx));
+  } else if (weight_type == "quadratic") {
+    loss = unwrap(misskappa::loss::quadratic_loss(mn, mx));
+  } else if (weight_type == "radical") {
+    loss = unwrap(misskappa::loss::radical_loss(mn, mx));
+  } else if (weight_type == "ratio") {
+    loss = unwrap(misskappa::loss::ratio_loss(mn, mx));
+  } else {
+    Rcpp::stop("Unknown continuous weight type: " + weight_type);
+  }
+
+  auto r = misskappa::delete_one_kappa_complete(ratings, loss);
+  return kappa_delete_one_to_list(unwrap(std::move(r)));
 }
 
 // [[Rcpp::export]]

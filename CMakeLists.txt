@@ -45,6 +45,7 @@ add_library(misskappa STATIC
   src/estimate_quadratic.cpp
   src/estimate_fiml.cpp
   src/estimate_fiml_counts.cpp
+  src/inference.cpp
 )
 # Allow private detail_*.hpp to be included with relative paths from src/.
 target_include_directories(misskappa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

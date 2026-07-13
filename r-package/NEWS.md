@@ -2,6 +2,14 @@
 
 ## New features
 
+* Complete-data small-sample intervals: supported `kappa()`, `kappa_counts()`,
+  and `alpha()` fits now carry exact leave-one-subject-out evaluations.
+  `confint(method = "jackknife")` forms natural, Fisher, or log-complement
+  transformed delete-one t intervals. Exact-boundary kappa uses a one-sided
+  disagreement-event/chance fallback; exact-boundary alpha remains explicitly
+  unsupported. Wald intervals remain the default, and missing-data inference
+  is unchanged.
+
 * New dataset `dat.tenhove2025`: a *synthetic* planned-incomplete inter-rater
   design (60 subjects, 6 raters, ordinal `1`--`5` scores) whose rater
   co-observation graph is connected but not complete, in the style of the

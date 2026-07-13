@@ -8,7 +8,8 @@
   object,
   parm = NULL,
   level = 0.95,
-  transform = c("none", "fisher"),
+  method = c("wald", "jackknife"),
+  transform = c("none", "fisher", "log_complement"),
   ...
 )
 }
@@ -20,10 +21,13 @@ all.}
 
 \item{level}{Confidence level.}
 
-\item{transform}{Either `"none"` (natural-scale Wald interval) or `"fisher"`
-(delta-method interval on the `atanh` scale, back-transformed with
-`tanh`). Coefficients with \eqn{|\hat\theta| \ge 1} yield `NA` limits
-under `"fisher"`.}
+\item{method}{Either `"wald"` or `"jackknife"`. Exact delete-one summaries
+are attached automatically to supported complete-data kappa and alpha fits
+with at least three subjects.}
+
+\item{transform}{One of `"none"`, `"fisher"`, or `"log_complement"`.
+Wald uses a delta-method standard error on the selected scale; jackknife
+transforms the exact delete-one estimates directly.}
 
 \item{...}{Unused, present for S3 generic conformance.}
 }
@@ -32,17 +36,34 @@ A two-column numeric matrix of lower and upper limits, one row per
   coefficient.
 }
 \description{
-Wald confidence intervals for the coefficients of a `misskappa_estimate`,
-on the natural scale (`transform = "none"`) or via the variance-stabilising
-Fisher z transform (`transform = "fisher"`). The Fisher interval is built on
-the `atanh` scale with a delta-method standard error
-\eqn{\mathrm{se}_z = \mathrm{se} / (1 - \hat\theta^2)} and back-transformed
-with `tanh`, so it always lies in \eqn{(-1, 1)} and tends to have better
-small-sample coverage near the upper boundary.
+Wald or exact-delete-one jackknife confidence intervals for a
+`misskappa_estimate`. Wald intervals use the estimator covariance and a
+normal critical value. Jackknife intervals transform every complete-data
+leave-one-subject-out estimate directly, use the ordinary delete-one
+jackknife standard error, and use a Student t critical value with `n - 1`
+degrees of freedom.
+
+Besides the natural and Fisher scales, `transform = "log_complement"` uses
+the upper-bound-only transform `-log(1 - theta)`. It remains defined for
+alpha values below -1. At an exact kappa boundary, a degenerate transformed
+jackknife is replaced by a one-sided hybrid: a Clopper--Pearson upper limit
+for the probability of any item disagreement is divided by a delete-one t
+lower limit for chance disagreement. Alpha has no corresponding binomial
+item event, so an exact-boundary alpha interval is returned as `NA`.
 }
 \examples{
 fit <- kappa(dat.gwet2014, estimator = "ipw")
 confint(fit)                       # natural-scale Wald interval
 confint(fit, transform = "fisher") # Fisher z interval, always within (-1, 1)
+complete_fit <- kappa_counts(dat.fleiss1971)
+confint(complete_fit, method = "jackknife", transform = "fisher")
 
+}
+\references{
+Efron, B., and Tibshirani, R. J. (1993). *An Introduction to the
+Bootstrap*. Chapman and Hall, Chapter 11.
+
+Clopper, C. J., and Pearson, E. S. (1934). The use of confidence or
+fiducial limits illustrated in the case of the binomial. *Biometrika*,
+26(4), 404--413. \doi{10.1093/biomet/26.4.404}.
 }

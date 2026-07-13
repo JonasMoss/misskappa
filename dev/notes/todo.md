@@ -19,6 +19,21 @@ not here. The port plan with the eight-step roadmap is at
 
 ## Active backlog
 
+- [x] **Complete-data small-sample interval layer.**
+      Added exact delete-one summaries as a separate composable C++ inference
+      surface for raw categorical kappa with arbitrary agreement matrices,
+      count-format Fleiss/Brennan--Prediger kappa, continuous-loss
+      Conger/Fleiss kappa, and score-based coefficient alpha. The generic
+      `jackknife_covariance()` is coefficient-independent; kappa additionally
+      exposes item and chance disagreement for boundary methods. Supported
+      complete R fits carry the summaries automatically, and
+      `confint(method = "jackknife")` provides natural, Fisher, and
+      log-complement transformed t intervals while retaining Wald as the
+      default. Exact-boundary kappa uses the current binomial/chance hybrid;
+      exact-boundary alpha deliberately returns `NA` pending an alpha-specific
+      construction. Missing-data estimators remain unchanged and unsupported
+      by this layer.
+
 - [ ] **Reliability family (omega): closed-form core + fit-based tier; rename to `missrel`.**
       Add McDonald's omega and the multidimensional family as misskappa coefficients
       (omega is alpha's congeneric sibling; keep all internal-consistency + inter-rater
