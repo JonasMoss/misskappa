@@ -1,0 +1,6 @@
+"dgp","dgp_label","mechanism","margin","tuning","true_kappa","chance_disagreement","observed_disagreement","disagreement_event_probability","positive_event_severity"
+"pl_uniform","PL: uniform margins","Independent knowledge/guessing; uniform truth and guesses","0.2000|0.2000|0.2000|0.2000|0.2000","knowledge=0.94868330",0.900000000000001,0.25,0.0249999999999998,0.189090841025084,0.132211586052882
+"pl_skewed","PL: skewed margins","Independent knowledge/guessing; skewed truth and guesses","0.5500|0.2200|0.1200|0.0700|0.0400","knowledge=0.94868330",0.9,0.1601375,0.01601375,0.150149973896185,0.106651700193249
+"pl_rater_heterogeneous","PL: heterogeneous raters","Independent knowledge/guessing; rater-specific knowledge","0.2000|0.2000|0.2000|0.2000|0.2000","knowledge=0.905379|0.934531|0.955147|0.969483|0.979336",0.90000003906194,0.25,0.024999990234515,0.189771824871252,0.131737101919507
+"rare_item_failure","Rare item-wide failures","All raters correct, or an item-wide shock makes all guess","0.2000|0.2000|0.2000|0.2000|0.2000","item_failure=0.10000000",0.9,0.25,0.025,0.09984,0.250400641025641
+"local_near_miss","Frequent local near-misses","Independent adjacent-category errors conditional on truth","0.2000|0.2000|0.2000|0.2000|0.2000","local_error=0.20445299",0.900000129658961,0.234666025981286,0.0234665721715755,0.681182460693957,0.034449759830382

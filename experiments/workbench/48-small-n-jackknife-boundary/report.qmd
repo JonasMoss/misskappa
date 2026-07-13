@@ -306,9 +306,9 @@ argument only when a smoother interior method fails.
 
 ## Caveats
 
-- This is one favorable-to-interpretation complete-data DGP, not a claim of
-  uniform coverage over category margins, rater heterogeneity, missingness, or
-  lower agreement.
+- The first pass is one favorable-to-interpretation complete-data DGP. The
+  extension broadens its margins and disagreement geometry, but still does not
+  cover missingness, lower agreement, or arbitrary rater dependence.
 - A boundary fallback can improve coverage by being wide. Mean length and
   fallback frequency therefore matter as much as aggregate coverage.
 - Monte Carlo uncertainty is reported, but bootstrap quantiles also have inner
@@ -337,3 +337,249 @@ The run used seed base `r metadata[["seed_base"]]`,
 `r fmt(as.numeric(metadata[["elapsed_seconds"]]), 1)` seconds. Raw replicate
 rows are local-only; the committed summary, diagnostics, and metadata are the
 reproducibility record.
+
+## Extension: same kappa, different disagreement geometry
+
+The first pass used only one DGP: the Perreault--Leigh (PL)
+knowledge/guessing construction with uniform category probabilities,
+exchangeable raters, and conditionally independent rating errors. This
+extension keeps five raters, five categories, true quadratic Fleiss kappa
+0.90, and $n\in\{20,30\}$, but changes the margins and how disagreement is
+distributed across subjects. It retains only the IF-Fisher baseline and the
+two most promising boundary hybrids.
+
+```{r extension-setup}
+extension_files <- file.path(
+  results_dir,
+  c(
+    "extension_summary.csv", "extension_diagnostics.csv",
+    "extension_dgps.csv", "extension_metadata.csv"
+  )
+)
+extension_missing <- extension_files[!file.exists(extension_files)]
+if (length(extension_missing) > 0L) {
+  stop(paste0(
+    "Missing extension results. Run Rscript scripts/run_extension.R ",
+    "--reps 750 --bootstrap-reps 199 --cores 1 --progress first."
+  ))
+}
+extension_summary <- read.csv(extension_files[[1L]], stringsAsFactors = FALSE)
+extension_diagnostics <- read.csv(extension_files[[2L]], stringsAsFactors = FALSE)
+extension_dgps <- read.csv(extension_files[[3L]], stringsAsFactors = FALSE)
+extension_metadata_raw <- read.csv(extension_files[[4L]], stringsAsFactors = FALSE)
+extension_metadata <- setNames(
+  extension_metadata_raw$value, extension_metadata_raw$key
+)
+extension_order <- extension_dgps$dgp
+extension_summary <- extension_summary[order(
+  match(extension_summary$dgp, extension_order),
+  extension_summary$n,
+  extension_summary$method
+), ]
+extension_diagnostics <- extension_diagnostics[order(
+  match(extension_diagnostics$dgp, extension_order),
+  extension_diagnostics$n
+), ]
+```
+
+### DGP construction
+
+For the PL rows, let $T\sim\pi$ be the latent true category and set
+
+$$
+ \Pr(Y_j=y\mid T=t)
+ =p_j\mathbf{1}\{y=t\}+(1-p_j)\pi_y.
+$$
+
+With a common $p_j=p$, every rater has margin $\pi$ and quadratic Fleiss kappa
+is $p^2$. The uniform and skewed rows therefore both use
+$p=\sqrt{0.9}$. For heterogeneous raters,
+
+$$
+ \kappa_F=\binom{R}{2}^{-1}\sum_{j<k}p_jp_k,
+$$
+
+so the five $p_j$ values are calibrated to make that pair average 0.90.
+
+The rare-failure DGP draws $T\sim\pi$. With probability $1-h$ all raters
+report $T$; with probability $h$, an item-wide shock makes every rater draw
+independently from $\pi$. Its population coefficient is exactly
+$\kappa_F=1-h$, so $h=0.10$.
+
+The local-near-miss DGP uses a transition matrix
+
+$$
+ P_e=(1-e)I+eL,
+$$
+
+where $L$ moves an interior category left or right with equal probability and
+moves an endpoint to its only neighbor. For a generic common transition
+matrix $P$, with pooled margin $m=\pi^\mathsf{T}P$,
+
+$$
+ A=2\sum_t\pi_t\operatorname{Var}(Y\mid T=t),\qquad
+ B=2\operatorname{Var}_{m}(Y),\qquad
+ \kappa_F=1-A/B.
+$$
+
+The runner solves this finite-state expression for $e$, giving
+$e=0.204453$ at $\kappa_F=0.90$. Thus the five DGPs have the same kappa but
+very different probabilities that a subject contains any disagreement:
+
+$$
+ \Pr(D_i>0)
+ =1-\sum_t\pi_t\sum_y P_{ty}^{R}
+$$
+
+for the conditionally independent transition rows.
+
+```{r extension-dgp-table}
+dgp_tab <- data.frame(
+  DGP = extension_dgps$dgp_label,
+  Margin = gsub("|", ", ", extension_dgps$margin, fixed = TRUE),
+  Tuning = extension_dgps$tuning,
+  Kappa = fmt(extension_dgps$true_kappa, 3),
+  "Event Probability" = fmt(
+    extension_dgps$disagreement_event_probability, 3
+  ),
+  "Mean Severity Given Event" = fmt(
+    extension_dgps$positive_event_severity, 3
+  ),
+  check.names = FALSE
+)
+knitr::kable(dgp_tab, align = "llllrr")
+```
+
+The last four rows are experiment-defined stress variants of the sourced PL
+construction, not claims that one is a universal model for agreement. Their
+purpose is to separate low event probability/high severity from high event
+probability/low severity while holding the estimand fixed.
+
+### Extension result
+
+```{r extension-answer, results='asis'}
+direct <- subset(
+  extension_summary, method == "jack_fisher_direct_boundary"
+)
+boot <- subset(
+  extension_summary, method == "bootstrap_t_jack_boundary"
+)
+if_fisher <- subset(extension_summary, method == "wald_if_fisher")
+worst_direct <- direct[which.min(direct$coverage), ]
+rare_direct <- subset(direct, dgp == "rare_item_failure" & n == 20)
+local_boot <- subset(boot, dgp == "local_near_miss")
+cat(sprintf(
+  paste0(
+    "The extension confirms that the hybrids are materially better than ",
+    "IF-Fisher, but it removes the impression that either is automatically ",
+    "calibrated. Across the ten DGP-by-n cells, direct Fisher jackknife-t + ",
+    "boundary covers %.3f--%.3f and bootstrap-t + boundary covers %.3f--%.3f; ",
+    "their mean absolute deviations from 0.95 are %.3f and %.3f, versus %.3f ",
+    "for IF-Fisher. The worst direct cell is **%s, n = %d** at %.3f. ",
+    "Rare item-wide failures make the fallback conservative (direct coverage ",
+    "%.3f at n = 20), whereas frequent local near-misses need no fallback and ",
+    "bootstrap-t covers %.3f/%.3f."
+  ),
+  min(direct$coverage), max(direct$coverage),
+  min(boot$coverage), max(boot$coverage),
+  mean(abs(direct$coverage - 0.95)),
+  mean(abs(boot$coverage - 0.95)),
+  mean(abs(if_fisher$coverage - 0.95)),
+  worst_direct$dgp_label, worst_direct$n, worst_direct$coverage,
+  rare_direct$coverage,
+  local_boot$coverage[local_boot$n == 20],
+  local_boot$coverage[local_boot$n == 30]
+))
+```
+
+```{r extension-coverage-table}
+keep <- c("dgp", "dgp_label", "n", "coverage", "mean_length", "fallback_rate")
+if_tab <- if_fisher[, keep]
+names(if_tab)[4:6] <- c("if_coverage", "if_length", "if_fallback")
+direct_tab <- direct[, keep]
+names(direct_tab)[4:6] <- c(
+  "direct_coverage", "direct_length", "direct_fallback"
+)
+boot_tab <- boot[, keep]
+names(boot_tab)[4:6] <- c(
+  "boot_coverage", "boot_length", "boot_fallback"
+)
+extension_wide <- merge(
+  merge(if_tab, direct_tab, by = c("dgp", "dgp_label", "n")),
+  boot_tab, by = c("dgp", "dgp_label", "n")
+)
+extension_wide <- extension_wide[order(
+  match(extension_wide$dgp, extension_order), extension_wide$n
+), ]
+coverage_tab <- data.frame(
+  DGP = extension_wide$dgp_label,
+  n = extension_wide$n,
+  "IF-Fisher Coverage" = fmt(extension_wide$if_coverage, 3),
+  "Direct Hybrid Coverage" = fmt(extension_wide$direct_coverage, 3),
+  "Bootstrap Hybrid Coverage" = fmt(extension_wide$boot_coverage, 3),
+  "Direct Length" = fmt(extension_wide$direct_length, 3),
+  "Bootstrap Length" = fmt(extension_wide$boot_length, 3),
+  "Direct Fallback" = fmt(extension_wide$direct_fallback, 3),
+  check.names = FALSE
+)
+knitr::kable(coverage_tab, align = "lrrrrrrr")
+```
+
+Coverage retains the first-pass convention that an unavailable interval is a
+miss. Both boundary hybrids returned an interval in every extension replicate;
+IF-Fisher can still be unavailable when the point estimate equals one.
+
+```{r extension-calibration-table}
+calibration_rows <- unique(extension_summary[, c(
+  "dgp", "dgp_label", "n", "bias", "if_se_ratio", "jackknife_se_ratio"
+)])
+calibration_rows <- merge(
+  calibration_rows,
+  extension_diagnostics[, c(
+    "dgp", "n", "exact_agreement_rate", "leave_one_out_boundary_rate"
+  )],
+  by = c("dgp", "n")
+)
+calibration_rows <- calibration_rows[order(
+  match(calibration_rows$dgp, extension_order), calibration_rows$n
+), ]
+calibration_tab <- data.frame(
+  DGP = calibration_rows$dgp_label,
+  n = calibration_rows$n,
+  Bias = fmt(calibration_rows$bias, 4),
+  "IF SE / SD" = fmt(calibration_rows$if_se_ratio, 3),
+  "Jackknife SE / SD" = fmt(calibration_rows$jackknife_se_ratio, 3),
+  "Exact Agreement" = fmt(calibration_rows$exact_agreement_rate, 3),
+  "Leave-One-Out Boundary" = fmt(
+    calibration_rows$leave_one_out_boundary_rate, 3
+  ),
+  check.names = FALSE
+)
+knitr::kable(calibration_tab, align = "lrrrrrr")
+```
+
+Three points survive the extension.
+
+1. **Disagreement geometry matters at fixed kappa.** The event probability is
+   about 0.10 for item-wide failures and 0.68 for local near-misses. The former
+   frequently triggers the deliberately wide fallback; the latter never does.
+2. **The direct hybrid remains attractive, not definitive.** It is simpler
+   than nested bootstrap-t and performs well for uniform margins, heterogeneous
+   raters, and local near-misses. Coverage of 0.911 for skewed margins at
+   $n=30$ rules out a general recommendation from this experiment alone.
+3. **The current fallback is too coarse for rare shocks.** Its use of
+   $A\leq\Pr(D_i>0)$ discards observed positive-event severity, so 40% fallback
+   use at $n=20$ produces conservative coverage and long intervals. A refined
+   hurdle or direct ratio-test inversion is the natural next step.
+
+### Reproduce the extension
+
+```sh
+Rscript experiments/workbench/48-small-n-jackknife-boundary/scripts/run_extension.R \
+  --reps 750 --bootstrap-reps 199 --cores 1 --progress
+```
+
+The extension used 750 replications per DGP-by-n cell, 199 outer bootstrap
+draws, seed base 484800, and one core. Raw replicate rows remain local-only;
+the committed DGP definitions, summaries, diagnostics, and metadata are the
+extension record.

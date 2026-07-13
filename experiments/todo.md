@@ -207,6 +207,20 @@ fallback is only partly exact: the binomial component is exact but the chance
 denominator still uses jackknife-t; a final recommendation needs either theory
 for that lower bound or direct ratio-test inversion.
 
+**DGP extension / revised next step.** A secondary 750-rep/cell, B=199 runner
+holds true kappa at 0.90 while comparing uniform and skewed PL margins,
+rater-heterogeneous knowledge, rare item-wide failures, and frequent local
+near-misses. Their any-disagreement probabilities range from 0.100 to 0.681.
+Direct-hybrid coverage ranges 0.911--0.973 and bootstrap-hybrid coverage
+0.927--0.980 across the ten DGP-by-n cells, versus 0.792--0.929 for IF-Fisher.
+The hybrids are promising but not automatic: skewed margins still under-cover
+(direct 0.911, bootstrap 0.927 at n=30), while the severity-blind fallback is
+conservative for rare failures (direct 0.969/0.973). Frequent local near-misses
+never trigger the fallback and cover near nominal. Before a default can be
+recommended, refine the boundary interval to use positive-event severity or a
+direct ratio inversion, and diagnose finite-sample bias/scale error under
+skewed margins.
+
 ## Done
 
 ### `16-alpha-calibration-sweep`
