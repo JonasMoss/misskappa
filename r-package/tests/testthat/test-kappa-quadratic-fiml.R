@@ -385,9 +385,12 @@ test_that("saturated EM covariance matches magmaan's oracle", {
   X <- make_ratings(500L, 5L, miss = 0.2, seed = 6L)
   fit <- kappa_quadratic_fiml(X)
   mask <- is.finite(X); storage.mode(mask) <- "logical"
+  # Match misskappa's moment-update gate instead of inheriting magmaan's
+  # deliberately looser package default, which is not part of this oracle.
   mag <- magmaan::magmaan_core$estimate_saturated_em_moments(
-    list(X = X, mask = mask))
-  expect_equal(max(abs(fit$moments$Sigma - mag$cov[[1L]])), 0, tolerance = 1e-5)
+    list(X = X, mask = mask),
+    control = list(h1_em_param_tol = 1e-8, h1_em_max_iter = 10000L))
+  expect_equal(max(abs(fit$moments$Sigma - mag$cov[[1L]])), 0, tolerance = 1e-7)
 })
 
 test_that("sandwich vcov matches magmaan's saturated-moment sandwich ACOV", {
@@ -401,8 +404,10 @@ test_that("sandwich vcov matches magmaan's saturated-moment sandwich ACOV", {
   fit <- kappa_quadratic_fiml(X)
   G <- misskappa:::.kqf_grad(fit$moments$mu, fit$moments$Sigma, fit$bp_chance)$G
   mask <- is.finite(X); storage.mode(mask) <- "logical"
+  # See the convergence-control note in the moment comparison above.
   acov <- as.matrix(magmaan::magmaan_core$estimate_saturated_em_moments(
-    list(X = X, mask = mask))$acov)
+    list(X = X, mask = mask),
+    control = list(h1_em_param_tol = 1e-8, h1_em_max_iter = 10000L))$acov)
   V_oracle <- G %*% acov %*% t(G)
   expect_equal(unname(vcov(fit)), unname(V_oracle), tolerance = 1e-6)
 })

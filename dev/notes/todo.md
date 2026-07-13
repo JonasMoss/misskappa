@@ -34,6 +34,38 @@ not here. The port plan with the eight-step roadmap is at
       construction. Missing-data estimators remain unchanged and unsupported
       by this layer.
 
+- [ ] **Complete the small-sample interval coverage matrix.**
+      Long-run target: every meaningful estimator x input shape x weighting
+      combination exposed by the public R API (plus the retained simulation
+      helpers) should either carry exact delete-one summaries or document why
+      that interval is mathematically inapplicable. Keep the C++ layer
+      coefficient-agnostic and composable; the R layer should only select and
+      label the appropriate summaries.
+
+      - Add complete-data refits for the structured scalar routes:
+        `pairwise_cs`, `nt_fiml`, and `nt_fiml_cs` kappa; `nt_fiml_cs` alpha;
+        and count-format quadratic `nt_fiml`. Verify each delete-one point
+        functional against its fitted estimator instead of silently attaching
+        an empirical substitute.
+      - Cover the standalone/internal surfaces: `kappa_quadratic()`,
+        `estimate_kappa_fiml_multi()`, available-case/Gwet continuous kappa,
+        and all supported `g > 2` nominal/Hubert/linear functionals.
+      - Generalize delete-one summaries to vector-valued ratings: the
+        component-separable pairwise/IPW routes and the full-`W` quadratic
+        `pairwise`/`nt_fiml`/`nt_fiml_cs` routes, preserving feature metrics,
+        fixed score ranges, and coefficient ordering.
+      - Finish boundary handling: derive and validate an alpha-specific
+        perfect-agreement interval, and define the weighted/discrete boundary
+        construction for count matrices with unequal rater totals.
+      - Add a table-driven R test matrix over estimator, input shape, weight,
+        coefficient family, transform, and boundary status so future API
+        additions cannot create silent holes.
+      - In the later missing-data pass, implement genuine delete-one refits for
+        IPW, categorical FIML, normal FIML, and count FIML while preserving the
+        missingness pattern; specify how all-missing rows and the effective
+        subject count map to degrees of freedom and influence rows. Keep this
+        phase separate from the current complete-data paper.
+
 - [ ] **Reliability family (omega): closed-form core + fit-based tier; rename to `missrel`.**
       Add McDonald's omega and the multidimensional family as misskappa coefficients
       (omega is alpha's congeneric sibling; keep all internal-consistency + inter-rater
