@@ -158,6 +158,29 @@ kappa family instead of reviving frozen pre-redesign scripts one at a
 time. It should identify which MAR and sparse-support cells are worth
 expanding into paper-facing simulations.
 
+### `47-small-n-kappa-inference` — owner: codex; feeds Paper C
+
+**Question.** Can profile-likelihood or score inversion repair the poor
+small-sample coverage of quadratic Fleiss kappa in one deliberately simple,
+high-agreement complete-data problem?
+
+**Initial pass.** Workbench runner and report at
+`experiments/workbench/47-small-n-kappa-inference/`. The fixed cell has five
+exchangeable raters, five uniform ordered categories, true kappa 0.90, and
+`n in {20, 30}`. A 2,000-rep run compares the current natural/Fisher Wald
+intervals with normal-working-model profile LR and score inversion, their
+casewise sandwich-robust versions, and a direct three-moment robust GMM
+profile. The point and IF-SE reduction match `kappa_counts()` to machine
+precision.
+
+**Finding / next step.** Robust scaling is necessary but not sufficient.
+Wald coverage is 0.802/0.855 at n=20/30; Fisher is best at 0.857/0.894;
+the best robust score/profile rows reach only 0.854/0.883. Mean IF SE is only
+0.823/0.899 of the empirical SD, and exact observed agreement creates a
+non-negligible boundary mass at n=20. Next candidates should directly address
+those two mechanisms: delete-one jackknife or another finite-sample variance
+estimate, followed by a boundary-capable studentization/calibration step.
+
 ## Done
 
 ### `16-alpha-calibration-sweep`
