@@ -45,7 +45,7 @@ repair the poor small-sample coverage found in Experiment 47?
 The data-generating problem is deliberately unchanged: five exchangeable
 raters, five uniformly distributed ordered categories, true quadratic Fleiss
 kappa `r fmt(as.numeric(metadata[["target"]]), 2)`, complete data, and
-(n\in\{20,30\}). Holding the problem fixed isolates the interval machinery.
+$n\in\{20,30\}$. Holding the problem fixed isolates the interval machinery.
 
 ## Short Answer
 
@@ -93,12 +93,12 @@ best_text <- paste(sprintf(
 The raw-scale delete-one jackknife is not enough. It raises the estimated
 standard error, but only modestly: mean SE / empirical SD is `r variance_text`.
 The useful change is **transformed studentization plus an explicit boundary
-rule**. Direct Fisher-scale jackknife-(t) with that rule gives `r direct_text`.
+rule**. Direct Fisher-scale jackknife-t with that rule gives `r direct_text`.
 The more expensive jackknife-studentized bootstrap gives `r bootstrap_text`;
-it is longer and slightly conservative at (n=30), so it has no clear payoff
+it is longer and slightly conservative at $n=30$, so it has no clear payoff
 in this cell. The closest rows to nominal coverage are `r best_text`.
 
-The boundary is not just the event (hat\kappa=1). A leave-one-out sample can
+The boundary is not just the event $\hat\kappa=1$. A leave-one-out sample can
 hit one even when the original sample does not: `r boundary_text`. That is why
 the direct transformed jackknife and the studentized bootstrap need a defined
 fallback for sparse-disagreement samples. The result is promising enough for a
@@ -128,7 +128,7 @@ Coverage counts an unavailable interval as a miss. “Boundary” methods are
 hybrids: they use the named interior interval whenever it exists and substitute
 the one-sided boundary interval only when the interior calculation degenerates.
 All reported intervals are intersected with the quadratic Fleiss parameter
-space ([-1/(R-1),1]); this changes length, not coverage for an interior truth.
+space $[-1/(R-1),1]$; this changes length, not coverage for an interior truth.
 
 ```{r calibration-table}
 cal <- unique(summary[, c(
@@ -167,21 +167,21 @@ knitr::kable(boundary_tab, align = "rrrrrrr")
 
 ### Quadratic Fleiss functional
 
-For subject (i), define
+For subject $i$, define
 
 
-\[
+$$
  m_i=R^{-1}\sum_jY_{ij},\qquad
  q_i=R^{-1}\sum_jY_{ij}^2,\qquad
  d_i={\binom R2}^{-1}\sum_{j<k}(Y_{ij}-Y_{ik})^2.
-\]
+$$
 
 Writing bars for subject averages, the complete-data quadratic Fleiss
 coefficient is the smooth three-moment functional
 
-\[
+$$
  \hat\kappa=1-\frac{\bar d}{2(\bar q-\bar m^2)}.
-\]
+$$
 
 The IF rows use the delta covariance returned by
 `kappa_counts(estimator = "fleiss_cuzick", weight = "quadratic")`. The runner
@@ -190,20 +190,21 @@ these three moments and records their maximum numerical discrepancies.
 
 ### Delete-one jackknife
 
-Let (hat\kappa_{(-i)}) denote the same functional after deleting subject (i),
-and let (ar\kappa_{(-\cdot)}=n^{-1}\sum_i\hat\kappa_{(-i)}). The jackknife
+Let $\hat\kappa_{(-i)}$ denote the same functional after deleting subject $i$,
+and let $\bar\kappa_{(-\cdot)}=n^{-1}\sum_i\hat\kappa_{(-i)}$. The jackknife
 variance estimate is
 
-\[
+$$
  \widehat{\operatorname{Var}}_{J}(\hat\kappa)
  =\frac{n-1}{n}\sum_{i=1}^n
    \{\hat\kappa_{(-i)}-\bar\kappa_{(-\cdot)}\}^2.
-\]
+$$
 
-`Jackknife SE, t` inserts its square root in a (t_{n-1}) interval. The delta
-Fisher row transforms (hat\kappa) with (g(\kappa)=\operatorname{atanh}(\kappa))
-and uses (g'(\hat\kappa)\widehat{\mathrm{se}}_J). The direct Fisher row instead
-jackknifes (g(\hat\kappa_{(-i)})) itself. That distinction matters near one,
+`Jackknife SE, t` inserts its square root in a $t_{n-1}$ interval. The delta
+Fisher row transforms $\hat\kappa$ with
+$g(\kappa)=\operatorname{atanh}(\kappa)$ and uses
+$g'(\hat\kappa)\widehat{\mathrm{se}}_J$. The direct Fisher row instead
+jackknifes $g(\hat\kappa_{(-i)})$ itself. That distinction matters near one,
 where the linear delta approximation is poor, but the direct calculation is
 undefined as soon as an original or leave-one-out estimate equals one.
 
@@ -212,64 +213,64 @@ undefined as soon as an original or leave-one-out estimate equals one.
 Each outer bootstrap sample resamples whole subjects. BCa uses the empirical
 bias correction
 
-\[
+$$
  z_0=\Phi^{-1}\!\left\{
    \Pr_*(\hat\kappa^*<\hat\kappa)
    +\tfrac12\Pr_*(\hat\kappa^*=\hat\kappa)
  \right\}
-\]
+$$
 
 and jackknife acceleration
 
-\[
+$$
  a=\frac{\sum_i(\bar\kappa_{(-\cdot)}-\hat\kappa_{(-i)})^3}
  {6[\sum_i(\bar\kappa_{(-\cdot)}-\hat\kappa_{(-i)})^2]^{3/2}}.
-\]
+$$
 
 The studentized bootstrap recomputes a delete-one jackknife standard error
 inside every bootstrap sample,
 
-\[
+$$
  T_b^*=\frac{\hat\kappa_b^*-\hat\kappa}
                 {\widehat{\mathrm{se}}_{J,b}^*},
  \qquad
  C_{t}=
  \left[\hat\kappa-q^*_{.975}\widehat{\mathrm{se}}_J,
        \hat\kappa-q^*_{.025}\widehat{\mathrm{se}}_J\right].
-\]
+$$
 
-At least 70% of the requested (T_b^*) values must be finite. This method is
+At least 70% of the requested $T_b^*$ values must be finite. This method is
 more expensive than BCa because every outer draw contains an inner jackknife,
 but the three-moment formula makes it practical here.
 
 ### Exact-agreement fallback
 
-Let (D_i=d_i/(y_{\max}-y_{\min})^2\in[0,1]),
-(A=E(D_i)), and (B) be chance disagreement on the same normalized scale.
+Let $D_i=d_i/(y_{\max}-y_{\min})^2\in[0,1]$,
+$A=E(D_i)$, and $B$ be chance disagreement on the same normalized scale.
 Then
 
-\[
+$$
  \kappa=1-A/B,\qquad A\leq p:=\Pr(D_i>0).
-\]
+$$
 
-If (K=\sum_i1(D_i>0)), the fallback uses the one-sided Clopper--Pearson
+If $K=\sum_i1(D_i>0)$, the fallback uses the one-sided Clopper--Pearson
 upper limit
 
-\[
+$$
  p_U=F^{-1}_{\mathrm{Beta}(K+1,n-K)}(1-\alpha/2)
-\]
+$$
 
-when (K<n), and (p_U=1) otherwise. It combines this with a one-sided
-jackknife-(t) lower limit (B_L) for chance disagreement and reports
+when $K<n$, and $p_U=1$ otherwise. It combines this with a one-sided
+jackknife-t lower limit $B_L$ for chance disagreement and reports
 
-\[
+$$
  C_{\partial}=\left[\max\{-1/(R-1),\;1-p_U/B_L\},\;1\right].
-\]
+$$
 
-The two component errors are allocated (alpha/2) each. The inequality
-(A\le p) makes the disagreement part conservative and valid without modeling
-positive-event severity. Only the binomial component is exact: (B_L) remains
-a small-sample jackknife approximation, so (C_{\partial}) is a principled
+The two component errors are allocated $\alpha/2$ each. The inequality
+$A\le p$ makes the disagreement part conservative and valid without modeling
+positive-event severity. Only the binomial component is exact: $B_L$ remains
+a small-sample jackknife approximation, so $C_{\partial}$ is a principled
 hybrid to test, not an exact finite-sample kappa interval.
 
 ## Sources and relation to prior work
@@ -278,13 +279,13 @@ The coefficient and its asymptotic IF variance follow
 [Moss (2024)](https://doi.org/10.1007/s11336-023-09945-2). The simulation uses
 the knowledge/guessing construction associated with
 [Perreault and Leigh (1989)](https://doi.org/10.1177/002224378902600201); with
-uniform guessing and knowledge probability (sqrt\kappa), the population
-quadratic Fleiss coefficient is (kappa).
+uniform guessing and knowledge probability $\sqrt{\kappa}$, the population
+quadratic Fleiss coefficient is $\kappa$.
 
 The delete-one variance formula is the classical jackknife construction; see
 [Efron and Stein (1981)](https://doi.org/10.1214/aos/1176345462). BCa is from
 [Efron (1987)](https://doi.org/10.1080/01621459.1987.10478410), and the BCa /
-bootstrap-(t) accuracy rationale is summarized by
+bootstrap-t accuracy rationale is summarized by
 [DiCiccio and Efron (1996)](https://doi.org/10.1214/ss/1032280214). The exact
 binomial limit is from
 [Clopper and Pearson (1934)](https://doi.org/10.1093/biomet/26.4.404).
@@ -294,7 +295,7 @@ land on a parameter boundary; [Andrews
 (2000)](https://doi.org/10.1111/1468-0262.00114) gives a canonical bootstrap
 inconsistency result. That theorem is not asserted directly for this kappa
 functional. It is the reason to expose and measure the boundary mass instead of
-assuming that BCa or bootstrap-(t) must repair it.
+assuming that BCa or bootstrap-t must repair it.
 
 Archived Experiment 08 already compared ordinary percentile, basic, BCa, and
 IF-studentized bootstrap intervals. The new ingredients here are the delete-one
