@@ -1,0 +1,6 @@
+/report.html
+/report_files/
+/.quarto/
+/resources/
+
+**/*.quarto_ipynb

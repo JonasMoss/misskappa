@@ -173,13 +173,39 @@ casewise sandwich-robust versions, and a direct three-moment robust GMM
 profile. The point and IF-SE reduction match `kappa_counts()` to machine
 precision.
 
-**Finding / next step.** Robust scaling is necessary but not sufficient.
+**Finding / follow-up.** Robust scaling is necessary but not sufficient.
 Wald coverage is 0.802/0.855 at n=20/30; Fisher is best at 0.857/0.894;
 the best robust score/profile rows reach only 0.854/0.883. Mean IF SE is only
 0.823/0.899 of the empirical SD, and exact observed agreement creates a
-non-negligible boundary mass at n=20. Next candidates should directly address
-those two mechanisms: delete-one jackknife or another finite-sample variance
-estimate, followed by a boundary-capable studentization/calibration step.
+non-negligible boundary mass at n=20. Experiment 48 follows up with delete-one
+variance estimation, transformed studentization, BCa/bootstrap-t, and an
+explicit boundary fallback.
+
+### `48-small-n-jackknife-boundary` — owner: codex; feeds Paper C
+
+**Question.** Do delete-one jackknife variance estimation and a boundary-aware
+calibration repair Experiment 47's small-n quadratic Fleiss undercoverage?
+
+**Initial pass.** Workbench runner and source-backed mathematical report at
+`experiments/workbench/48-small-n-jackknife-boundary/`. It reuses the exact
+five-rater, five-category, true-kappa 0.90, n in {20,30} problem and seeds from
+Experiment 47. A 1,000-rep/cell, B=399 run compares IF Wald/Fisher, raw and
+Fisher-scale jackknife-t, BCa, and a bootstrap-t whose standard error is a
+delete-one jackknife inside every subject bootstrap. Boundary hybrids replace
+degenerate transformed/studentized intervals with a one-sided interval based
+on a Clopper-Pearson upper bound for any-disagreement probability and a
+jackknife-t lower bound for chance disagreement.
+
+**Finding / next step.** The jackknife improves mean SE / empirical SD from
+0.835/0.883 to 0.901/0.925. Direct Fisher jackknife-t has valid-only coverage
+0.940/0.955 but is unavailable in 8.8%/1.6% of samples because an original or
+leave-one-out estimate reaches one. Its boundary hybrid covers 0.945/0.956
+with mean length 0.589/0.358. Jackknife-studentized bootstrap reaches
+0.950/0.964 but is longer (0.645/0.473), so the direct transformed jackknife
+hybrid is the better candidate for a broader target/rater/margin grid. The
+fallback is only partly exact: the binomial component is exact but the chance
+denominator still uses jackknife-t; a final recommendation needs either theory
+for that lower bound or direct ratio-test inversion.
 
 ## Done
 

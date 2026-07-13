@@ -1,0 +1,338 @@
+---
+title: "Jackknife studentization and the agreement boundary"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+results_dir <- Sys.getenv("KAPPA_JACK_BOUNDARY_RESULTS_DIR", unset = "results")
+required <- file.path(results_dir, c("summary.csv", "diagnostics.csv", "metadata.csv"))
+missing <- required[!file.exists(required)]
+if (length(missing) > 0L) {
+  stop(paste0(
+    "Missing experiment results. Run `Rscript run_experiment.R ",
+    "--reps 1000 --bootstrap-reps 399 --progress` first."
+  ))
+}
+summary <- read.csv(required[[1L]], stringsAsFactors = FALSE)
+diagnostics <- read.csv(required[[2L]], stringsAsFactors = FALSE)
+metadata_raw <- read.csv(required[[3L]], stringsAsFactors = FALSE)
+metadata <- setNames(metadata_raw$value, metadata_raw$key)
+
+fmt <- function(x, digits = 3L) formatC(x, digits = digits, format = "f")
+method_order <- c(
+  "wald_if_z", "wald_if_fisher", "jack_t", "jack_fisher_delta_t",
+  "jack_fisher_direct_t", "jack_fisher_direct_boundary", "bca",
+  "bca_boundary", "bootstrap_t_jack", "bootstrap_t_jack_boundary"
+)
+summary <- summary[order(summary$n, match(summary$method, method_order)), ]
+cell <- function(method, n, column) {
+  summary[summary$method == method & summary$n == n, column][[1L]]
+}
+```
+
+## Question
+
+Can delete-one jackknife variance estimation and a boundary-aware calibration
+repair the poor small-sample coverage found in Experiment 47?
+
+The data-generating problem is deliberately unchanged: five exchangeable
+raters, five uniformly distributed ordered categories, true quadratic Fleiss
+kappa `r fmt(as.numeric(metadata[["target"]]), 2)`, complete data, and
+(n\in\{20,30\}). Holding the problem fixed isolates the interval machinery.
+
+## Short Answer
+
+```{r short-answer}
+n_grid <- sort(unique(summary$n))
+direct_candidate <- "jack_fisher_direct_boundary"
+direct_text <- paste(vapply(n_grid, function(n) {
+  sprintf(
+    "n = %d: coverage %s, mean length %s, fallback %s",
+    n, fmt(cell(direct_candidate, n, "coverage")),
+    fmt(cell(direct_candidate, n, "mean_length")),
+    fmt(cell(direct_candidate, n, "fallback_rate"))
+  )
+}, character(1)), collapse = "; ")
+bootstrap_text <- paste(vapply(n_grid, function(n) {
+  sprintf(
+    "n = %d: coverage %s, mean length %s",
+    n, fmt(cell("bootstrap_t_jack_boundary", n, "coverage")),
+    fmt(cell("bootstrap_t_jack_boundary", n, "mean_length"))
+  )
+}, character(1)), collapse = "; ")
+variance_text <- paste(vapply(n_grid, function(n) {
+  sprintf(
+    "n = %d: IF %s, jackknife %s",
+    n, fmt(cell("wald_if_z", n, "if_se_ratio")),
+    fmt(cell("wald_if_z", n, "jackknife_se_ratio"))
+  )
+}, character(1)), collapse = "; ")
+boundary_text <- paste(vapply(n_grid, function(n) {
+  d <- diagnostics[diagnostics$n == n, ]
+  sprintf(
+    "n = %d: exact %s, leave-one-out %s",
+    n, fmt(d$exact_agreement_rate), fmt(d$leave_one_out_boundary_rate)
+  )
+}, character(1)), collapse = "; ")
+best <- do.call(rbind, lapply(split(summary, summary$n), function(d) {
+  d <- d[d$failures == 0L, ]
+  d[which.min(abs(d$coverage - 0.95)), ]
+}))
+best_text <- paste(sprintf(
+  "n = %d: %s at %s", best$n, best$method_label, fmt(best$coverage)
+), collapse = "; ")
+```
+
+The raw-scale delete-one jackknife is not enough. It raises the estimated
+standard error, but only modestly: mean SE / empirical SD is `r variance_text`.
+The useful change is **transformed studentization plus an explicit boundary
+rule**. Direct Fisher-scale jackknife-(t) with that rule gives `r direct_text`.
+The more expensive jackknife-studentized bootstrap gives `r bootstrap_text`;
+it is longer and slightly conservative at (n=30), so it has no clear payoff
+in this cell. The closest rows to nominal coverage are `r best_text`.
+
+The boundary is not just the event (hat\kappa=1). A leave-one-out sample can
+hit one even when the original sample does not: `r boundary_text`. That is why
+the direct transformed jackknife and the studentized bootstrap need a defined
+fallback for sparse-disagreement samples. The result is promising enough for a
+larger grid, but this one-cell experiment does not establish a generally valid
+small-sample interval.
+
+## Evidence
+
+```{r evidence-table}
+tab <- data.frame(
+  `n` = summary$n,
+  Method = summary$method_label,
+  Coverage = fmt(summary$coverage),
+  `Valid-Only Coverage` = fmt(summary$coverage_valid),
+  `MC SE` = fmt(summary$coverage_mcse),
+  `Miss Below` = fmt(summary$miss_below),
+  `Miss Above` = fmt(summary$miss_above),
+  `Mean Length` = fmt(summary$mean_length),
+  `Fallback Rate` = fmt(summary$fallback_rate),
+  Failures = summary$failures,
+  check.names = FALSE
+)
+knitr::kable(tab, align = "rlrrrrrrrr")
+```
+
+Coverage counts an unavailable interval as a miss. “Boundary” methods are
+hybrids: they use the named interior interval whenever it exists and substitute
+the one-sided boundary interval only when the interior calculation degenerates.
+All reported intervals are intersected with the quadratic Fleiss parameter
+space ([-1/(R-1),1]); this changes length, not coverage for an interior truth.
+
+```{r calibration-table}
+cal <- unique(summary[, c(
+  "n", "bias", "empirical_sd", "mean_if_se", "mean_jackknife_se",
+  "if_se_ratio", "jackknife_se_ratio"
+)])
+cal <- cal[order(cal$n), ]
+cal_tab <- data.frame(
+  `n` = cal$n,
+  Bias = fmt(cal$bias, 4),
+  `Empirical SD` = fmt(cal$empirical_sd, 4),
+  `Mean IF SE` = fmt(cal$mean_if_se, 4),
+  `Mean Jackknife SE` = fmt(cal$mean_jackknife_se, 4),
+  `IF SE / SD` = fmt(cal$if_se_ratio),
+  `Jackknife SE / SD` = fmt(cal$jackknife_se_ratio),
+  check.names = FALSE
+)
+knitr::kable(cal_tab, align = "rrrrrrr")
+```
+
+```{r boundary-table}
+boundary_tab <- data.frame(
+  `n` = diagnostics$n,
+  `Exact Agreement` = diagnostics$exact_agreement_reps,
+  `Exact Rate` = fmt(diagnostics$exact_agreement_rate),
+  `Leave-One-Out Boundary` = diagnostics$leave_one_out_boundary_reps,
+  `Leave-One-Out Rate` = fmt(diagnostics$leave_one_out_boundary_rate),
+  `Mean Valid Bootstrap-t Fraction` = fmt(diagnostics$mean_valid_bootstrap_t_fraction),
+  `Mean Bootstrap Boundary Fraction` = fmt(diagnostics$mean_bootstrap_boundary_fraction),
+  check.names = FALSE
+)
+knitr::kable(boundary_tab, align = "rrrrrrr")
+```
+
+## Mathematical construction
+
+### Quadratic Fleiss functional
+
+For subject (i), define
+
+
+\[
+ m_i=R^{-1}\sum_jY_{ij},\qquad
+ q_i=R^{-1}\sum_jY_{ij}^2,\qquad
+ d_i={\binom R2}^{-1}\sum_{j<k}(Y_{ij}-Y_{ik})^2.
+\]
+
+Writing bars for subject averages, the complete-data quadratic Fleiss
+coefficient is the smooth three-moment functional
+
+\[
+ \hat\kappa=1-\frac{\bar d}{2(\bar q-\bar m^2)}.
+\]
+
+The IF rows use the delta covariance returned by
+`kappa_counts(estimator = "fleiss_cuzick", weight = "quadratic")`. The runner
+independently reconstructs the same point estimate and IF standard error from
+these three moments and records their maximum numerical discrepancies.
+
+### Delete-one jackknife
+
+Let (hat\kappa_{(-i)}) denote the same functional after deleting subject (i),
+and let (ar\kappa_{(-\cdot)}=n^{-1}\sum_i\hat\kappa_{(-i)}). The jackknife
+variance estimate is
+
+\[
+ \widehat{\operatorname{Var}}_{J}(\hat\kappa)
+ =\frac{n-1}{n}\sum_{i=1}^n
+   \{\hat\kappa_{(-i)}-\bar\kappa_{(-\cdot)}\}^2.
+\]
+
+`Jackknife SE, t` inserts its square root in a (t_{n-1}) interval. The delta
+Fisher row transforms (hat\kappa) with (g(\kappa)=\operatorname{atanh}(\kappa))
+and uses (g'(\hat\kappa)\widehat{\mathrm{se}}_J). The direct Fisher row instead
+jackknifes (g(\hat\kappa_{(-i)})) itself. That distinction matters near one,
+where the linear delta approximation is poor, but the direct calculation is
+undefined as soon as an original or leave-one-out estimate equals one.
+
+### BCa and jackknife-studentized bootstrap
+
+Each outer bootstrap sample resamples whole subjects. BCa uses the empirical
+bias correction
+
+\[
+ z_0=\Phi^{-1}\!\left\{
+   \Pr_*(\hat\kappa^*<\hat\kappa)
+   +\tfrac12\Pr_*(\hat\kappa^*=\hat\kappa)
+ \right\}
+\]
+
+and jackknife acceleration
+
+\[
+ a=\frac{\sum_i(\bar\kappa_{(-\cdot)}-\hat\kappa_{(-i)})^3}
+ {6[\sum_i(\bar\kappa_{(-\cdot)}-\hat\kappa_{(-i)})^2]^{3/2}}.
+\]
+
+The studentized bootstrap recomputes a delete-one jackknife standard error
+inside every bootstrap sample,
+
+\[
+ T_b^*=\frac{\hat\kappa_b^*-\hat\kappa}
+                {\widehat{\mathrm{se}}_{J,b}^*},
+ \qquad
+ C_{t}=
+ \left[\hat\kappa-q^*_{.975}\widehat{\mathrm{se}}_J,
+       \hat\kappa-q^*_{.025}\widehat{\mathrm{se}}_J\right].
+\]
+
+At least 70% of the requested (T_b^*) values must be finite. This method is
+more expensive than BCa because every outer draw contains an inner jackknife,
+but the three-moment formula makes it practical here.
+
+### Exact-agreement fallback
+
+Let (D_i=d_i/(y_{\max}-y_{\min})^2\in[0,1]),
+(A=E(D_i)), and (B) be chance disagreement on the same normalized scale.
+Then
+
+\[
+ \kappa=1-A/B,\qquad A\leq p:=\Pr(D_i>0).
+\]
+
+If (K=\sum_i1(D_i>0)), the fallback uses the one-sided Clopper--Pearson
+upper limit
+
+\[
+ p_U=F^{-1}_{\mathrm{Beta}(K+1,n-K)}(1-\alpha/2)
+\]
+
+when (K<n), and (p_U=1) otherwise. It combines this with a one-sided
+jackknife-(t) lower limit (B_L) for chance disagreement and reports
+
+\[
+ C_{\partial}=\left[\max\{-1/(R-1),\;1-p_U/B_L\},\;1\right].
+\]
+
+The two component errors are allocated (alpha/2) each. The inequality
+(A\le p) makes the disagreement part conservative and valid without modeling
+positive-event severity. Only the binomial component is exact: (B_L) remains
+a small-sample jackknife approximation, so (C_{\partial}) is a principled
+hybrid to test, not an exact finite-sample kappa interval.
+
+## Sources and relation to prior work
+
+The coefficient and its asymptotic IF variance follow
+[Moss (2024)](https://doi.org/10.1007/s11336-023-09945-2). The simulation uses
+the knowledge/guessing construction associated with
+[Perreault and Leigh (1989)](https://doi.org/10.1177/002224378902600201); with
+uniform guessing and knowledge probability (sqrt\kappa), the population
+quadratic Fleiss coefficient is (kappa).
+
+The delete-one variance formula is the classical jackknife construction; see
+[Efron and Stein (1981)](https://doi.org/10.1214/aos/1176345462). BCa is from
+[Efron (1987)](https://doi.org/10.1080/01621459.1987.10478410), and the BCa /
+bootstrap-(t) accuracy rationale is summarized by
+[DiCiccio and Efron (1996)](https://doi.org/10.1214/ss/1032280214). The exact
+binomial limit is from
+[Clopper and Pearson (1934)](https://doi.org/10.1093/biomet/26.4.404).
+
+Ordinary empirical resampling is not automatically valid when an estimator can
+land on a parameter boundary; [Andrews
+(2000)](https://doi.org/10.1111/1468-0262.00114) gives a canonical bootstrap
+inconsistency result. That theorem is not asserted directly for this kappa
+functional. It is the reason to expose and measure the boundary mass instead of
+assuming that BCa or bootstrap-(t) must repair it.
+
+Archived Experiment 08 already compared ordinary percentile, basic, BCa, and
+IF-studentized bootstrap intervals. The new ingredients here are the delete-one
+standard error inside every bootstrap draw, direct transformed jackknifing, and
+the explicit exact-agreement fallback. Archived Experiments 12--13 tried rare
+count and hurdle intervals as defaults; this experiment uses the bounded-event
+argument only when a smoother interior method fails.
+
+## Caveats
+
+- This is one favorable-to-interpretation complete-data DGP, not a claim of
+  uniform coverage over category margins, rater heterogeneity, missingness, or
+  lower agreement.
+- A boundary fallback can improve coverage by being wide. Mean length and
+  fallback frequency therefore matter as much as aggregate coverage.
+- Monte Carlo uncertainty is reported, but bootstrap quantiles also have inner
+  simulation error from `r metadata[["bootstrap_reps"]]` draws.
+- The boundary interval is only partly exact. A final method would need theory
+  for the chance-disagreement lower limit or a direct test inversion for the
+  full ratio functional.
+
+## Reproduce
+
+Smoke run:
+
+```sh
+Rscript experiments/workbench/48-small-n-jackknife-boundary/run_experiment.R --smoke --progress
+```
+
+Focused run used here (single-core by design):
+
+```sh
+Rscript experiments/workbench/48-small-n-jackknife-boundary/run_experiment.R \
+  --reps 1000 --bootstrap-reps 399 --cores 1 --progress
+```
+
+The run used seed base `r metadata[["seed_base"]]`,
+`r metadata[["reps"]]` Monte Carlo replications per cell, and completed in
+`r fmt(as.numeric(metadata[["elapsed_seconds"]]), 1)` seconds. Raw replicate
+rows are local-only; the committed summary, diagnostics, and metadata are the
+reproducibility record.
