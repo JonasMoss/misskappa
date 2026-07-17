@@ -61,7 +61,8 @@ all_methods <- c(
   "ipw_quadratic", "cat_fiml_quadratic", "pairwise_quadratic",
   "nt_fiml_quadratic", "listwise_quadratic",
   "fleiss_counts_nominal", "fleiss_counts_quadratic",
-  "fleiss_counts_fiml_nominal", "fleiss_counts_fiml_quadratic"
+  "fleiss_counts_fiml_nominal", "fleiss_counts_fiml_quadratic",
+  "ds_fiml_nominal", "ds_fiml_quadratic"
 )
 
 quadratic_methods <- c(
@@ -618,19 +619,23 @@ method_defs <- data.frame(
   estimator = c("ipw", "cat_fiml", "listwise",
                 "ipw", "cat_fiml", "listwise",
                 "ipw", "cat_fiml", "pairwise", "nt_fiml", "listwise",
-                "kappa_counts", "kappa_counts", "kappa_counts", "kappa_counts"),
+                "kappa_counts", "kappa_counts", "kappa_counts", "kappa_counts",
+                "ds_fiml", "ds_fiml"),
   base_estimator = c("ipw", "cat_fiml", "ipw",
                      "ipw", "cat_fiml", "ipw",
                      "ipw", "cat_fiml", "pairwise", "nt_fiml", "ipw",
-                     "fleiss_cuzick", "fleiss_cuzick", "cat_fiml", "cat_fiml"),
+                     "fleiss_cuzick", "fleiss_cuzick", "cat_fiml", "cat_fiml",
+                     "ds_fiml", "ds_fiml"),
   weight = c("nominal", "nominal", "nominal",
              "linear", "linear", "linear",
              "quadratic", "quadratic", "quadratic", "quadratic", "quadratic",
-             "nominal", "quadratic", "nominal", "quadratic"),
+             "nominal", "quadratic", "nominal", "quadratic",
+             "nominal", "quadratic"),
   weight_label = c("nominal", "nominal", "nominal",
                    "absolute", "absolute", "absolute",
                    "quadratic", "quadratic", "quadratic", "quadratic", "quadratic",
-                   "nominal", "quadratic", "nominal", "quadratic"),
+                   "nominal", "quadratic", "nominal", "quadratic",
+                   "nominal", "quadratic"),
   stringsAsFactors = FALSE
 )
 
@@ -756,6 +761,14 @@ fit_counts <- function(X, spec, estimator, weight) {
   ))
 }
 
+# ---- Dawid-Skene FIML prototype (experiment-local R implementation) --------
+#
+# Latent-class conditional-independence EM with delta-method inference; shared
+# with workbench probe 37-ds-fiml-se, which validates the scores and SE
+# calibration. vcov.ds_fiml_fit() returns the named robust 2x2, so the shared
+# se_vector() / fit_result_rows() path surfaces SEs and intervals unchanged.
+source(file.path(script_dir, "R", "ds_fiml.R"))
+
 fit_result_rows <- function(fit, n_eff, coef_map = method_coefs("ipw")) {
   est <- stats::coef(fit)
   se <- se_vector(fit, unname(coef_map))
@@ -807,6 +820,9 @@ fit_one <- function(X, spec, method_row) {
   out <- tryCatch({
     if (method_row$estimator == "kappa_counts") {
       fit <- fit_counts(X, spec, method_row$base_estimator, method_row$weight)
+      fit_result_rows(fit, nrow(X), coef_map)
+    } else if (method_row$estimator == "ds_fiml") {
+      fit <- fit_ds_fiml(X, spec, method_row$weight)
       fit_result_rows(fit, nrow(X), coef_map)
     } else {
       X_fit <- X
@@ -1043,6 +1059,14 @@ grid <- expand.grid(
   n = opts$n_grid,
   stringsAsFactors = FALSE
 )
+# mar_anchor30 on the diffuse 5-6 category DGPs is ~84% of the grid's wall-clock:
+# the cat_fiml EM grinds on the small-n partial-observation tables (study-29
+# timing probe, 2026-06-12). Drop its n<40 cells when the grid still has n>=40
+# to keep -- single-n smoke runs are left intact -- since FIML small-n bias
+# makes n>=40 the reported MAR regime there anyway.
+if (any(opts$n_grid >= 40L)) {
+  grid <- grid[!(grid$mechanism == "mar_anchor30" & grid$n < 40L), , drop = FALSE]
+}
 grid <- grid[order(grid$dgp, grid$mechanism, grid$n), , drop = FALSE]
 grid$cell <- seq_len(nrow(grid))
 

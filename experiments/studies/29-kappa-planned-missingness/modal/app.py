@@ -53,6 +53,7 @@ image = (
     # Runtime mounts of the experiment scripts (editing these does NOT rebuild
     # the image). Must come after all run_commands.
     .add_local_file(str(EXP / "run_experiment.R"), "/exp/run_experiment.R")
+    .add_local_file(str(EXP / "R" / "ds_fiml.R"), "/exp/R/ds_fiml.R")
     .add_local_file(str(EXP / "summarize.R"), "/exp/summarize.R")
     .add_local_file(str(EXP / "combine.R"), "/exp/combine.R")
 )

@@ -1,0 +1,114 @@
+---
+title: "Are the Dawid-Skene FIML standard errors correct?"
+format:
+  html:
+    toc: true
+    number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+res_dir <- "results"
+need <- function(f) {
+  p <- file.path(res_dir, f)
+  if (!file.exists(p)) {
+    stop("Missing ", p, ". Run: Rscript run_experiment.R --checks --calibrate",
+         call. = FALSE)
+  }
+  utils::read.csv(p, stringsAsFactors = FALSE)
+}
+checks <- need("checks.csv")
+summary <- need("summary.csv")
+truths <- need("truths.csv")
+meta <- need("metadata.csv")
+```
+
+## Question
+
+The Dawid-Skene FIML prototype (study 29, `R/ds_fiml.R`) estimates the
+latent-class conditional-independence model by EM and maps the fitted
+parameters to model-implied fixed-rater Conger and Fleiss kappas. It now
+carries delta-method inference: analytic observed-data scores in softmax
+coordinates, observed information by finite differences of the analytic
+score, a rank-truncated pseudo-inverse over the softmax gauge, and both an
+ML (`vcov_ml`) and a robust sandwich (`vcov_robust`) covariance. Are these
+standard errors correct, and how do the two flavours calibrate at the
+sample sizes study 29 cares about?
+
+## Short answer
+
+```{r answer, results = "asis"}
+ok <- summary[summary$dgp == "ds5x6_severity", ]
+band <- range(ok$ratio_robust[ok$n >= 100])
+cov_band <- range(ok$cover_robust[ok$n >= 100])
+cat(sprintf(paste0(
+  "All mechanical checks pass (analytic score, observed information, ",
+  "gauge rank, bootstrap agreement). On the correctly specified DGP at ",
+  "n >= 100, robust-sandwich se/sd ratios span %.2f-%.2f and Wald-z ",
+  "coverage spans %.2f-%.2f across mechanisms, weights, and coefficients.\n"),
+  band[1], band[2], cov_band[1], cov_band[2]))
+```
+
+## Correctness checks
+
+Score vectors, the observed information, and the null-space treatment are
+validated mechanically; the bootstrap row compares the delta-method SEs with
+a nonparametric bootstrap SD on one MCAR dataset (n = 200).
+
+```{r checks}
+checks$value <- signif(checks$value, 3)
+knitr::kable(checks, col.names = c("Check", "Statistic", "Value",
+                                   "Tolerance", "Pass"))
+```
+
+## Calibration
+
+`ratio_*` is mean SE over Monte Carlo SD (1 is perfect); `cover_*` is
+Wald-z 95% coverage. Truth is exact (implied kappa of the true parameters)
+on `ds5x6_severity`; on `copula5x6_high` the model is misspecified and
+coverage is taken around the mechanism-specific pseudo-true value estimated
+from one large fit, so those rows inherit a small Monte Carlo blur.
+
+```{r calibration}
+disp <- summary[, c("dgp", "mechanism", "n", "weight", "coefficient",
+                    "bias", "sd", "ratio_ml", "ratio_robust",
+                    "cover_ml", "cover_robust")]
+num <- vapply(disp, is.numeric, logical(1))
+disp[num] <- lapply(disp[num], function(x) round(x, 3))
+knitr::kable(disp, col.names = c("DGP", "Mechanism", "n", "Weight",
+                                 "Coefficient", "Bias", "SD", "SE/SD (ML)",
+                                 "SE/SD (robust)", "Coverage (ML)",
+                                 "Coverage (robust)"))
+```
+
+## Caveats
+
+- Coverage error at small n mixes point bias (study 29: DS-FIML retains
+  finite-sample bias at n = 40) with SE error; the se/sd ratio isolates the
+  SE side.
+- The weak spot is anchor-MAR with quadratic weights at n <= 100: se/sd
+  drops to about 0.6-0.7 and Wald coverage to 0.67-0.80. The optimism is
+  broad, not an outlier artifact (se over an IQR-based sd is still ~0.70 at
+  n = 100), and `null_frac` does not reliably flag the failing replicates
+  there. This is the same regime where study 29 already prefers nt_fiml on
+  quadratic MAR; at n = 400 the MAR cells calibrate fine (se/sd 0.91-0.93,
+  coverage 0.92-0.93).
+- The pseudo-true values for the misspecified cells come from one fit at
+  n = 300{,}000, so their coverage entries carry roughly +/- 0.002 truth
+  error, noticeable against an n = 400 sampling SD of about 0.02.
+- The probe validates the experiment-local R implementation only; nothing
+  here gates the C++ core.
+
+## Reproduce
+
+```{r repro, results = "asis"}
+cat(sprintf("Seed base %s, %s replications per cell, run %s.\n\n",
+            meta$seed_base, meta$reps, meta$timestamp))
+```
+
+```sh
+Rscript run_experiment.R --checks --calibrate --reps 500
+```
