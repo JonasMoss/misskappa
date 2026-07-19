@@ -34,6 +34,27 @@ not here. The port plan with the eight-step roadmap is at
       construction. Missing-data estimators remain unchanged and unsupported
       by this layer.
 
+- [ ] **Test projected Satterthwaite calibration for pivotal robust scores.**
+      Decision note: `dev/notes/projected-satterthwaite-robust-scores.md`.
+      Generalize the Pearson numerator--variance projection to the full
+      sandwich-studentized rank-\(q\) score and match its projected meat
+      fluctuation to an approximate Hotelling reference. First audit the
+      multivariate formula, raw-versus-centered score meat, and fitted-nuisance
+      contribution. Then create one focused sibling-magmaan probe: a correctly
+      specified five-indicator
+      one-factor model, normal control plus a Vale--Maurelli/Fleishman
+      skewness-2/excess-kurtosis-7 condition, \(n=30,50,100,200\), and true
+      scalar plus global score nulls. Compare ordinary robust
+      \(\chi_q^2\), projected working-normal Hotelling, unprojected diagnostic,
+      and an empirical/delete-one diagnostic; keep MV/FMG procedures secondary
+      because they correct a different nonpivotal weighted-\(\chi^2\) limit.
+      Report type-I error, effective df, Wishart-shape diagnostics, meat
+      conditioning/singularity, failures, and runtime before adding power or
+      broader nonnormal families. Separately verify the conjectured
+      \((n-k)/2\) partial-correlation rule and the preliminary
+      \(n/[3+2/\{P(P-1)\}]\) tau-equivalent-alpha rule only after the SEM null
+      probe fixes the general calculation.
+
 - [ ] **Complete the small-sample interval coverage matrix.**
       Long-run target: every meaningful estimator x input shape x weighting
       combination exposed by the public R API (plus the retained simulation
