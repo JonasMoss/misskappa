@@ -7,7 +7,8 @@
 // path is implemented; counts-format is out of Phase 1 scope.
 
 #include "misskappa/estimate.hpp"
-#include "misskappa/diagnostics.hpp"
+
+#include "detail_fiml_diagnostics.hpp"
 
 #include "detail_pattern_checks.hpp"
 
@@ -1359,6 +1360,8 @@ Result<Estimation> estimate_alpha_fiml(
                     std::move(variance->psi), std::move(variance->null_frac)};
 }
 
+namespace detail {
+
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(
     IntMatView ratings, RealMatView weights, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());
@@ -1428,5 +1431,7 @@ Result<FimlLouisDiagnostic> diagnose_fiml_louis(
   }
   return out;
 }
+
+}  // namespace detail
 
 }  // namespace misskappa

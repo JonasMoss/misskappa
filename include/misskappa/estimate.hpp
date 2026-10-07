@@ -1,6 +1,11 @@
 #ifndef MISSKAPPA_ESTIMATE_HPP
 #define MISSKAPPA_ESTIMATE_HPP
 
+// Estimator entry points of the misskappa C++ library. The library is the
+// computational engine of the misskappa R package: its interface follows the
+// package's needs and may change between releases without a deprecation
+// period. Pin a commit if you build on it directly.
+
 #include "misskappa/loss.hpp"
 #include "misskappa/result.hpp"
 #include "misskappa/types.hpp"
@@ -28,7 +33,6 @@ enum class NormalMeanModel {
 struct EmOptions {
   int max_iter = 10000;
   double tol = 1e-8;
-  double fd_h = 1e-5;       // Deprecated no-op for normal FIML; kept for R/API compatibility.
   double prune_tol = 1e-9;   // patterns with theta < prune_tol are dropped.
   double start_alpha = 0.1;  // smoothing on initial theta; small positive.
   double info_rcond = 5e-5;  // Louis eigenvalues <= info_rcond * lambda_max are dropped.

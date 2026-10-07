@@ -9,6 +9,7 @@
 
 #include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
+#include "detail_psi.hpp"
 
 #include <cmath>
 #include <limits>
@@ -208,7 +209,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   J_out.row(0) = gC.transpose();
   J_out.row(1) = gF.transpose();
   J_out.row(2) = gBP.transpose();
-  RealMat psi_kappa = build_psi_from_phi(acov->summary_psi, J_out);
+  RealMat psi_kappa = detail::build_psi_from_phi(acov->summary_psi, J_out);
 
   RealVec estimates(3);
   estimates(0) = conger_est;

@@ -24,12 +24,8 @@ When supplied, its length must equal the number of unique finite entries
 in `x`.}
 
 \item{em_options}{Named list tuning the EM fit for the likelihood
-estimators. For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter` (the
-covariance structure is selected by the estimator name, not here). `fd_h`
-is accepted for backward compatibility and ignored. `covariance` and `mean`
-are deprecated (use `estimator = "nt_fiml_cs"` for the compound-symmetry
-model, the surface is mean-free) and warn if supplied. For `"cat_fiml"`:
-`tol`, `max_iter`,
+estimators (an error for `"pairwise"`). For `"nt_fiml"` / `"nt_fiml_cs"`:
+`tol` and `max_iter`. For `"cat_fiml"`: `tol`, `max_iter`,
 `prune_tol`, `start_alpha`, `info_rcond` (the relative
 eigenvalue cutoff used when inverting Louis' observed information), and
 `flatten` (total Dirichlet pseudo-mass spread over the complete pattern

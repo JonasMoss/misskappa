@@ -4,19 +4,21 @@
 \alias{kappa_test}
 \title{Test equality of a kappa agreement coefficient across fits}
 \usage{
-kappa_test(..., coef = "Conger", paired = TRUE, value = 0)
+kappa_test(..., coef = NULL, paired = FALSE, value = 0)
 }
 \arguments{
-\item{...}{Two or more `misskappa_estimate` objects from [kappa()] (a single
-fit tests `coef = value`). Names become labels in the output.}
+\item{...}{One or more `misskappa_estimate` objects from [kappa()] or
+[kappa_counts()] (a single fit tests `coef = value`). Names become labels
+in the output.}
 
-\item{coef}{Coefficient to compare. Default `"Conger"`.}
+\item{coef}{Coefficient to compare. Defaults to the first coefficient of the
+first fit (`"Conger"` for [kappa()], `"Fleiss"` for [kappa_counts()]).}
 
-\item{paired}{`TRUE` (default) for same-subject fits, `FALSE` for independent
-samples.}
+\item{paired}{`FALSE` (default) for independent samples, `TRUE` for fits on
+the same subjects in the same row order.}
 
-\item{value}{Null value: the coefficient (single fit) or the pairwise
-difference (default `0`).}
+\item{value}{Null value: the coefficient (single fit) or the difference
+between two fits (default `0`).}
 }
 \value{
 An `htest` object.
@@ -26,24 +28,23 @@ Wald test that a chosen kappa coefficient is equal across two or more
 [kappa()] fits (or, with a single fit, equal to `value`). Pass the fits to
 `...`, naming them to label the output.
 
-Set `paired = TRUE` when the fits are computed on the **same subjects in the
-same row order** (two estimators, two weight schemes, two rated attributes,
-rater pairs, ...). The dependence is taken from the per-subject influence
-functions (`fit$psi`). Set `paired = FALSE` for independent samples, where
-the variances add. With more than two fits this is the joint hypothesis that
-all are equal (`G - 1` degrees of freedom).
+By default the fits are treated as independent samples, so their variances
+add. Set `paired = TRUE` when the fits are computed on the **same subjects in
+the same row order** (two estimators, two weight schemes, two rated
+attributes, rater pairs, ...). The dependence is then taken from the
+per-subject influence functions (`fit$psi`). With more than two fits this is
+the joint hypothesis that all are equal (`G - 1` degrees of freedom).
 }
 \examples{
 # Paired: are two rater pairs equally consistent on the same 50 subjects
 # (Zapf 2016)? The dependence is read from the per-subject influence
-# functions, so paired = TRUE (the default) is appropriate.
+# functions.
 kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
            CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
-           coef = "Conger")
+           paired = TRUE)
 
 # Independent samples (different subjects in two studies): variances add.
 kappa_test(gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-           klein = kappa(dat.klein2018, estimator = "ipw"),
-           coef = "Conger", paired = FALSE)
+           klein = kappa(dat.klein2018, estimator = "ipw"))
 
 }

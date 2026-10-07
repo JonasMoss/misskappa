@@ -21,8 +21,11 @@ test_that("saturated coefficients are not identified on an incomplete graph", {
 
 test_that("compound-symmetry estimators fit the incomplete design", {
   x <- dat.tenhove2025
-  for (est in c("nt_fiml_cs", "pairwise_cs")) {
-    fit <- kappa(x, estimator = est)
+  fits <- list(
+    nt_fiml_cs = kappa(x, estimator = "nt_fiml_cs", values = 1:5),
+    pairwise_cs = .kappa_pairwise_cs(x, values = 1:5)  # internal since 2.0.0
+  )
+  for (fit in fits) {
     expect_s3_class(fit, "misskappa_estimate")
     expect_named(fit$estimates, c("Conger", "Fleiss", "Brennan-Prediger"))
     expect_true(all(is.finite(fit$estimates)))
@@ -37,13 +40,13 @@ test_that("compound-symmetry estimators fit the incomplete design", {
 
 test_that("nt_fiml_cs and pairwise_cs share their MCAR limit", {
   x <- dat.tenhove2025
-  a <- kappa(x, estimator = "nt_fiml_cs")$estimates
-  b <- kappa(x, estimator = "pairwise_cs")$estimates
+  a <- kappa(x, estimator = "nt_fiml_cs", values = 1:5)$estimates
+  b <- .kappa_pairwise_cs(x, values = 1:5)$estimates
   expect_lt(max(abs(a - b)), 0.05)
 })
 
-test_that("counts nt_fiml (exchangeable CS) carries the IF identity", {
-  fit <- kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic")
+test_that("counts nt_fiml_cs (exchangeable CS) carries the IF identity", {
+  fit <- kappa_counts(dat.fleiss1971, estimator = "nt_fiml_cs")
   expect_named(fit$estimates, c("Fleiss", "Brennan-Prediger"))
   expect_true(all(is.finite(fit$estimates)))
   expect_equal(unname(crossprod(fit$psi) / nrow(dat.fleiss1971)^2),

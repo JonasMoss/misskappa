@@ -15,7 +15,6 @@
 #include <vector>
 
 #include "misskappa/estimate.hpp"
-#include "misskappa/diagnostics.hpp"
 #include "misskappa/inference.hpp"
 #include "misskappa/loss.hpp"
 
@@ -160,8 +159,6 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     opts.tol = Rcpp::as<double>(em_options["tol"]);
   if (em_options.containsElementNamed("max_iter"))
     opts.max_iter = Rcpp::as<int>(em_options["max_iter"]);
-  if (em_options.containsElementNamed("fd_h"))
-    opts.fd_h = Rcpp::as<double>(em_options["fd_h"]);
   if (em_options.containsElementNamed("prune_tol"))
     opts.prune_tol = Rcpp::as<double>(em_options["prune_tol"]);
   if (em_options.containsElementNamed("start_alpha"))
@@ -414,30 +411,6 @@ Rcpp::List rcpp_kappa_fiml_counts(
 
   auto r = misskappa::estimate_fiml_counts(mapped, W, r_total, opts);
   return estimation_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_fiml_louis_spectrum(
-    const Rcpp::IntegerMatrix& x,
-    std::string weight_type,
-    Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
-  PreparedInputs in = prepare_inputs(x, weight_type, values);
-  misskappa::EmOptions opts = parse_em_options(em_options);
-  auto r = unwrap(misskappa::diagnose_fiml_louis(in.ratings_indexed, in.weights, opts));
-  return Rcpp::List::create(
-      Rcpp::Named("eigenvalues") = to_numeric_vector(r.eigenvalues),
-      Rcpp::Named("gradient_projection") = to_numeric_vector(r.gradient_projection),
-      Rcpp::Named("variance_contribution") = to_numeric_vector(r.variance_contribution),
-      Rcpp::Named("variance") = r.variance,
-      Rcpp::Named("lambda_max") = r.lambda_max,
-      Rcpp::Named("threshold") = r.threshold,
-      Rcpp::Named("retained_rank") = r.retained_rank,
-      Rcpp::Named("kappa_conger") = r.kappa_conger,
-      Rcpp::Named("n_subjects") = static_cast<double>(r.n_subjects),
-      Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns),
-      Rcpp::Named("C") = r.c,
-      Rcpp::Named("R") = r.R);
 }
 
 // [[Rcpp::export]]

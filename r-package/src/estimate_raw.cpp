@@ -3,6 +3,7 @@
 #include "detail_kernel_moments.hpp"
 #include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
+#include "detail_psi.hpp"
 
 #include <cmath>
 #include <limits>
@@ -231,7 +232,7 @@ Result<Estimation> estimate_raw(
   // can stack `psi` from independent fits on the same data to obtain a
   // joint vcov across estimators.
   const RealMat J_combined = J_kappa * J_d;
-  RealMat psi_kappa = build_psi_from_phi(phi_matrix, J_combined);
+  RealMat psi_kappa = detail::build_psi_from_phi(phi_matrix, J_combined);
 
   return Estimation{std::move(estimates), std::move(kappa_cov),
                     std::move(psi_kappa), {}};

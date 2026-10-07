@@ -28,9 +28,9 @@ co-observation graph is *connected but not complete*. Some rater pairs
 (for example raters 2 and 4) never rate the same subject. That is exactly the
 regime where the saturated coefficients are not identified: `kappa()` with
 `estimator = "pairwise"`, `"nt_fiml"`, or `"cat_fiml"` stops with an
-identifiability error, while the compound-symmetry estimators
-`"nt_fiml_cs"` and `"pairwise_cs"`, which need only a connected graph, still
-fit. The build script `data_raw/tenhove2025.R` regenerates it from a fixed
+identifiability error, while the compound-symmetry estimator
+`"nt_fiml_cs"`, which needs only a connected graph, still fits. The build
+script `data_raw/tenhove2025.R` regenerates it from a fixed
 seed.
 }
 \examples{
@@ -38,9 +38,8 @@ seed.
 # estimators are not identified ...
 try(kappa(dat.tenhove2025, estimator = "nt_fiml"))
 
-# ... while the compound-symmetry estimators need only connectivity.
-kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
-kappa(dat.tenhove2025, estimator = "pairwise_cs")
+# ... while the compound-symmetry estimator needs only connectivity.
+kappa(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
 }
 \references{
 ten Hove, D., Jorgensen, T. D., & van der Ark, L. A. (2025). How to

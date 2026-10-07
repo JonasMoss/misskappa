@@ -6,7 +6,7 @@
 \usage{
 kappa_counts(
   x,
-  estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml"),
+  estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml_cs"),
   weight = c("nominal", "linear", "quadratic"),
   values = NULL,
   r_total = NULL,
@@ -20,16 +20,16 @@ kappa_counts(
 moment estimator, the available-case / moment member of the
 compound-symmetry family), `"cat_fiml"` (EM over the composition simplex
 with multivariate hypergeometric weights for completing partial counts), or
-`"nt_fiml"` (the exchangeable common-mean normal FIML, `weight =
-"quadratic"` only, the efficient ignorable-missingness MLE). All agree when
-every row of `x` sums to `r_total`. With partial counts (some
-`r_i < r_total`) `"cat_fiml"` and `"nt_fiml"` are the efficient routes and
+`"nt_fiml_cs"` (the exchangeable common-mean compound-symmetry normal FIML,
+quadratic weight only, the efficient ignorable-missingness MLE). All agree
+when every row of `x` sums to `r_total`. With partial counts (some
+`r_i < r_total`) `"cat_fiml"` and `"nt_fiml_cs"` are the efficient routes and
 `"fleiss_cuzick"` is the consistent-under-MCAR moment estimator. For a
 complete-case (listwise) analysis, drop the incomplete rows yourself and
 pass the result to any estimator.}
 
 \item{weight}{Weighting scheme: `"nominal"` (default), `"linear"`, or
-`"quadratic"`. The `"nt_fiml"` estimator requires `"quadratic"`.}
+`"quadratic"`. `"nt_fiml_cs"` is quadratic only, and its default.}
 
 \item{values}{Optional length-C numeric vector of category scores used
 by the metric weightings. Defaults to `1:C`.}
@@ -37,20 +37,19 @@ by the metric weightings. Defaults to `1:C`.}
 \item{r_total}{Total number of raters per subject. Defaults to the
 maximum observed row sum. Required for `"cat_fiml"` when rows have varying
 totals and the maximum observed total is not the design total.
-`"fleiss_cuzick"` and `"nt_fiml"` are `r_total`-invariant.}
+`"fleiss_cuzick"` and `"nt_fiml_cs"` are `r_total`-invariant and ignore it.}
 
-\item{em_options}{Named list of EM/optimiser options. For
-`estimator = "cat_fiml"`: `tol`, `max_iter`, `prune_tol`, `start_alpha`,
-`info_rcond`. The raw-data `flatten` option does not apply there:
-count-data categorical FIML fits a low-dimensional composition model, not
-the saturated joint. For `estimator = "nt_fiml"`: `tol` and `max_iter` tune
-the optimiser. `mean` and `covariance`, if supplied, must be the
-exchangeable common-mean compound-symmetry model.}
+\item{em_options}{Named list of EM/optimiser options (an error for
+`"fleiss_cuzick"`). For `estimator = "cat_fiml"`: `tol`, `max_iter`,
+`prune_tol`, `start_alpha`, `info_rcond`. The raw-data `flatten` option
+does not apply there: count-data categorical FIML fits a low-dimensional
+composition model, not the saturated joint. For `estimator =
+"nt_fiml_cs"`: `tol` and `max_iter` tune the optimiser.}
 }
 \value{
 A `misskappa_estimate` object with `Fleiss` and
-  `Brennan-Prediger` coefficients, the 2x2 vcov, a `psi` component, and
-  the registered `stats::influence` method.
+  `Brennan-Prediger` coefficients, the 2x2 vcov, the number of subjects
+  `n`, and a `psi` component of per-subject influence rows.
 }
 \description{
 Estimates Fleiss and Brennan-Prediger weighted agreement coefficients
@@ -72,12 +71,12 @@ with two or more ratings is required.
 Counts data discards rater identity, so all counts estimators impose
 exchangeability. The categorical count-FIML model treats full count
 compositions as exchangeable iid rater draws. The compound-symmetry
-estimators (`"nt_fiml"` and the moment estimator `"fleiss_cuzick"`) fit the
-corresponding common-mean, compound-symmetry scored model
+estimators (`"nt_fiml_cs"` and the moment estimator `"fleiss_cuzick"`) fit
+the corresponding common-mean, compound-symmetry scored model
 \eqn{\Sigma = \psi J + e I}. For non-exchangeable raters, use rater-identified
 data and `kappa()` instead.
 
-The quadratic compound-symmetry likelihood estimator (`"nt_fiml"`) works
+The quadratic compound-symmetry likelihood estimator (`"nt_fiml_cs"`) works
 **directly on the counts**: each subject contributes only the sufficient
 statistics \eqn{(m_i, \sum_c n_{ic} v_c, \sum_c n_{ic} v_c^2)} of its observed
 ratings, so no realizing subjects-by-raters table is constructed. The
@@ -94,13 +93,6 @@ Conger is not reported (raters are not identified in this input format),
 and neither IPW nor Gwet are meaningful (per-rater observation rates are
 aggregated away by the counts representation).
 }
-\details{
-Older Krippendorff / irrCAC-style categorical schemes (`"ordinal"`,
-`"radical"`, `"ratio"`, `"circular"`, `"bipolar"`) remain available only
-through unsupported internal helpers and the C++ `misskappa::loss` factories.
-They are retained for validation and parity work, not as part of the
-recommended R interface.
-}
 \examples{
 # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
 # in counts format (one row per subject, one column per category).
@@ -110,8 +102,8 @@ kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
 
 # Exchangeable common-mean compound-symmetry FIML, fit directly on the
-# per-subject counts (the count-format counterpart of "nt_fiml_cs").
-kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic")
+# per-subject counts (quadratic weight).
+kappa_counts(dat.fleiss1971, estimator = "nt_fiml_cs")
 
 }
 \references{

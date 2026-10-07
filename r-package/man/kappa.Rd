@@ -6,7 +6,7 @@
 \usage{
 kappa(
   x,
-  estimator = c("ipw", "cat_fiml", "pairwise", "pairwise_cs", "nt_fiml", "nt_fiml_cs"),
+  estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml", "nt_fiml_cs"),
   weight = c("nominal", "linear", "quadratic", "hubert"),
   g = 2L,
   values = NULL,
@@ -18,70 +18,68 @@ kappa(
 \item{x}{A subjects-by-raters matrix or data frame of scalar ratings, or a
 subjects-by-raters-by-features 3-D array of vector-valued ratings (the
 array form is auto-detected). Integer category codes for `"ipw"` /
-`"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
-missing entries.}
+`"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"` /
+`"nt_fiml_cs"`. `NA` marks missing entries.}
 
-\item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
-`"nt_fiml"`, or `"nt_fiml_cs"` (the `_cs` names are the compound-symmetry
-covariance variants of `"pairwise"` and `"nt_fiml"`).
-Vector-valued ratings support `"pairwise"` and `"ipw"` (component-separable)
-and, with a full feature metric `W`, `"pairwise"`, `"nt_fiml"`, and
-`"nt_fiml_cs"` (full-`W` squared loss). Continuous g-wise kernels
-(`weight = "linear"`, `g > 2`) support `"pairwise"` and `"ipw"` only.}
+\item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`,
+or `"nt_fiml_cs"`. Vector-valued ratings support `"ipw"` and `"pairwise"`
+(component-separable) and, with the squared loss, `"pairwise"`,
+`"nt_fiml"`, and `"nt_fiml_cs"`. For non-quadratic `g > 2` use `"ipw"`
+(which equals the complete-data estimator when nothing is missing) or
+`"cat_fiml"`.}
 
-\item{weight}{Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
-default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"pairwise_cs"` /
-`"nt_fiml"` / `"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
-`"linear"`, `"hubert"`, and
-`"quadratic"` are defined, where `"hubert"` is the all-raters-equal
-multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
-the component loss (`"nominal"` -> Hamming, `"linear"` -> L1,
-`"quadratic"` -> squared).}
+\item{weight}{Weighting scheme: `"nominal"` (the default for `"ipw"` /
+`"cat_fiml"`), `"linear"`, or `"quadratic"` (the only, and default, choice
+for the scored estimators). `"hubert"` is the all-raters-equal multirater
+kernel for `g > 2`. For vector-valued ratings `weight` selects the
+component loss (`"nominal"` -> Hamming, `"linear"` -> L1, `"quadratic"` ->
+squared).}
 
 \item{g}{Arity of the multirater disagreement kernel. `g = 2` (the default)
 is ordinary pairwise kappa. `g > 2` uses the Frechet / Hubert g-wise
 family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
-the cheap closed form is used. Ignored for vector-valued ratings.}
+the closed form is used. Not used for vector-valued ratings.}
 
-\item{values}{Optional numeric vector of category scores used by the metric
-weightings (and by the quadratic / continuous g-wise estimators to map
-integer codes to scores). Defaults to the sorted unique observed
-categories.}
+\item{values}{Optional numeric vector of category scores. The sorted
+distinct observed ratings are mapped to `values` in order, so its length
+must equal their number. For `"ipw"` / `"cat_fiml"` the scores
+parameterize the linear and quadratic weights (default: the codes
+themselves). For the scored estimators they convert codes to scores and
+declare the discrete rating scale that Brennan-Prediger needs. Not used
+for vector-valued ratings.}
 
 \item{em_options}{Named list of EM options for the likelihood estimators
-(`"cat_fiml"`, `"nt_fiml"`). For `"cat_fiml"`: `tol`, `max_iter`,
-`prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total Dirichlet
-pseudo-mass spread over the complete pattern table. Any positive value
-selects the unique interior posterior mode when the saturated likelihood
-is flat, shrinking the fitted table toward uniform with weight
-`flatten / (n + flatten)`. `0`, the default, is strict ML). Flattening
-is a uniqueness device that leaves the point
-estimate essentially unchanged but makes the reported standard errors
-conservative (roughly 50\% too wide in calibration). For `"nt_fiml"` /
-`"nt_fiml_cs"`: `tol` and `max_iter` (the covariance structure is selected
-by the estimator name). `covariance` and `mean` are deprecated here (use
-`estimator = "nt_fiml_cs"`, the surface is mean-free) and warn if supplied.
+(an error for `"ipw"` and `"pairwise"`). For `"cat_fiml"`: `tol`,
+`max_iter`, `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total
+Dirichlet pseudo-mass spread over the complete pattern table. Any positive
+value selects the unique interior posterior mode when the saturated
+likelihood is flat, shrinking the fitted table toward uniform with weight
+`flatten / (n + flatten)`. `0`, the default, is strict ML). Flattening is
+a uniqueness device that leaves the point estimate essentially unchanged
+but makes the reported standard errors conservative (roughly 50\% too wide
+in calibration). For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter`.
 Pass any subset.}
 
-\item{...}{Mode-specific extras. `feature_weights` and `loss` (e.g.
-`"rms"`) for component-separable vector-valued ratings. `W`, a full
-features-by-features symmetric positive-semidefinite feature metric, for
-the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
-`"nt_fiml_cs"`, defaulting to the identity). `ranges`, a features-by-2
-matrix of `(lo, hi)` score bounds that fixes the Brennan-Prediger chance
-baseline for the full-`W` `"nt_fiml"` / `"nt_fiml_cs"` estimators instead of
-estimating it from the observed range (see [kappa_vector_quadratic()]).
-Finally, `max_chance_tuples` (cap on the number of chance tuples enumerated)
-for `g > 2`.}
+\item{...}{Mode-specific arguments. Anything not listed here is an error.
+For vector-valued ratings: `W`, a features-by-features symmetric
+positive-semidefinite feature metric for the squared loss (with
+`"pairwise"`, `"nt_fiml"`, `"nt_fiml_cs"`; the FIML estimators default to
+the identity); `ranges`, a features-by-2 matrix of `(lo, hi)` score bounds
+declaring a continuous rating scale for Brennan-Prediger (with
+`"nt_fiml"` / `"nt_fiml_cs"`); and `feature_weights` / `loss` for the
+component-separable `"ipw"` / `"pairwise"` path (non-negative per-feature
+weights, and `loss = "rms"` for the root-mean-square loss). For `g > 2`:
+`max_chance_tuples`, the cap on the number of chance tuples enumerated
+(default `5e6`).}
 }
 \value{
 An object of class `misskappa_estimate` carrying the named
-  coefficient estimates and their asymptotic covariance matrix. Methods:
-  `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
-  `stats::influence`. The object also carries a `psi` component (the
-  n-by-K matrix of per-subject influence functions, satisfying
-  `vcov == crossprod(psi) / n^2`) for power users who want to build
-  their own contrasts or joint tests.
+  coefficient estimates, their asymptotic covariance matrix, and the number
+  of subjects `n`. Methods: `print`, `coef`, `vcov`, `confint`,
+  `as.data.frame`, and `stats::influence`. The object also carries a `psi`
+  component (the n-by-K matrix of per-subject influence functions,
+  satisfying `vcov == crossprod(psi) / n^2`) for building custom contrasts
+  or joint tests.
 }
 \description{
 Estimates Conger / Fleiss / Brennan-Prediger weighted agreement
@@ -95,10 +93,6 @@ coefficients for raw ratings with missing entries. Pick the estimator with
     likelihood for categorical ratings under ignorable missingness.
   \item `"pairwise"`: pairwise-available moment estimator for the
     quadratically weighted (scored) coefficient under MCAR.
-  \item `"pairwise_cs"`: the MCAR moment estimator under the
-    compound-symmetry covariance model \eqn{\Sigma = \psi J + e I} (fixed
-    raters with free means, the distribution-free companion to
-    `"nt_fiml_cs"`, needing only a connected rater co-observation graph).
   \item `"nt_fiml"`: robust normal-theory FIML (saturated covariance) for
     the quadratically weighted coefficient under ignorable missingness.
   \item `"nt_fiml_cs"`: the same FIML under the compound-symmetry
@@ -107,39 +101,46 @@ coefficients for raw ratings with missing entries. Pick the estimator with
 }
 
 `"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
-linear, or quadratic `weight`.
-`"pairwise"`, `"pairwise_cs"`, `"nt_fiml"`, and `"nt_fiml_cs"` are quadratic
-by construction: they treat `x` as numeric scores (pass scores directly, or
-integer codes with `values`) and require `weight = "quadratic"`.
+linear, or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"`
+are quadratic by construction: they treat `x` as numeric scores (pass scores
+directly, or integer codes with `values`), and `weight` defaults to
+`"quadratic"` for them.
+
+Brennan-Prediger compares the observed disagreement with a uniform draw from
+the rating scale, so it is reported only when the scale is known. The
+categorical estimators take the scale from the categories (the observed
+codes, or `values`). The scored estimators `"nt_fiml"` and `"nt_fiml_cs"`
+report it when `values` declares a discrete scale, or for vector-valued
+ratings when `ranges` declares a continuous one. `"pairwise"` reports Conger
+and Fleiss only.
 
 Two generalizations are reached through the same call. Set `g > 2` for the
-Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
-(distinct rater combinations) and Fleiss-type coefficients. Pass a
-subjects-by-raters-by-features array to score vector-valued ratings. With
-`"pairwise"` or `"ipw"` and no feature metric the loss is component-separable
-(diagonal feature weights via `feature_weights` / `loss`). Pass a full
-feature metric `W` (or use `"nt_fiml"` / `"nt_fiml_cs"`) for the squared
-vector loss `(x - y)' W (x - y)`: `"pairwise"` is the moment estimator and
-`"nt_fiml"` / `"nt_fiml_cs"` the saturated / block compound-symmetry
-normal-FIML (`Sigma = J_R \%x\% Psi + I_R \%x\% E`). See the arguments for the
-estimator / weight combinations supported in each mode.
+Frechet / Hubert g-wise (multirater) kernels with `"ipw"` or `"cat_fiml"`,
+which report the Conger-type (distinct rater combinations) and Fleiss-type
+coefficients. Pass a subjects-by-raters-by-features array to score
+vector-valued ratings. With `"ipw"` or `"pairwise"` and no feature metric the
+loss is component-separable (per-feature weights via `feature_weights`, or
+`loss = "rms"`). Pass a full feature metric `W` (or use `"nt_fiml"` /
+`"nt_fiml_cs"`) for the squared vector loss `(x - y)' W (x - y)`:
+`"pairwise"` is the moment estimator and `"nt_fiml"` / `"nt_fiml_cs"` the
+saturated / block compound-symmetry normal FIML
+(`Sigma = J_R \%x\% Psi + I_R \%x\% E`).
 
 For scalar fixed-rater coefficients with missing entries, the observed-data
 pattern must identify the requested functional. For ordinary pairwise kappa
 (`g = 2`, and all quadratic requests), every rater must be observed at least
-once and every rater pair must be jointly observed by at least one subject.
-For non-quadratic `g > 2`, every requested rater g-tuple must be jointly
+once and every rater pair must be jointly observed by at least one subject
+(`"nt_fiml_cs"` needs only a connected co-observation graph). For
+non-quadratic `g > 2`, every requested rater g-tuple must be jointly
 observed by at least one subject. Violations are reported as
 non-identification before the estimator runs.
 }
 \details{
-The public R API deliberately exposes only the main weighting schemes used in
-current agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
+The R interface exposes the main weighting schemes used in current
+agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
 `"hubert"` g-wise kernel for `g > 2`). Older Krippendorff / irrCAC-style
 categorical schemes (`"ordinal"`, `"radical"`, `"ratio"`, `"circular"`,
-`"bipolar"`) remain in the internal C++ layer and Rcpp glue for validation
-and parity work, but are unsupported and not part of the recommended R
-interface.
+`"bipolar"`) remain in the C++ library for validation and parity work.
 }
 \examples{
 # Categorical ratings with missing entries (Gwet 2014): the
@@ -150,14 +151,15 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
 # estimator. Treats the columns as numeric scores.
 kappa(dat.zapf2016, estimator = "pairwise")
 
-# Compound-symmetry covariance variant of the normal-theory FIML: the
-# fixed-rater variance-component model. Consistent and slightly more
-# efficient than "nt_fiml" when the structure holds, and identified by a
-# connected (not necessarily complete) rater co-observation graph.
-kappa(dat.zapf2016, estimator = "nt_fiml_cs")
+# Normal-theory FIML. Declaring the 1-5 rating scale with `values` adds
+# Brennan-Prediger.
+kappa(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
 
-# The distribution-free MCAR moment companion to "nt_fiml_cs".
-kappa(dat.zapf2016, estimator = "pairwise_cs")
+# Compound-symmetry covariance variant: the fixed-rater variance-component
+# model. Consistent and slightly more efficient than "nt_fiml" when the
+# structure holds, and identified by a connected (not necessarily complete)
+# rater co-observation graph.
+kappa(dat.zapf2016, estimator = "nt_fiml_cs")
 
 # Planned-incomplete design (synthetic): some rater pairs are never
 # co-observed, so the saturated estimators are not identified, but the

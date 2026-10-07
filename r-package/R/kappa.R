@@ -113,25 +113,8 @@
 }
 
 .alpha_from_cpp <- function(out, method, em_options = list()) {
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- "alpha"
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
   .warn_null_frac(out$null_frac, em_options)
-
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      null_frac = out$null_frac,
-      method = method,
-      weight = "score"
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(out, "alpha", method = method, weight = NULL)
 }
 
 #' Coefficient alpha with missing data
@@ -174,12 +157,8 @@
 #'   When supplied, its length must equal the number of unique finite entries
 #'   in `x`.
 #' @param em_options Named list tuning the EM fit for the likelihood
-#'   estimators. For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter` (the
-#'   covariance structure is selected by the estimator name, not here). `fd_h`
-#'   is accepted for backward compatibility and ignored. `covariance` and `mean`
-#'   are deprecated (use `estimator = "nt_fiml_cs"` for the compound-symmetry
-#'   model, the surface is mean-free) and warn if supplied. For `"cat_fiml"`:
-#'   `tol`, `max_iter`,
+#'   estimators (an error for `"pairwise"`). For `"nt_fiml"` / `"nt_fiml_cs"`:
+#'   `tol` and `max_iter`. For `"cat_fiml"`: `tol`, `max_iter`,
 #'   `prune_tol`, `start_alpha`, `info_rcond` (the relative
 #'   eigenvalue cutoff used when inverting Louis' observed information), and
 #'   `flatten` (total Dirichlet pseudo-mass spread over the complete pattern
@@ -231,20 +210,19 @@ alpha <- function(x,
                   values = NULL,
                   em_options = list()) {
   estimator <- match.arg(estimator)
-  req <- "complete"
-  coef_label <- "coefficient alpha"
-  if (estimator %in% c("nt_fiml", "nt_fiml_cs")) {
-    res <- .resolve_nt_fiml(estimator, em_options)
-    em_options <- res$em_options
-    if (res$is_cs) {
-      req <- "connected"
-      coef_label <-
-        "coefficient alpha under the compound-symmetry covariance model"
-    }
-  }
-  .check_pattern_identifiable(.pattern_observed(x), unit = "item",
-                              require = req,
-                              coefficient = coef_label)
+  em_options <- .check_em_options(em_options, switch(estimator,
+    cat_fiml = c(.em_options_categorical, "flatten"),
+    nt_fiml = , nt_fiml_cs = .em_options_normal,
+    character(0)), estimator)
+  is_cs <- estimator == "nt_fiml_cs"
+  .check_pattern_identifiable(
+    .pattern_observed(x), unit = "item",
+    require = if (is_cs) "connected" else "complete",
+    coefficient = if (is_cs) {
+      "coefficient alpha under the compound-symmetry covariance model"
+    } else {
+      "coefficient alpha"
+    })
 
   if (estimator == "pairwise") {
     X <- .alpha_score_matrix(x, values)
@@ -255,11 +233,12 @@ alpha <- function(x,
 
   if (estimator %in% c("nt_fiml", "nt_fiml_cs")) {
     X <- .alpha_score_matrix(x, values)
+    em_options$covariance <- if (is_cs) "variance_components" else "saturated"
     fit <- alpha_continuous(X, em_options = em_options)
     fit$method <- estimator
     fit$covariance <- NULL    # the estimator name carries the structure
     fit$mean <- NULL
-    if (estimator == "nt_fiml") fit <- .attach_alpha_delete_one(fit, X)
+    if (!is_cs) fit <- .attach_alpha_delete_one(fit, X)
     return(fit)
   }
 
@@ -267,36 +246,6 @@ alpha <- function(x,
   fit$method <- "cat_fiml"
   X <- .alpha_score_matrix(x, values)
   .attach_alpha_delete_one(fit, X)
-}
-
-# Resolve a public normal-FIML estimator name into the (covariance, mean) the
-# internal backend expects. The public kappa()/alpha() surface is mean-free, and
-# the covariance structure is carried by the estimator NAME: `nt_fiml` is the
-# saturated normal FIML, `nt_fiml_cs` the compound-symmetry one. `covariance` /
-# `mean` in `em_options` are deprecated (they were a model choice misfiled under
-# EM tuning) but still honoured for one release with a warning.
-.resolve_nt_fiml <- function(estimator, em_options) {
-  is_cs <- estimator == "nt_fiml_cs"
-  if (!is.null(em_options$covariance)) {
-    if (.normal_covariance_model(em_options) == "variance_components") {
-      warning("em_options$covariance is deprecated; use ",
-              "estimator = \"nt_fiml_cs\" instead.", call. = FALSE)
-      is_cs <- TRUE
-    } else {
-      warning("em_options$covariance is deprecated and ignored; the estimator ",
-              "name selects the covariance structure.", call. = FALSE)
-    }
-    em_options$covariance <- NULL
-  }
-  if (!is.null(em_options$mean)) {
-    warning("em_options$mean is no longer supported on kappa()/alpha() ",
-            "(the coefficients are mean-free; use kappa_counts() for the ",
-            "exchangeable model); ignored.", call. = FALSE)
-    em_options$mean <- NULL
-  }
-  em_options$covariance <- if (is_cs) "variance_components" else "saturated"
-  em_options$mean <- "free"
-  list(is_cs = is_cs, em_options = em_options)
 }
 
 #' Saturated categorical FIML coefficient alpha (internal)
@@ -320,7 +269,7 @@ alpha <- function(x,
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance matrix.
 #'
-#' @keywords internal
+#' @noRd
 alpha_cat_fiml <- function(x, values = NULL, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -381,18 +330,9 @@ estimate_kappa_raw <- function(x,
 
   out <- rcpp_kappa_raw(x = x_mat, method = method, weight_type = weight,
                         values = values, em_options = em_options)
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-  null_frac <- out$null_frac
-  if (length(null_frac) == length(estimates)) names(null_frac) <- names(estimates)
-  .warn_null_frac(null_frac, em_options)
-  fit <- structure(list(estimates = estimates, vcov = vcov_mat, psi = psi_mat,
-                        null_frac = null_frac, method = method, weight = weight),
-                   class = "misskappa_estimate")
+  .warn_null_frac(out$null_frac, em_options)
+  fit <- .new_estimate(out, c("Conger", "Fleiss", "Brennan-Prediger"),
+                       method = method, weight = weight)
   .attach_raw_kappa_delete_one(fit, x_mat, weight, values, em_options)
 }
 
@@ -419,7 +359,7 @@ estimate_kappa_raw <- function(x,
 #'
 #' @return A named list of `misskappa_estimate` objects.
 #'
-#' @keywords internal
+#' @noRd
 estimate_kappa_fiml_multi <- function(x,
                                       weights = c("identity", "linear", "quadratic"),
                                       values = NULL,
@@ -443,20 +383,9 @@ estimate_kappa_fiml_multi <- function(x,
   )
 
   out <- lapply(seq_along(raw), function(i) {
-    estimates <- as.numeric(raw[[i]]$estimates)
-    names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
-    vcov_mat <- raw[[i]]$vcov
-    dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-    psi_mat <- raw[[i]]$psi
-    if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-    null_frac <- raw[[i]]$null_frac
-    if (length(null_frac) == length(estimates)) names(null_frac) <- names(estimates)
-    if (i == 1L) .warn_null_frac(null_frac, em_options)
-    structure(
-      list(estimates = estimates, vcov = vcov_mat, psi = psi_mat,
-           null_frac = null_frac, method = "fiml", weight = weights[[i]]),
-      class = "misskappa_estimate"
-    )
+    if (i == 1L) .warn_null_frac(raw[[i]]$null_frac, em_options)
+    .new_estimate(raw[[i]], c("Conger", "Fleiss", "Brennan-Prediger"),
+                  method = "fiml", weight = weights[[i]])
   })
   names(out) <- weights
   out
@@ -476,10 +405,6 @@ estimate_kappa_fiml_multi <- function(x,
 #'     likelihood for categorical ratings under ignorable missingness.
 #'   \item `"pairwise"`: pairwise-available moment estimator for the
 #'     quadratically weighted (scored) coefficient under MCAR.
-#'   \item `"pairwise_cs"`: the MCAR moment estimator under the
-#'     compound-symmetry covariance model \eqn{\Sigma = \psi J + e I} (fixed
-#'     raters with free means, the distribution-free companion to
-#'     `"nt_fiml_cs"`, needing only a connected rater co-observation graph).
 #'   \item `"nt_fiml"`: robust normal-theory FIML (saturated covariance) for
 #'     the quadratically weighted coefficient under ignorable missingness.
 #'   \item `"nt_fiml_cs"`: the same FIML under the compound-symmetry
@@ -488,92 +413,97 @@ estimate_kappa_fiml_multi <- function(x,
 #' }
 #'
 #' `"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
-#' linear, or quadratic `weight`.
-#' `"pairwise"`, `"pairwise_cs"`, `"nt_fiml"`, and `"nt_fiml_cs"` are quadratic
-#' by construction: they treat `x` as numeric scores (pass scores directly, or
-#' integer codes with `values`) and require `weight = "quadratic"`.
+#' linear, or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"`
+#' are quadratic by construction: they treat `x` as numeric scores (pass scores
+#' directly, or integer codes with `values`), and `weight` defaults to
+#' `"quadratic"` for them.
+#'
+#' Brennan-Prediger compares the observed disagreement with a uniform draw from
+#' the rating scale, so it is reported only when the scale is known. The
+#' categorical estimators take the scale from the categories (the observed
+#' codes, or `values`). The scored estimators `"nt_fiml"` and `"nt_fiml_cs"`
+#' report it when `values` declares a discrete scale, or for vector-valued
+#' ratings when `ranges` declares a continuous one. `"pairwise"` reports Conger
+#' and Fleiss only.
 #'
 #' Two generalizations are reached through the same call. Set `g > 2` for the
-#' Frechet / Hubert g-wise (multirater) kernels, which report the Conger-type
-#' (distinct rater combinations) and Fleiss-type coefficients. Pass a
-#' subjects-by-raters-by-features array to score vector-valued ratings. With
-#' `"pairwise"` or `"ipw"` and no feature metric the loss is component-separable
-#' (diagonal feature weights via `feature_weights` / `loss`). Pass a full
-#' feature metric `W` (or use `"nt_fiml"` / `"nt_fiml_cs"`) for the squared
-#' vector loss `(x - y)' W (x - y)`: `"pairwise"` is the moment estimator and
-#' `"nt_fiml"` / `"nt_fiml_cs"` the saturated / block compound-symmetry
-#' normal-FIML (`Sigma = J_R \%x\% Psi + I_R \%x\% E`). See the arguments for the
-#' estimator / weight combinations supported in each mode.
+#' Frechet / Hubert g-wise (multirater) kernels with `"ipw"` or `"cat_fiml"`,
+#' which report the Conger-type (distinct rater combinations) and Fleiss-type
+#' coefficients. Pass a subjects-by-raters-by-features array to score
+#' vector-valued ratings. With `"ipw"` or `"pairwise"` and no feature metric the
+#' loss is component-separable (per-feature weights via `feature_weights`, or
+#' `loss = "rms"`). Pass a full feature metric `W` (or use `"nt_fiml"` /
+#' `"nt_fiml_cs"`) for the squared vector loss `(x - y)' W (x - y)`:
+#' `"pairwise"` is the moment estimator and `"nt_fiml"` / `"nt_fiml_cs"` the
+#' saturated / block compound-symmetry normal FIML
+#' (`Sigma = J_R \%x\% Psi + I_R \%x\% E`).
 #'
 #' For scalar fixed-rater coefficients with missing entries, the observed-data
 #' pattern must identify the requested functional. For ordinary pairwise kappa
 #' (`g = 2`, and all quadratic requests), every rater must be observed at least
-#' once and every rater pair must be jointly observed by at least one subject.
-#' For non-quadratic `g > 2`, every requested rater g-tuple must be jointly
+#' once and every rater pair must be jointly observed by at least one subject
+#' (`"nt_fiml_cs"` needs only a connected co-observation graph). For
+#' non-quadratic `g > 2`, every requested rater g-tuple must be jointly
 #' observed by at least one subject. Violations are reported as
 #' non-identification before the estimator runs.
 #'
 #' @param x A subjects-by-raters matrix or data frame of scalar ratings, or a
 #'   subjects-by-raters-by-features 3-D array of vector-valued ratings (the
 #'   array form is auto-detected). Integer category codes for `"ipw"` /
-#'   `"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"`. `NA` marks
-#'   missing entries.
-#' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"pairwise_cs"`,
-#'   `"nt_fiml"`, or `"nt_fiml_cs"` (the `_cs` names are the compound-symmetry
-#'   covariance variants of `"pairwise"` and `"nt_fiml"`).
-#'   Vector-valued ratings support `"pairwise"` and `"ipw"` (component-separable)
-#'   and, with a full feature metric `W`, `"pairwise"`, `"nt_fiml"`, and
-#'   `"nt_fiml_cs"` (full-`W` squared loss). Continuous g-wise kernels
-#'   (`weight = "linear"`, `g > 2`) support `"pairwise"` and `"ipw"` only.
-#' @param weight Weighting scheme for `"ipw"` / `"cat_fiml"`: `"nominal"` (the
-#'   default), `"linear"`, or `"quadratic"`. `"pairwise"` / `"pairwise_cs"` /
-#'   `"nt_fiml"` / `"nt_fiml_cs"` require `"quadratic"`. For `g > 2` only `"nominal"`,
-#'   `"linear"`, `"hubert"`, and
-#'   `"quadratic"` are defined, where `"hubert"` is the all-raters-equal
-#'   multirater kernel (g > 2 only). For vector-valued ratings `weight` selects
-#'   the component loss (`"nominal"` -> Hamming, `"linear"` -> L1,
-#'   `"quadratic"` -> squared).
+#'   `"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"` /
+#'   `"nt_fiml_cs"`. `NA` marks missing entries.
+#' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`,
+#'   or `"nt_fiml_cs"`. Vector-valued ratings support `"ipw"` and `"pairwise"`
+#'   (component-separable) and, with the squared loss, `"pairwise"`,
+#'   `"nt_fiml"`, and `"nt_fiml_cs"`. For non-quadratic `g > 2` use `"ipw"`
+#'   (which equals the complete-data estimator when nothing is missing) or
+#'   `"cat_fiml"`.
+#' @param weight Weighting scheme: `"nominal"` (the default for `"ipw"` /
+#'   `"cat_fiml"`), `"linear"`, or `"quadratic"` (the only, and default, choice
+#'   for the scored estimators). `"hubert"` is the all-raters-equal multirater
+#'   kernel for `g > 2`. For vector-valued ratings `weight` selects the
+#'   component loss (`"nominal"` -> Hamming, `"linear"` -> L1, `"quadratic"` ->
+#'   squared).
 #' @param g Arity of the multirater disagreement kernel. `g = 2` (the default)
 #'   is ordinary pairwise kappa. `g > 2` uses the Frechet / Hubert g-wise
 #'   family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
-#'   the cheap closed form is used. Ignored for vector-valued ratings.
-#' @param values Optional numeric vector of category scores used by the metric
-#'   weightings (and by the quadratic / continuous g-wise estimators to map
-#'   integer codes to scores). Defaults to the sorted unique observed
-#'   categories.
+#'   the closed form is used. Not used for vector-valued ratings.
+#' @param values Optional numeric vector of category scores. The sorted
+#'   distinct observed ratings are mapped to `values` in order, so its length
+#'   must equal their number. For `"ipw"` / `"cat_fiml"` the scores
+#'   parameterize the linear and quadratic weights (default: the codes
+#'   themselves). For the scored estimators they convert codes to scores and
+#'   declare the discrete rating scale that Brennan-Prediger needs. Not used
+#'   for vector-valued ratings.
 #' @param em_options Named list of EM options for the likelihood estimators
-#'   (`"cat_fiml"`, `"nt_fiml"`). For `"cat_fiml"`: `tol`, `max_iter`,
-#'   `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total Dirichlet
-#'   pseudo-mass spread over the complete pattern table. Any positive value
-#'   selects the unique interior posterior mode when the saturated likelihood
-#'   is flat, shrinking the fitted table toward uniform with weight
-#'   `flatten / (n + flatten)`. `0`, the default, is strict ML). Flattening
-#'   is a uniqueness device that leaves the point
-#'   estimate essentially unchanged but makes the reported standard errors
-#'   conservative (roughly 50\% too wide in calibration). For `"nt_fiml"` /
-#'   `"nt_fiml_cs"`: `tol` and `max_iter` (the covariance structure is selected
-#'   by the estimator name). `covariance` and `mean` are deprecated here (use
-#'   `estimator = "nt_fiml_cs"`, the surface is mean-free) and warn if supplied.
+#'   (an error for `"ipw"` and `"pairwise"`). For `"cat_fiml"`: `tol`,
+#'   `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total
+#'   Dirichlet pseudo-mass spread over the complete pattern table. Any positive
+#'   value selects the unique interior posterior mode when the saturated
+#'   likelihood is flat, shrinking the fitted table toward uniform with weight
+#'   `flatten / (n + flatten)`. `0`, the default, is strict ML). Flattening is
+#'   a uniqueness device that leaves the point estimate essentially unchanged
+#'   but makes the reported standard errors conservative (roughly 50\% too wide
+#'   in calibration). For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter`.
 #'   Pass any subset.
-#' @param ... Mode-specific extras. `feature_weights` and `loss` (e.g.
-#'   `"rms"`) for component-separable vector-valued ratings. `W`, a full
-#'   features-by-features symmetric positive-semidefinite feature metric, for
-#'   the full-`W` squared vector loss (`"pairwise"` / `"nt_fiml"` /
-#'   `"nt_fiml_cs"`, defaulting to the identity). `ranges`, a features-by-2
-#'   matrix of `(lo, hi)` score bounds that fixes the Brennan-Prediger chance
-#'   baseline for the full-`W` `"nt_fiml"` / `"nt_fiml_cs"` estimators instead of
-#'   estimating it from the observed range (see [kappa_vector_quadratic()]).
-#'   Finally, `max_chance_tuples` (cap on the number of chance tuples enumerated)
-#'   for `g > 2`.
+#' @param ... Mode-specific arguments. Anything not listed here is an error.
+#'   For vector-valued ratings: `W`, a features-by-features symmetric
+#'   positive-semidefinite feature metric for the squared loss (with
+#'   `"pairwise"`, `"nt_fiml"`, `"nt_fiml_cs"`; the FIML estimators default to
+#'   the identity); `ranges`, a features-by-2 matrix of `(lo, hi)` score bounds
+#'   declaring a continuous rating scale for Brennan-Prediger (with
+#'   `"nt_fiml"` / `"nt_fiml_cs"`); and `feature_weights` / `loss` for the
+#'   component-separable `"ipw"` / `"pairwise"` path (non-negative per-feature
+#'   weights, and `loss = "rms"` for the root-mean-square loss). For `g > 2`:
+#'   `max_chance_tuples`, the cap on the number of chance tuples enumerated
+#'   (default `5e6`).
 #'
 #' @details
-#' The public R API deliberately exposes only the main weighting schemes used in
-#' current agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
+#' The R interface exposes the main weighting schemes used in current
+#' agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
 #' `"hubert"` g-wise kernel for `g > 2`). Older Krippendorff / irrCAC-style
 #' categorical schemes (`"ordinal"`, `"radical"`, `"ratio"`, `"circular"`,
-#' `"bipolar"`) remain in the internal C++ layer and Rcpp glue for validation
-#' and parity work, but are unsupported and not part of the recommended R
-#' interface.
+#' `"bipolar"`) remain in the C++ library for validation and parity work.
 #'
 #' @references
 #' Moss, J. (in preparation). *Agreement coefficients with missing ratings.*
@@ -590,12 +520,12 @@ estimate_kappa_fiml_multi <- function(x,
 #' coefficients among raters.
 #'
 #' @return An object of class `misskappa_estimate` carrying the named
-#'   coefficient estimates and their asymptotic covariance matrix. Methods:
-#'   `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
-#'   `stats::influence`. The object also carries a `psi` component (the
-#'   n-by-K matrix of per-subject influence functions, satisfying
-#'   `vcov == crossprod(psi) / n^2`) for power users who want to build
-#'   their own contrasts or joint tests.
+#'   coefficient estimates, their asymptotic covariance matrix, and the number
+#'   of subjects `n`. Methods: `print`, `coef`, `vcov`, `confint`,
+#'   `as.data.frame`, and `stats::influence`. The object also carries a `psi`
+#'   component (the n-by-K matrix of per-subject influence functions,
+#'   satisfying `vcov == crossprod(psi) / n^2`) for building custom contrasts
+#'   or joint tests.
 #'
 #' @examples
 #' # Categorical ratings with missing entries (Gwet 2014): the
@@ -606,14 +536,15 @@ estimate_kappa_fiml_multi <- function(x,
 #' # estimator. Treats the columns as numeric scores.
 #' kappa(dat.zapf2016, estimator = "pairwise")
 #'
-#' # Compound-symmetry covariance variant of the normal-theory FIML: the
-#' # fixed-rater variance-component model. Consistent and slightly more
-#' # efficient than "nt_fiml" when the structure holds, and identified by a
-#' # connected (not necessarily complete) rater co-observation graph.
-#' kappa(dat.zapf2016, estimator = "nt_fiml_cs")
+#' # Normal-theory FIML. Declaring the 1-5 rating scale with `values` adds
+#' # Brennan-Prediger.
+#' kappa(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
 #'
-#' # The distribution-free MCAR moment companion to "nt_fiml_cs".
-#' kappa(dat.zapf2016, estimator = "pairwise_cs")
+#' # Compound-symmetry covariance variant: the fixed-rater variance-component
+#' # model. Consistent and slightly more efficient than "nt_fiml" when the
+#' # structure holds, and identified by a connected (not necessarily complete)
+#' # rater co-observation graph.
+#' kappa(dat.zapf2016, estimator = "nt_fiml_cs")
 #'
 #' # Planned-incomplete design (synthetic): some rater pairs are never
 #' # co-observed, so the saturated estimators are not identified, but the
@@ -635,8 +566,8 @@ estimate_kappa_fiml_multi <- function(x,
 #'
 #' @export
 kappa <- function(x,
-                  estimator = c("ipw", "cat_fiml", "pairwise", "pairwise_cs",
-                                "nt_fiml", "nt_fiml_cs"),
+                  estimator = c("ipw", "cat_fiml", "pairwise", "nt_fiml",
+                                "nt_fiml_cs"),
                   weight = c("nominal", "linear", "quadratic", "hubert"),
                   g = 2L,
                   values = NULL,
@@ -646,13 +577,21 @@ kappa <- function(x,
   weight_supplied <- !missing(weight)
   weight <- match.arg(weight)
   dots <- list(...)
+  em_allowed <- switch(estimator,
+    cat_fiml = c(.em_options_categorical, "flatten"),
+    nt_fiml = , nt_fiml_cs = .em_options_normal,
+    character(0))
 
   ## Vector-valued ratings: subjects-by-raters-by-features array.
   if (is.array(x) && length(dim(x)) == 3L) {
-    if (estimator == "pairwise_cs") {
-      stop('estimator = "pairwise_cs" is not available for vector-valued ratings.',
-           call. = FALSE)
+    if (!missing(g)) {
+      stop("'g' does not apply to vector-valued ratings.", call. = FALSE)
     }
+    if (!is.null(values)) {
+      stop("'values' does not apply to vector-valued ratings; use 'ranges' ",
+           "to declare the score range.", call. = FALSE)
+    }
+    em_options <- .check_em_options(em_options, em_allowed, estimator)
     return(.kappa_vector_dispatch(x, estimator, weight, weight_supplied,
                                   em_options, dots))
   }
@@ -668,41 +607,33 @@ kappa <- function(x,
   }
 
   ## Quadratic weighting is a moment functional and therefore g-invariant: any
-  ## g collapses to the same coefficient, so always take the cheap closed form
+  ## g collapses to the same coefficient, so always take the closed form
   ## (the g = 2 path) and never the combinatorial g-wise enumeration.
   if (weight == "quadratic" || g == 2L) {
-    ## Every public scalar g = 2 path surfaces a fixed-rater coefficient
-    ## (Conger, and Brennan-Prediger for the raw estimators), so the saturated
-    ## functional needs a complete rater co-observation graph. The scalar
-    ## compound-symmetry normal-FIML route only needs a connected
-    ## co-observation graph; the reduced information check in C++ remains the
-    ## final guard.
-    req <- "complete"
-    coef_label <- "Conger's kappa (and Brennan-Prediger)"
-    if (estimator %in% c("nt_fiml", "nt_fiml_cs")) {
-      res <- .resolve_nt_fiml(estimator, em_options)
-      em_options <- res$em_options
-      if (res$is_cs) {
-        req <- "connected"
-        coef_label <-
-          "Conger's kappa under the compound-symmetry covariance model"
-      }
-    }
-    if (estimator == "pairwise_cs") {
-      req <- "connected"
-      coef_label <-
-        "Conger's kappa under the compound-symmetry covariance model"
-    }
+    .check_dots(dots, character(0), "scalar ratings with g = 2")
+    em_options <- .check_em_options(em_options, em_allowed, estimator)
+    ## Every public scalar g = 2 path surfaces a fixed-rater coefficient, so
+    ## the saturated functional needs a complete rater co-observation graph.
+    ## The compound-symmetry normal FIML only needs a connected one; the
+    ## reduced information check in C++ remains the final guard.
+    is_cs <- estimator == "nt_fiml_cs"
     .check_pattern_identifiable(
       .pattern_observed(x), unit = "rater",
-      require = req,
-      coefficient = coef_label,
+      require = if (is_cs) "connected" else "complete",
+      coefficient = if (is_cs) {
+        "Conger's kappa under the compound-symmetry covariance model"
+      } else {
+        "Conger's kappa (and Brennan-Prediger)"
+      },
       arity = 2L)
     return(.kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
                             em_options))
   }
 
   ## g > 2, non-quadratic: the Frechet / Hubert g-wise family.
+  .check_dots(dots, "max_chance_tuples", "g-wise kappa")
+  if (estimator == "cat_fiml") em_allowed <- .em_options_categorical
+  em_options <- .check_em_options(em_options, em_allowed, estimator)
   .check_pattern_identifiable(
     .pattern_observed(x), unit = "rater",
     coefficient = sprintf("%s-wise kappa", g),
@@ -710,34 +641,31 @@ kappa <- function(x,
   .kappa_scalar_gwise(x, estimator, weight, g, values, em_options, dots)
 }
 
-# Ordinary pairwise (g = 2) kappa: the historical kappa() body, also reached by
-# any quadratic request because quadratic kappa does not depend on g.
+# Ordinary pairwise (g = 2) kappa, also reached by any quadratic request
+# because quadratic kappa does not depend on g.
 .kappa_scalar_g2 <- function(x, estimator, weight, weight_supplied, values,
                              em_options) {
-  if (estimator == "pairwise_cs") {
-    if (weight_supplied && weight != "quadratic") {
-      stop('estimator = "pairwise_cs" requires weight = "quadratic".')
-    }
-    X <- .score_matrix(x, values)
-    return(.kappa_pairwise_cs(X, values = values))
-  }
   if (estimator %in% c("pairwise", "nt_fiml", "nt_fiml_cs")) {
     if (weight_supplied && weight != "quadratic") {
       stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
     }
     X <- .score_matrix(x, values)
-    fit <- kappa_continuous(
-      X,
-      method = if (estimator == "pairwise") "available" else "fiml",
-      weight = "quadratic",
-      values = values,
-      em_options = em_options
-    )
+    if (estimator == "pairwise") {
+      fit <- kappa_continuous(X, method = "available", weight = "quadratic")
+    } else {
+      em_options$covariance <- if (estimator == "nt_fiml_cs") {
+        "variance_components"
+      } else {
+        "saturated"
+      }
+      fit <- kappa_quadratic_fiml(X, values = values, em_options = em_options)
+      fit$covariance <- NULL    # the estimator name carries the structure
+      fit$mean <- NULL
+      # Brennan-Prediger needs a declared scale (see ?kappa).
+      if (is.null(values)) fit <- .drop_coefficients(fit, "Brennan-Prediger")
+    }
     fit$method <- estimator
     fit$weight <- "quadratic"
-    # the estimator name now carries the covariance structure
-    fit$covariance <- NULL
-    fit$mean <- NULL
     return(fit)
   }
 
@@ -769,16 +697,13 @@ kappa <- function(x,
 
   method <- switch(estimator,
     ipw      = "ipw",
-    pairwise = "complete",
     cat_fiml = if (map$family == "categorical") "fiml" else stop(
       'estimator = "cat_fiml" has no continuous g-wise variant; use ',
-      'weight = "nominal"/"hubert", or estimator = "ipw".'),
-    nt_fiml  = stop('estimator = "nt_fiml" is only available for ',
-                    'weight = "quadratic" (where g is ignored).'),
-    pairwise_cs = stop('estimator = "pairwise_cs" is only available for ',
-                       'weight = "quadratic" (where g is ignored).'),
-    nt_fiml_cs  = stop('estimator = "nt_fiml_cs" is only available for ',
-                       'weight = "quadratic" (where g is ignored).')
+      'weight = "nominal"/"hubert", or estimator = "ipw".', call. = FALSE),
+    stop(sprintf(paste0(
+      'estimator = "%s" is a quadratic estimator; for g > 2 with weight = ',
+      '"%s" use "ipw" (equal to the complete-data estimator when no ratings ',
+      'are missing) or "cat_fiml".'), estimator, weight), call. = FALSE)
   )
 
   max_chance_tuples <- if (!is.null(dots$max_chance_tuples)) {
@@ -796,49 +721,47 @@ kappa <- function(x,
   fit
 }
 
-# Vector-valued ratings (subjects-by-raters-by-features array). Maps the public
-# weight to a component loss and delegates to kappa_vector(); `g` is ignored.
+# Vector-valued ratings (subjects-by-raters-by-features array).
 .kappa_vector_dispatch <- function(x, estimator, weight, weight_supplied,
                                    em_options, dots) {
   W <- dots$W
   ranges <- dots$ranges
-  # Full-matrix-W quadratic family. The normal-FIML covariance models
-  # ("nt_fiml" saturated, "nt_fiml_cs" block compound symmetry) and the full-W
-  # pairwise moment estimator use the squared vector loss (x - y)' W (x - y)
-  # with a full feature metric W (default identity); they report Conger, Fleiss,
-  # and Brennan-Prediger. `ranges` optionally fixes the Brennan-Prediger chance
-  # baseline (see kappa_vector_quadratic()).
+  # Full-matrix-W quadratic family: the squared vector loss (x - y)' W (x - y).
+  # The normal-FIML covariance models ("nt_fiml" saturated, "nt_fiml_cs" block
+  # compound symmetry) report Conger and Fleiss, plus Brennan-Prediger when
+  # `ranges` declares the score range.
   if (estimator %in% c("nt_fiml", "nt_fiml_cs")) {
+    .check_dots(dots, c("W", "ranges"),
+                sprintf('vector-valued estimator = "%s"', estimator))
     if (weight_supplied && weight != "quadratic") {
       stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
     }
     fit <- kappa_vector_quadratic(x, method = estimator, W = W,
                                   em_options = em_options, ranges = ranges)
+    if (is.null(ranges)) fit <- .drop_coefficients(fit, "Brennan-Prediger")
     fit$method <- estimator
     fit$weight <- "quadratic"
     return(fit)
   }
   if (estimator == "pairwise" && !is.null(W)) {
+    .check_dots(dots, "W",
+                'vector-valued estimator = "pairwise" with a feature metric W')
     if (weight_supplied && weight != "quadratic") {
       stop('a full feature metric W requires weight = "quadratic".')
     }
-    fit <- kappa_vector_quadratic(x, method = "pairwise", W = W, ranges = ranges)
+    fit <- kappa_vector_quadratic(x, method = "pairwise", W = W)
     fit$method <- estimator
     fit$weight <- "quadratic"
     return(fit)
   }
-  if (!is.null(W)) {
+  if (!estimator %in% c("pairwise", "ipw")) {
     stop(sprintf(
-      paste0('a full feature metric W is not supported with estimator = "%s"; ',
-             'use "pairwise", "nt_fiml", or "nt_fiml_cs".'),
+      'vector-valued ratings support estimator = "ipw", "pairwise", "nt_fiml", or "nt_fiml_cs"; got "%s".',
       estimator), call. = FALSE)
   }
   # Component-separable (diagonal-weight) path.
-  if (!estimator %in% c("pairwise", "ipw")) {
-    stop(sprintf(
-      'vector-valued ratings support estimator = "pairwise", "ipw", "nt_fiml", or "nt_fiml_cs"; got "%s".',
-      estimator))
-  }
+  .check_dots(dots, c("feature_weights", "loss"),
+              sprintf('component-separable vector estimator = "%s"', estimator))
   loss <- if (!is.null(dots$loss)) {
     dots$loss
   } else {
@@ -854,225 +777,8 @@ kappa <- function(x,
   fit <- kappa_vector(x, method = estimator, loss = loss,
                       feature_weights = dots$feature_weights)
   fit$method <- estimator
-  fit$weight <- loss
+  fit$weight <- if (!is.null(dots$loss)) dots$loss else weight
   fit
-}
-
-#' @export
-print.misskappa_estimate <- function(x, digits = 4, level = 0.95,
-                                     method = c("wald", "jackknife"),
-                                     transform = c("none", "fisher",
-                                                   "log_complement"), ...) {
-  method <- match.arg(method)
-  transform <- match.arg(transform)
-  hdr <- sprintf("misskappa: estimator=%s, weight=%s", x$method, x$weight)
-  if (!is.null(x$covariance)) {
-    hdr <- sprintf("%s, covariance=%s", hdr, x$covariance)
-  }
-  if (!is.null(x$mean)) {
-    hdr <- sprintf("%s, mean=%s", hdr, x$mean)
-  }
-  if (!is.null(x$g) && x$g > 2L) hdr <- sprintf("%s, g=%d", hdr, x$g)
-  cat(hdr, "\n", sep = "")
-  se <- sqrt(diag(x$vcov))
-  ci <- stats::confint(x, level = level, method = method,
-                       transform = transform)
-  tab <- data.frame(estimate = x$estimates, se = se,
-                    lower = ci[, 1L], upper = ci[, 2L],
-                    row.names = names(x$estimates))
-  print(round(tab, digits = digits), ...)
-  invisible(x)
-}
-
-#' @export
-coef.misskappa_estimate <- function(object, ...) object$estimates
-
-#' @export
-vcov.misskappa_estimate <- function(object, ...) object$vcov
-
-#' Confidence intervals for misskappa coefficients
-#'
-#' @description
-#' Wald or exact-delete-one jackknife confidence intervals for a
-#' `misskappa_estimate`. Wald intervals use the estimator covariance and a
-#' normal critical value. Jackknife intervals transform every complete-data
-#' leave-one-subject-out estimate directly, use the ordinary delete-one
-#' jackknife standard error, and use a Student t critical value with `n - 1`
-#' degrees of freedom.
-#'
-#' Besides the natural and Fisher scales, `transform = "log_complement"` uses
-#' the upper-bound-only transform `-log(1 - theta)`. It remains defined for
-#' alpha values below -1. At an exact kappa boundary, a degenerate transformed
-#' jackknife is replaced by a one-sided hybrid: a Clopper--Pearson upper limit
-#' for the probability of any item disagreement is divided by a delete-one t
-#' lower limit for chance disagreement. Alpha has no corresponding binomial
-#' item event, so an exact-boundary alpha interval is returned as `NA`.
-#'
-#' @param object A `misskappa_estimate` object.
-#' @param parm Optional subset of coefficients (names or indices), defaults to
-#'   all.
-#' @param level Confidence level.
-#' @param method Either `"wald"` or `"jackknife"`. Exact delete-one summaries
-#'   are attached automatically to supported complete-data kappa and alpha fits
-#'   with at least three subjects.
-#' @param transform One of `"none"`, `"fisher"`, or `"log_complement"`.
-#'   Wald uses a delta-method standard error on the selected scale; jackknife
-#'   transforms the exact delete-one estimates directly.
-#' @param ... Unused, present for S3 generic conformance.
-#'
-#' @return A two-column numeric matrix of lower and upper limits, one row per
-#'   coefficient.
-#'
-#' @references
-#' Efron, B., and Tibshirani, R. J. (1993). *An Introduction to the
-#' Bootstrap*. Chapman and Hall, Chapter 11.
-#'
-#' Clopper, C. J., and Pearson, E. S. (1934). The use of confidence or
-#' fiducial limits illustrated in the case of the binomial. *Biometrika*,
-#' 26(4), 404--413. \doi{10.1093/biomet/26.4.404}.
-#'
-#' @examples
-#' fit <- kappa(dat.gwet2014, estimator = "ipw")
-#' confint(fit)                       # natural-scale Wald interval
-#' confint(fit, transform = "fisher") # Fisher z interval, always within (-1, 1)
-#' complete_fit <- kappa_counts(dat.fleiss1971)
-#' confint(complete_fit, method = "jackknife", transform = "fisher")
-#'
-#' @export
-confint.misskappa_estimate <- function(object, parm = NULL, level = 0.95,
-                                       method = c("wald", "jackknife"),
-                                       transform = c("none", "fisher",
-                                                     "log_complement"), ...) {
-  method <- match.arg(method)
-  transform <- match.arg(transform)
-  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) ||
-      level <= 0 || level >= 1) {
-    stop("'level' must be a single number strictly between zero and one.")
-  }
-  est <- object$estimates
-
-  forward <- switch(transform,
-    none = function(x) x,
-    fisher = function(x) {
-      out <- x
-      out[] <- NA_real_
-      interior <- is.finite(x) & abs(x) < 1
-      out[interior] <- atanh(x[interior])
-      out
-    },
-    log_complement = function(x) {
-      out <- x
-      out[] <- NA_real_
-      interior <- is.finite(x) & x < 1
-      out[interior] <- -log1p(-x[interior])
-      out
-    }
-  )
-  inverse <- switch(transform,
-    none = function(x) x,
-    fisher = tanh,
-    log_complement = function(x) 1 - exp(-x)
-  )
-
-  fallback <- rep(FALSE, length(est))
-  if (method == "wald") {
-    if (transform == "fisher" && any(!is.finite(est) | abs(est) >= 1)) {
-      warning("Fisher transform requires |estimate| < 1; returning NA limits ",
-              "for boundary coefficients.", call. = FALSE)
-    }
-    if (transform == "log_complement" && any(!is.finite(est) | est >= 1)) {
-      warning("Log-complement transform requires estimate < 1; returning NA ",
-              "limits for boundary coefficients.", call. = FALSE)
-    }
-    se <- sqrt(diag(object$vcov))
-    critical <- stats::qnorm((1 + level) / 2)
-    center <- forward(est)
-    derivative <- switch(transform,
-      none = rep(1, length(est)),
-      fisher = ifelse(abs(est) < 1, 1 / (1 - est^2), NA_real_),
-      log_complement = ifelse(est < 1, 1 / (1 - est), NA_real_)
-    )
-    transformed_se <- se * derivative
-    lo <- inverse(center - critical * transformed_se)
-    hi <- inverse(center + critical * transformed_se)
-  } else {
-    delete_one <- object$delete_one
-    if (is.null(delete_one) || is.null(delete_one$leave_one_out)) {
-      stop("Exact delete-one summaries are unavailable. Jackknife intervals ",
-           "currently require complete scalar kappa or alpha data with n >= 3.",
-           call. = FALSE)
-    }
-    loo <- as.matrix(delete_one$leave_one_out)
-    n <- nrow(loo)
-    if (n < 3L || ncol(loo) != length(est)) {
-      stop("Malformed exact delete-one summary in the fitted object.",
-           call. = FALSE)
-    }
-    transformed <- forward(loo)
-    center <- forward(est)
-    transformed_mean <- colMeans(transformed, na.rm = FALSE)
-    transformed_se <- sqrt((n - 1) / n *
-      colSums(sweep(transformed, 2L, transformed_mean, "-")^2))
-    critical <- stats::qt((1 + level) / 2, df = n - 1)
-    lo <- inverse(center - critical * transformed_se)
-    hi <- inverse(center + critical * transformed_se)
-
-    invalid <- !is.finite(lo) | !is.finite(hi) |
-      !is.finite(transformed_se) | transformed_se <= sqrt(.Machine$double.eps)
-    has_boundary <-
-      length(delete_one$item_disagreement) == n &&
-      length(delete_one$chance) == length(est) &&
-      identical(dim(delete_one$chance_leave_one_out), c(n, length(est)))
-    can_fallback <- invalid & has_boundary
-    if (any(can_fallback)) {
-      events <- sum(delete_one$item_disagreement > sqrt(.Machine$double.eps))
-      alpha_tail <- (1 - level) / 2
-      probability_upper <- if (events == n) 1 else
-        stats::qbeta(1 - alpha_tail, events + 1, n - events)
-      chance_loo <- as.matrix(delete_one$chance_leave_one_out)
-      chance_mean <- colMeans(chance_loo)
-      chance_se <- sqrt((n - 1) / n *
-        colSums(sweep(chance_loo, 2L, chance_mean, "-")^2))
-      chance_lower <- delete_one$chance - critical * chance_se
-      usable <- can_fallback & is.finite(chance_lower) & chance_lower > 0
-      lo[usable] <- 1 - probability_upper / chance_lower[usable]
-      hi[usable] <- 1
-      fallback[usable] <- TRUE
-      invalid[usable] <- FALSE
-    }
-    if (any(invalid)) {
-      lo[invalid] <- NA_real_
-      hi[invalid] <- NA_real_
-      warning("The transformed jackknife is undefined or degenerate and no ",
-              "kappa boundary fallback is available; returning NA limits.",
-              call. = FALSE)
-    }
-  }
-
-  ci <- cbind(lo, hi)
-  colnames(ci) <- c(sprintf("%.1f %%", 100 * (1 - level) / 2),
-                    sprintf("%.1f %%", 100 * (1 + level) / 2))
-  rownames(ci) <- names(est)
-  if (!is.null(parm)) {
-    ci <- ci[parm, , drop = FALSE]
-    fallback <- fallback[parm]
-  }
-  attr(ci, "method") <- method
-  attr(ci, "transform") <- transform
-  attr(ci, "boundary_fallback") <- stats::setNames(fallback, rownames(ci))
-  ci
-}
-
-#' @export
-as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
-                                             optional = FALSE, ...) {
-  data.frame(
-    coefficient = names(x$estimates),
-    estimate = unname(x$estimates),
-    se = sqrt(diag(x$vcov)),
-    row.names = row.names,
-    stringsAsFactors = FALSE
-  )
 }
 
 #' Closed-form quadratic-loss kappa estimator
@@ -1102,7 +808,7 @@ as.data.frame.misskappa_estimate <- function(x, row.names = NULL,
 #'   `Brennan-Prediger` coefficients, the 3x3 vcov, and per-subject
 #'   influence-function rows.
 #'
-#' @keywords internal
+#' @noRd
 kappa_quadratic <- function(x, values) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -1115,22 +821,8 @@ kappa_quadratic <- function(x, values) {
     x = x_mat,
     values = as.numeric(values)
   )
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Conger", "Fleiss", "Brennan-Prediger")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = "quadratic",
-      weight = "quadratic"
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(out, c("Conger", "Fleiss", "Brennan-Prediger"),
+                method = "quadratic", weight = "quadratic")
 }
 
 #' Convert rater-identified ratings to counts format
@@ -1239,12 +931,12 @@ ratings_to_counts <- function(x, categories = NULL) {
 #' Counts data discards rater identity, so all counts estimators impose
 #' exchangeability. The categorical count-FIML model treats full count
 #' compositions as exchangeable iid rater draws. The compound-symmetry
-#' estimators (`"nt_fiml"` and the moment estimator `"fleiss_cuzick"`) fit the
-#' corresponding common-mean, compound-symmetry scored model
+#' estimators (`"nt_fiml_cs"` and the moment estimator `"fleiss_cuzick"`) fit
+#' the corresponding common-mean, compound-symmetry scored model
 #' \eqn{\Sigma = \psi J + e I}. For non-exchangeable raters, use rater-identified
 #' data and `kappa()` instead.
 #'
-#' The quadratic compound-symmetry likelihood estimator (`"nt_fiml"`) works
+#' The quadratic compound-symmetry likelihood estimator (`"nt_fiml_cs"`) works
 #' **directly on the counts**: each subject contributes only the sufficient
 #' statistics \eqn{(m_i, \sum_c n_{ic} v_c, \sum_c n_{ic} v_c^2)} of its observed
 #' ratings, so no realizing subjects-by-raters table is constructed. The
@@ -1266,35 +958,27 @@ ratings_to_counts <- function(x, categories = NULL) {
 #'   moment estimator, the available-case / moment member of the
 #'   compound-symmetry family), `"cat_fiml"` (EM over the composition simplex
 #'   with multivariate hypergeometric weights for completing partial counts), or
-#'   `"nt_fiml"` (the exchangeable common-mean normal FIML, `weight =
-#'   "quadratic"` only, the efficient ignorable-missingness MLE). All agree when
-#'   every row of `x` sums to `r_total`. With partial counts (some
-#'   `r_i < r_total`) `"cat_fiml"` and `"nt_fiml"` are the efficient routes and
+#'   `"nt_fiml_cs"` (the exchangeable common-mean compound-symmetry normal FIML,
+#'   quadratic weight only, the efficient ignorable-missingness MLE). All agree
+#'   when every row of `x` sums to `r_total`. With partial counts (some
+#'   `r_i < r_total`) `"cat_fiml"` and `"nt_fiml_cs"` are the efficient routes and
 #'   `"fleiss_cuzick"` is the consistent-under-MCAR moment estimator. For a
 #'   complete-case (listwise) analysis, drop the incomplete rows yourself and
 #'   pass the result to any estimator.
 #' @param weight Weighting scheme: `"nominal"` (default), `"linear"`, or
-#'   `"quadratic"`. The `"nt_fiml"` estimator requires `"quadratic"`.
+#'   `"quadratic"`. `"nt_fiml_cs"` is quadratic only, and its default.
 #' @param values Optional length-C numeric vector of category scores used
 #'   by the metric weightings. Defaults to `1:C`.
 #' @param r_total Total number of raters per subject. Defaults to the
 #'   maximum observed row sum. Required for `"cat_fiml"` when rows have varying
 #'   totals and the maximum observed total is not the design total.
-#'   `"fleiss_cuzick"` and `"nt_fiml"` are `r_total`-invariant.
-#' @param em_options Named list of EM/optimiser options. For
-#'   `estimator = "cat_fiml"`: `tol`, `max_iter`, `prune_tol`, `start_alpha`,
-#'   `info_rcond`. The raw-data `flatten` option does not apply there:
-#'   count-data categorical FIML fits a low-dimensional composition model, not
-#'   the saturated joint. For `estimator = "nt_fiml"`: `tol` and `max_iter` tune
-#'   the optimiser. `mean` and `covariance`, if supplied, must be the
-#'   exchangeable common-mean compound-symmetry model.
-#'
-#' @details
-#' Older Krippendorff / irrCAC-style categorical schemes (`"ordinal"`,
-#' `"radical"`, `"ratio"`, `"circular"`, `"bipolar"`) remain available only
-#' through unsupported internal helpers and the C++ `misskappa::loss` factories.
-#' They are retained for validation and parity work, not as part of the
-#' recommended R interface.
+#'   `"fleiss_cuzick"` and `"nt_fiml_cs"` are `r_total`-invariant and ignore it.
+#' @param em_options Named list of EM/optimiser options (an error for
+#'   `"fleiss_cuzick"`). For `estimator = "cat_fiml"`: `tol`, `max_iter`,
+#'   `prune_tol`, `start_alpha`, `info_rcond`. The raw-data `flatten` option
+#'   does not apply there: count-data categorical FIML fits a low-dimensional
+#'   composition model, not the saturated joint. For `estimator =
+#'   "nt_fiml_cs"`: `tol` and `max_iter` tune the optimiser.
 #'
 #' @references
 #' Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
@@ -1307,8 +991,8 @@ ratings_to_counts <- function(x, categories = NULL) {
 #' coefficients among raters.
 #'
 #' @return A `misskappa_estimate` object with `Fleiss` and
-#'   `Brennan-Prediger` coefficients, the 2x2 vcov, a `psi` component, and
-#'   the registered `stats::influence` method.
+#'   `Brennan-Prediger` coefficients, the 2x2 vcov, the number of subjects
+#'   `n`, and a `psi` component of per-subject influence rows.
 #'
 #' @examples
 #' # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
@@ -1319,18 +1003,30 @@ ratings_to_counts <- function(x, categories = NULL) {
 #' kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
 #'
 #' # Exchangeable common-mean compound-symmetry FIML, fit directly on the
-#' # per-subject counts (the count-format counterpart of "nt_fiml_cs").
-#' kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic")
+#' # per-subject counts (quadratic weight).
+#' kappa_counts(dat.fleiss1971, estimator = "nt_fiml_cs")
 #'
 #' @export
 kappa_counts <- function(x,
-                         estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml"),
+                         estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml_cs"),
                          weight = c("nominal", "linear", "quadratic"),
                          values = NULL,
                          r_total = NULL,
                          em_options = list()) {
   estimator <- match.arg(estimator)
+  weight_supplied <- !missing(weight)
   weight <- match.arg(weight)
+  if (estimator == "nt_fiml_cs") {
+    if (weight_supplied && weight != "quadratic") {
+      stop('estimator = "nt_fiml_cs" requires weight = "quadratic".',
+           call. = FALSE)
+    }
+    weight <- "quadratic"
+  }
+  em_options <- .check_em_options(em_options, switch(estimator,
+    cat_fiml = .em_options_categorical,
+    nt_fiml_cs = .em_options_normal,
+    character(0)), estimator)
   cpp_weight <- if (weight == "nominal") "identity" else weight
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -1339,46 +1035,26 @@ kappa_counts <- function(x,
   if (!is.numeric(x_mat)) stop("'x' must be numeric.")
   storage.mode(x_mat) <- "integer"
 
-  if (estimator == "fleiss_cuzick") {
-    out <- rcpp_kappa_counts(x = x_mat, weight_type = cpp_weight, values = values)
-  } else if (estimator == "cat_fiml") {
+  if (estimator == "nt_fiml_cs") {
+    # Direct-on-counts exchangeable CS quadratic kappa (no realizing table;
+    # see kappa_counts_cs.R).
+    return(.kappa_counts_cs(x_mat, values, em_options))
+  }
+  out <- if (estimator == "fleiss_cuzick") {
+    rcpp_kappa_counts(x = x_mat, weight_type = cpp_weight, values = values)
+  } else {
     if (is.null(r_total)) r_total <- as.integer(max(rowSums(x_mat)))
-    out <- rcpp_kappa_fiml_counts(
+    rcpp_kappa_fiml_counts(
       x = x_mat,
       weight_type = cpp_weight,
       values = values,
       r_total = as.integer(r_total),
       em_options = em_options
     )
-  } else {
-    # nt_fiml: direct-on-counts exchangeable CS quadratic kappa (no realizing
-    # table; see kappa_counts_cs.R).
-    if (weight != "quadratic") {
-      stop("estimator = \"nt_fiml\" for counts is only defined for ",
-           "weight = \"quadratic\".", call. = FALSE)
-    }
-    return(.kappa_counts_cs(x_mat, values, em_options))
   }
-
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Fleiss", "Brennan-Prediger")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-
-  fit <- structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = estimator,
-      weight = weight
-    ),
-    class = "misskappa_estimate"
-  )
-  .attach_counts_kappa_delete_one(
-    fit, x_mat, cpp_weight, values, em_options)
+  fit <- .new_estimate(out, c("Fleiss", "Brennan-Prediger"),
+                       method = estimator, weight = weight)
+  .attach_counts_kappa_delete_one(fit, x_mat, cpp_weight, values, em_options)
 }
 
 #' Weighted agreement coefficients for continuous ratings
@@ -1417,15 +1093,14 @@ kappa_counts <- function(x,
 #'   the compound-symmetry (fixed-rater) covariance model
 #'   \eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per
 #'   rater/item (default). `mean = "equal"` estimates a common mean and
-#'   requires `covariance = "variance_components"`. `fd_h` is accepted for
-#'   backward compatibility and ignored.
+#'   requires `covariance = "variance_components"`.
 #'
 #' @return A `misskappa_estimate` object carrying named coefficients
 #'   (`Conger`, `Fleiss`, `Brennan-Prediger`) and the 3x3 asymptotic
 #'   covariance matrix for `method = "fiml"`. Other continuous methods carry
 #'   `Conger` and `Fleiss`.
 #'
-#' @keywords internal
+#' @noRd
 kappa_continuous <- function(x,
                              method = c("available", "ipw", "gwet", "fiml"),
                              weight = c("quadratic", "linear", "identity",
@@ -1456,24 +1131,8 @@ kappa_continuous <- function(x,
     method = method,
     weight_type = weight
   )
-
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Conger", "Fleiss")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-
-  fit <- structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = method,
-      weight = weight
-    ),
-    class = "misskappa_estimate"
-  )
+  fit <- .new_estimate(out, c("Conger", "Fleiss"), method = method,
+                       weight = weight)
   .attach_continuous_kappa_delete_one(fit, x_mat, weight)
 }
 
@@ -1501,7 +1160,7 @@ kappa_continuous <- function(x,
 #' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
 #'   coefficients and a 2x2 influence-function covariance matrix.
 #'
-#' @keywords internal
+#' @noRd
 kappa_vector <- function(x,
                          method = c("pairwise", "ipw"),
                          loss = c("hamming", "absolute", "squared", "rms"),
@@ -1546,25 +1205,9 @@ kappa_vector <- function(x,
     feature_weights = as.numeric(feature_weights)
   )
 
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Conger", "Fleiss")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = paste0("vector_", method),
-      weight = loss,
-      loss = loss,
-      feature_weights = as.numeric(feature_weights)
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(out, c("Conger", "Fleiss"),
+                method = paste0("vector_", method), weight = loss,
+                loss = loss, feature_weights = as.numeric(feature_weights))
 }
 
 #' G-wise agreement coefficients for rectangular ratings
@@ -1594,7 +1237,7 @@ kappa_vector <- function(x,
 #' @return A `misskappa_estimate` object with `Conger` and `Fleiss`
 #'   coefficients and a 2x2 influence-function covariance matrix.
 #'
-#' @keywords internal
+#' @noRd
 kappa_gwise <- function(x,
                         distance = c("nominal", "absolute", "quadratic", "hubert"),
                         method = c("complete", "ipw", "fiml"),
@@ -1650,23 +1293,7 @@ kappa_gwise <- function(x,
     )
   }
 
-  estimates <- as.numeric(out$estimates)
-  names(estimates) <- c("Conger", "Fleiss")
-  vcov_mat <- out$vcov
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-  psi_mat <- out$psi
-  if (prod(dim(psi_mat)) > 0L) colnames(psi_mat) <- names(estimates)
-
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = paste0("gwise_", method),
-      weight = distance,
-      distance = distance,
-      g = as.integer(g)
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(out, c("Conger", "Fleiss"),
+                method = paste0("gwise_", method), weight = distance,
+                distance = distance, g = as.integer(g))
 }

@@ -103,8 +103,7 @@
 #'   estimates one mean per rater/item (default). `mean = "equal"` estimates a
 #'   common mean and is supported with `covariance = "variance_components"`,
 #'   giving the exchangeable normal model used by counts-format normal FIML.
-#'   `fd_h` is accepted for backward compatibility and ignored because the
-#'   observed information is analytic. Pass any subset.
+#'   Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying the `Conger`,
 #'   `Fleiss`, and `Brennan-Prediger` coefficients and their 3x3 asymptotic
@@ -113,7 +112,7 @@
 #'   influence-function rows). Methods: `print`, `coef`, `vcov`, `confint`,
 #'   `as.data.frame`, and `stats::influence`.
 #'
-#' @keywords internal
+#' @noRd
 kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")

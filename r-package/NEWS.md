@@ -1,33 +1,88 @@
-# misskappa (development version)
+# misskappa 2.0.0
+
+This release tightens the R interface. Several changes break code written for
+1.x, so read the first section before upgrading.
+
+## Breaking changes
+
+* Brennan-Prediger is reported only when the rating scale is declared. The
+  scored estimators `kappa(estimator = "nt_fiml")` and `"nt_fiml_cs"` report it
+  when `values` is supplied (a uniform draw from the declared scores) and, for
+  vector-valued ratings, when `ranges` is supplied. Before, they fell back to a
+  continuous uniform on the observed score range, so the coefficient depended
+  on whether `values` was passed (for codes 1 to 5 the two chance baselines
+  differ by a factor of 1.5) and drifted with the sample range. The categorical
+  estimators `"ipw"` and `"cat_fiml"` are unchanged.
+* `kappa_counts(estimator = "nt_fiml")` is renamed `"nt_fiml_cs"`, so that the
+  estimator name carries the covariance structure everywhere (it fits the
+  exchangeable compound-symmetry model). It now defaults to
+  `weight = "quadratic"`.
+* `kappa()` errors on `...` arguments that do not apply to the input, such as
+  typos, `W` on a matrix, `values` or `g` on an array, or `ranges` with
+  `"pairwise"`. Every estimator also errors on `em_options` entries it does not
+  read, including any `em_options` for the moment estimators.
+* The `em_options$covariance` and `em_options$mean` shims deprecated in 1.2.0
+  are removed (use `estimator = "nt_fiml_cs"`), and so is the no-op
+  `em_options$fd_h`.
+* `kappa(estimator = "pairwise")` no longer runs the complete-data g-wise
+  estimator for non-quadratic `g > 2`. Use `"ipw"`, which is the same estimator
+  when no ratings are missing.
+* `kappa(estimator = "pairwise_cs")` is no longer offered. The estimator stays
+  in the package as an internal function for simulations.
+* The `sim` list of simulation helpers is removed.
+* `kappa_test()` and `alpha_test()` default to `paired = FALSE` (independent
+  samples), as `t.test()` does. `kappa_test()` compares the first coefficient
+  of the first fit by default (`"Conger"` for `kappa()`, `"Fleiss"` for
+  `kappa_counts()`), and `value` must be 0 when more than two fits are
+  compared.
+* Alpha fits no longer carry `weight = "score"`, and vector-valued fits record
+  the `weight` the user asked for (the component loss stays in `fit$loss`).
 
 ## New features
 
 * Complete-data small-sample intervals: supported `kappa()`, `kappa_counts()`,
-  and `alpha()` fits now carry exact leave-one-subject-out evaluations.
+  and `alpha()` fits carry exact leave-one-subject-out evaluations.
   `confint(method = "jackknife")` forms natural, Fisher, or log-complement
   transformed delete-one t intervals. Exact-boundary kappa uses a one-sided
-  disagreement-event/chance fallback; exact-boundary alpha remains explicitly
+  disagreement-event/chance fallback, and exact-boundary alpha is explicitly
   unsupported. Wald intervals remain the default, and missing-data inference
   is unchanged.
-
+* Fits record the number of subjects `n`, which `print()` shows. `print()`
+  also notes when a normal-theory EM did not converge.
+* `as.data.frame()` gains `estimator`, `lower`, and `upper` columns, so fits
+  can be stacked with `rbind()`. Extra arguments go to `confint()`.
+* `kappa_test()` and `alpha_test()` results carry `null.value` and
+  `alternative`, so the printed test states its hypothesis.
 * New dataset `dat.tenhove2025`: a *synthetic* planned-incomplete inter-rater
   design (60 subjects, 6 raters, ordinal `1`--`5` scores) whose rater
   co-observation graph is connected but not complete, in the style of the
-  planned-incomplete ICC designs of ten Hove et al. (2025). It illustrates the
-  compound-symmetry estimators (`"nt_fiml_cs"`, `"pairwise_cs"`) recovering the
-  coefficient on a design where the saturated estimators are not identified.
+  planned-incomplete ICC designs of ten Hove et al. (2025). It shows
+  `"nt_fiml_cs"` recovering the coefficient on a design where the saturated
+  estimators are not identified.
 
 ## Documentation
 
+* `?confint.misskappa_estimate` lists where jackknife intervals are available,
+  and `as.data.frame()` has its own help page.
+* Internal functions no longer have help pages.
 * New "Working With Influence Functions" how-to article: the
   `vcov == crossprod(psi) / n^2` identity, and building custom contrasts and
   paired comparisons by hand from `fit$psi` / `influence()`.
 * The "Missingness And Estimators" article gains a worked compound-symmetry
   example on `dat.tenhove2025` (saturated non-identified versus CS fit).
-* `kappa()`, `alpha()`, and `kappa_counts()` now reference the two methods
-  papers (in preparation), and `inst/CITATION` lists them as placeholders to be
+* `kappa()`, `alpha()`, and `kappa_counts()` reference the two methods papers
+  (in preparation), and `inst/CITATION` lists them as placeholders to be
   updated on preprint and on publication.
-* `kappa_counts()` examples now include the exchangeable `estimator = "nt_fiml"`.
+
+## Internals
+
+* The test suite no longer calls the sibling package magmaan. The normal-FIML
+  parity tests compare against a pure-R reference EM and sandwich kept in a
+  test helper. `utils` joins Imports and `coefficientalpha` joins Suggests.
+* The C++ library drops `EmOptions::fd_h` and moves the research-only Louis
+  diagnostic and the `build_psi_from_phi()` helper into private headers. Its
+  headers now state that the C++ interface is the R package's engine and
+  carries no separate stability guarantee.
 
 # misskappa 1.2.0
 

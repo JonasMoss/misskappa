@@ -1,7 +1,7 @@
 Package: misskappa
 Type: Package
 Title: Agreement Coefficients with Missing Data
-Version: 1.2.0
+Version: 2.0.0
 Authors@R:
     person("Jonas", "Moss", , "jonas.moss.statistics@gmail.com",
            role = c("aut", "cre"),

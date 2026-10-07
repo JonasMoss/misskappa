@@ -165,17 +165,6 @@ test_that("analytic gradient G matches a numeric derivative wrt theta", {
   expect_equal(unname(grad$G), Gnum, tolerance = 1e-6)
 })
 
-test_that("standard errors ignore legacy fd_h option", {
-  X <- make_ratings(450L, 4L, rho = 0.4, miss = 0.2, seed = 8L)
-  hs <- c(1e-4, 1e-5, 1e-6)
-  ses <- vapply(hs, function(h) {
-    fit <- kappa_quadratic_fiml(X, em_options = list(fd_h = h))
-    sqrt(vcov(fit)[1, 1])
-  }, numeric(1))
-  rel_span <- diff(range(ses)) / mean(ses)
-  expect_equal(rel_span, 0, tolerance = 1e-12)
-})
-
 test_that("kappa_continuous(method = 'fiml') routes here and validates weight", {
   X <- make_ratings(300L, 4L, miss = 0.15, seed = 9L)
   fit <- kappa_continuous(X, method = "fiml", weight = "quadratic")
@@ -254,7 +243,8 @@ test_that("vector quadratic block compound symmetry fits and reduces to scalar a
                 2, 2.4, 2.1, 2.3, 1, 1.5, 1.2, 1.3, 3, 2.9, 2.7, 2.8,
                 2.5, 2.3, 2.6, 2.4, 1.5, 1.7, 1.4, 1.6), 8, 4, byrow = TRUE)
   vec1 <- kappa_vector_quadratic(array(X, c(8, 4, 1)), method = "nt_fiml_cs")
-  scl1 <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  scl1 <- kappa_quadratic_fiml(
+    X, em_options = list(covariance = "variance_components"))
   expect_equal(unname(coef(vec1)), unname(coef(scl1)), tolerance = 1e-9)
   expect_equal(unname(vcov(vec1)), unname(vcov(scl1)), tolerance = 1e-9)
 })
@@ -266,12 +256,13 @@ test_that("kappa() exposes the full-W vector estimators on the array surface", {
   W <- matrix(c(1, 0.3, 0.3, 1.4), 2L, 2L)
 
   # public array dispatch matches the internal full-W backend
+  # (without `ranges` the public surface omits Brennan-Prediger)
   for (est in c("nt_fiml", "nt_fiml_cs")) {
     pub <- kappa(arr, estimator = est, W = W)
     ref <- kappa_vector_quadratic(arr, method = est, W = W)
     expect_equal(pub$method, est)
-    expect_equal(coef(pub), coef(ref))
-    expect_equal(names(coef(pub)), c("Conger", "Fleiss", "Brennan-Prediger"))
+    expect_equal(coef(pub), coef(ref)[c("Conger", "Fleiss")])
+    expect_equal(names(coef(pub)), c("Conger", "Fleiss"))
   }
   pub_pair <- kappa(arr, estimator = "pairwise", W = W)
   expect_equal(coef(pub_pair),
@@ -282,8 +273,10 @@ test_that("kappa() exposes the full-W vector estimators on the array surface", {
   expect_equal(names(coef(comp)), c("Conger", "Fleiss"))
 
   # guards
-  expect_error(kappa(arr, estimator = "ipw", W = W), "not supported")
-  expect_error(kappa(arr, estimator = "pairwise_cs"), "not available")
+  expect_error(kappa(arr, estimator = "ipw", W = W), "not used by")
+  expect_error(kappa(arr, estimator = "pairwise", W = W, typo = 1), "typo")
+  expect_error(kappa(arr, estimator = "ipw", g = 3), "'g' does not apply")
+  expect_error(kappa(arr, estimator = "ipw", values = 1:2), "'values'")
   expect_error(kappa(arr, estimator = "nt_fiml_cs", W = W, weight = "linear"),
                "quadratic")
 })
@@ -294,10 +287,11 @@ test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
   arr[, 2L, ] <- arr[, 2L, ] + 0.3
   W <- matrix(c(1, 0.3, 0.3, 1.4), 2L, 2L)
 
-  # passing the OBSERVED per-feature (lo, hi) must reproduce the default
+  # passing the OBSERVED per-feature (lo, hi) reproduces the internal backend's
+  # observed-range default
   obs <- t(vapply(seq_len(2L), function(a) range(arr[, , a]), numeric(2L)))
   for (est in c("nt_fiml", "nt_fiml_cs")) {
-    base <- kappa(arr, estimator = est, W = W)
+    base <- kappa_vector_quadratic(arr, method = est, W = W)
     same <- kappa(arr, estimator = est, W = W, ranges = obs)
     expect_equal(coef(same), coef(base))
     # a different fixed range moves Brennan-Prediger but not Conger / Fleiss
@@ -308,12 +302,15 @@ test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
                                   coef(base)[["Brennan-Prediger"]])))
   }
 
-  # validation + pairwise (no Brennan-Prediger) warns and ignores
+  # validation; pairwise (no Brennan-Prediger) rejects ranges
   expect_error(kappa(arr, estimator = "nt_fiml", W = W,
                      ranges = rbind(c(1, 1), c(0, 2))), "hi > lo")
   expect_error(kappa(arr, estimator = "nt_fiml", W = W,
                      ranges = matrix(1:6, 3L, 2L)), "features-by-2")
-  expect_warning(kappa(arr, estimator = "pairwise", W = W, ranges = obs),
+  expect_error(kappa(arr, estimator = "pairwise", W = W, ranges = obs),
+               "not used by")
+  expect_warning(kappa_vector_quadratic(arr, method = "pairwise", W = W,
+                                        ranges = obs),
                  "ignored for method")
 })
 
@@ -340,9 +337,7 @@ test_that("vector quadratic handles full-W missing data and IF covariance", {
   X[array(runif(length(X)) < 0.18, dim = dim(X))] <- NA_real_
 
   fit_pair <- kappa_vector_quadratic(X, method = "pairwise", W = W)
-  fit_ml <- kappa_vector_quadratic(
-    X, method = "nt_fiml", W = W, em_options = list(fd_h = 1e-4)
-  )
+  fit_ml <- kappa_vector_quadratic(X, method = "nt_fiml", W = W)
 
   expect_equal(dim(fit_pair$psi), c(dim(X)[1L], 2L))
   expect_equal(dim(fit_ml$psi), c(dim(X)[1L], 3L))   # FIML adds Brennan-Prediger

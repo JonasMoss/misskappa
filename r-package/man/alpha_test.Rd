@@ -4,17 +4,17 @@
 \alias{alpha_test}
 \title{Test equality of coefficient alpha across fits}
 \usage{
-alpha_test(..., paired = TRUE, value = 0)
+alpha_test(..., paired = FALSE, value = 0)
 }
 \arguments{
 \item{...}{Two or more `misskappa_estimate` objects from [alpha()]. Names
 become labels in the output.}
 
-\item{paired}{`TRUE` (default) for same-subject fits, `FALSE` for independent
-samples.}
+\item{paired}{`FALSE` (default) for independent samples, `TRUE` for fits on
+the same subjects in the same row order.}
 
-\item{value}{Null value for the difference (or, with one fit, for alpha).
-Default `0`.}
+\item{value}{Null value for the difference between two fits (or, with one
+fit, for alpha). Default `0`.}
 }
 \value{
 An `htest` object.

@@ -1,5 +1,6 @@
 #include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
+#include "detail_psi.hpp"
 
 #include <cmath>
 #include <limits>
@@ -153,7 +154,7 @@ Result<Estimation> estimate_alpha_available_impl(const Data& data, int n, int R)
   const RealMat gamma = (phi.transpose() * phi) / static_cast<double>(n);
   const RealMat J = alpha_gradient(t1, t2, R);
   RealMat vcov = (J * gamma * J.transpose()) / static_cast<double>(n);
-  RealMat psi = build_psi_from_phi(phi, J);
+  RealMat psi = detail::build_psi_from_phi(phi, J);
 
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi), {}};
 }

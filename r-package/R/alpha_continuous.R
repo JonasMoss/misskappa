@@ -11,28 +11,13 @@
 # coefficientalpha (varphi = 0).
 
 .normal_fiml_from_cpp <- function(raw, estimate_names, method, weight) {
-  estimates <- as.numeric(raw$estimates)
-  names(estimates) <- estimate_names
-  vcov_mat <- raw$vcov
-  dimnames(vcov_mat) <- list(estimate_names, estimate_names)
-  psi <- raw$psi
-  if (prod(dim(psi)) > 0L) colnames(psi) <- estimate_names
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi,
-      method = method,
-      weight = weight,
-      moments = list(
-        mu = as.numeric(raw$mu),
-        Sigma = raw$Sigma,
-        iterations = as.integer(raw$iterations),
-        converged = isTRUE(raw$converged)
-      )
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(raw, estimate_names, method = method, weight = weight,
+                moments = list(
+                  mu = as.numeric(raw$mu),
+                  Sigma = raw$Sigma,
+                  iterations = as.integer(raw$iterations),
+                  converged = isTRUE(raw$converged)
+                ))
 }
 
 # ---- public estimator -------------------------------------------------------
@@ -69,9 +54,7 @@
 #'   the compound-symmetry (fixed-rater) covariance model
 #'   \eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per item
 #'   (default). `mean = "equal"` estimates a common mean and is supported with
-#'   `covariance = "variance_components"`. `fd_h` is accepted for backward
-#'   compatibility and ignored because the observed information is analytic.
-#'   Pass any subset.
+#'   `covariance = "variance_components"`. Pass any subset.
 #'
 #' @return An object of class `misskappa_estimate` carrying one coefficient
 #'   named `alpha` and its asymptotic covariance. Additional fields: `moments`
@@ -84,7 +67,7 @@
 #' confidence intervals with outlying observations and missing data.
 #' *Educational and Psychological Measurement*, 76(3), 387-411.
 #'
-#' @keywords internal
+#' @noRd
 alpha_continuous <- function(x, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.")
@@ -124,7 +107,7 @@ alpha_continuous <- function(x, em_options = list()) {
     } else {
       "alpha-continuous-fiml"
     },
-    weight = "score"
+    weight = NULL
   )
   fit$covariance <- covariance
   fit$mean <- mean_model

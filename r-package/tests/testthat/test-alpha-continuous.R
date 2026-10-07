@@ -87,17 +87,6 @@ test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
                tolerance = 1e-10)
 })
 
-test_that("standard errors ignore legacy fd_h option", {
-  X <- make_data(450L, 5L, rho = 0.35, miss = 0.2, seed = 8L)
-  hs <- c(1e-4, 1e-5, 1e-6)
-  ses <- vapply(hs, function(h) {
-    fit <- alpha_continuous(X, em_options = list(fd_h = h))
-    sqrt(vcov(fit)[1, 1])
-  }, numeric(1))
-  rel_span <- diff(range(ses)) / mean(ses)
-  expect_equal(rel_span, 0, tolerance = 1e-12)
-})
-
 test_that("analytic casewise scores match numerical differentiation", {
   X <- make_data(200L, 5L, miss = 0.2, seed = 4L)
   p <- ncol(X); pstar <- p * (p + 1L) / 2L

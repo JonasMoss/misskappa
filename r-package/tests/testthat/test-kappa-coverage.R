@@ -42,7 +42,7 @@ test_that("g-wise dispatch honours max_chance_tuples and rejects bad weights", {
                max_chance_tuples = 1e5)
   expect_s3_class(fit, "misskappa_estimate")
   expect_true(!is.null(fit$g) && fit$g == 3L)
-  expect_output(print(fit), "g=3")          # print header for g > 2
+  expect_output(print(fit), "g = 3")          # print header for g > 2
   expect_error(kappa(x, estimator = "ipw", weight = "ordinal", g = 3),
                "should be one of")
 })

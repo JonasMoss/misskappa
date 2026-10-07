@@ -30,8 +30,10 @@
 # t3 enters the coefficients with d t3 / d mu_j = 2(mu_j - mubar); the O(1/n)
 # bias correction does not affect the first-order influence. bp_chance is a fixed
 # function of the rating support (treated as constant, as in the other quadratic
-# paths). Validated against the subject-level bootstrap in
-# experiments/workbench/42-free-mean-cs-pairwise/.
+# paths). Validated against a subject-level bootstrap.
+#
+# Internal since 2.0.0: no longer selectable through kappa(); reachable for
+# simulations as misskappa:::.kappa_pairwise_cs().
 
 # t3 sampling bias = tr(A V), A = I - 11'/R, V = Cov(mu_hat):
 #   V_jj = (psi + e)/n_j,   V_jk = psi * n_jk / (n_j n_k)   (n_jk = co-observations)
@@ -59,7 +61,7 @@
   )
 }
 
-# ---- entry point (called from kappa() for estimator = "pairwise_cs") ---------
+# ---- entry point -------------------------------------------------------------
 
 .kappa_pairwise_cs <- function(x_mat, values = NULL) {
   X <- as.matrix(x_mat); storage.mode(X) <- "double"
@@ -120,19 +122,9 @@
   colnames(IF) <- names(estimates)
 
   psi_mat <- n * IF                                  # package convention: vcov = crossprod(psi)/n^2
-  vcov_mat <- crossprod(psi_mat) / n^2
-  dimnames(vcov_mat) <- list(names(estimates), names(estimates))
-
-  structure(
-    list(
-      estimates = estimates,
-      vcov = vcov_mat,
-      psi = psi_mat,
-      method = "pairwise_cs",
-      weight = "quadratic",
-      bp_chance = bp_chance,
-      moments = list(mu = mu, psi = psi, e = e, t3 = t3, n = n, R = R)
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(
+    list(estimates = estimates, vcov = crossprod(psi_mat) / n^2, psi = psi_mat),
+    names(estimates), method = "pairwise_cs", weight = "quadratic",
+    bp_chance = bp_chance,
+    moments = list(mu = mu, psi = psi, e = e, t3 = t3, n = n, R = R))
 }

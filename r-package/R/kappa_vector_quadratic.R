@@ -232,9 +232,7 @@
 #' @param em_options Used by `"nt_fiml"` / `"nt_fiml_cs"`. A named list with `tol`
 #'   and `max_iter`. The covariance structure is selected by `method` (the
 #'   estimator name), so `mean` must be `"free"`. The exchangeable equal-mean
-#'   model has not been generalized to vector-valued ratings. `fd_h` is accepted
-#'   for backward compatibility and ignored because the observed information is
-#'   analytic.
+#'   model has not been generalized to vector-valued ratings.
 #' @param ranges Optional features-by-2 matrix of `(lo, hi)` score bounds, one
 #'   row per feature, that fixes the Brennan-Prediger chance baseline
 #'   `sum_a W_aa (hi_a - lo_a)^2 / 6` instead of estimating each width from the
@@ -266,7 +264,7 @@
 #' Lin, L. I.-K. (1989). A concordance correlation coefficient to evaluate
 #' reproducibility. \emph{Biometrics}, 45(1), 255--268.
 #'
-#' @keywords internal
+#' @noRd
 kappa_vector_quadratic <- function(x,
                                    method = c("pairwise", "nt_fiml", "nt_fiml_cs"),
                                    W = NULL,
@@ -286,24 +284,20 @@ kappa_vector_quadratic <- function(x,
   } else {
     # the estimator name selects the covariance structure, mirroring the scalar
     # surface: nt_fiml is saturated, nt_fiml_cs the block compound symmetry.
-    if (method == "nt_fiml_cs") em_options$covariance <- "variance_components"
+    em_options$covariance <- if (method == "nt_fiml_cs") {
+      "variance_components"
+    } else {
+      "saturated"
+    }
     .kvq_fiml(prep$X, prep$R, prep$features, W, em_options = em_options,
               widths = widths)
   }
 
-  structure(
-    list(
-      estimates = fit$estimates,
-      vcov = fit$vcov,
-      psi = fit$psi,
-      method = paste0("vector-quadratic-", method),
-      weight = "quadratic",
-      W = W,
-      moments = list(mu = fit$mu, Sigma = fit$Sigma,
-                     summaries = fit$summaries,
-                     iterations = fit$iterations,
-                     converged = fit$converged)
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(fit, names(fit$estimates),
+                method = paste0("vector-quadratic-", method),
+                weight = "quadratic", W = W,
+                moments = list(mu = fit$mu, Sigma = fit$Sigma,
+                               summaries = fit$summaries,
+                               iterations = fit$iterations,
+                               converged = fit$converged))
 }

@@ -24,21 +24,20 @@ test_that("kappa() routes g > 2 categorical kernels and labels Conger/Fleiss", {
     3, 3, 2, 3, 3
   ), nrow = 6, byrow = TRUE)
 
-  fit <- kappa(x, estimator = "pairwise", weight = "nominal", g = 3L)
+  fit <- kappa(x, estimator = "ipw", weight = "nominal", g = 3L)
   expect_s3_class(fit, "misskappa_estimate")
   expect_named(fit$estimates, c("Conger", "Fleiss"))
   expect_equal(fit$g, 3L)
   expect_true(all(is.finite(fit$estimates)))
 
-  # estimator = "pairwise" with g > 2 is the complete-data g-wise estimator.
+  # On complete data IPW is the complete-data g-wise estimator, which is why
+  # kappa() no longer offers "pairwise" for g > 2.
   direct <- kappa_gwise(x, distance = "nominal", method = "complete", g = 3L)
-  expect_equal(unname(fit$estimates), unname(direct$estimates))
-  expect_equal(unname(fit$vcov), unname(direct$vcov))
-
-  # IPW on complete data matches the complete-data point estimates.
-  fit_ipw <- kappa(x, estimator = "ipw", weight = "nominal", g = 3L)
-  expect_equal(unname(fit_ipw$estimates), unname(fit$estimates),
-               tolerance = 1e-8)
+  expect_equal(unname(fit$estimates), unname(direct$estimates),
+               tolerance = 1e-12)
+  expect_equal(unname(fit$vcov), unname(direct$vcov), tolerance = 1e-12)
+  expect_error(kappa(x, estimator = "pairwise", weight = "nominal", g = 3L),
+               "quadratic estimator")
 
   # cat_fiml runs and yields finite estimates.
   fit_fiml <- kappa(x, estimator = "cat_fiml", weight = "nominal", g = 3L)
@@ -50,7 +49,7 @@ test_that("kappa() routes g > 2 categorical kernels and labels Conger/Fleiss", {
   expect_true(all(is.finite(fit_hub$estimates)))
 })
 
-test_that("kappa() g > 2 with NAs: ipw/cat_fiml work, pairwise errors", {
+test_that("kappa() g > 2 with NAs: ipw/cat_fiml work", {
   complete_support <- as.matrix(expand.grid(
     r1 = 1:2, r2 = 1:2, r3 = 1:2, r4 = 1:2, r5 = 1:2
   ))
@@ -67,14 +66,9 @@ test_that("kappa() g > 2 with NAs: ipw/cat_fiml work, pairwise errors", {
 
   fit_fiml <- kappa(x, estimator = "cat_fiml", weight = "nominal", g = 3L)
   expect_true(all(is.finite(fit_fiml$estimates)))
-
-  expect_error(
-    kappa(x, estimator = "pairwise", weight = "nominal", g = 3L),
-    "complete"
-  )
 })
 
-test_that("kappa() g > 2 continuous (linear) supports pairwise/ipw only", {
+test_that("kappa() g > 2 continuous (linear) supports ipw only", {
   x <- matrix(c(
     1, 1, 2, 1, 1,
     1, 2, 3, 2, 2,
@@ -84,12 +78,14 @@ test_that("kappa() g > 2 continuous (linear) supports pairwise/ipw only", {
     3, 3, 2, 3, 3
   ), nrow = 6, byrow = TRUE)
 
-  fit_pair <- kappa(x, estimator = "pairwise", weight = "linear", g = 3L)
-  expect_named(fit_pair$estimates, c("Conger", "Fleiss"))
-  expect_true(all(is.finite(fit_pair$estimates)))
-
   fit_ipw <- kappa(x, estimator = "ipw", weight = "linear", g = 3L)
+  expect_named(fit_ipw$estimates, c("Conger", "Fleiss"))
   expect_true(all(is.finite(fit_ipw$estimates)))
+  direct <- kappa_gwise(x, distance = "absolute", method = "complete", g = 3L)
+  expect_equal(unname(fit_ipw$estimates), unname(direct$estimates),
+               tolerance = 1e-10)
+  expect_error(kappa(x, estimator = "pairwise", weight = "linear", g = 3L),
+               "quadratic estimator")
 
   expect_error(
     kappa(x, estimator = "cat_fiml", weight = "linear", g = 3L),
@@ -167,9 +163,14 @@ test_that("kappa() detects 3-D arrays as vector-valued ratings", {
   expect_equal(unname(fit_rms$estimates), unname(direct_rms$estimates))
 
   expect_error(kappa(arr, estimator = "cat_fiml"), "pairwise")
-  # nt_fiml / nt_fiml_cs are now supported on arrays (full-W quadratic FIML,
-  # default identity metric); they return Conger / Fleiss / Brennan-Prediger
+  # nt_fiml / nt_fiml_cs are supported on arrays (full-W quadratic FIML,
+  # default identity metric); Brennan-Prediger needs a declared `ranges`.
   fit_ml <- kappa(arr, estimator = "nt_fiml")
-  expect_equal(names(coef(fit_ml)), c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_equal(names(coef(fit_ml)), c("Conger", "Fleiss"))
   expect_equal(fit_ml$method, "nt_fiml")
+  rng <- cbind(lo = apply(arr, 3L, min, na.rm = TRUE),
+               hi = apply(arr, 3L, max, na.rm = TRUE))
+  fit_bp <- kappa(arr, estimator = "nt_fiml", ranges = rng)
+  expect_equal(names(coef(fit_bp)), c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_equal(coef(fit_bp)[1:2], coef(fit_ml))
 })

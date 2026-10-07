@@ -1,6 +1,6 @@
 #include "doctest.h"
 
-#include "misskappa/diagnostics.hpp"
+#include "detail_fiml_diagnostics.hpp"
 #include "misskappa/estimate.hpp"
 #include "misskappa/loss.hpp"
 
@@ -358,7 +358,7 @@ TEST_CASE("estimate_fiml: broad retained support uses low-rank Louis variance") 
   CHECK(r->estimates.cwiseAbs().maxCoeff() < 1e-8);
   check_three_coef_variance_contract(*r, static_cast<int>(x.rows()));
 
-  auto d = ms::diagnose_fiml_louis(x, *W, EmOptions{});
+  auto d = ms::detail::diagnose_fiml_louis(x, *W, EmOptions{});
   REQUIRE(d.has_value());
   CHECK(d->n_patterns == 1024u);
   CHECK(d->n_patterns > static_cast<std::size_t>(x.rows()));
@@ -568,7 +568,7 @@ TEST_CASE("diagnose_fiml_louis: reports a Louis spectrum on the MAR fixture") {
   auto W = ms::loss::quadratic_weights(3, v);
   REQUIRE(W.has_value());
 
-  auto d = ms::diagnose_fiml_louis(x, *W, EmOptions{});
+  auto d = ms::detail::diagnose_fiml_louis(x, *W, EmOptions{});
   REQUIRE(d.has_value());
 
   CHECK(d->c == 3);
@@ -597,7 +597,7 @@ TEST_CASE("diagnose_fiml_louis: reports a Louis spectrum on the MAR fixture") {
   // retained directions than the unpruned run.
   EmOptions pruned{};
   pruned.info_rcond = 0.5;
-  auto d_pruned = ms::diagnose_fiml_louis(x, *W, pruned);
+  auto d_pruned = ms::detail::diagnose_fiml_louis(x, *W, pruned);
   REQUIRE(d_pruned.has_value());
   CHECK(d_pruned->threshold > 0.0);
   CHECK(d_pruned->retained_rank <= d->retained_rank);
@@ -605,7 +605,7 @@ TEST_CASE("diagnose_fiml_louis: reports a Louis spectrum on the MAR fixture") {
   // rcond of zero disables pruning: threshold is exactly zero.
   EmOptions keep_all{};
   keep_all.info_rcond = 0.0;
-  auto d_keep = ms::diagnose_fiml_louis(x, *W, keep_all);
+  auto d_keep = ms::detail::diagnose_fiml_louis(x, *W, keep_all);
   REQUIRE(d_keep.has_value());
   CHECK(d_keep->threshold == 0.0);
 }
@@ -616,17 +616,17 @@ TEST_CASE("diagnose_fiml_louis: rejects degenerate input") {
 
   IntMat one_rater(3, 1);
   one_rater << 0, 1, 0;
-  CHECK(ms::diagnose_fiml_louis(one_rater, *W, EmOptions{}).error()
+  CHECK(ms::detail::diagnose_fiml_louis(one_rater, *W, EmOptions{}).error()
         == ms::Error::invalid_argument);  // R < 2
 
   RealMat nonsquare(2, 3);
   nonsquare.setZero();
-  CHECK(ms::diagnose_fiml_louis(ten_subject_2rater(), nonsquare, EmOptions{}).error()
+  CHECK(ms::detail::diagnose_fiml_louis(ten_subject_2rater(), nonsquare, EmOptions{}).error()
         == ms::Error::dimension_mismatch);  // weights not square
 
   IntMat out_of_range(3, 2);
   out_of_range << 0, 1,
                   5, 0,
                   0, 1;
-  CHECK(!ms::diagnose_fiml_louis(out_of_range, *W, EmOptions{}).has_value());
+  CHECK(!ms::detail::diagnose_fiml_louis(out_of_range, *W, EmOptions{}).has_value());
 }

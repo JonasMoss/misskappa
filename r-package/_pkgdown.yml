@@ -28,10 +28,8 @@ reference:
   - title: Inference
     contents:
       - confint.misskappa_estimate
+      - as.data.frame.misskappa_estimate
       - influence.misskappa_estimate
-  - title: Simulation helpers
-    contents:
-      - sim
   - title: Datasets
     contents:
       - starts_with("dat.")

@@ -1,5 +1,5 @@
-#ifndef MISSKAPPA_DIAGNOSTICS_HPP
-#define MISSKAPPA_DIAGNOSTICS_HPP
+#ifndef MISSKAPPA_DETAIL_FIML_DIAGNOSTICS_HPP
+#define MISSKAPPA_DETAIL_FIML_DIAGNOSTICS_HPP
 
 #include "misskappa/estimate.hpp"
 #include "misskappa/result.hpp"
@@ -7,10 +7,10 @@
 
 #include <cstddef>
 
-namespace misskappa {
+namespace misskappa::detail {
 
-// Internal diagnostic surface used by repo experiments. Not part of the
-// stable package API.
+// Louis-information spectrum of the saturated categorical FIML for Conger's
+// kappa: a research diagnostic, not part of the public API.
 struct FimlLouisDiagnostic {
   RealVec eigenvalues;               // descending eigenvalues of I_obs.
   RealVec gradient_projection;       // q_k^T grad for Conger's kappa.
@@ -29,6 +29,6 @@ struct FimlLouisDiagnostic {
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(
     IntMatView ratings, RealMatView weights, EmOptions opts);
 
-}  // namespace misskappa
+}  // namespace misskappa::detail
 
-#endif  // MISSKAPPA_DIAGNOSTICS_HPP
+#endif  // MISSKAPPA_DETAIL_FIML_DIAGNOSTICS_HPP

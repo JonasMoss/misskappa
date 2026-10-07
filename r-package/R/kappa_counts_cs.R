@@ -2,7 +2,7 @@
 #
 # Fits the exchangeable common-mean CS normal model Sigma = psi J + e I straight
 # from the counts, with no realizing subjects-by-raters table, no r_total, and no
-# EM. Backs kappa_counts(estimator = "nt_fiml") for weight = "quadratic" (the
+# EM. Backs kappa_counts(estimator = "nt_fiml_cs") for weight = "quadratic" (the
 # moment / available-case slot is filled by the Fleiss-Cuzick estimator).
 # A subject contributes only its observed sub-vector of
 # size m_i; under exchangeability that marginal is again CS-normal with the same
@@ -48,17 +48,6 @@
   denom <- e + m * psi
   -0.5 * (m * log(2 * pi) + log(denom) + (m - 1) * log(e)) -
     (1 / (2 * e)) * (A - (psi / denom) * B^2)
-}
-
-.cs_counts_estimate <- function(estimates, vcov, psi, method, moments,
-                                covariance = NULL, mean = NULL,
-                                bp_chance = NULL) {
-  out <- list(estimates = estimates, vcov = vcov, psi = psi,
-              method = method, weight = "quadratic", moments = moments)
-  if (!is.null(covariance)) out$covariance <- covariance
-  if (!is.null(mean)) out$mean <- mean
-  if (!is.null(bp_chance)) out$bp_chance <- bp_chance
-  structure(out, class = "misskappa_estimate")
 }
 
 # ---- robust sandwich for the M-estimator (mu, psi, e) -----------------------
@@ -129,28 +118,14 @@
                                converged = opt$convergence == 0L))
 }
 
-# ---- entry point (called from kappa_counts for estimator = "nt_fiml") --------
+# ---- entry point (kappa_counts(estimator = "nt_fiml_cs")) --------------------
 
 .kappa_counts_cs <- function(x_mat, values, em_options = list()) {
   C <- ncol(x_mat)
   if (is.null(values)) values <- seq_len(C)
   bp_chance <- .quadratic_bp_chance(x_mat, values)
-
-  # Backward-compatible em_options validation: the exchangeable common-mean CS
-  # model is the only covariance/mean combination this estimator fits.
-  if (!is.null(em_options$covariance) || !is.null(em_options$mean)) {
-    cov <- .normal_covariance_model(em_options)
-    mn  <- .normal_mean_model(em_options)
-    if (cov != "variance_components" || mn != "equal") {
-      stop("counts normal-FIML requires em_options$covariance = ",
-           "\"variance_components\" and em_options$mean = \"equal\".",
-           call. = FALSE)
-    }
-  }
-
   res <- .cs_counts_fiml(x_mat, values, bp_chance, em_options)
-  .cs_counts_estimate(
-    estimates = res$se$estimates, vcov = res$se$vcov, psi = res$se$psi,
-    method = "nt_fiml", moments = res$moments,
-    covariance = "variance_components", mean = "equal", bp_chance = bp_chance)
+  .new_estimate(res$se, c("Fleiss", "Brennan-Prediger"),
+                method = "nt_fiml_cs", weight = "quadratic",
+                moments = res$moments, bp_chance = bp_chance)
 }

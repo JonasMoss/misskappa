@@ -106,7 +106,7 @@ test_that("jackknife intervals remain complete-data only", {
   fit <- kappa(x, estimator = "ipw", weight = "nominal")
   expect_null(fit$delete_one)
   expect_error(confint(fit, method = "jackknife"),
-               "require complete scalar kappa or alpha data")
+               "unavailable for this fit")
 })
 
 test_that("Wald remains the unchanged default and accepts log-complement", {

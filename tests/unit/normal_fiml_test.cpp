@@ -381,21 +381,6 @@ TEST_CASE("normal FIML quadratic kappa: missing-data estimates and SEs are pinne
   check_influence_contract(*r, static_cast<int>(x.rows()), 3);
 }
 
-TEST_CASE("normal FIML quadratic kappa: fd_h is compatibility-only with analytic information") {
-  const RealMat x = benchmark_items(120, 5, 0.2, 167);
-  EmOptions coarse{};
-  coarse.fd_h = 1e-3;
-  EmOptions fine{};
-  fine.fd_h = 1e-8;
-
-  auto a = ms::estimate_quadratic_normal_fiml(x, RealVec(), coarse);
-  auto b = ms::estimate_quadratic_normal_fiml(x, RealVec(), fine);
-  REQUIRE(a.has_value());
-  REQUIRE(b.has_value());
-  CHECK((a->fit.estimates - b->fit.estimates).cwiseAbs().maxCoeff() < 1e-14);
-  CHECK((a->fit.vcov - b->fit.vcov).cwiseAbs().maxCoeff() < 1e-14);
-}
-
 TEST_CASE("normal FIML quadratic kappa: singular covariance returns numerical error") {
   RealMat x(8, 3);
   x << 1.0, 1.0, 0.4,

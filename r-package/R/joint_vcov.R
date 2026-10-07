@@ -46,7 +46,7 @@
 #' z <- delta / se
 #' }
 #'
-#' @keywords internal
+#' @noRd
 joint_vcov <- function(...) {
   fits <- list(...)
   if (length(fits) < 2L)
@@ -104,7 +104,7 @@ joint_vcov <- function(...) {
 #'
 #' @return An `htest` object with a chi-square Wald statistic.
 #'
-#' @keywords internal
+#' @noRd
 wald_test <- function(..., contrast, value = 0) {
   fits <- list(...)
   if (length(fits) < 1L)

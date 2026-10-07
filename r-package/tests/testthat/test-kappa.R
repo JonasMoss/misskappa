@@ -82,9 +82,12 @@ test_that("S3 methods on misskappa_estimate behave", {
 
   df <- as.data.frame(fit)
   expect_equal(nrow(df), 3L)
-  expect_named(df, c("coefficient", "estimate", "se"))
+  expect_named(df, c("estimator", "coefficient", "estimate", "se", "lower",
+                     "upper"))
+  expect_equal(df$lower, unname(ci[, 1]))
 
-  expect_output(print(fit), "estimator=available")
+  expect_output(print(fit), "estimator = available")
+  expect_output(print(fit), "n = ")
 })
 
 test_that("IPW rejects a rater with zero observations cleanly", {
@@ -135,27 +138,6 @@ test_that("multi-weight FIML helper matches repeated FIML fits", {
     expect_equal(multi[[w]]$method, "fiml")
     expect_equal(multi[[w]]$weight, w)
   }
-})
-
-test_that("sim$mcar produces an n x R matrix with the right missingness rate", {
-  set.seed(7)
-  x <- sim$mcar(n = 500, R = 4, C = 3, p = c(0.4, 0.4, 0.2),
-                p_missing = 0.2, seed = 7)
-  expect_equal(dim(x), c(500L, 4L))
-  rate <- mean(is.na(x))
-  expect_true(abs(rate - 0.2) < 0.05)
-  comp <- attr(x, "complete")
-  expect_equal(dim(comp), c(500L, 4L))
-  expect_true(!any(is.na(comp)))
-})
-
-test_that("sim$jsm port still produces sensible output", {
-  set.seed(1)
-  x <- sim$jsm(n = 100, s = c(0.7, 0.5, 0.8),
-               model = "fleiss", true_dist = c(0.5, 0.3, 0.2), seed = 1)
-  expect_equal(dim(x), c(100L, 3L))
-  expect_true(!is.null(attr(x, "kappa")))
-  expect_true(attr(x, "kappa") > 0 && attr(x, "kappa") < 1)
 })
 
 test_that("Bundled datasets load", {
@@ -296,8 +278,7 @@ test_that("kappa_counts(nt_fiml) matches raw exchangeable normal FIML", {
   raw <- kappa_quadratic_fiml(
     X, values = 1:5,
     em_options = list(covariance = "variance_components", mean = "equal"))
-  by_counts <- kappa_counts(cnt, estimator = "nt_fiml", weight = "quadratic",
-                            values = 1:5, r_total = ncol(X))
+  by_counts <- kappa_counts(cnt, estimator = "nt_fiml_cs", values = 1:5)
 
   # The direct-on-counts fit (BFGS over the sufficient statistics) and the raw
   # exchangeable normal FIML (C++ EM) target the same MLE; they agree to
@@ -310,20 +291,18 @@ test_that("kappa_counts(nt_fiml) matches raw exchangeable normal FIML", {
                               c("Fleiss", "Brennan-Prediger")])), 1e-5)
   expect_equal(unname(crossprod(by_counts$psi) / nrow(cnt)^2),
                unname(vcov(by_counts)), tolerance = 1e-10)
-  expect_equal(by_counts$mean, "equal")
-  expect_equal(by_counts$covariance, "variance_components")
+  expect_equal(by_counts$method, "nt_fiml_cs")
+  expect_null(by_counts$mean)
+  expect_null(by_counts$covariance)
 })
 
-test_that("kappa_counts(nt_fiml) validates the exchangeable normal route", {
+test_that("kappa_counts(nt_fiml_cs) is quadratic only and defaults to it", {
   expect_error(
-    kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "nominal"),
-    "only defined for weight = \"quadratic\""
+    kappa_counts(dat.fleiss1971, estimator = "nt_fiml_cs", weight = "nominal"),
+    "requires weight = \"quadratic\""
   )
-  expect_error(
-    kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "quadratic",
-                 em_options = list(mean = "free")),
-    "requires em_options\\$covariance"
-  )
+  fit <- kappa_counts(dat.fleiss1971, estimator = "nt_fiml_cs")
+  expect_equal(fit$weight, "quadratic")
 })
 
 test_that("kappa_counts() reproduces Fleiss 1971", {
@@ -348,20 +327,13 @@ test_that("counts CS nt_fiml coincides with fleiss_cuzick on complete data", {
   vals <- 1:5
   fc <- kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick",
                      weight = "quadratic", values = vals)
-  f  <- kappa_counts(dat.fleiss1971, estimator = "nt_fiml",
-                     weight = "quadratic", values = vals)
+  f  <- kappa_counts(dat.fleiss1971, estimator = "nt_fiml_cs", values = vals)
   expect_named(coef(f), c("Fleiss", "Brennan-Prediger"))
   expect_equal(unname(coef(f)), unname(coef(fc)), tolerance = 1e-5)
   expect_equal(unname(diag(vcov(f))), unname(diag(vcov(fc))), tolerance = 1e-5)
   # robust influence-function identity
   expect_equal(unname(crossprod(f$psi) / nrow(dat.fleiss1971)^2),
                unname(vcov(f)), tolerance = 1e-10)
-})
-
-test_that("counts nt_fiml requires a quadratic weight", {
-  expect_error(
-    kappa_counts(dat.fleiss1971, estimator = "nt_fiml", weight = "nominal"),
-    "only defined for weight = \"quadratic\"")
 })
 
 test_that("counts pairwise and listwise are not valid estimators", {
@@ -378,6 +350,7 @@ test_that("nt_fiml / nt_fiml_cs select the covariance structure by name", {
 
   sat <- kappa(X, estimator = "nt_fiml", weight = "quadratic")
   cs  <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  expect_named(coef(cs), c("Conger", "Fleiss"))   # no declared scale, no BP
   expect_equal(sat$method, "nt_fiml")
   expect_equal(cs$method, "nt_fiml_cs")
   expect_null(cs$covariance)            # name carries the structure
@@ -385,7 +358,7 @@ test_that("nt_fiml / nt_fiml_cs select the covariance structure by name", {
   # nt_fiml_cs matches the internal compound-symmetry backend
   ref <- kappa_quadratic_fiml(
     X, em_options = list(covariance = "variance_components"))
-  expect_equal(unname(coef(cs)), unname(coef(ref)), tolerance = 1e-6)
+  expect_equal(unname(coef(cs)), unname(coef(ref)[1:2]), tolerance = 1e-6)
   # saturated and CS are genuinely different fits under missingness
   expect_gt(max(abs(coef(sat) - coef(cs))), 1e-4)
 })
@@ -396,7 +369,7 @@ test_that("pairwise_cs is the moment companion to nt_fiml_cs", {
   b <- rnorm(n, 0, 1)
   X <- matrix(mu, n, R, byrow = TRUE) + b + matrix(rnorm(n * R, 0, sqrt(.5)), n, R)
 
-  fit <- kappa(X, estimator = "pairwise_cs", weight = "quadratic")
+  fit <- .kappa_pairwise_cs(X)          # internal since 2.0.0
   expect_equal(fit$method, "pairwise_cs")
   expect_equal(fit$weight, "quadratic")
   expect_equal(names(coef(fit)), c("Conger", "Fleiss", "Brennan-Prediger"))
@@ -406,11 +379,12 @@ test_that("pairwise_cs is the moment companion to nt_fiml_cs", {
                tolerance = 1e-10)
   # shares the probability limit with nt_fiml_cs (both consistent for the same
   # CS estimand); agree on large complete data
-  cs <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  cs <- kappa_quadratic_fiml(
+    X, em_options = list(covariance = "variance_components"))
   expect_equal(unname(coef(fit)), unname(coef(cs)), tolerance = 0.01)
 })
 
-test_that("pairwise_cs allows connected incomplete co-observation and guards inputs", {
+test_that("internal pairwise_cs allows connected incomplete co-observation", {
   set.seed(132)
   n <- 300L; R <- 4L
   b <- rnorm(n, 0, 1)
@@ -420,14 +394,10 @@ test_that("pairwise_cs allows connected incomplete co-observation and guards inp
   half <- n / 2
   X[seq_len(half), 4L] <- NA
   X[(half + 1L):n, 1L] <- NA
-  fit <- expect_silent(kappa(X, estimator = "pairwise_cs", weight = "quadratic"))
+  fit <- expect_silent(.kappa_pairwise_cs(X))
   expect_true(all(is.finite(coef(fit))))
   expect_true(all(is.finite(diag(vcov(fit)))))
-
-  expect_error(kappa(X, estimator = "pairwise_cs", weight = "linear"),
-               "quadratic")
-  arr <- array(rnorm(2 * 3 * 2), dim = c(2, 3, 2))
-  expect_error(kappa(arr, estimator = "pairwise_cs"), "vector-valued")
+  expect_error(kappa(X, estimator = "pairwise_cs"), "should be one of")
 })
 
 test_that("alpha gains nt_fiml_cs and it matches the CS backend", {
@@ -440,22 +410,24 @@ test_that("alpha gains nt_fiml_cs and it matches the CS backend", {
   expect_equal(unname(coef(cs)), unname(coef(ref)), tolerance = 1e-6)
 })
 
-test_that("deprecated em_options$covariance / mean warn and still work", {
+test_that("em_options are validated per estimator", {
   set.seed(33)
   X <- matrix(rnorm(120 * 4), 120, 4)
   X[cbind(sample(120, 25), sample(4, 25, TRUE))] <- NA
-  cs <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
-
-  expect_warning(
-    old <- kappa(X, estimator = "nt_fiml", weight = "quadratic",
-                 em_options = list(covariance = "variance_components")),
-    "deprecated")
-  expect_equal(unname(coef(old)), unname(coef(cs)), tolerance = 1e-8)
-
-  expect_warning(
-    kappa(X, estimator = "nt_fiml", weight = "quadratic",
-          em_options = list(mean = "equal")),
-    "mean is no longer supported")
+  expect_error(kappa(X, estimator = "nt_fiml",
+                     em_options = list(covariance = "variance_components")),
+               "unknown em_options")
+  expect_error(kappa(X, estimator = "pairwise", em_options = list(tol = 1e-6)),
+               "does not apply")
+  expect_error(alpha(X, estimator = "nt_fiml", em_options = list(flatten = 1)),
+               "unknown em_options")
+  expect_error(kappa_counts(dat.fleiss1971, estimator = "cat_fiml",
+                            em_options = list(flatten = 1)),
+               "unknown em_options")
+  fit <- kappa(X, estimator = "nt_fiml", em_options = list(tol = 1e-9))
+  expect_s3_class(fit, "misskappa_estimate")
+  expect_error(kappa(X, estimator = "nt_fiml", W = diag(2)), "not used by")
+  expect_error(kappa(X, estimator = "ipw", foo = 1), "not used by")
 })
 
 test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {

@@ -74,3 +74,20 @@ test_that("equality tests reject non-fits, empty calls, and broken pairing", {
   rownames(k2_id$psi) <- as.character(nrow(k2_id$psi) + seq_len(nrow(k2_id$psi)))
   expect_error(kappa_test(k1_id, k2_id, paired = TRUE), "row-aligned")
 })
+
+test_that("kappa_test defaults: independent samples, first coefficient", {
+  set.seed(5)
+  k1 <- kappa(matrix(sample.int(4, 150 * 3, TRUE), 150, 3), estimator = "ipw")
+  k2 <- kappa(matrix(sample.int(4, 150 * 3, TRUE), 150, 3), estimator = "ipw")
+  def <- kappa_test(k1, k2)
+  ind <- kappa_test(k1, k2, coef = "Conger", paired = FALSE)
+  expect_equal(def$statistic, ind$statistic)
+  expect_match(def$method, "Independent-sample")
+  expect_equal(def$null.value, c("difference in Conger" = 0))
+  expect_equal(def$alternative, "two.sided")
+
+  c1 <- kappa_counts(dat.fleiss1971)
+  one <- kappa_test(c1, value = 0.4)
+  expect_equal(one$null.value, c(Fleiss = 0.4))
+  expect_error(kappa_test(k1, k2, k1, value = 0.1), "must be 0")
+})
