@@ -24,11 +24,13 @@ $$
 
 The Conger-style observed component averages over identified rater pairs. The
 Fleiss-style component averages over pooled marginal category frequencies.
-Brennan-Prediger uses a uniform chance distribution over categories.
+Brennan-Prediger uses a uniform chance distribution over the rating scale, so
+it needs that scale to be known: the categories for categorical ratings, or the
+`values` passed to the scored estimators.
 
 The C++ side accepts agreement weights $W$ because that is the convention
 used by `irrCAC`. Internally the estimators work with $L = 1 - W$.
-The R side exposes the same choice as `weight`, with `"identity"` for nominal
+The R side exposes the same choice as `weight`, with `"nominal"` for nominal
 agreement and `"linear"` or `"quadratic"` for ordered or scored categories.
 
 The closed-form quadratic estimators use the special case
@@ -39,9 +41,10 @@ $$
 $$
 
 where $v$ is the supplied category-score vector. This loss lets the
-coefficient be expressed through means and covariance matrices, which is why
-`kappa_quadratic()` has a separate implementation from the general
-U-statistic estimator.
+coefficient be expressed through the rater means and covariance matrix, which
+is what the scored estimators `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"`
+exploit: they estimate those moments under missing data and map them to the
+coefficients.
 
 ## References
 

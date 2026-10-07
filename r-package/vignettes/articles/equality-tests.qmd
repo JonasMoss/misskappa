@@ -26,24 +26,24 @@ library(misskappa)
 
 ## One sample: is a coefficient equal to a fixed value?
 
-Pass a single fit and a `value`. This tests whether the (linearly weighted)
-Conger coefficient for the Gwet (2014) data equals 0.5:
+Pass a single fit and a `value`. This tests whether the (nominal) Conger
+coefficient for the Gwet (2014) data equals 0.5. Conger is the first
+coefficient of a `kappa()` fit, so it is the default `coef`:
 
 ```{r}
-kappa_test(kappa(dat.gwet2014, estimator = "ipw"), coef = "Conger", value = 0.5)
+kappa_test(kappa(dat.gwet2014, estimator = "ipw"), value = 0.5)
 ```
 
 ## Independent samples: two studies, different subjects
 
-When the fits come from disjoint sets of subjects, set `paired = FALSE`. The
-variances add. Here the Conger coefficient is compared between the Gwet (2014)
-and Klein (2018) studies:
+When the fits come from disjoint sets of subjects the variances add. This is
+the default (`paired = FALSE`). Here the Conger coefficient is compared between
+the Gwet (2014) and Klein (2018) studies:
 
 ```{r}
 kappa_test(
   gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-  klein = kappa(dat.klein2018, estimator = "ipw"),
-  coef = "Conger", paired = FALSE
+  klein = kappa(dat.klein2018, estimator = "ipw")
 )
 ```
 
@@ -67,8 +67,7 @@ respondents, so the samples are independent:
 g <- split(seq_len(nrow(bfi)), bfi$gender)
 alpha_test(
   men   = alpha(scale_items("C")[g[["1"]], ], estimator = "nt_fiml"),
-  women = alpha(scale_items("C")[g[["2"]], ], estimator = "nt_fiml"),
-  paired = FALSE
+  women = alpha(scale_items("C")[g[["2"]], ], estimator = "nt_fiml")
 )
 ```
 
@@ -76,7 +75,7 @@ alpha_test(
 
 When both coefficients are computed on the *same* subjects, the two estimates
 are correlated and ignoring that dependence gives the wrong standard error.
-`paired = TRUE` (the default) takes the dependence from the influence functions.
+`paired = TRUE` takes the dependence from the influence functions.
 
 A clean illustration on **real crowdsourced data**: in `dat.mcduff2019`, MTurk
 judges rate smiling images on two attributes (*smile presence* and *image
@@ -94,7 +93,7 @@ to_counts <- function(attribute) {
 smile    <- kappa_counts(to_counts("rating_smile"),    weight = "quadratic")
 positive <- kappa_counts(to_counts("rating_positive"), weight = "quadratic")
 
-kappa_test(smile = smile, positive = positive, coef = "Fleiss")
+kappa_test(smile = smile, positive = positive, paired = TRUE)
 ```
 
 The headline is that this paired test runs on a genuinely crowdsourced design: the
@@ -139,13 +138,12 @@ pairs <- combn(4, 2)
 pair_fits <- apply(pairs, 2, function(rs)
   kappa(dat.zapf2016[, rs], estimator = "pairwise"), simplify = FALSE)
 names(pair_fits) <- apply(pairs, 2, paste0, collapse = "")
-do.call(kappa_test, c(pair_fits, list(coef = "Conger", paired = TRUE)))
+do.call(kappa_test, c(pair_fits, list(paired = TRUE)))
 ```
 
 ## Under the hood
 
-All four cases are built only on the exported `coef()`, `vcov()`, and `fit$psi`.
-If you need an arbitrary linear hypothesis (general contrasts with non-zero
-margins across several fits), the internal `joint_vcov()` and `wald_test()`
-provide the general engine that `kappa_test()` and `alpha_test()` are
-convenience wrappers around.
+All four cases are built only on `coef()`, `vcov()`, and the influence rows
+`fit$psi`. For an arbitrary linear hypothesis (general contrasts across several
+fits or coefficients), stack the influence rows yourself as shown in the
+[influence functions](influence-functions.html) article.

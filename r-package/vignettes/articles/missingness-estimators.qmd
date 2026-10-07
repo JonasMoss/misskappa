@@ -13,7 +13,8 @@ missing at random (MAR) likelihood estimators. In raw rater matrices, `NA`
 means the rating was not observed. In the C++ API, categorical missingness is
 encoded by `misskappa::na_code`.
 
-The available-case estimator uses the observed rater pairs directly:
+The simplest moment estimator averages the loss over the observed rater
+pairs:
 
 $$
 \widehat D_o =
@@ -22,11 +23,13 @@ $$
 {\sum_i \sum_{r<s} R_{ir}R_{is}},
 $$
 
-where $R_{ir}=1$ when the rating is observed. This targets the
-pairwise-observed estimand unless missingness is MCAR.
+where $R_{ir}=1$ when the rating is observed. Pooling pairs this way weights
+each rater pair by how often it is co-observed. That is harmless when raters
+share an observation rate, but with rater-varying rates and non-exchangeable
+raters it targets a different average than the fixed-rater coefficient.
 
-The IPW estimator reweights observed pairs by estimated observation
-probabilities. In schematic form,
+The IPW estimator (`"ipw"`) corrects this by reweighting observed pairs by
+estimated observation probabilities. In schematic form,
 
 $$
 \widehat D_o^{\mathrm{IPW}} =
@@ -36,9 +39,14 @@ $$
 $$
 
 with corresponding weighted marginal estimates for chance disagreement. This
-is the MCAR correction used for the raw categorical estimator.
+is the MCAR estimator for raw categorical ratings. The scored `"pairwise"`
+estimator takes a different route to the same goal: it estimates each rater
+mean and each pairwise covariance from the subjects who observed it, and the
+quadratic coefficients are functions of those moments, so it is consistent
+under MCAR.
 
-The FIML estimator fits a categorical full-data distribution under MAR by EM.
+The categorical FIML estimator (`"cat_fiml"`) fits a categorical full-data
+distribution under MAR by EM.
 For observed pattern $o_i$, the likelihood contribution is
 
 $$
@@ -63,16 +71,12 @@ robust under MCAR even when the covariance is misspecified. The saturated model
 is the safer choice under MAR when the covariance may depart from compound
 symmetry.
 
-Gwet's estimator is retained for comparison with the agreement-coefficient
-literature. It uses its own chance-disagreement convention and should be
-interpreted as a comparator rather than the default missing-data target.
-
 ## Compound symmetry on a planned-incomplete design
 
 The saturated coefficients (`"pairwise"`, `"nt_fiml"`, `"cat_fiml"`) are
 functions of *every* pairwise second moment, so they are identified only when
 every rater pair is jointly observed by some subject, a *complete*
-co-observation graph. The compound-symmetry estimators need only a *connected*
+co-observation graph. The compound-symmetry estimator needs only a *connected*
 graph, and that is the whole point of a planned-incomplete design: you can rate
 each subject with a rotating subset of raters and still recover the coefficient.
 
@@ -100,15 +104,12 @@ identifiability error before the estimator runs:
 kappa(dat.tenhove2025, estimator = "nt_fiml")
 ```
 
-The compound-symmetry estimators fit the same data. The likelihood
-(`"nt_fiml_cs"`) and its distribution-free MCAR moment companion
-(`"pairwise_cs"`) agree closely:
+The compound-symmetry estimator fits the same data. Declaring the `1`--`5`
+scale with `values` adds Brennan-Prediger to Conger and Fleiss:
 
 ```{r}
-kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
-kappa(dat.tenhove2025, estimator = "pairwise_cs")
+kappa(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
 ```
 
-Both report the usual Conger, Fleiss, and Brennan-Prediger coefficients with
-sandwich standard errors, recovered from a design where the saturated estimators
-cannot be computed at all.
+All three coefficients come with sandwich standard errors, recovered from a
+design where the saturated estimators cannot be computed at all.

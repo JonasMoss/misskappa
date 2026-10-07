@@ -29,7 +29,7 @@ library(misskappa)
 `fit$psi`.
 
 ```{r}
-fit <- kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
+fit <- kappa(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
 psi <- influence(fit)
 dim(psi)
 head(psi, 3)
@@ -63,34 +63,32 @@ c(estimate = est, se = se, z = z, p = 2 * pnorm(-abs(z)))
 When two fits share the same subjects in the same row order, their influence
 rows are aligned, so the contrast's influence function is the *row-wise*
 difference of the two columns. The cross-fit dependence is recovered with no
-independence assumption. Here the Conger coefficient from the likelihood
-(`"nt_fiml_cs"`) and moment (`"pairwise_cs"`) compound-symmetry estimators is
-compared on the same planned-incomplete data:
+independence assumption. Here the Conger coefficient of two rater pairs is
+compared on the same 50 subjects of the Zapf (2016) data:
 
 ```{r}
-f_mle <- kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
-f_mom <- kappa(dat.tenhove2025, estimator = "pairwise_cs")
+f_ab <- kappa(dat.zapf2016[, 1:2], estimator = "pairwise")
+f_cd <- kappa(dat.zapf2016[, 3:4], estimator = "pairwise")
 
-est <- coef(f_mle)["Conger"] - coef(f_mom)["Conger"]
-d   <- influence(f_mle)[, "Conger"] - influence(f_mom)[, "Conger"]
-se  <- sqrt(sum(d^2)) / nrow(f_mle$psi)
+est <- coef(f_ab)["Conger"] - coef(f_cd)["Conger"]
+d   <- influence(f_ab)[, "Conger"] - influence(f_cd)[, "Conger"]
+se  <- sqrt(sum(d^2)) / nrow(f_ab$psi)
 c(estimate = est, se = se, z = est / se)
 ```
 
-The packaged version of exactly this calculation is `kappa_test(..., paired =
-TRUE)` (see `vignette("equality-tests")`). Rolling it by hand is only worthwhile
-for contrasts the test front door does not cover.
+The packaged version of exactly this calculation is
+`kappa_test(f_ab, f_cd, paired = TRUE)` (see the
+[equality tests](equality-tests.html) article). Rolling it by hand is only
+worthwhile for contrasts the test front door does not cover.
 
 ## Which estimates carry an influence matrix
 
 Every estimator in `misskappa` returns `psi`:
 
-* the available-case, IPW, and Gwet moment estimators
-* the `"pairwise"` and `"pairwise_cs"` covariance estimators
+* the IPW and `"pairwise"` moment estimators
 * the categorical and normal-theory FIMLs (saturated `"nt_fiml"` and
   compound-symmetry `"nt_fiml_cs"`)
-* the counts-format estimators
+* the counts-format estimators and every `alpha()` estimator
 
-Any two
-fits on the same subjects can therefore be combined through their aligned
-influence rows.
+Any two fits on the same subjects can therefore be combined through their
+aligned influence rows.

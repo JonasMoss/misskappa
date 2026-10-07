@@ -123,10 +123,6 @@ r-check-release: vendor r-docs
     R CMD build r-package; \
     R CMD check --no-manual misskappa_*.tar.gz
 
-# Regenerate irrCAC oracle fixtures (requires R + irrCAC installed).
-regen-oracle:
-  @Rscript tests/tools/regen_oracle.R
-
 # Build pkgdown site. Requires the R packages pkgdown and quarto; vendors first
 # because pkgdown installs/loads the R package. If Pandoc is only available via
 # Quarto, expose Quarto's bundled copy to rmarkdown/pkgdown.

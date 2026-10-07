@@ -19,11 +19,9 @@ unbalanced designs (King & Chinchilli 2001; Carrasco & Jover 2003).
 
 What is still in preparation is the construction around that inference: the
 **component-separable** weighted family below, the full feature-coupling matrix
-$W$, and the supporting manuscript. The interface may change, and the
-full-matrix FIML route stays internal for the numerical reason noted at the end
-of this article. The general Fréchet framework for multirater agreement
-(Moss 2024) is the loose anchor, but it does **not** cover the separable-weight
-family that is new here.
+$W$, and the supporting manuscript. The interface may change. The general
+Fréchet framework for multirater agreement (Moss 2024) is the loose anchor, but
+it does **not** cover the separable-weight family that is new here.
 :::
 
 ```{r}
@@ -75,8 +73,7 @@ feature-level moments, which keeps the missing-data estimators below tractable.
 Those estimators are the standard `pairwise` and `ipw` machinery from the rest
 of the package. What is new is the weighted separable loss family, whose closest
 published precedent is the single fixed-loss multivariate agreement coefficient
-of Janson & Olsson (2001). It is sketched in the proto-paper note under the
-project's `dev/notes/`.
+of Janson & Olsson (2001).
 
 ## The expert panel
 
@@ -132,43 +129,35 @@ $$
 
 Because the estimand depends on the data only through $(\mu, \Sigma)$, it admits a
 **FIML** estimator. Fit the saturated normal mean and covariance by EM and use every
-partially observed vector, exactly as the scalar `nt_fiml` quadratic kappa does. This
-is the vector analogue of `kappa_quadratic_fiml()`. With a quadratic weight the
-coefficient is Lin's concordance correlation coefficient, and using every partially
-observed vector this way is the variance-components route by which that coefficient has
-long been estimated under unbalanced repeated measures (King & Chinchilli 2001,
-Carrasco & Jover 2003). What is new is the full matrix $W$ coupling features, not the
+partially observed vector, exactly as the scalar `nt_fiml` quadratic kappa does. With
+a quadratic weight the coefficient is Lin's concordance correlation coefficient, and
+using every partially observed vector this way is the variance-components route by
+which that coefficient has long been estimated under unbalanced repeated measures
+(King & Chinchilli 2001, Carrasco & Jover 2003). What is new is the full matrix $W$ coupling features, not the
 way incomplete data are handled.
 
-The publicly supported vector path uses *diagonal* weights, so the squared-loss
-coefficient with per-feature weights is reachable directly:
+Passing a feature metric `W` to `kappa()` selects this squared loss.
+`"pairwise"` is the moment estimator, `"nt_fiml"` the saturated normal FIML, and
+`"nt_fiml_cs"` the FIML under the block compound-symmetry covariance
+$\Sigma = J_R \otimes \Psi + I_R \otimes E$, the vector analogue of the scalar
+variance-component model. With the identity metric, the moment and
+compound-symmetry estimates agree on the complete CRACKLES data:
 
 ```{r}
-kappa(dat.vanbelle2019[, 1:4, ], weight = "quadratic", estimator = "pairwise")
+sites <- dat.vanbelle2019[, 1:4, ]
+kappa(sites, estimator = "pairwise", W = diag(6))
+kappa(sites, estimator = "nt_fiml_cs", W = diag(6))
 ```
 
-The **full-matrix $W$** quadratic estimators, including the FIML route, currently
-live in an internal backend, `kappa_vector_quadratic()`, and are *not* exposed
-through `kappa()`. The reason is numerical rather than methodological. The
-normal-theory FIML path inverts per-pattern covariance blocks and is singular when a
-feature has no within-pattern variation, which the complete binary CRACKLES data
-triggers. The call shape, for reference only, is
+The saturated `"nt_fiml"` inverts per-pattern covariance blocks and fails with a
+numerical error when the fitted covariance is singular, which binary data with
+few observers can trigger. The compound-symmetry model has far fewer parameters
+and is the practical FIML choice there.
 
-```{r}
-#| eval: false
-# Internal route, may fail to converge on degenerate data, not part of the
-# public API. Shown only to document the full-matrix W and FIML path.
-fit <- misskappa:::kappa_vector_quadratic(
-  dat.vanbelle2019[, 1:4, ],
-  method = "nt_fiml",            # or "pairwise"
-  W = diag(6)                    # full symmetric PSD feature-weight matrix
-)
-coef(fit)
-```
-
-See the proto-paper note in the project's `dev/notes/` for the estimands, the
-delta-method derivations, and the open problems (categorical full-profile FIML,
-nonregular RMS at perfect agreement, FIML on degenerate data).
+Brennan-Prediger needs a declared rating scale. For vector ratings, pass
+`ranges`, a features-by-2 matrix of `(lo, hi)` bounds, to the FIML estimators.
+It fixes a continuous uniform chance baseline per feature, which suits
+continuous scores rather than binary ones like these.
 
 ## References
 

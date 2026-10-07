@@ -91,11 +91,11 @@ kernel of Hubert (1977) is exposed as `"hubert"`.
 
 ## Estimators and weights
 
-The estimator menu carries over from the pairwise case. `"ipw"` reweights for
-missing entries under MCAR, `"cat_fiml"` is the saturated-multinomial FIML for
-categorical ratings under ignorable missingness, and `"pairwise"` is the
-complete-data estimator (it errors if any rating is missing). For `g > 2` the
-supported `weight`s are `"nominal"`, `"linear"`, and `"hubert"` (the
+Two estimators carry over from the pairwise case. `"ipw"` reweights for
+missing entries under MCAR and reduces to the complete-data estimator when no
+rating is missing. `"cat_fiml"` is the saturated-multinomial FIML for
+categorical ratings under ignorable missingness. For `g > 2` the supported
+`weight`s are `"nominal"`, `"linear"` (with `"ipw"` only), and `"hubert"` (the
 all-raters-equal kernel, defined only for `g > 2`).
 
 ## Quadratic weighting is g-invariant

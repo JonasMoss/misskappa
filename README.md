@@ -2,7 +2,7 @@
 
 <!-- README.md is generated from README.qmd. Please edit that file and run `quarto render README.qmd`. -->
 
-<img src="docs/logo.png" alt="misskappa" align="right" width="300">
+<img src="r-package/man/figures/logo.png" alt="misskappa" align="right" width="300">
 
 # misskappa
 
@@ -47,7 +47,7 @@ consistent under MCAR:
 
 ``` r
 kappa(dat.klein2018, estimator = "ipw")
-#> misskappa: estimator=ipw, weight=nominal
+#> misskappa: estimator = ipw, weight = nominal, n = 10
 #>                  estimate     se  lower  upper
 #> Conger             0.4301 0.1050 0.2244 0.6358
 #> Fleiss             0.4054 0.1196 0.1710 0.6399
@@ -60,19 +60,23 @@ instead of its multirater cousin Conger.)
 
 Want to know whether two studies agree to the same degree? `kappa_test()` checks
 it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
-so the two samples are independent and we set `paired = FALSE`:
+so the two samples are independent, which is the default. (Pass `paired = TRUE`
+for fits on the same subjects.)
 
 ``` r
 kappa_test(
   gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-  klein = kappa(dat.klein2018, estimator = "ipw"),
-  coef = "Conger", paired = FALSE
+  klein = kappa(dat.klein2018, estimator = "ipw")
 )
+#> Warning: rater pair(s) rater4-rater5 co-observed by only one subject; the
+#> corresponding pairwise covariance is degenerate and the standard error
+#> unreliable.
 #> 
-#>  Independent-sample test of equal Conger across 2 fits
+#>  Independent-sample Wald test of equal Conger across 2 fits
 #> 
 #> data:  gwet, klein
 #> X-squared = 0.0019646, df = 1, p-value = 0.9646
+#> alternative hypothesis: true difference in Conger is not equal to 0
 #> sample estimates:
 #>      gwet     klein 
 #> 0.4233051 0.4301049
@@ -83,7 +87,10 @@ kappa_test(
 
 ``` r
 kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
-#> misskappa: estimator=ipw, weight=nominal, g=3
+#> Warning: rater 3-tuple(s) rater1-rater4-rater5, rater2-rater4-rater5,
+#> rater3-rater4-rater5 co-observed by only one subject; the corresponding
+#> observed-disagreement term is degenerate and the standard error unreliable.
+#> misskappa: estimator = ipw, weight = nominal, g = 3, n = 20
 #>        estimate     se  lower  upper
 #> Conger   0.4369 0.0850 0.2703 0.6034
 #> Fleiss   0.4308 0.0861 0.2620 0.5997
@@ -102,7 +109,7 @@ least one answer. Robust normal-theory FIML keeps every respondent:
 data(bfi, package = "psych")
 N <- paste0("N", 1:5)
 alpha(bfi[, N], estimator = "nt_fiml")
-#> misskappa: estimator=nt_fiml, weight=score
+#> misskappa: estimator = nt_fiml, n = 2800
 #>       estimate    se lower  upper
 #> alpha   0.8138 0.006 0.802 0.8256
 ```
@@ -116,13 +123,13 @@ Different people answer in each group, so the samples are independent again:
 g <- split(seq_len(nrow(bfi)), bfi$gender)
 alpha_test(
   men   = alpha(bfi[g[["1"]], N], estimator = "nt_fiml"),
-  women = alpha(bfi[g[["2"]], N], estimator = "nt_fiml"),
-  paired = FALSE)
+  women = alpha(bfi[g[["2"]], N], estimator = "nt_fiml"))
 #> 
-#>  Independent-sample test of equal alpha across 2 fits
+#>  Independent-sample Wald test of equal alpha across 2 fits
 #> 
 #> data:  men, women
 #> X-squared = 3.3766, df = 1, p-value = 0.06613
+#> alternative hypothesis: true difference in alpha is not equal to 0
 #> sample estimates:
 #>       men     women 
 #> 0.7959317 0.8209147
@@ -138,23 +145,22 @@ as the scalar case.
 
 None of the inference is new. A missing component drops out of the rater pairs
 it touches, and the estimators are the standard missing-data ones used
-throughout the package. For the quadratic weight the coefficient equals Lin's
+throughout the package. For the quadratic weight the coefficient equals Lin’s
 concordance correlation coefficient, and fitting it to incomplete data is the
 variance-components approach long used for that coefficient under unbalanced
 designs (King and Chinchilli 2001, Carrasco and Jover 2003).
 
 What is still in preparation is the construction, not the inference: the
-component-separable weighted family, the full feature-coupling matrix that ties
-components together instead of weighting them one at a time, and the paper
-behind them. That full-matrix route stays internal for now because its
-per-pattern covariance step is fragile when a feature never varies. The
-[vector-valued agreement
+component-separable weighted family, the full feature-coupling matrix `W` that
+ties components together instead of weighting them one at a time, and the paper
+behind them. Passing `W` to `kappa()` selects the coupled squared loss, with a
+moment estimator and two normal-theory FIMLs. The [vector-valued agreement
 article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html)
 walks through it.
 
-Every result is a `misskappa_estimate` object holding the estimates and their
-covariance matrix. Reach for `coef()`, `vcov()`, and `confint()` when you want
-the pieces.
+Every result is a `misskappa_estimate` object holding the estimates, their
+covariance matrix, and per-subject influence functions. Reach for `coef()`,
+`vcov()`, `confint()`, and `as.data.frame()` when you want the pieces.
 
 ## Documentation
 
@@ -166,13 +172,15 @@ reference and the worked-example articles:
 - [Agreement coefficients and loss matrices](https://jonasmoss.github.io/misskappa/articles/agreement-coefficients.html)
 - [Missingness and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
 - [Testing equality of agreement coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
-- [Validation strategy](https://jonasmoss.github.io/misskappa/articles/validation.html)
+- [Working with influence functions](https://jonasmoss.github.io/misskappa/articles/influence-functions.html)
+- [How misskappa is validated](https://jonasmoss.github.io/misskappa/articles/validation.html)
 - [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(in preparation)*
 - [C++ API reference](https://jonasmoss.github.io/misskappa/cpp/)
 
 ## Contents
 
-- **C++17 library** in `include/misskappa/` and `src/`
+- **C++17 library** in `include/misskappa/` and `src/`. It is the computational
+  engine of the R package, and its interface may change between releases.
 - **R package** in `r-package/`, wrapping the library via Rcpp
 - **Manuscripts** in `papers/`, the completed papers accompanying this package
 
@@ -188,8 +196,8 @@ Or via `just`:
 
 ``` sh
 just test            # dev build + ctest
-just r-install       # build opt + install R package
-just r-check         # R CMD check + testthat
+just r-install       # vendor the C++ into the R package and install it
+just r-check         # fast R CMD check (no vignettes)
 just paper <slug>    # build the manuscript PDF for papers/<slug>/
 ```
 

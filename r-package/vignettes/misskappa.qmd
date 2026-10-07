@@ -55,21 +55,40 @@ confint(fit)
 confint(fit, transform = "fisher")
 ```
 
+On complete data with few subjects, `confint(fit, method = "jackknife")` gives
+exact delete-one jackknife intervals with a *t* critical value instead.
+`?confint.misskappa_estimate` lists the fits that support it. For a tidy
+summary, `as.data.frame(fit)` returns one row per coefficient with its
+estimate, standard error, and interval.
+
 ## Choosing an estimator
 
 The right `estimator=` depends on the data and the missingness assumption:
 
-| Input | `estimator` | Assumption |
+| Function and data | `estimator` | Assumption |
 |---|---|---|
-| Categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
-| Categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
-| Scored ratings (quadratic) | `"pairwise"` | MCAR, distribution-free, saturated covariance |
-| Scored ratings (quadratic) | `"pairwise_cs"` | MCAR, distribution-free, compound-symmetry covariance |
-| Scored ratings (quadratic) | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
-| Scored ratings (quadratic) | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
+| `kappa()`, categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
+| `kappa()`, categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
+| `kappa()`, scored ratings | `"pairwise"` | MCAR, distribution-free, saturated covariance |
+| `kappa()`, scored ratings | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
+| `kappa()`, scored ratings | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
+| `kappa_counts()`, category counts | `"fleiss_cuzick"` | MCAR, exchangeable raters |
+| `kappa_counts()`, category counts | `"cat_fiml"` | Ignorable, exchangeable raters |
+| `kappa_counts()`, category counts | `"nt_fiml_cs"` | Ignorable, exchangeable raters, normal-theory |
+| `alpha()`, item scores | `"pairwise"` | MCAR, distribution-free |
+| `alpha()`, item scores | `"cat_fiml"` | Ignorable, saturated multinomial |
+| `alpha()`, item scores | `"nt_fiml"`, `"nt_fiml_cs"` | Ignorable, normal-theory |
 
 The scored estimators treat the categories as numbers and use the quadratic
 loss. Pass the scores directly, or integer codes together with `values`.
+Brennan–Prediger compares the observed disagreement with a uniform draw from
+the rating scale, so the scored estimators report it only when `values`
+declares that scale:
+
+```{r}
+kappa(dat.zapf2016, estimator = "pairwise")
+kappa(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
+```
 
 The two normal-theory FIMLs differ only in the within-subject covariance they
 fit. `"nt_fiml"` is *saturated* (an unrestricted covariance) and `"nt_fiml_cs"`
@@ -81,15 +100,11 @@ covariance is misspecified. Prefer the saturated `"nt_fiml"` when the
 missingness may be MAR and the covariance could depart from compound symmetry
 (for example, rater subgroups with systematically different bias), where the
 structured model can become inconsistent but the saturated one stays robust.
-`"pairwise_cs"` is the distribution-free MCAR moment companion to `"nt_fiml_cs"`:
-same compound-symmetry structure, no normality assumption. Because the
-compound-symmetry estimators need only a *connected* co-observation graph, they
-recover the coefficient on planned-incomplete designs where the saturated
-estimators are not even identified. See `vignette("missingness-estimators")`.
-
-```{r}
-kappa(dat.zapf2016, estimator = "pairwise")
-```
+Because compound symmetry needs only a *connected* co-observation graph, it
+recovers the coefficient on planned-incomplete designs where the saturated
+estimators are not even identified. The
+[missingness and estimators](articles/missingness-estimators.html) article works
+through such a design.
 
 ## Counts-format data
 
@@ -100,6 +115,8 @@ table (30 subjects, six raters, five categories):
 ```{r}
 kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 ```
+
+`ratings_to_counts()` turns a subjects-by-raters matrix into this format.
 
 ## Coefficient alpha
 
@@ -136,25 +153,23 @@ kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 ```
 
 The [g-wise agreement](articles/gwise-agreement.html) article develops the
-multirater kernels in full. Vector-valued agreement is in preparation: the
-missing-data estimators are the same standard pairwise/IPW machinery used
-elsewhere in the package, while the new work is the component-separable vector
-loss family and full-matrix feature coupling. See the
-[vector-valued agreement](articles/vector-valued-agreement.html) article.
+multirater kernels in full, and the
+[vector-valued agreement](articles/vector-valued-agreement.html) article covers
+the component-separable losses and the full feature-metric squared loss.
 
 ## Testing whether coefficients are equal
 
 A common question is whether a coefficient is the *same* across two groups, two
 estimators, two timepoints, or several rater pairs. `kappa_test()` and
-`alpha_test()` answer it and return a standard `htest`. Use `paired = TRUE`
-(the default) when the fits share the same subjects (the dependence is taken
-from the per-subject influence functions) and `paired = FALSE` for
-independent samples.
+`alpha_test()` answer it and return a standard `htest`. By default the fits
+are independent samples and their variances add. Use `paired = TRUE` when the
+fits share the same subjects in the same order, and the dependence is then
+taken from the per-subject influence functions:
 
 ```{r}
 kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
            CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
-           coef = "Conger")
+           paired = TRUE)
 ```
 
 See the [equality tests](articles/equality-tests.html) article for the
