@@ -155,7 +155,7 @@ Result<Estimation> estimate_alpha_available_impl(const Data& data, int n, int R)
   RealMat vcov = (J * gamma * J.transpose()) / static_cast<double>(n);
   RealMat psi = build_psi_from_phi(phi, J);
 
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi), {}};
 }
 
 }  // namespace

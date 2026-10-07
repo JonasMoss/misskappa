@@ -40,10 +40,8 @@ as fixed, distinct from ten Hove's random-rater MLE-RE / ICC. The standard error
 is the sandwich delta-method contraction of the alpha gradient with the
 asymptotic covariance of the fitted moments.
 
-The fit and its sandwich covariance reproduce magmaan's
-`estimate_saturated_em_moments()` and lavaan's saturated estimator. The
-interval matches `coefficientalpha::alpha(varphi = 0)` and a nonparametric
-case bootstrap.
+The fitted moments reproduce lavaan's saturated estimator and the standard
+error matches `coefficientalpha::alpha(varphi = 0)`.
 
 This backend is normally reached through [alpha()], which checks that every
 item is observed and, for the default saturated covariance model, every item

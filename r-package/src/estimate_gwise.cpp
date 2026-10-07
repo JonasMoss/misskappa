@@ -120,7 +120,7 @@ Estimation finish_estimation(
 
   RealMat vcov = (J * Gamma_hat * J.transpose()) / static_cast<double>(n);
   RealMat psi = build_psi_from_phi(phi, J);
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi), {}};
 }
 
 RealMat categorical_margins(IntMatView ratings, int C) {
@@ -464,7 +464,7 @@ Result<Estimation> estimate_ipw_gwise(
 
   RealMat vcov = (J * Gamma_hat * J.transpose()) / static_cast<double>(n);
   RealMat psi = build_psi_from_phi(phi, J);
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi), {}};
 }
 
 Result<Estimation> estimate_gwise_continuous(
@@ -747,7 +747,7 @@ Result<Estimation> estimate_ipw_gwise_continuous(
   const RealMat J_combined = J_kappa * J_d;
   RealMat vcov = (J_combined * Gamma_hat * J_combined.transpose()) / static_cast<double>(n);
   RealMat psi = build_psi_from_phi(phi_matrix, J_combined);
-  return Estimation{std::move(estimates), std::move(vcov), std::move(psi)};
+  return Estimation{std::move(estimates), std::move(vcov), std::move(psi), {}};
 }
 
 }  // namespace misskappa

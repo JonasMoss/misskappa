@@ -24,13 +24,14 @@ Depends:
     R (>= 4.0.0)
 Imports:
     Rcpp,
-    stats
+    stats,
+    utils
 LinkingTo:
     Rcpp,
     RcppEigen
 Suggests:
-    roxygen2,
     testthat (>= 3.0.0),
+    coefficientalpha,
     lavaan,
     psych,
     knitr,

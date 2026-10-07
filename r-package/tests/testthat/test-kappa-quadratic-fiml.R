@@ -142,16 +142,16 @@ test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
 
 test_that("analytic gradient G matches a numeric derivative wrt theta", {
   X <- make_ratings(300L, 4L, miss = 0.2, seed = 4L)
-  em <- misskappa:::.amc_em(X, misskappa:::.amc_patterns(is.finite(X)))
+  em <- .amc_em(X, .amc_patterns(is.finite(X)))
   p <- ncol(X); pstar <- p * (p + 1L) / 2L
   bp_chance <- misskappa:::.quadratic_bp_chance(X)
-  grad <- misskappa:::.kqf_grad(em$mu, em$Sigma, bp_chance)
+  grad <- .kqf_grad(em$mu, em$Sigma, bp_chance)
 
   kap_of_theta <- function(theta) {
-    pr <- misskappa:::.amc_unpack(theta, p, pstar)
+    pr <- .amc_unpack(theta, p, pstar)
     ref_kappa(pr$mu, pr$Sigma, bp_chance)
   }
-  theta <- c(em$mu, misskappa:::.amc_vech(em$Sigma))
+  theta <- c(em$mu, .amc_vech(em$Sigma))
   h <- 1e-6
   Gnum <- matrix(0, 3L, length(theta))
   for (k in seq_along(theta)) {
@@ -380,34 +380,32 @@ test_that("vector quadratic validates the full feature metric", {
   )
 })
 
-test_that("saturated EM covariance matches magmaan's oracle", {
-  skip_if_not_installed("magmaan")
+test_that("saturated EM moments match the pure-R reference EM", {
   X <- make_ratings(500L, 5L, miss = 0.2, seed = 6L)
+  X <- X[rowSums(is.finite(X)) > 0L, ]
   fit <- kappa_quadratic_fiml(X)
-  mask <- is.finite(X); storage.mode(mask) <- "logical"
-  # Match misskappa's moment-update gate instead of inheriting magmaan's
-  # deliberately looser package default, which is not part of this oracle.
-  mag <- magmaan::magmaan_core$estimate_saturated_em_moments(
-    list(X = X, mask = mask),
-    control = list(h1_em_param_tol = 1e-8, h1_em_max_iter = 10000L))
-  expect_equal(max(abs(fit$moments$Sigma - mag$cov[[1L]])), 0, tolerance = 1e-7)
+  em <- .amc_em(X, .amc_patterns(is.finite(X)))
+  expect_equal(fit$moments$mu, unname(em$mu), tolerance = 1e-7)
+  expect_equal(unname(fit$moments$Sigma), unname(em$Sigma), tolerance = 1e-7)
 })
 
-test_that("sandwich vcov matches magmaan's saturated-moment sandwich ACOV", {
-  # magmaan exposes the saturated-EM sandwich ingredients H, J and
-  # acov = H^-1 J H^-1 for theta = (mu, vech Sigma) in the same column-major
-  # ordering. The functional vcov G acov G^T must reproduce the per-subject
-  # influence-function vcov, validated through magmaan's independent FIML path.
-  skip_if_not_installed("magmaan")
+test_that("sandwich vcov matches the pure-R reference sandwich", {
+  # Reference sandwich for theta = (mu, vech Sigma): casewise scores S, observed
+  # information H = -(1/n) d(sum S)/dtheta, acov = H^-1 (S'S / n) H^-1 / n,
+  # contracted with the analytic coefficient gradient G.
   X <- make_ratings(500L, 4L, miss = 0.2, seed = 12L,
                     mu = c(-0.4, -0.1, 0.2, 0.5))
+  X <- X[rowSums(is.finite(X)) > 0L, ]
   fit <- kappa_quadratic_fiml(X)
-  G <- misskappa:::.kqf_grad(fit$moments$mu, fit$moments$Sigma, fit$bp_chance)$G
-  mask <- is.finite(X); storage.mode(mask) <- "logical"
-  # See the convergence-control note in the moment comparison above.
-  acov <- as.matrix(magmaan::magmaan_core$estimate_saturated_em_moments(
-    list(X = X, mask = mask),
-    control = list(h1_em_param_tol = 1e-8, h1_em_max_iter = 10000L))$acov)
+  p <- ncol(X); pstar <- p * (p + 1L) / 2L; n <- nrow(X)
+  pat <- .amc_patterns(is.finite(X))
+  vp <- .amc_vech_pos(p)
+  mu <- fit$moments$mu; Sigma <- fit$moments$Sigma
+  theta <- c(mu, .amc_vech(Sigma))
+  S <- .amc_score_matrix(mu, Sigma, X, pat, vp, p, pstar)
+  Hinv <- solve(.amc_information(theta, X, pat, vp, p, pstar))
+  acov <- Hinv %*% (crossprod(S) / n) %*% Hinv / n
+  G <- .kqf_grad(mu, Sigma, fit$bp_chance)$G
   V_oracle <- G %*% acov %*% t(G)
   expect_equal(unname(vcov(fit)), unname(V_oracle), tolerance = 1e-6)
 })

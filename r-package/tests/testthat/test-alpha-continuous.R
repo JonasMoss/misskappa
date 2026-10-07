@@ -101,14 +101,14 @@ test_that("standard errors ignore legacy fd_h option", {
 test_that("analytic casewise scores match numerical differentiation", {
   X <- make_data(200L, 5L, miss = 0.2, seed = 4L)
   p <- ncol(X); pstar <- p * (p + 1L) / 2L
-  vp <- misskappa:::.amc_vech_pos(p)
-  pat <- misskappa:::.amc_patterns(is.finite(X))
-  em <- misskappa:::.amc_em(X, pat)
-  theta <- c(em$mu, misskappa:::.amc_vech(em$Sigma))
-  S <- misskappa:::.amc_score_matrix(em$mu, em$Sigma, X, pat, vp, p, pstar)
+  vp <- .amc_vech_pos(p)
+  pat <- .amc_patterns(is.finite(X))
+  em <- .amc_em(X, pat)
+  theta <- c(em$mu, .amc_vech(em$Sigma))
+  S <- .amc_score_matrix(em$mu, em$Sigma, X, pat, vp, p, pstar)
 
   loglik_i <- function(th, xi) {
-    pr <- misskappa:::.amc_unpack(th, p, pstar)
+    pr <- .amc_unpack(th, p, pstar)
     o <- which(is.finite(xi))
     e <- xi[o] - pr$mu[o]
     So <- pr$Sigma[o, o, drop = FALSE]

@@ -1,12 +1,10 @@
 # Quadratic (Conger / Fleiss / Brennan-Prediger) kappa for continuous ratings
 # under ignorable missingness, via a normal FIML / EM covariance and a
 # delta-method standard error. This is the quadratic-kappa counterpart of
-# alpha_continuous(): the two share the normal EM, the analytic
-# casewise scores, the observed information, and the sandwich contraction. The
-# only coefficient-specific piece is the gradient .kqf_grad().
-#
-# The EM, score, and information calculations live in the C++ normal-FIML
-# backend shared with alpha_continuous().
+# alpha_continuous(): the two share the C++ normal EM, the analytic casewise
+# scores, the observed information, and the sandwich contraction. The only
+# coefficient-specific piece is the gradient (a pure-R reference copy lives in
+# tests/testthat/helper-normal-fiml-oracle.R).
 #
 # Unlike alpha, the quadratic kappas depend on the rater means through
 # t3 = sum_j (mu_j - mubar)^2, so the gradient carries a non-zero mean block.
@@ -65,64 +63,6 @@
          call. = FALSE)
   }
   chance
-}
-
-# ---- coefficient gradient ---------------------------------------------------
-
-# Conger, Fleiss, and Brennan-Prediger quadratic kappas as smooth maps of
-# theta = (mu, vech Sigma), following kappa-missing-quadratic.tex (eqs.
-# fleiss-t / conger-t). Returns the point estimates and the 3 x q gradient
-# G = J_h A_t, in the same column-major vech convention (off-diagonal weight 2)
-# as .amc_score_matrix(), so the sandwich contraction scores %*% (Hinv %*% t(G))
-# is exact.
-#
-# Summaries: t1 = 1' Sigma 1, t2 = tr Sigma, t3 = mu' Q mu with Q = I - R^-1 11'.
-#   kappa_F = (t1 - t2 - t3) / [(R-1)(t2 + t3)]
-#   kappa_C = (t1 - t2)      / [(R-1) t2 + R t3]
-.kqf_grad <- function(mu, Sigma, bp_chance) {
-  R <- length(mu)
-  pstar <- R * (R + 1L) / 2L
-  q <- R + pstar
-
-  t1 <- sum(Sigma)            # 1' Sigma 1
-  t2 <- sum(diag(Sigma))      # tr Sigma
-  mubar <- mean(mu)
-  t3 <- sum((mu - mubar)^2)   # mu' Q mu
-
-  dC <- (R - 1) * t2 + R * t3 # Conger denominator
-  nC <- t1 - t2               # Conger numerator
-  dF <- (R - 1) * (t2 + t3)   # Fleiss denominator
-  nF <- t1 - t2 - t3          # Fleiss numerator
-  d_obs <- (2 / (R - 1)) * (t2 + t3 - t1 / R)
-  conger <- nC / dC
-  fleiss <- nF / dF
-  bp <- 1 - d_obs / bp_chance
-
-  # A_t = d(t1, t2, t3) / d theta, a 3 x q matrix with columns
-  # [mu (R) | vech(Sigma) (pstar)] in column-major lower-triangular order.
-  idx <- which(lower.tri(Sigma, diag = TRUE), arr.ind = TRUE) # column-major
-  diagonal <- idx[, 1L] == idx[, 2L]
-  At <- matrix(0, 3L, q)
-  At[1L, (R + 1L):q] <- ifelse(diagonal, 1, 2)  # t1: off-diagonals enter twice
-  At[2L, (R + 1L):q] <- ifelse(diagonal, 1, 0)  # t2: diagonal only
-  At[3L, seq_len(R)] <- 2 * (mu - mubar)        # t3: mean block, 2 Q mu
-
-  # J_h = d(kappa_C, kappa_F, kappa_BP) / d(t1, t2, t3), a 3 x 3 matrix.
-  Jh <- matrix(0, 3L, 3L)
-  Jh[1L, ] <- c(1 / dC, -1 / dC - nC * (R - 1) / dC^2, -nC * R / dC^2)
-  f_t23 <- -1 / dF - nF * (R - 1) / dF^2        # equal for t2 and t3
-  Jh[2L, ] <- c(1 / dF, f_t23, f_t23)
-  bp_factor <- -2 / (bp_chance * (R - 1))
-  Jh[3L, ] <- c(-bp_factor / R, bp_factor, bp_factor)
-
-  G <- Jh %*% At
-  rownames(G) <- c("Conger", "Fleiss", "Brennan-Prediger")
-  list(
-    estimates = c(Conger = conger, Fleiss = fleiss,
-                  `Brennan-Prediger` = bp),
-    G = G,
-    summaries = c(t1 = t1, t2 = t2, t3 = t3)
-  )
 }
 
 # ---- public estimator -------------------------------------------------------

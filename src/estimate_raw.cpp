@@ -233,7 +233,7 @@ Result<Estimation> estimate_raw(
   RealMat psi_kappa = build_psi_from_phi(phi_matrix, J_combined);
 
   return Estimation{std::move(estimates), std::move(kappa_cov),
-                    std::move(psi_kappa)};
+                    std::move(psi_kappa), {}};
 }
 
 }  // namespace
