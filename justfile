@@ -89,7 +89,7 @@ r-dev:
   @cmake --preset opt
   @cmake --build --preset opt --target misskappa --parallel $(nproc)   # lib only — skip the unit-test exe
   @root="$(pwd)"; \
-    rsync -a --delete \
+    rsync -a --delete --delete-excluded \
       --exclude='*.o' --exclude='*.so' --exclude='*.dll' --exclude='symbols.rds' \
       r-package/ build-rdev/; \
     cp dev/r-makevars-dev build-rdev/src/Makevars; \

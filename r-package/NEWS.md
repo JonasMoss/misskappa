@@ -40,6 +40,14 @@ renames below.
 * Error messages no longer show internal function calls.
 * `psych` and `coefficientalpha` leave Suggests.
 
+## Internals
+
+* The internal `wald_test()` and the C++-only SQUAREM option of the
+  categorical EM are removed. Arbitrary contrasts are built from `fit$psi`
+  (see the influence-functions article).
+* The simulation experiments and research notes moved out of the public
+  repository.
+
 # misskappa 2.0.0
 
 This release tightens the R interface. Several changes break code written for

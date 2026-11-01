@@ -59,11 +59,13 @@ paper") in notes that reference them.
   (`papers/guessing/` and `papers/kappa-sd/`), each with its own sources,
   bibliography, figures, tables, and reproduction scripts. Work-in-progress
   manuscripts (the kappa companion papers and the standalone coefficient-alpha
-  paper) live in a separate private repository, not here.
-- `docs/` — repo-level documentation assets, including shared artwork such as
-  the project logo. Generated docs output is under `docs/site/` and is ignored;
-  do not commit generated HTML.
-- `dev/notes/` — repo-level development notes; `todo.md` is the single backlog.
+  paper), the simulation experiments (`experiments/`), and research notes
+  live in a separate private repository, not here.
+- `docs/` — the Doxygen configuration. Generated docs output is under
+  `docs/site/` and is ignored; do not commit generated HTML. The logo lives in
+  `r-package/man/figures/`.
+- `dev/` — build and coverage scripts; `dev/notes/todo.md` is the single
+  backlog. Research notes belong in the private papers repository.
 - `external/` (ignored) — optional upstream source mirrors for reading.
 - `resources/` (ignored) — local data and scratch.
 
@@ -225,20 +227,25 @@ Interface rules:
 - Every argument either applies to the call or errors. Inapplicable `...`
   arguments and unknown `em_options` entries are errors, never silently
   ignored.
-- Brennan-Prediger needs a declared rating scale. Categorical estimators take
-  it from the categories; the scored estimators report it only when `values`
-  (or `ranges` for vector ratings) declares it.
+- The rating scale is `categories` (declared), else shared factor levels,
+  else the sorted observed labels; `values` scores it. Labels may be numeric,
+  character, logical, or factor, and are matched exactly (never truncated).
+- Brennan-Prediger needs a known rating scale. Categorical estimators always
+  have one; the scored estimators report it only when `categories`, `values`,
+  or factor levels (or `ranges` for vector ratings) declare it.
+- Subjects with no observed rating are dropped by every estimator. Influence
+  rows (`fit$psi`) are named by subject, and paired tests align on the names.
 - One constructor, `.new_estimate()` in `R/estimate_object.R`, builds every
   fit object.
 
 Kept in the tree but **internal** (`@noRd`, reachable with `:::` for
-simulations): Gwet's reweighting and available-case for categorical `kappa`
+simulations): Gwet's reweighting and available-case for categorical kappa
 (`estimate_kappa_raw()`), the full continuous dispatch (`kappa_continuous()`),
 g-wise agreement (`kappa_gwise()`), the compound-symmetry moment estimator
 (`.kappa_pairwise_cs()`), the multi-weight categorical FIML
-(`estimate_kappa_fiml_multi()`), the closed-form `kappa_quadratic()`, and the
-IF-based joint covariance / Wald contrast engine (`joint_vcov()`,
-`wald_test()`).
+(`estimate_kappa_fiml_multi()`, used by the kappa-missing simulation), the
+closed-form `kappa_quadratic()`, and the IF-based joint covariance
+`joint_vcov()`.
 
 ## Namespace layout
 

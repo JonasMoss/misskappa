@@ -1,7 +1,6 @@
-# Public equality-test front doors. These stand on the exposed primitives
-# (coef, vcov, and the fit$psi influence-function component); the general
-# linear-hypothesis engine (joint_vcov / wald_test) stays internal for the
-# rare arbitrary-contrast case.
+# Public equality-test front door. It stands on the exposed primitives (coef,
+# vcov, and the fit$psi influence-function component). Arbitrary contrasts are
+# built from fit$psi directly (see the influence-functions article).
 
 .fit_labels <- function(fits) {
   labs <- names(fits)

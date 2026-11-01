@@ -176,17 +176,13 @@ test_that("kappa_continuous(method = 'fiml') routes here and validates weight", 
   )
 })
 
-test_that("fits plug into joint_vcov / wald_test", {
+test_that("fits plug into joint_vcov", {
   X <- make_ratings(350L, 5L, miss = 0.2, seed = 5L)
   fitA <- kappa_quadratic_fiml(X)
   fitB <- kappa_quadratic_fiml(X[, 1:4])
   V <- joint_vcov(full = fitA, sub = fitB)
   expect_equal(dim(V), c(6L, 6L))
   expect_true(isSymmetric(V))
-  # Conger == Fleiss within a single fit (same subjects) is a valid contrast.
-  wt <- wald_test(fitA, contrast = c("Conger" = 1, "Fleiss" = -1))
-  expect_s3_class(wt, "htest")
-  expect_true(is.finite(wt$p.value))
 })
 
 test_that("vector quadratic complete data matches tensor plug-in and FIML", {

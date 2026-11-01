@@ -345,27 +345,6 @@ void em_sweep(
   out = (out.array() + cfg.delta).matrix() / cfg.denom;
 }
 
-bool valid_em_state(Eigen::VectorXd& theta, const EmInput& in) {
-  for (Eigen::Index i = 0; i < theta.size(); ++i) {
-    if (!(theta(i) >= 0.0) || !std::isfinite(theta(i))) return false;
-  }
-  const double total = theta.sum();
-  if (total <= zero_tol) return false;
-  theta /= total;
-
-  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
-    const std::uint32_t n_comps = in.group_n_completions[g];
-    if (n_comps == 0) continue;
-    const std::uint32_t offset = in.group_offsets[g];
-    double sum_w = 0.0;
-    for (std::uint32_t k = 0; k < n_comps; ++k) {
-      sum_w += theta(static_cast<Eigen::Index>(in.completion_indices[offset + k]));
-    }
-    if (sum_w <= singular_tol) return false;
-  }
-  return true;
-}
-
 EmIterStatus run_plain_em_iterations(
     Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
   EmIterStatus status;
@@ -384,56 +363,6 @@ EmIterStatus run_plain_em_iterations(
   return status;
 }
 
-EmIterStatus run_squarem_iterations(
-    Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
-  EmIterStatus status;
-  Eigen::VectorXd t1(theta.size()), t2(theta.size()), tx(theta.size());
-  Eigen::VectorXd r(theta.size()), v(theta.size());
-  while (status.iterations < cfg.iter_cap) {
-    em_sweep(theta, t1, in, cfg);
-    ++status.iterations;
-    if ((t1 - theta).cwiseAbs().maxCoeff() < cfg.tol) {
-      theta.swap(t1);
-      status.converged = true;
-      return status;
-    }
-    if (status.iterations >= cfg.iter_cap) {
-      theta.swap(t1);
-      return status;
-    }
-
-    em_sweep(t1, t2, in, cfg);
-    ++status.iterations;
-    if ((t2 - t1).cwiseAbs().maxCoeff() < cfg.tol) {
-      theta.swap(t2);
-      status.converged = true;
-      return status;
-    }
-
-    r.noalias() = t1 - theta;
-    v.noalias() = t2 - t1;
-    v -= r;
-    const double vnorm = v.norm();
-    double alpha = (vnorm > 0.0) ? -r.norm() / vnorm : -1.0;
-    if (alpha > -1.0) alpha = -1.0;
-
-    tx = theta - 2.0 * alpha * r + (alpha * alpha) * v;
-    if (!valid_em_state(tx, in)) {
-      theta.swap(t2);
-      continue;
-    }
-    if (status.iterations >= cfg.iter_cap) {
-      theta.swap(t2);
-      return status;
-    }
-
-    em_sweep(tx, t1, in, cfg);
-    ++status.iterations;
-    theta.swap(t1);
-  }
-  return status;
-}
-
 EmIterStatus run_em_iterations(
     Eigen::VectorXd& theta, const EmInput& in, EmOptions opts) {
   std::size_t n_total_subjects = 0;
@@ -442,9 +371,6 @@ EmIterStatus run_em_iterations(
     return EmIterStatus{0, true};
   }
   const EmLoopConfig cfg = make_em_loop_config(theta.size(), n_total_subjects, opts);
-  if (opts.acceleration == EmAcceleration::squarem) {
-    return run_squarem_iterations(theta, in, cfg);
-  }
   return run_plain_em_iterations(theta, in, cfg);
 }
 

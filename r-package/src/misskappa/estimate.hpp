@@ -16,11 +16,6 @@
 
 namespace misskappa {
 
-enum class EmAcceleration {
-  none,
-  squarem,
-};
-
 enum class NormalCovarianceModel {
   saturated,
   variance_components,
@@ -46,10 +41,6 @@ struct EmOptions {
   // flatten / (n + flatten). 0 = strict ML (legacy behaviour, point on the
   // face determined by the deterministic start).
   double flatten = 0.0;
-  // C++-only categorical FIML acceleration. R deliberately does not expose
-  // this knob yet; calibration showed stable point estimates but support/
-  // pseudo-inverse policy movement in the reported SEs.
-  EmAcceleration acceleration = EmAcceleration::none;
   // Normal-theory FIML covariance model. `saturated` is the existing
   // unrestricted mean/covariance route. `variance_components` is the
   // fixed-rater compound-symmetry model Sigma = psi * J + e * I with

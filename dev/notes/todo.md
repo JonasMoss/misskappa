@@ -5,7 +5,34 @@ TODOs live in the separate private papers repo, not here. Finished work is
 recorded in `r-package/NEWS.md` and git history; keep this file to what is
 still open.
 
-## 2.0.0 release
+## 3.0.0 release
+
+- [x] **Agreement only.** Coefficient alpha removed (C++ and R); last present
+      at tag `alpha-final`, which the alpha-missing paper pins. A future alpha
+      or reliability package starts from that tag.
+- [x] **Rename.** `kappa()` / `kappa_counts()` / `kappa_test()` ->
+      `agreement()` / `agreement_counts()` / `agreement_test()` (no more
+      masking `base::kappa`).
+- [x] **Rating scale.** `categories =` declares the full scale; character,
+      logical, and factor labels; numeric labels never truncated.
+- [x] **Subjects.** Empty subjects dropped everywhere; `fit$psi` rows named;
+      paired tests align by subject.
+- [x] **Repo pruning.** `experiments/` and research notes moved to the private
+      papers repo; `docs/logo.png`, C++ SQUAREM, and `wald_test()` dropped.
+- [ ] **Private papers on the new names.** The WIP paper scripts call
+      `kappa()` / `kappa_counts()` / `kappa_test()`; switch them to the new
+      names (or pin them to `alpha-final`).
+- [ ] **Completed papers out of the public tree.** Drop `papers/guessing` and
+      `papers/kappa-sd` after making their own repos public or archiving them
+      on Zenodo (needs the author), then fix the README Contents and badge,
+      `just paper`, and the AGENTS.md papers bullets.
+- [ ] **Release check** (`just r-check-release`) and **tag `v3.0.0`**; push
+      the `alpha-final` tag with it (the author pushes).
+- [ ] **CRAN prep (if submitting).** Windows/macOS CI (r-lib
+      check-r-package), win-builder/rhub, and the arXiv ids for the two
+      in-preparation citations.
+
+## 2.0.0 release (never tagged; superseded by 3.0.0)
 
 - [x] **Fix R CMD check.** The magmaan-oracle tests now use a pure-R reference
       EM and sandwich (test helper); `utils` in Imports, `coefficientalpha` in
@@ -21,26 +48,15 @@ still open.
       estimate header states the C++ API is the R package's engine.
 - [x] **Docs pass.** Vignette, articles (validation rewritten), README,
       AGENTS.md.
-- [ ] **Repo pruning (needs the author's go-ahead for cross-repo moves).**
-      Move `experiments/` and the paper-specific `dev/notes/*` into the
-      private papers repo (fix the scripts' package paths and the private
-      papers' references); drop `papers/guessing` and `papers/kappa-sd` from
-      the public tree after making their own repos public or archiving them
-      on Zenodo, then fix the README badge/Contents, `just paper`, and the
-      AGENTS.md papers bullets; drop `docs/logo.png` (README now uses
-      `r-package/man/figures/logo.png`).
 - [x] **Release check.** Full `R CMD check` with the Quarto vignette:
       Status OK (0 errors, 0 warnings, 0 notes).
-- [ ] **Tag `v2.0.0`** once the repo pruning above is settled (the author
-      pushes).
-
 ## Open (library)
 
 - [ ] **MASS-RENAME the two methods-paper citations on preprint + publication.**
       WIP scaffold LANDED 2026-06-17: the two papers are now forward-referenced
       under working titles in `inst/CITATION` (keys `moss-kappa-missing`,
       `moss-quadratic`), in the DESCRIPTION `Description` field, and in the
-      roxygen `@references` of `kappa()` / `alpha()` / `kappa_counts()` — all
+      roxygen `@references` of `agreement()` / `agreement_counts()` — all
       marked "(in preparation)". What remains is to **update those same spots
       TWICE** as the papers progress:
         * **On arXiv:** add the arXiv id + URL and switch the wording from "in
@@ -48,7 +64,7 @@ still open.
         * **On publication:** swap in the journal name / volume / DOI and drop the
           preprint wording.
       Touch points to grep when renaming: `inst/CITATION`, `DESCRIPTION`, and
-      `@references` blocks in `R/kappa.R` (search `in preparation`). Lock the
+      `@references` blocks in `R/agreement.R` (search `in preparation`). Lock the
       final titles first; the quadratic paper is still untitled (coefficient-led,
       Biometrics-target), so its working title "Quadratically weighted agreement
       coefficients" is provisional.
@@ -68,26 +84,6 @@ still open.
 
 ## Post-2.0 / research (not release blockers)
 
-- [ ] **Test projected Satterthwaite calibration for pivotal robust scores.**
-      Decision note: `dev/notes/projected-satterthwaite-robust-scores.md`.
-      Generalize the Pearson numerator--variance projection to the full
-      sandwich-studentized rank-\(q\) score and match its projected meat
-      fluctuation to an approximate Hotelling reference. First audit the
-      multivariate formula, raw-versus-centered score meat, and fitted-nuisance
-      contribution. Then create one focused sibling-magmaan probe: a correctly
-      specified five-indicator
-      one-factor model, normal control plus a Vale--Maurelli/Fleishman
-      skewness-2/excess-kurtosis-7 condition, \(n=30,50,100,200\), and true
-      scalar plus global score nulls. Compare ordinary robust
-      \(\chi_q^2\), projected working-normal Hotelling, unprojected diagnostic,
-      and an empirical/delete-one diagnostic; keep MV/FMG procedures secondary
-      because they correct a different nonpivotal weighted-\(\chi^2\) limit.
-      Report type-I error, effective df, Wishart-shape diagnostics, meat
-      conditioning/singularity, failures, and runtime before adding power or
-      broader nonnormal families. Separately verify the conjectured
-      \((n-k)/2\) partial-correlation rule and the preliminary
-      \(n/[3+2/\{P(P-1)\}]\) tau-equivalent-alpha rule only after the SEM null
-      probe fixes the general calculation.
 - [ ] **Complete the small-sample interval coverage matrix.**
       Long-run target: every meaningful estimator x input shape x weighting
       combination exposed by the public R API (plus the retained simulation
@@ -97,7 +93,7 @@ still open.
       label the appropriate summaries.
 
       - Add complete-data refits for the structured scalar routes:
-        `pairwise_cs`, `nt_fiml`, and `nt_fiml_cs` kappa; `nt_fiml_cs` alpha;
+        `pairwise_cs`, `nt_fiml`, and `nt_fiml_cs` kappa;
         and count-format quadratic `nt_fiml`. Verify each delete-one point
         functional against its fitted estimator instead of silently attaching
         an empirical substitute.
@@ -108,8 +104,7 @@ still open.
         component-separable pairwise/IPW routes and the full-`W` quadratic
         `pairwise`/`nt_fiml`/`nt_fiml_cs` routes, preserving feature metrics,
         fixed score ranges, and coefficient ordering.
-      - Finish boundary handling: derive and validate an alpha-specific
-        perfect-agreement interval, and define the weighted/discrete boundary
+      - Finish boundary handling: define the weighted/discrete boundary
         construction for count matrices with unequal rater totals.
       - Add a table-driven R test matrix over estimator, input shape, weight,
         coefficient family, transform, and boundary status so future API
@@ -119,63 +114,6 @@ still open.
         missingness pattern; specify how all-missing rows and the effective
         subject count map to degrees of freedom and influence rows. Keep this
         phase separate from the current complete-data paper.
-- [ ] **Reliability family (omega): closed-form core + fit-based tier; rename to `missrel`.**
-      Add McDonald's omega and the multidimensional family as misskappa coefficients
-      (omega is alpha's congeneric sibling; keep all internal-consistency + inter-rater
-      reliability here, SEM proper stays in magmaan). Method + paper live in
-      `magmaan/papers/closed-form-omega`: the closed forms are already implemented in
-      pure R there (`r-package/R/harness-h.R`: `closed_form_general_loadings`,
-      `closed_form_h_general`, ...) and in the magmaan C++ core
-      (`measures::frontier::reliability`); the fit-free path is ~100 lines of
-      covariance algebra and needs NO SEM machinery. **RENAME to `missrel` while
-      pre-CRAN** (continues the `miss*` brand; "reliability" covers both inter-rater
-      [kappa] and internal-consistency [alpha/omega]).
-
-      Three tiers by dependency:
-      - **Core (no SEM dep):** closed-form `omega_total` / `omega_h` / `H` /
-        `H_general` as covariance functionals from the (missing-data) covariance, with
-        ADF / missing-data analytic SE. REUSES the existing FIML/EM covariance +
-        sandwich/influence-function scaffold (same machinery as `alpha`; omega is just
-        a different `g(Sigma)`). Headline novelty = the omega family **under missing
-        data**, fit-free, with an analytic interval — genuinely unserved (gap below).
-      - **Fit-based (`Suggests: lavaan`):** categorical/polychoric omega, free
-        (non-proportional) bifactor `omega_h`, correlated-error omega, general-structure
-        (Raykov-Shrout) reliability. Fit in lavaan, delta SE over `vcov()` (robust
-        under MLR/WLSMV). Value-add over `semTools::compRelSEM` = the SE/CI
-        (compRelSEM is POINT-ONLY for every coefficient) + missing data. Point
-        estimates are not novel (RS2002 / Green-Yang / semTools); the interval +
-        missing-data handling are.
-      - **Speed backend (magmaan, optional, NOT declared):** magmaan is not an
-        installable R package yet, so it CANNOT go in `Suggests` today. Wire via a
-        runtime flag `backend = c("lavaan","magmaan")`, default `"lavaan"`; reach
-        magmaan only on explicit opt-in through a SOFT reference
-        (`asNamespace("magmaan")`, guarded by `requireNamespace`), never `magmaan::`
-        — keeps `R CMD check` clean while undeclared and is forward-compatible:
-        promote to `Suggests` once the Saga packaging makes magmaan
-        `install_github`-able. DEFAULT lavaan for reproducibility (do NOT
-        auto-pick-magmaan-if-present, or published numbers become backend-dependent).
-        magmaan is purely a sim/throughput accelerator (~50x).
-
-      Dividing line (which tier a coefficient lands in): simple structure + diagonal
-      residuals -> closed form, no fit (core); cross-loadings / correlated errors /
-      polychoric / free bifactor -> fit (lavaan tier).
-
-      SOFTWARE GAP this fills (verified 2026-06-29): `semTools::compRelSEM` (the
-      confirmatory reliability tool) returns POINT ESTIMATES ONLY for every coefficient
-      (no SE/CI for anything); analytic intervals are packaged only for single-factor
-      omega (`MBESS::ci.reliability`); multidimensional `omega_total` / bifactor
-      `omega_h` have only bootstrap (psych) or Bayesian (Pfadt 2022 / `Bayesrel`). No
-      frequentist analytic distribution-free CI for multidim/bifactor omega exists in
-      software, and none under missing data. NOTE package scope ⊃ paper scope: the
-      paper is the fit-free closed form; the lavaan tier is package completeness, not a
-      paper claim.
-- [ ] **Measure alpha FIML feasibility before expanding scope.**
-      Exact EM over the full fixed-category pattern space is plausible for
-      small Likert batteries but scales as `C^R`. Add guardrails/documentation
-      around feasible `C, R`, benchmark memory/time on representative `C x R`
-      grids, and only then consider approximate or sparse EM variants
-      (active-support EM, low-rank/composite-likelihood starts, or other
-      approximations) as a separate follow-up.
 - [ ] **Ten Hove / variance-component SEM route for quadratic agreement.**
       Decision 2026-06-14: start with the variance-component SEM target, not
       the looser unconstrained exchangeable covariance projection. The
@@ -184,7 +122,7 @@ still open.
       constraints, while exchangeability only constrains the marginal
       covariance pattern. Treat `magmaan` as an external/off-limits validation
       oracle for this repo: the misskappa work should not edit or depend on
-      that sibling package. Use `experiments/probes/39-ten-hove-icc/` as the
+      that sibling package. Use `experiments/probes/39-ten-hove-icc/` (now in the private papers repo) as the
       validation seed: lmer/SEM point-estimate parity, robust-vs-naive SE
       checks, estimand-matched comparison to saturated `nt_fiml`, and the MAR
       rater-camps failure mode. If a misskappa shortcut is added, name and
@@ -199,33 +137,6 @@ still open.
       continuous `alpha()`; vector-valued ratings explicitly reject that option
       until the block-structured repeated-measure model is implemented and
       validated.
-- [ ] **Add an alpha experiment suite.**
-      Simulate simple complete-data, MCAR, and MAR categorical item batteries;
-      compare complete-data alpha, pairwise/available covariance alpha, and
-      categorical FIML alpha for bias, SE calibration, and coverage. Add an
-      applied example on `psych::bfi`, reporting one alpha per Big Five
-      personality scale under the available-case and FIML paths, with clear
-      notes about item scoring/reversal and the fixed-category support used.
-      Starter categorical smoke/calibration runners now live in
-      `experiments/probes/15-alpha-categorical-smoke/` and
-      `experiments/probes/16-alpha-calibration-sweep/`. Experiment 16 has a
-      capped `B = 200` calibration pass: `5^6, n = 4000` was too slow
-      for an ordinary run, and `5^6` FIML retains downward bias through
-      `n = 1000`. Independent saturated-EM checks agree with the package
-      estimate, and the quadrature alpha truth agrees with large complete-data
-      Monte Carlo, so treat the residual high-dimensional categorical-FIML
-      bias as a finite-sample fact rather than an implementation blocker.
-      Manuscript notes can state this matter-of-factly and leave debiasing,
-      penalized/smoothed EM, bootstrap/jackknife corrections, or approximate
-      sparse variants as optional follow-up. The normal-FIML comparison,
-      applied `psych::bfi` example, alpha-specific Louis spectrum diagnostic,
-      and explicit high-dimensional FIML guardrails remain open. The proposed
-      paper-facing simulation grid is in
-      `dev/notes/alpha-missing-simulation-study.md`: use an essential-tau
-      setup derived from Zhang-Yuan's six-item calibration, include
-      Zhang-Yuan's congeneric cell, add stronger congeneric and two-factor
-      non-congeneric cells, borrow Enders/Savalei missingness rates, and use
-      clean observed-anchor MAR rather than truth-dependent missingness.
 - [ ] **Categorical FIML for vector profiles.**
       Deferred. Component-wise missingness makes full-profile categorical
       equality and general finite-vector losses latent. A saturated
