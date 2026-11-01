@@ -55,6 +55,43 @@ still open.
       Status OK (0 errors, 0 warnings, 0 notes).
 ## Open (library)
 
+- [ ] **Rework the cat_fiml non-identification warning (next release).**
+      `.warn_null_frac()` warns when more than 1% of the delta-method gradient
+      lies in the dropped null space of the Louis information. Evidence from
+      the companion paper's simulation probe (private papers repo, C = 5,
+      R = 5-6, n = 1000) and study 32 (June):
+        * It fires too often to mean anything: about half of all fits, 97-100%
+          under MAR, 67-93% under MCAR with rater-specific rates.
+        * The estimate it warns about does not move: refits with
+          `start_alpha` 0.01 / 0.1 / 1 differ by <= 3e-5 and `flatten = 0.1`
+          by <= 2e-4 (sampling SD 0.012-0.025); study 32 never saw > 0.01 SE.
+        * The real fragility is the SE, and `null_frac` does not detect it.
+          Between `info_rcond` 1e-4 and 1e-6 the SE changes by a factor of
+          1.0-3.0 (weakly identified directions just above the cutoff). The
+          cell with the largest `null_frac` (0.065) moved at most 1.33x; the
+          one with the smallest (0.012) moved up to 3x.
+        * The message recommends `flatten`, which inflates SEs 1.6-3.4x.
+      Proposal:
+        1. Stop warning on `null_frac` alone; keep `fit$null_frac` in the
+           object and document it. If an estimate-side check is still wanted,
+           bound the movement directly: step from theta-hat along the
+           null-space component of the gradient until a support cell hits
+           zero (ratio test) and warn only if the resulting change in the
+           coefficient exceeds 0.1 SE. (Sketch; check the reduced-coordinate
+           bookkeeping.)
+        2. Add an SE-stability diagnostic from the eigendecomposition the
+           variance step already does (no refit): recompute the SE with the
+           cutoff at `info_rcond / 100`, store the ratio as
+           `fit$se_cutoff_ratio`, and warn when it exceeds a threshold (1.25
+           to start; calibrate on the companion paper's simulation). Message:
+           the SE depends on the information cutoff (x vs y), typical of a
+           sparse saturated table, so treat Wald intervals with caution.
+        3. Drop the `flatten` recommendation from the message (flatten is a
+           uniqueness device; its SEs are conservative).
+      Touch points: `R/agreement.R` (`.warn_null_frac`), the variance step in
+      `src/estimate_fiml.cpp` (`apply_fiml_variance_workspace`), the shared
+      warning call in `R/research.R`, docs for `em_options`, NEWS, tests.
+
 - [ ] **MASS-RENAME the two methods-paper citations on preprint + publication.**
       WIP scaffold LANDED 2026-06-17: the two papers are now forward-referenced
       under working titles in `inst/CITATION` (keys `moss-kappa-missing`,
