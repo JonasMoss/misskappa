@@ -112,7 +112,7 @@ r-check: vendor r-docs
     R CMD build r-package --no-build-vignettes; \
     R CMD check --no-manual --no-build-vignettes misskappa_*.tar.gz
 
-# Builds the Quarto vignettes (needs quarto; lavaan for one parity test) and checks the full
+# Builds the vignette (needs rmarkdown; lavaan for one parity test) and checks the full
 # tarball, as `remotes::install_github` / CRAN would. The fast `r-check` is the
 # day-to-day dev check.
 # Full R CMD check with vignettes — run before a release/tag, not in the dev loop.

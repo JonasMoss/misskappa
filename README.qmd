@@ -16,6 +16,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 # misskappa
 
+[![CRAN status](https://www.r-pkg.org/badges/version/misskappa)](https://CRAN.R-project.org/package=misskappa)
 [![CI](https://github.com/JonasMoss/misskappa/actions/workflows/ci.yml/badge.svg)](https://github.com/JonasMoss/misskappa/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/JonasMoss/misskappa/graph/badge.svg)](https://codecov.io/gh/JonasMoss/misskappa)
 ![Code: MIT](https://img.shields.io/badge/code-MIT-blue)
@@ -37,8 +38,14 @@ Every estimate comes with a standard error.
 
 ## Installation
 
-The package builds from source, so it needs a C++17 toolchain (Rtools on
-Windows, the Command Line Tools on macOS).
+Install the released version from CRAN:
+
+```r
+install.packages("misskappa")
+```
+
+or the development version from GitHub, which builds from source and needs a
+C++17 toolchain (Rtools on Windows, the Command Line Tools on macOS):
 
 ```r
 # install.packages("remotes")
@@ -101,6 +108,11 @@ just test        # C++ dev build + tests
 just r-install   # vendor the C++ into the R package and install it
 just r-check     # fast R CMD check (no vignettes)
 ```
+
+## Citation
+
+`citation("misskappa")` gives the package citation and the accompanying
+methods papers.
 
 ## License
 

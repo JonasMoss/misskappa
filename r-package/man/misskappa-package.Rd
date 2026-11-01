@@ -4,16 +4,17 @@
 \name{misskappa-package}
 \alias{misskappa}
 \alias{misskappa-package}
-\title{misskappa: Agreement Coefficients with Missing Data}
+\title{misskappa: Agreement Coefficients with Missing Ratings}
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Estimation and inference for weighted agreement coefficients (Cohen, Fleiss, Conger, Brennan-Prediger) with arbitrary numbers of raters and arbitrary pairwise loss functions. Supports incomplete data under MCAR (available-case, IPW) and MAR (saturated categorical or normal FIML / EM), with sandwich standard errors. Wraps the standalone C++17 'misskappa' library. The underlying methods are described in two companion papers, currently in preparation.
+Estimates chance-corrected agreement coefficients (Cohen's, Conger's, and Fleiss' kappa and the Brennan-Prediger coefficient) for any number of raters, with nominal, linear, or quadratic weights, when some ratings are missing. Missing ratings are handled by inverse-probability weighting when they are missing completely at random, and by categorical or robust normal-theory full-information maximum likelihood when they are missing at random (Yuan and Bentler (2000) \doi{10.1111/0081-1750.00078}). Every estimate comes with an influence-function standard error, giving confidence intervals and Wald tests that compare coefficients across groups, raters, or estimators. Also handles counts-format data, multirater g-wise agreement (Moss (2024) \doi{10.1007/s11336-023-09945-2}), and vector-valued ratings.
 }
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://jonasmoss.github.io/misskappa}
+  \item \url{https://jonasmoss.github.io/misskappa/}
+  \item \url{https://github.com/JonasMoss/misskappa}
   \item Report bugs at \url{https://github.com/JonasMoss/misskappa/issues}
 }
 
