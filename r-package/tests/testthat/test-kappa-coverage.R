@@ -21,9 +21,9 @@ test_that("agreement() validates g and the estimator/weight combination", {
 
 test_that("agreement() routes bad raw input through the raw/score validators", {
   expect_error(agreement(list(1, 2), estimator = "ipw"), "matrix or data frame")
-  expect_error(agreement(matrix("a", 4, 3), estimator = "ipw"), "must be numeric")
   expect_error(agreement(list(1, 2), estimator = "pairwise"), "matrix or data frame")
-  expect_error(agreement(matrix("a", 4, 3), estimator = "pairwise"), "must be numeric")
+  expect_error(agreement(matrix(list(1), 4, 3), estimator = "ipw"),
+               "numeric, character, logical, or factor")
 })
 
 test_that("agreement() maps integer codes through values=", {
@@ -31,7 +31,7 @@ test_that("agreement() maps integer codes through values=", {
   fit <- agreement(x, estimator = "pairwise", values = c(0, 1, 2))
   expect_s3_class(fit, "misskappa_estimate")
   expect_error(agreement(x, estimator = "pairwise", values = c(0, 1)),
-               "unique observed categories")
+               "number of categories")
 })
 
 # --- g-wise and vector dispatch ---

@@ -28,6 +28,18 @@
   extra <- list(...)
   extra <- extra[!vapply(extra, is.null, logical(1))]
   fit[names(extra)] <- extra
+  undefined <- !is.finite(estimates)
+  if (any(undefined)) {
+    # A zero chance disagreement (every rating in one category, or constant
+    # scores) leaves the coefficient undefined; its zero "variance" is not a
+    # standard error, so blank it rather than report false precision.
+    fit$vcov[undefined, ] <- NA_real_
+    fit$vcov[, undefined] <- NA_real_
+    warning(sprintf(paste0(
+      "%s undefined: the chance disagreement is zero, as when every rating ",
+      "falls in one category."),
+      paste(coefficients[undefined], collapse = ", ")), call. = FALSE)
+  }
   structure(fit, class = "misskappa_estimate")
 }
 
@@ -206,7 +218,8 @@ confint.misskappa_estimate <- function(object, parm = NULL, level = 0.95,
   transform <- match.arg(transform)
   if (!is.numeric(level) || length(level) != 1L || !is.finite(level) ||
       level <= 0 || level >= 1) {
-    stop("'level' must be a single number strictly between zero and one.")
+    stop("'level' must be a single number strictly between zero and one.",
+         call. = FALSE)
   }
   est <- object$estimates
 

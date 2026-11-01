@@ -25,7 +25,8 @@
 influence.misskappa_estimate <- function(model, ...) {
   psi <- model$psi
   if (is.null(psi)) {
-    stop("This misskappa_estimate does not carry per-subject influence functions.")
+    stop("This misskappa_estimate does not carry per-subject influence functions.",
+         call. = FALSE)
   }
   psi
 }

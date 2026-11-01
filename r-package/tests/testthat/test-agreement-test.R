@@ -63,16 +63,21 @@ test_that("equality tests reject non-fits, empty calls, and broken pairing", {
   k2_nopsi$psi <- NULL
   expect_error(agreement_test(k1, k2_nopsi, paired = TRUE), "influence functions")
 
-  # paired fits must share the subject count
+  # without subject ids, paired fits must share the subject count
   small <- agreement(matrix(sample.int(4, 120 * 3, TRUE), 120, 3), estimator = "pairwise")
-  expect_error(agreement_test(k1, small, paired = TRUE), "same number of subjects")
+  rownames(small$psi) <- NULL
+  k1_noid <- k1
+  rownames(k1_noid$psi) <- NULL
+  expect_error(agreement_test(k1_noid, small, paired = TRUE),
+               "same number of subjects")
 
-  # paired fits must be row-aligned when subject ids are present
+  # disjoint subject ids share no influence, so paired equals independent
   k1_id <- k1
   k2_id <- k2
   rownames(k1_id$psi) <- as.character(seq_len(nrow(k1_id$psi)))
   rownames(k2_id$psi) <- as.character(nrow(k2_id$psi) + seq_len(nrow(k2_id$psi)))
-  expect_error(agreement_test(k1_id, k2_id, paired = TRUE), "row-aligned")
+  expect_equal(unname(agreement_test(k1_id, k2_id, paired = TRUE)$statistic),
+               unname(agreement_test(k1_id, k2_id)$statistic))
 })
 
 test_that("agreement_test defaults: independent samples, first coefficient", {

@@ -69,7 +69,8 @@
   keep <- rowSums(obs) > 0
   X <- X[keep, , drop = FALSE]; obs <- obs[keep, , drop = FALSE]
   n <- nrow(X); R <- ncol(X)
-  if (R < 2L) stop("quadratic kappa requires at least two raters.", call. = FALSE)
+  if (R < 2L) stop("quadratic kappa requires at least two raters.",
+                   call. = FALSE)
   n_j <- colSums(obs)
   if (any(n_j == 0)) {
     stop("every rater must be observed by at least one subject.", call. = FALSE)

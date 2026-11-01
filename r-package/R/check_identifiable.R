@@ -22,8 +22,9 @@
 .pattern_observed <- function(x) {
   if (!is.matrix(x) && !is.data.frame(x)) return(NULL)
   xm <- suppressWarnings(as.matrix(x))
-  if (!is.numeric(xm)) return(NULL)
-  is.finite(xm)
+  if (is.numeric(xm)) return(is.finite(xm))
+  if (is.character(xm) || is.logical(xm)) return(!is.na(xm))
+  NULL
 }
 
 # Format up to `cap` offending column tuples as "a-b, c-d" using column names.

@@ -50,9 +50,9 @@
 joint_vcov <- function(...) {
   fits <- list(...)
   if (length(fits) < 2L)
-    stop("joint_vcov() requires at least two fits.")
+    stop("joint_vcov() requires at least two fits.", call. = FALSE)
   if (!all(vapply(fits, inherits, logical(1), "misskappa_estimate")))
-    stop("All inputs must be 'misskappa_estimate' objects.")
+    stop("All inputs must be 'misskappa_estimate' objects.", call. = FALSE)
 
   psis <- lapply(fits, function(f) {
     m <- f$psi
@@ -61,12 +61,13 @@ joint_vcov <- function(...) {
   null_idx <- vapply(psis, is.null, logical(1))
   if (any(null_idx))
     stop("Inputs ", paste(which(null_idx), collapse = ", "),
-         " do not carry per-subject influence functions (fit$psi).")
+         " do not carry per-subject influence functions (fit$psi).",
+         call. = FALSE)
 
   ns <- vapply(psis, nrow, integer(1))
   if (length(unique(ns)) != 1L)
     stop("All fits must have the same number of subjects; got ",
-         paste(ns, collapse = ", "), ".")
+         paste(ns, collapse = ", "), ".", call. = FALSE)
   n <- ns[[1L]]
 
   psi_stack <- do.call(cbind, psis)
@@ -108,9 +109,9 @@ joint_vcov <- function(...) {
 wald_test <- function(..., contrast, value = 0) {
   fits <- list(...)
   if (length(fits) < 1L)
-    stop("wald_test() requires at least one fit.")
+    stop("wald_test() requires at least one fit.", call. = FALSE)
   if (!all(vapply(fits, inherits, logical(1), "misskappa_estimate")))
-    stop("All inputs must be 'misskappa_estimate' objects.")
+    stop("All inputs must be 'misskappa_estimate' objects.", call. = FALSE)
 
   if (length(fits) == 1L) {
     beta <- stats::coef(fits[[1L]])
@@ -125,10 +126,11 @@ wald_test <- function(..., contrast, value = 0) {
 
   L <- normalise_contrast(contrast, names(beta))
   if (!is.numeric(value) || !all(is.finite(value)))
-    stop("'value' must be finite numeric.")
+    stop("'value' must be finite numeric.", call. = FALSE)
   if (length(value) == 1L) value <- rep(value, nrow(L))
   if (length(value) != nrow(L))
-    stop("'value' must be scalar or have one entry per contrast row.")
+    stop("'value' must be scalar or have one entry per contrast row.",
+         call. = FALSE)
 
   estimate <- as.numeric(L %*% beta)
   delta <- estimate - as.numeric(value)
@@ -157,7 +159,8 @@ normalise_contrast <- function(contrast, beta_names) {
   if (is.character(contrast)) {
     missing <- setdiff(contrast, beta_names)
     if (length(missing) > 0L)
-      stop("Unknown coefficient(s): ", paste(missing, collapse = ", "))
+      stop("Unknown coefficient(s): ", paste(missing, collapse = ", "),
+           call. = FALSE)
     L <- diag(length(beta_names))[match(contrast, beta_names), , drop = FALSE]
     rownames(L) <- contrast
     colnames(L) <- beta_names
@@ -165,20 +168,22 @@ normalise_contrast <- function(contrast, beta_names) {
   }
 
   if (!is.numeric(contrast))
-    stop("'contrast' must be numeric or character.")
+    stop("'contrast' must be numeric or character.", call. = FALSE)
 
   if (is.null(dim(contrast))) {
     if (!is.null(names(contrast))) {
       missing <- setdiff(names(contrast), beta_names)
       if (length(missing) > 0L)
-        stop("Unknown coefficient(s): ", paste(missing, collapse = ", "))
+        stop("Unknown coefficient(s): ", paste(missing, collapse = ", "),
+             call. = FALSE)
       L <- matrix(0, nrow = 1L, ncol = length(beta_names),
                   dimnames = list("contrast", beta_names))
       L[1L, names(contrast)] <- contrast
       return(L)
     }
     if (length(contrast) != length(beta_names))
-      stop("Unnamed contrast vector must have length ", length(beta_names), ".")
+      stop("Unnamed contrast vector must have length ", length(beta_names), ".",
+           call. = FALSE)
     L <- matrix(contrast, nrow = 1L,
                 dimnames = list("contrast", beta_names))
     return(L)
@@ -186,18 +191,20 @@ normalise_contrast <- function(contrast, beta_names) {
 
   L <- as.matrix(contrast)
   if (!is.numeric(L))
-    stop("'contrast' must be numeric.")
+    stop("'contrast' must be numeric.", call. = FALSE)
   if (!is.null(colnames(L))) {
     missing <- setdiff(colnames(L), beta_names)
     if (length(missing) > 0L)
-      stop("Unknown coefficient(s): ", paste(missing, collapse = ", "))
+      stop("Unknown coefficient(s): ", paste(missing, collapse = ", "),
+           call. = FALSE)
     L_full <- matrix(0, nrow = nrow(L), ncol = length(beta_names),
                      dimnames = list(rownames(L), beta_names))
     L_full[, colnames(L)] <- L
     L <- L_full
   } else {
     if (ncol(L) != length(beta_names))
-      stop("Unnamed contrast matrix must have ", length(beta_names), " columns.")
+      stop("Unnamed contrast matrix must have ", length(beta_names), " columns.",
+           call. = FALSE)
     colnames(L) <- beta_names
   }
   if (is.null(rownames(L))) rownames(L) <- paste0("contrast", seq_len(nrow(L)))

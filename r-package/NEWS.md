@@ -1,3 +1,45 @@
+# misskappa 3.0.0
+
+misskappa is now an agreement-only package. Code written for 2.0.0 needs the
+renames below.
+
+## Breaking changes
+
+* Coefficient alpha is removed: `alpha()`, `alpha_test()`, the C++ alpha
+  estimators, and the `dat.holzinger1939` dataset. The last commit with alpha
+  is tagged `alpha-final`.
+* The public functions are renamed so the package no longer masks
+  `base::kappa()`: `kappa()` is now `agreement()`, `kappa_counts()` is
+  `agreement_counts()`, and `kappa_test()` is `agreement_test()`.
+* Subjects with no observed rating are dropped by every estimator, so `n` and
+  the influence rows count only rated subjects. Before, the normal-theory
+  FIMLs dropped them and the other estimators kept them.
+* Numeric ratings are matched as labels, so 0.5 and 1.2 are two categories.
+  Before, the categorical estimators silently truncated them to integers.
+
+## New features
+
+* `agreement()` gains `categories`, which declares the full rating scale,
+  including categories nobody used. The scale sets Brennan-Prediger's chance
+  baseline and the range that scales the linear and quadratic weights. Before,
+  both came from the observed categories only, so a 1-5 scale on which nobody
+  chose 5 was treated as 1-4, and `values = 1:5` was an error.
+* `agreement()` accepts character, logical, and factor ratings. A data frame
+  whose columns are factors with shared levels takes its scale from the levels.
+  Fits record the scale used as `fit$categories`.
+* Influence rows are named by subject (row names, or row numbers), and
+  `agreement_test(paired = TRUE)` matches fits by subject. A subject unrated
+  in one fit contributes nothing to it, so fits with different missing rows
+  can be compared.
+* A coefficient whose chance disagreement is zero (every rating in one
+  category) is reported as undefined with a warning, and its variance is `NA`
+  instead of a misleading zero.
+
+## Minor
+
+* Error messages no longer show internal function calls.
+* `psych` and `coefficientalpha` leave Suggests.
+
 # misskappa 2.0.0
 
 This release tightens the R interface. Several changes break code written for

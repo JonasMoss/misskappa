@@ -10,6 +10,7 @@ agreement(
   weight = c("nominal", "linear", "quadratic", "hubert"),
   g = 2L,
   values = NULL,
+  categories = NULL,
   em_options = list(),
   ...
 )
@@ -17,9 +18,10 @@ agreement(
 \arguments{
 \item{x}{A subjects-by-raters matrix or data frame of scalar ratings, or a
 subjects-by-raters-by-features 3-D array of vector-valued ratings (the
-array form is auto-detected). Integer category codes for `"ipw"` /
-`"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"` /
-`"nt_fiml_cs"`. `NA` marks missing entries.}
+array form is auto-detected). Category labels (numbers, strings,
+logicals, or factors) for `"ipw"` / `"cat_fiml"`. Numeric scores, or
+labels scored through `categories` / `values`, for `"pairwise"` /
+`"nt_fiml"` / `"nt_fiml_cs"`. `NA` marks missing entries.}
 
 \item{estimator}{One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`,
 or `"nt_fiml_cs"`. Vector-valued ratings support `"ipw"` and `"pairwise"`
@@ -40,13 +42,19 @@ is ordinary pairwise kappa. `g > 2` uses the Frechet / Hubert g-wise
 family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
 the closed form is used. Not used for vector-valued ratings.}
 
-\item{values}{Optional numeric vector of category scores. The sorted
-distinct observed ratings are mapped to `values` in order, so its length
-must equal their number. For `"ipw"` / `"cat_fiml"` the scores
-parameterize the linear and quadratic weights (default: the codes
-themselves). For the scored estimators they convert codes to scores and
-declare the discrete rating scale that Brennan-Prediger needs. Not used
-for vector-valued ratings.}
+\item{values}{Optional numeric vector of category scores, one per category
+(the declared `categories`, or else the sorted distinct observed
+ratings), in the same order. For `"ipw"` / `"cat_fiml"` the scores
+parameterize the linear and quadratic weights (default: numeric
+categories themselves, otherwise `1:C`). For the scored estimators they
+convert labels to scores and declare the discrete rating scale that
+Brennan-Prediger needs. Not used for vector-valued ratings.}
+
+\item{categories}{Optional vector declaring the full rating scale in order,
+for example `1:5` or `c("low", "mid", "high")`. Every observed rating must
+be one of them; categories nobody used are kept. Defaults to the shared
+factor levels, or else the sorted distinct observed ratings. Not used for
+vector-valued ratings.}
 
 \item{em_options}{Named list of EM options for the likelihood estimators
 (an error for `"ipw"` and `"pairwise"`). For `"cat_fiml"`: `tol`,
@@ -74,9 +82,10 @@ weights, and `loss = "rms"` for the root-mean-square loss). For `g > 2`:
 }
 \value{
 An object of class `misskappa_estimate` carrying the named
-  coefficient estimates, their asymptotic covariance matrix, and the number
-  of subjects `n`. Methods: `print`, `coef`, `vcov`, `confint`,
-  `as.data.frame`, and `stats::influence`. The object also carries a `psi`
+  coefficient estimates, their asymptotic covariance matrix, the number
+  of subjects `n`, and (for categorical or scored scalar ratings) the
+  rating scale used, `categories`. Methods: `print`, `coef`, `vcov`,
+  `confint`, `as.data.frame`, and `stats::influence`. The object also carries a `psi`
   component (the n-by-K matrix of per-subject influence functions,
   satisfying `vcov == crossprod(psi) / n^2`) for building custom contrasts
   or joint tests.
@@ -100,19 +109,30 @@ coefficients for raw ratings with missing entries. Pick the estimator with
     connected rater co-observation graph).
 }
 
-`"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
-linear, or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"`
-are quadratic by construction: they treat `x` as numeric scores (pass scores
-directly, or integer codes with `values`), and `weight` defaults to
-`"quadratic"` for them.
+`"ipw"` and `"cat_fiml"` take categorical ratings and the nominal, linear,
+or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"` are
+quadratic by construction: they treat the ratings as numeric scores, and
+`weight` defaults to `"quadratic"` for them.
 
-Brennan-Prediger compares the observed disagreement with a uniform draw from
-the rating scale, so it is reported only when the scale is known. The
-categorical estimators take the scale from the categories (the observed
-codes, or `values`). The scored estimators `"nt_fiml"` and `"nt_fiml_cs"`
-report it when `values` declares a discrete scale, or for vector-valued
-ratings when `ranges` declares a continuous one. `"pairwise"` reports Conger
-and Fleiss only.
+The rating scale is the set of categories a rating can take. Ratings may be
+numbers, strings, logicals, or factors. By default the scale is the sorted
+distinct observed ratings (or the shared levels when every column of a data
+frame is a factor with the same levels). Pass `categories` to declare the
+full scale, including categories nobody used: on a 1-5 scale where no one
+chose 5, `categories = 1:5` keeps five categories. The scale matters for
+Brennan-Prediger, whose chance baseline is a uniform draw from it, and for
+the linear and quadratic weights, which are scaled by the range of the
+category scores (`values`, by default the numeric categories or `1:C`).
+
+Brennan-Prediger is reported only when the scale is known. The categorical
+estimators always have one (declared or observed). The scored estimators
+`"nt_fiml"` and `"nt_fiml_cs"` report it when `categories`, `values`, or
+factor levels declare a discrete scale, or for vector-valued ratings when
+`ranges` declares a continuous one. `"pairwise"` reports Conger and Fleiss
+only.
+
+Subjects with no observed rating are dropped before fitting, so `n` counts
+the subjects with at least one rating.
 
 Two generalizations are reached through the same call. Set `g > 2` for the
 Frechet / Hubert g-wise (multirater) kernels with `"ipw"` or `"cat_fiml"`,
@@ -146,6 +166,11 @@ categorical schemes (`"ordinal"`, `"radical"`, `"ratio"`, `"circular"`,
 # Categorical ratings with missing entries (Gwet 2014): the
 # inverse-probability-weighted estimator under MCAR, with linear weights.
 agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
+
+# Declare the full rating scale. The Gwet data use codes 0-3; declaring a
+# fifth, unused category changes Brennan-Prediger and the linear weights.
+agreement(dat.gwet2014, estimator = "ipw", weight = "linear",
+          categories = 0:4)
 
 # Scored coefficient (quadratic loss) via the pairwise-available moment
 # estimator. Treats the columns as numeric scores.

@@ -81,18 +81,37 @@ Eigen::MatrixXd make_agreement_weights(
 PreparedInputs prepare_inputs(
     const Rcpp::IntegerMatrix& x,
     const std::string& weight_type,
-    Rcpp::Nullable<Rcpp::NumericVector> values) {
-  // Collect unique non-NA category values.
-  std::set<int> cat_set;
-  for (int i = 0; i < x.nrow(); ++i) {
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
+  // The category set is either declared by the caller (in the given order,
+  // possibly including categories nobody used) or the sorted observed codes.
+  std::vector<int> cats;
+  bool any_observed = false;
+  for (int i = 0; i < x.nrow() && !any_observed; ++i) {
     for (int j = 0; j < x.ncol(); ++j) {
-      const int v = x(i, j);
-      if (v == NA_INTEGER) continue;
-      cat_set.insert(v);
+      if (x(i, j) != NA_INTEGER) { any_observed = true; break; }
     }
   }
-  if (cat_set.empty()) Rcpp::stop("All ratings are missing.");
-  std::vector<int> cats(cat_set.begin(), cat_set.end());
+  if (!any_observed) Rcpp::stop("All ratings are missing.");
+  if (categories.isNotNull()) {
+    Rcpp::IntegerVector cv(categories);
+    std::set<int> seen;
+    for (int k = 0; k < cv.size(); ++k) {
+      if (cv[k] == NA_INTEGER || !seen.insert(cv[k]).second) {
+        Rcpp::stop("'categories' must be distinct and non-missing.");
+      }
+      cats.push_back(cv[k]);
+    }
+  } else {
+    std::set<int> cat_set;
+    for (int i = 0; i < x.nrow(); ++i) {
+      for (int j = 0; j < x.ncol(); ++j) {
+        const int v = x(i, j);
+        if (v != NA_INTEGER) cat_set.insert(v);
+      }
+    }
+    cats.assign(cat_set.begin(), cat_set.end());
+  }
   const int C = static_cast<int>(cats.size());
 
   std::map<int, int> cat_to_idx;
@@ -103,7 +122,15 @@ PreparedInputs prepare_inputs(
   for (int i = 0; i < x.nrow(); ++i) {
     for (int j = 0; j < x.ncol(); ++j) {
       const int v = x(i, j);
-      mapped(i, j) = (v == NA_INTEGER) ? kPkgNaCode : cat_to_idx.at(v);
+      if (v == NA_INTEGER) {
+        mapped(i, j) = kPkgNaCode;
+        continue;
+      }
+      const auto it = cat_to_idx.find(v);
+      if (it == cat_to_idx.end()) {
+        Rcpp::stop("A rating is not among the declared 'categories'.");
+      }
+      mapped(i, j) = it->second;
     }
   }
 
@@ -113,7 +140,7 @@ PreparedInputs prepare_inputs(
   Eigen::VectorXd v(C);
   if (values.isNotNull()) {
     Rcpp::NumericVector vv(values);
-    if (vv.size() != C) Rcpp::stop("Length of 'values' must equal the number of unique categories.");
+    if (vv.size() != C) Rcpp::stop("Length of 'values' must equal the number of categories.");
     for (int i = 0; i < C; ++i) v(i) = vv[i];
   } else {
     for (int i = 0; i < C; ++i) v(i) = static_cast<double>(cats[i]);
@@ -243,8 +270,9 @@ Rcpp::List rcpp_kappa_raw(
     std::string method,
     std::string weight_type,
     Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
-  PreparedInputs in = prepare_inputs(x, weight_type, values);
+    Rcpp::List em_options,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values, categories);
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "available") {
@@ -266,8 +294,9 @@ Rcpp::List rcpp_kappa_raw(
 Rcpp::List rcpp_kappa_delete_one(
     const Rcpp::IntegerMatrix& x,
     std::string weight_type,
-    Rcpp::Nullable<Rcpp::NumericVector> values) {
-  PreparedInputs in = prepare_inputs(x, weight_type, values);
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values, categories);
   auto r = misskappa::delete_one_kappa_complete(
       in.ratings_indexed, in.weights);
   return kappa_delete_one_to_list(unwrap(std::move(r)));
@@ -278,10 +307,11 @@ Rcpp::List rcpp_kappa_fiml_multi(
     const Rcpp::IntegerMatrix& x,
     Rcpp::CharacterVector weight_types,
     Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
+    Rcpp::List em_options,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
   if (weight_types.size() < 1) Rcpp::stop("'weight_types' must be non-empty.");
   const std::string first_weight = Rcpp::as<std::string>(weight_types[0]);
-  PreparedInputs in = prepare_inputs(x, first_weight, values);
+  PreparedInputs in = prepare_inputs(x, first_weight, values, categories);
 
   std::vector<Eigen::MatrixXd> weights;
   weights.reserve(static_cast<std::size_t>(weight_types.size()));

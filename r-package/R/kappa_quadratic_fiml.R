@@ -56,7 +56,8 @@
 .quadratic_bp_chance <- function(x, values = NULL) {
   if (is.null(values)) {
     observed <- x[is.finite(x)]
-    if (!length(observed)) stop("at least one rating must be observed.", call. = FALSE)
+    if (!length(observed)) stop("at least one rating must be observed.",
+                                call. = FALSE)
     rng <- range(observed)
     chance <- diff(rng)^2 / 6
   } else {
@@ -124,13 +125,14 @@
 #' @noRd
 kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   X <- as.matrix(x)
-  if (!is.numeric(X)) stop("'x' must be numeric.")
+  if (!is.numeric(X)) stop("'x' must be numeric.", call. = FALSE)
   storage.mode(X) <- "double"
   p <- ncol(X)
-  if (p < 2L) stop("quadratic kappa requires at least two raters.")
+  if (p < 2L) stop("quadratic kappa requires at least two raters.",
+                   call. = FALSE)
 
   R <- is.finite(X)
   keep <- rowSums(R) > 0L
@@ -139,7 +141,8 @@ kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
     R <- R[keep, , drop = FALSE]
   }
   if (any(colSums(R) == 0L)) {
-    stop("every rater must be observed for at least one subject.")
+    stop("every rater must be observed for at least one subject.",
+         call. = FALSE)
   }
 
   opt <- utils::modifyList(

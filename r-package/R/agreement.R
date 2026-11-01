@@ -51,13 +51,14 @@
 }
 
 .attach_raw_kappa_delete_one <- function(fit, x, weight, values,
-                                         em_options = list()) {
+                                         em_options = list(),
+                                         categories = NULL) {
   if (nrow(x) < 3L || anyNA(x) || any(!is.finite(x))) return(fit)
   flatten <- em_options[["flatten"]]
   if (identical(fit$method, "fiml") && !is.null(flatten) && flatten > 0) {
     return(fit)
   }
-  out <- rcpp_kappa_delete_one(x, weight, values)
+  out <- rcpp_kappa_delete_one(x, weight, values, categories)
   .attach_delete_one(fit, out, c("Conger", "Fleiss", "Brennan-Prediger"))
 }
 
@@ -78,27 +79,96 @@
   .attach_delete_one(fit, out, c("Fleiss", "Brennan-Prediger"))
 }
 
-# Build a numeric score matrix from raw ratings. With values = NULL the input
-# is used as-is; with values supplied, observed categories are sorted and
-# mapped to the supplied scores.
-.score_matrix <- function(x, values = NULL) {
+# Resolve the rating scale of a subjects-by-raters matrix of labels and code
+# the ratings as integers 1..C. The scale is, in order of precedence, the
+# declared `categories`, the shared levels of an all-factor data frame, or the
+# sorted observed labels. Labels may be numeric, character, logical, or factor;
+# numeric labels are matched exactly, so 0.5 and 1 are distinct categories.
+# `values` scores the categories (default: numeric labels themselves, else
+# 1..C). `declared` records whether the user fixed the scale, which is what
+# Brennan-Prediger needs for the scored estimators.
+.code_ratings <- function(x, categories = NULL, values = NULL) {
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
-  X <- as.matrix(x)
-  if (!is.numeric(X)) stop("'x' must be numeric.")
-  storage.mode(X) <- "double"
-  if (!is.null(values)) {
-    if (!is.numeric(values)) stop("'values' must be numeric.")
-    observed <- is.finite(X)
-    if (!any(observed)) stop("all ratings are missing.")
-    categories <- sort(unique(c(X[observed])))
-    if (length(values) != length(categories)) {
-      stop("Length of 'values' must equal the number of unique observed categories.")
+  factor_levels <- NULL
+  if (is.data.frame(x)) {
+    is_fac <- vapply(x, is.factor, logical(1))
+    if (length(is_fac) && all(is_fac)) {
+      lv <- lapply(x, levels)
+      if (all(vapply(lv, identical, logical(1), lv[[1L]]))) {
+        factor_levels <- lv[[1L]]
+      }
     }
-    X[observed] <- values[match(X[observed], categories)]
+    x <- as.matrix(x)
   }
-  X
+  if (!is.numeric(x) && !is.character(x) && !is.logical(x)) {
+    stop("'x' must hold numeric, character, logical, or factor ratings.",
+         call. = FALSE)
+  }
+  if (is.numeric(x)) x[!is.finite(x)] <- NA
+  observed <- unique(x[!is.na(x)])
+  if (!length(observed)) stop("all ratings are missing.", call. = FALSE)
+
+  declared <- !is.null(categories) || !is.null(values) ||
+    !is.null(factor_levels)
+  if (is.null(categories)) {
+    categories <- if (!is.null(factor_levels)) factor_levels else sort(observed)
+  } else {
+    if (is.factor(categories)) categories <- as.character(categories)
+    if (!is.atomic(categories) || length(categories) < 2L ||
+        anyNA(categories) || anyDuplicated(categories)) {
+      stop("'categories' must list at least two distinct, non-missing labels.",
+           call. = FALSE)
+    }
+    extra <- observed[is.na(match(observed, categories))]
+    if (length(extra)) {
+      shown <- extra[seq_len(min(5L, length(extra)))]
+      stop("Observed ratings absent from 'categories': ",
+           paste(shown, collapse = ", "), if (length(extra) > 5L) ", ...",
+           call. = FALSE)
+    }
+  }
+  C <- length(categories)
+  if (is.null(values)) {
+    values <- if (is.numeric(categories)) as.numeric(categories) else seq_len(C)
+  } else {
+    if (!is.numeric(values) || any(!is.finite(values))) {
+      stop("'values' must be a finite numeric vector.", call. = FALSE)
+    }
+    if (length(values) != C) {
+      stop(sprintf(paste0(
+        "Length of 'values' (%d) must equal the number of categories (%d). ",
+        "Without 'categories' these are the distinct observed ratings; pass ",
+        "'categories' to declare the full scale."), length(values), C),
+        call. = FALSE)
+    }
+    values <- as.numeric(values)
+  }
+  codes <- matrix(match(x, categories), nrow(x), ncol(x),
+                  dimnames = dimnames(x))
+  storage.mode(codes) <- "integer"
+  list(codes = codes, categories = categories, values = values,
+       declared = declared)
+}
+
+# Numeric scores for the scored (quadratic) estimators. Plain numeric input
+# with no declared scale is used as is; otherwise the ratings are coded and
+# replaced by their category scores, and the scale counts as declared.
+.scored_ratings <- function(x, categories = NULL, values = NULL) {
+  if (is.null(categories) && is.null(values)) {
+    X <- if (is.data.frame(x) &&
+             all(vapply(x, is.numeric, logical(1)))) as.matrix(x) else x
+    if (is.matrix(X) && is.numeric(X)) {
+      storage.mode(X) <- "double"
+      return(list(X = X, values = NULL, declared = FALSE))
+    }
+  }
+  r <- .code_ratings(x, categories, values)
+  X <- matrix(r$values[r$codes], nrow(r$codes), ncol(r$codes),
+              dimnames = dimnames(r$codes))
+  list(X = X, values = r$values, declared = r$declared,
+       categories = r$categories)
 }
 
 # Internal: full categorical-kappa dispatch over every C++ method
@@ -109,21 +179,28 @@ estimate_kappa_raw <- function(x,
                                method = c("available", "ipw", "fiml", "gwet"),
                                weight = "identity",
                                values = NULL,
-                               em_options = list()) {
+                               em_options = list(),
+                               categories = NULL) {
   method <- match.arg(method)
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
+  if (any(is.finite(x_mat) & x_mat != round(x_mat))) {
+    stop("category codes must be whole numbers.", call. = FALSE)
+  }
   storage.mode(x_mat) <- "integer"
+  if (!is.null(categories)) categories <- as.integer(categories)
 
   out <- rcpp_kappa_raw(x = x_mat, method = method, weight_type = weight,
-                        values = values, em_options = em_options)
+                        values = values, em_options = em_options,
+                        categories = categories)
   .warn_null_frac(out$null_frac, em_options)
   fit <- .new_estimate(out, c("Conger", "Fleiss", "Brennan-Prediger"),
                        method = method, weight = weight)
-  .attach_raw_kappa_delete_one(fit, x_mat, weight, values, em_options)
+  .attach_raw_kappa_delete_one(fit, x_mat, weight, values, em_options,
+                               categories)
 }
 
 #' Multi-weight saturated categorical FIML kappa (internal)
@@ -155,10 +232,10 @@ estimate_kappa_fiml_multi <- function(x,
                                       values = NULL,
                                       em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
   storage.mode(x_mat) <- "integer"
 
   choices <- c("identity", "nominal", "linear", "quadratic")
@@ -202,19 +279,30 @@ estimate_kappa_fiml_multi <- function(x,
 #'     connected rater co-observation graph).
 #' }
 #'
-#' `"ipw"` and `"cat_fiml"` take integer category codes and the nominal,
-#' linear, or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"`
-#' are quadratic by construction: they treat `x` as numeric scores (pass scores
-#' directly, or integer codes with `values`), and `weight` defaults to
-#' `"quadratic"` for them.
+#' `"ipw"` and `"cat_fiml"` take categorical ratings and the nominal, linear,
+#' or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"` are
+#' quadratic by construction: they treat the ratings as numeric scores, and
+#' `weight` defaults to `"quadratic"` for them.
 #'
-#' Brennan-Prediger compares the observed disagreement with a uniform draw from
-#' the rating scale, so it is reported only when the scale is known. The
-#' categorical estimators take the scale from the categories (the observed
-#' codes, or `values`). The scored estimators `"nt_fiml"` and `"nt_fiml_cs"`
-#' report it when `values` declares a discrete scale, or for vector-valued
-#' ratings when `ranges` declares a continuous one. `"pairwise"` reports Conger
-#' and Fleiss only.
+#' The rating scale is the set of categories a rating can take. Ratings may be
+#' numbers, strings, logicals, or factors. By default the scale is the sorted
+#' distinct observed ratings (or the shared levels when every column of a data
+#' frame is a factor with the same levels). Pass `categories` to declare the
+#' full scale, including categories nobody used: on a 1-5 scale where no one
+#' chose 5, `categories = 1:5` keeps five categories. The scale matters for
+#' Brennan-Prediger, whose chance baseline is a uniform draw from it, and for
+#' the linear and quadratic weights, which are scaled by the range of the
+#' category scores (`values`, by default the numeric categories or `1:C`).
+#'
+#' Brennan-Prediger is reported only when the scale is known. The categorical
+#' estimators always have one (declared or observed). The scored estimators
+#' `"nt_fiml"` and `"nt_fiml_cs"` report it when `categories`, `values`, or
+#' factor levels declare a discrete scale, or for vector-valued ratings when
+#' `ranges` declares a continuous one. `"pairwise"` reports Conger and Fleiss
+#' only.
+#'
+#' Subjects with no observed rating are dropped before fitting, so `n` counts
+#' the subjects with at least one rating.
 #'
 #' Two generalizations are reached through the same call. Set `g > 2` for the
 #' Frechet / Hubert g-wise (multirater) kernels with `"ipw"` or `"cat_fiml"`,
@@ -239,9 +327,10 @@ estimate_kappa_fiml_multi <- function(x,
 #'
 #' @param x A subjects-by-raters matrix or data frame of scalar ratings, or a
 #'   subjects-by-raters-by-features 3-D array of vector-valued ratings (the
-#'   array form is auto-detected). Integer category codes for `"ipw"` /
-#'   `"cat_fiml"`. Numeric scores for `"pairwise"` / `"nt_fiml"` /
-#'   `"nt_fiml_cs"`. `NA` marks missing entries.
+#'   array form is auto-detected). Category labels (numbers, strings,
+#'   logicals, or factors) for `"ipw"` / `"cat_fiml"`. Numeric scores, or
+#'   labels scored through `categories` / `values`, for `"pairwise"` /
+#'   `"nt_fiml"` / `"nt_fiml_cs"`. `NA` marks missing entries.
 #' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`,
 #'   or `"nt_fiml_cs"`. Vector-valued ratings support `"ipw"` and `"pairwise"`
 #'   (component-separable) and, with the squared loss, `"pairwise"`,
@@ -258,13 +347,18 @@ estimate_kappa_fiml_multi <- function(x,
 #'   is ordinary pairwise kappa. `g > 2` uses the Frechet / Hubert g-wise
 #'   family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
 #'   the closed form is used. Not used for vector-valued ratings.
-#' @param values Optional numeric vector of category scores. The sorted
-#'   distinct observed ratings are mapped to `values` in order, so its length
-#'   must equal their number. For `"ipw"` / `"cat_fiml"` the scores
-#'   parameterize the linear and quadratic weights (default: the codes
-#'   themselves). For the scored estimators they convert codes to scores and
-#'   declare the discrete rating scale that Brennan-Prediger needs. Not used
-#'   for vector-valued ratings.
+#' @param values Optional numeric vector of category scores, one per category
+#'   (the declared `categories`, or else the sorted distinct observed
+#'   ratings), in the same order. For `"ipw"` / `"cat_fiml"` the scores
+#'   parameterize the linear and quadratic weights (default: numeric
+#'   categories themselves, otherwise `1:C`). For the scored estimators they
+#'   convert labels to scores and declare the discrete rating scale that
+#'   Brennan-Prediger needs. Not used for vector-valued ratings.
+#' @param categories Optional vector declaring the full rating scale in order,
+#'   for example `1:5` or `c("low", "mid", "high")`. Every observed rating must
+#'   be one of them; categories nobody used are kept. Defaults to the shared
+#'   factor levels, or else the sorted distinct observed ratings. Not used for
+#'   vector-valued ratings.
 #' @param em_options Named list of EM options for the likelihood estimators
 #'   (an error for `"ipw"` and `"pairwise"`). For `"cat_fiml"`: `tol`,
 #'   `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total
@@ -310,9 +404,10 @@ estimate_kappa_fiml_multi <- function(x,
 #' coefficients among raters.
 #'
 #' @return An object of class `misskappa_estimate` carrying the named
-#'   coefficient estimates, their asymptotic covariance matrix, and the number
-#'   of subjects `n`. Methods: `print`, `coef`, `vcov`, `confint`,
-#'   `as.data.frame`, and `stats::influence`. The object also carries a `psi`
+#'   coefficient estimates, their asymptotic covariance matrix, the number
+#'   of subjects `n`, and (for categorical or scored scalar ratings) the
+#'   rating scale used, `categories`. Methods: `print`, `coef`, `vcov`,
+#'   `confint`, `as.data.frame`, and `stats::influence`. The object also carries a `psi`
 #'   component (the n-by-K matrix of per-subject influence functions,
 #'   satisfying `vcov == crossprod(psi) / n^2`) for building custom contrasts
 #'   or joint tests.
@@ -321,6 +416,11 @@ estimate_kappa_fiml_multi <- function(x,
 #' # Categorical ratings with missing entries (Gwet 2014): the
 #' # inverse-probability-weighted estimator under MCAR, with linear weights.
 #' agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
+#'
+#' # Declare the full rating scale. The Gwet data use codes 0-3; declaring a
+#' # fifth, unused category changes Brennan-Prediger and the linear weights.
+#' agreement(dat.gwet2014, estimator = "ipw", weight = "linear",
+#'           categories = 0:4)
 #'
 #' # Scored coefficient (quadratic loss) via the pairwise-available moment
 #' # estimator. Treats the columns as numeric scores.
@@ -361,12 +461,15 @@ agreement <- function(x,
                   weight = c("nominal", "linear", "quadratic", "hubert"),
                   g = 2L,
                   values = NULL,
+                  categories = NULL,
                   em_options = list(),
                   ...) {
   estimator <- match.arg(estimator)
   weight_supplied <- !missing(weight)
   weight <- match.arg(weight)
   dots <- list(...)
+  kept <- .drop_empty_subjects(x)
+  x <- kept$x
   em_allowed <- switch(estimator,
     cat_fiml = c(.em_options_categorical, "flatten"),
     nt_fiml = , nt_fiml_cs = .em_options_normal,
@@ -377,23 +480,24 @@ agreement <- function(x,
     if (!missing(g)) {
       stop("'g' does not apply to vector-valued ratings.", call. = FALSE)
     }
-    if (!is.null(values)) {
-      stop("'values' does not apply to vector-valued ratings; use 'ranges' ",
-           "to declare the score range.", call. = FALSE)
+    if (!is.null(values) || !is.null(categories)) {
+      stop("'values' and 'categories' do not apply to vector-valued ratings; ",
+           "use 'ranges' to declare the score range.", call. = FALSE)
     }
     em_options <- .check_em_options(em_options, em_allowed, estimator)
-    return(.kappa_vector_dispatch(x, estimator, weight, weight_supplied,
-                                  em_options, dots))
+    fit <- .kappa_vector_dispatch(x, estimator, weight, weight_supplied,
+                                  em_options, dots)
+    return(.label_subjects(fit, kept$ids))
   }
 
   if (!is.numeric(g) || length(g) != 1L || !is.finite(g) || g < 2 ||
       g != round(g)) {
-    stop("'g' must be an integer >= 2.")
+    stop("'g' must be an integer >= 2.", call. = FALSE)
   }
   g <- as.integer(g)
   if (weight == "hubert" && g == 2L) {
     stop('weight = "hubert" is only defined for g > 2; use weight = ',
-         '"nominal" for g = 2.')
+         '"nominal" for g = 2.', call. = FALSE)
   }
 
   ## Quadratic weighting is a moment functional and therefore g-invariant: any
@@ -416,8 +520,9 @@ agreement <- function(x,
         "Conger's kappa (and Brennan-Prediger)"
       },
       arity = 2L)
-    return(.kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
-                            em_options))
+    fit <- .kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
+                            categories, em_options)
+    return(.label_subjects(fit, kept$ids))
   }
 
   ## g > 2, non-quadratic: the Frechet / Hubert g-wise family.
@@ -428,61 +533,106 @@ agreement <- function(x,
     .pattern_observed(x), unit = "rater",
     coefficient = sprintf("%s-wise kappa", g),
     arity = g)
-  .kappa_scalar_gwise(x, estimator, weight, g, values, em_options, dots)
+  fit <- .kappa_scalar_gwise(x, estimator, weight, g, values, categories,
+                             em_options, dots)
+  .label_subjects(fit, kept$ids)
+}
+
+# Subjects with no observed rating carry no information about agreement, so
+# every estimator drops them before fitting. Returns the reduced input and the
+# identifiers of the kept subjects (row names, or row numbers of the input).
+.drop_empty_subjects <- function(x) {
+  if (!is.matrix(x) && !is.data.frame(x) &&
+      !(is.array(x) && length(dim(x)) == 3L)) {
+    return(list(x = x, ids = NULL))
+  }
+  ids <- if (is.data.frame(x)) attr(x, "row.names") else dimnames(x)[[1L]]
+  n <- if (is.data.frame(x)) nrow(x) else dim(x)[1L]
+  if (is.null(ids) || is.integer(ids)) ids <- seq_len(n)
+  ids <- as.character(ids)
+  m <- if (is.data.frame(x)) as.matrix(x) else x
+  observed <- !is.na(m)
+  if (is.numeric(m)) observed <- observed & is.finite(m)
+  keep <- if (length(dim(m)) == 3L) {
+    apply(observed, 1L, any)
+  } else {
+    rowSums(observed) > 0L
+  }
+  if (!all(keep)) {
+    x <- if (length(dim(x)) == 3L) x[keep, , , drop = FALSE] else
+      x[keep, , drop = FALSE]
+  }
+  list(x = x, ids = ids[keep])
+}
+
+# Name the influence rows by subject so paired tests can align fits whose
+# subject sets differ (for example when a subject is unrated on one attribute).
+.label_subjects <- function(fit, ids) {
+  if (!is.null(ids) && !is.null(fit$psi) && is.matrix(fit$psi) &&
+      nrow(fit$psi) == length(ids)) {
+    rownames(fit$psi) <- ids
+  }
+  fit
 }
 
 # Ordinary pairwise (g = 2) kappa, also reached by any quadratic request
 # because quadratic kappa does not depend on g.
 .kappa_scalar_g2 <- function(x, estimator, weight, weight_supplied, values,
-                             em_options) {
+                             categories, em_options) {
   if (estimator %in% c("pairwise", "nt_fiml", "nt_fiml_cs")) {
     if (weight_supplied && weight != "quadratic") {
-      stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
+      stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator),
+           call. = FALSE)
     }
-    X <- .score_matrix(x, values)
+    sc <- .scored_ratings(x, categories, values)
     if (estimator == "pairwise") {
-      fit <- kappa_continuous(X, method = "available", weight = "quadratic")
+      fit <- kappa_continuous(sc$X, method = "available", weight = "quadratic")
     } else {
       em_options$covariance <- if (estimator == "nt_fiml_cs") {
         "variance_components"
       } else {
         "saturated"
       }
-      fit <- kappa_quadratic_fiml(X, values = values, em_options = em_options)
+      fit <- kappa_quadratic_fiml(sc$X, values = sc$values,
+                                  em_options = em_options)
       fit$covariance <- NULL    # the estimator name carries the structure
       fit$mean <- NULL
       # Brennan-Prediger needs a declared scale (see ?agreement).
-      if (is.null(values)) fit <- .drop_coefficients(fit, "Brennan-Prediger")
+      if (!sc$declared) fit <- .drop_coefficients(fit, "Brennan-Prediger")
     }
     fit$method <- estimator
     fit$weight <- "quadratic"
+    fit$categories <- sc$categories
     return(fit)
   }
 
+  r <- .code_ratings(x, categories, values)
   cpp_weight <- if (weight == "nominal") "identity" else weight
   fit <- estimate_kappa_raw(
-    x,
+    r$codes,
     method = if (estimator == "ipw") "ipw" else "fiml",
     weight = cpp_weight,
-    values = values,
-    em_options = em_options
+    values = r$values,
+    em_options = em_options,
+    categories = seq_along(r$categories)
   )
   fit$method <- estimator
   fit$weight <- weight
+  fit$categories <- r$categories
   fit
 }
 
 # g > 2, non-quadratic. Maps the public weight to a g-wise kernel and the
 # public estimator to the backend method, then delegates to kappa_gwise().
-.kappa_scalar_gwise <- function(x, estimator, weight, g, values, em_options,
-                                dots) {
+.kappa_scalar_gwise <- function(x, estimator, weight, g, values, categories,
+                                em_options, dots) {
   map <- switch(weight,
     nominal = list(distance = "nominal", family = "categorical"),
     hubert  = list(distance = "hubert",  family = "categorical"),
     linear  = list(distance = "absolute", family = "continuous"),
     stop(sprintf(
       'weight = "%s" has no g-wise (g > 2) kernel; use "nominal", "linear", "hubert", or "quadratic".',
-      weight))
+      weight), call. = FALSE)
   )
 
   method <- switch(estimator,
@@ -501,7 +651,12 @@ agreement <- function(x,
   } else {
     5000000L
   }
-  xx <- if (map$family == "continuous") .score_matrix(x, values) else x
+  r <- .code_ratings(x, categories, values)
+  xx <- if (map$family == "continuous") {
+    matrix(r$values[r$codes], nrow(r$codes), ncol(r$codes))
+  } else {
+    r$codes
+  }
 
   fit <- kappa_gwise(xx, distance = map$distance, method = method, g = g,
                      em_options = em_options,
@@ -524,7 +679,8 @@ agreement <- function(x,
     .check_dots(dots, c("W", "ranges"),
                 sprintf('vector-valued estimator = "%s"', estimator))
     if (weight_supplied && weight != "quadratic") {
-      stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator))
+      stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator),
+           call. = FALSE)
     }
     fit <- kappa_vector_quadratic(x, method = estimator, W = W,
                                   em_options = em_options, ranges = ranges)
@@ -537,7 +693,8 @@ agreement <- function(x,
     .check_dots(dots, "W",
                 'vector-valued estimator = "pairwise" with a feature metric W')
     if (weight_supplied && weight != "quadratic") {
-      stop('a full feature metric W requires weight = "quadratic".')
+      stop('a full feature metric W requires weight = "quadratic".',
+           call. = FALSE)
     }
     fit <- kappa_vector_quadratic(x, method = "pairwise", W = W)
     fit$method <- estimator
@@ -561,7 +718,7 @@ agreement <- function(x,
       quadratic = "squared",
       stop(sprintf(
         'weight = "%s" has no vector component loss; use "nominal", "linear", or "quadratic", or pass loss = "rms".',
-        weight))
+        weight), call. = FALSE)
     )
   }
   fit <- kappa_vector(x, method = estimator, loss = loss,
@@ -601,11 +758,11 @@ agreement <- function(x,
 #' @noRd
 kappa_quadratic <- function(x, values) {
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   x_mat <- as.matrix(x)
   storage.mode(x_mat) <- "double"
-  if (!is.numeric(values)) stop("'values' must be numeric.")
+  if (!is.numeric(values)) stop("'values' must be numeric.", call. = FALSE)
 
   out <- rcpp_kappa_quadratic(
     x = x_mat,
@@ -667,13 +824,14 @@ kappa_quadratic <- function(x, values) {
 ratings_to_counts <- function(x, categories = NULL) {
   if (is.data.frame(x)) x <- as.matrix(x)
   if (!is.matrix(x)) {
-    stop("'x' must be a subjects-by-raters matrix or data frame.")
+    stop("'x' must be a subjects-by-raters matrix or data frame.",
+         call. = FALSE)
   }
   if (is.numeric(x)) x[!is.finite(x)] <- NA
 
   observed <- x[!is.na(x)]
   if (length(observed) == 0L) {
-    stop("'x' has no observed (non-missing) ratings.")
+    stop("'x' has no observed (non-missing) ratings.", call. = FALSE)
   }
 
   if (is.null(categories)) {
@@ -684,7 +842,7 @@ ratings_to_counts <- function(x, categories = NULL) {
       shown <- extra[seq_len(min(5L, length(extra)))]
       stop("Observed labels absent from 'categories': ",
            paste(shown, collapse = ", "),
-           if (length(extra) > 5L) ", ..." else "")
+           if (length(extra) > 5L) ", ..." else "", call. = FALSE)
     }
   }
   C <- length(categories)
@@ -819,16 +977,26 @@ agreement_counts <- function(x,
     character(0)), estimator)
   cpp_weight <- if (weight == "nominal") "identity" else weight
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
+  if (anyNA(x_mat) || any(x_mat < 0) || any(x_mat != round(x_mat))) {
+    stop("'x' must hold non-negative whole-number counts.", call. = FALSE)
+  }
+  ids <- rownames(x_mat)
+  if (is.null(ids)) ids <- as.character(seq_len(nrow(x_mat)))
+  # Subjects nobody rated carry no information; drop them as agreement() does.
+  keep <- rowSums(x_mat) > 0
+  if (!any(keep)) stop("'x' has no observed ratings.", call. = FALSE)
+  x_mat <- x_mat[keep, , drop = FALSE]
+  ids <- ids[keep]
   storage.mode(x_mat) <- "integer"
 
   if (estimator == "nt_fiml_cs") {
     # Direct-on-counts exchangeable CS quadratic kappa (no realizing table;
     # see kappa_counts_cs.R).
-    return(.kappa_counts_cs(x_mat, values, em_options))
+    return(.label_subjects(.kappa_counts_cs(x_mat, values, em_options), ids))
   }
   out <- if (estimator == "fleiss_cuzick") {
     rcpp_kappa_counts(x = x_mat, weight_type = cpp_weight, values = values)
@@ -844,7 +1012,9 @@ agreement_counts <- function(x,
   }
   fit <- .new_estimate(out, c("Fleiss", "Brennan-Prediger"),
                        method = estimator, weight = weight)
-  .attach_counts_kappa_delete_one(fit, x_mat, cpp_weight, values, em_options)
+  fit <- .attach_counts_kappa_delete_one(fit, x_mat, cpp_weight, values,
+                                        em_options)
+  .label_subjects(fit, ids)
 }
 
 #' Weighted agreement coefficients for continuous ratings
@@ -901,17 +1071,17 @@ kappa_continuous <- function(x,
   weight <- match.arg(weight)
 
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
   storage.mode(x_mat) <- "double"
 
   if (method == "fiml") {
     if (weight != "quadratic") {
       stop("method = \"fiml\" is only defined for the quadratic kernel; the ",
            "normal-FIML coefficients are functions of the mean and covariance ",
-           "only under quadratic weighting.")
+           "only under quadratic weighting.", call. = FALSE)
     }
     return(kappa_quadratic_fiml(x_mat, values = values, em_options = em_options))
   }
@@ -959,12 +1129,13 @@ kappa_vector <- function(x,
   loss <- match.arg(loss)
   dims <- dim(x)
   if (length(dims) != 3L) {
-    stop("'x' must be a subjects-by-raters-by-features array.")
+    stop("'x' must be a subjects-by-raters-by-features array.", call. = FALSE)
   }
   if (dims[1L] < 1L || dims[2L] < 2L || dims[3L] < 1L) {
-    stop("'x' must have at least one subject, two raters, and one feature.")
+    stop("'x' must have at least one subject, two raters, and one feature.",
+         call. = FALSE)
   }
-  if (!is.numeric(x)) stop("'x' must be numeric.")
+  if (!is.numeric(x)) stop("'x' must be numeric.", call. = FALSE)
   storage.mode(x) <- "double"
 
   n <- dims[1L]
@@ -977,7 +1148,7 @@ kappa_vector <- function(x,
       any(!is.finite(feature_weights)) || any(feature_weights < 0) ||
       !any(feature_weights > 0)) {
     stop("'feature_weights' must be a non-negative numeric vector of length ",
-         "dim(x)[3] with at least one positive entry.")
+         "dim(x)[3] with at least one positive entry.", call. = FALSE)
   }
 
   flat <- matrix(NA_real_, nrow = n, ncol = R * p)
@@ -1037,27 +1208,29 @@ kappa_gwise <- function(x,
   distance <- match.arg(distance)
   method <- match.arg(method)
   if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.")
+    stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
   x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.")
+  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
   if (is.null(g)) g <- ncol(x_mat)
   if (!is.numeric(g) || length(g) != 1L || !is.finite(g) ||
       g < 2 || g > ncol(x_mat)) {
-    stop("'g' must be an integer between 2 and ncol(x).")
+    stop("'g' must be an integer between 2 and ncol(x).", call. = FALSE)
   }
   if (!is.numeric(max_chance_tuples) || length(max_chance_tuples) != 1L ||
       !is.finite(max_chance_tuples) || max_chance_tuples < 1 ||
       max_chance_tuples > .Machine$integer.max) {
-    stop("'max_chance_tuples' must be a positive integer.")
+    stop("'max_chance_tuples' must be a positive integer.", call. = FALSE)
   }
 
   categorical <- distance %in% c("nominal", "hubert")
   if (method == "fiml" && !categorical) {
-    stop('method = "fiml" is only available for categorical g-wise distances.')
+    stop('method = "fiml" is only available for categorical g-wise distances.',
+         call. = FALSE)
   }
   if (method == "complete" && any(!is.finite(x_mat))) {
-    stop("the complete-data g-wise estimator requires complete, finite ratings.")
+    stop("the complete-data g-wise estimator requires complete, finite ratings.",
+         call. = FALSE)
   }
 
   if (categorical) {

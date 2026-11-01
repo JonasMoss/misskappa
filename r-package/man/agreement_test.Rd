@@ -2,7 +2,7 @@
 % Please edit documentation in R/agreement_test.R
 \name{agreement_test}
 \alias{agreement_test}
-\title{Test equality of a kappa agreement coefficient across fits}
+\title{Test equality of an agreement coefficient across fits}
 \usage{
 agreement_test(..., coef = NULL, paired = FALSE, value = 0)
 }
@@ -24,7 +24,7 @@ between two fits (default `0`).}
 An `htest` object.
 }
 \description{
-Wald test that a chosen kappa coefficient is equal across two or more
+Wald test that a chosen agreement coefficient is equal across two or more
 [agreement()] fits (or, with a single fit, equal to `value`). Pass the fits to
 `...`, naming them to label the output.
 
@@ -32,8 +32,11 @@ By default the fits are treated as independent samples, so their variances
 add. Set `paired = TRUE` when the fits are computed on the **same subjects in
 the same row order** (two estimators, two weight schemes, two rated
 attributes, rater pairs, ...). The dependence is then taken from the
-per-subject influence functions (`fit$psi`). With more than two fits this is
-the joint hypothesis that all are equal (`G - 1` degrees of freedom).
+per-subject influence functions (`fit$psi`), whose rows are matched by
+subject: by the row names of the rating data, or by row number when it has
+none. A subject that is unrated in one of the fits simply contributes
+nothing to that fit. With more than two fits this is the joint hypothesis
+that all are equal (`G - 1` degrees of freedom).
 }
 \examples{
 # Paired: are two rater pairs equally consistent on the same 50 subjects
