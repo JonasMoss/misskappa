@@ -1,5 +1,5 @@
 ---
-title: "Missingness And Estimators"
+title: "Coefficients And Estimators"
 ---
 
 ```{r}
@@ -8,10 +8,56 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(misskappa)
 ```
 
-The package distinguishes missing completely at random (MCAR) estimators from
-missing at random (MAR) likelihood estimators. In raw rater matrices, `NA`
-means the rating was not observed. In the C++ API, categorical missingness is
-encoded by `misskappa::na_code`.
+## Coefficients
+
+Agreement coefficients in `misskappa` are written in terms of pairwise
+disagreement. For two raters with categorical ratings in
+$\{1,\ldots,C\}$, let $L$ be a loss matrix with
+$\ell_{cc}=0$ and $0 \le \ell_{cd} \le 1$. The generic coefficient is
+
+$$
+\kappa = 1 - \frac{D_o}{D_e},
+$$
+
+where $D_o$ is observed disagreement and $D_e$ is the disagreement
+expected under a chance model. Different named coefficients mostly differ in
+how they estimate these two quantities when there are more than two raters.
+
+For a subject $i$ and raters $r,s$, complete-data pairwise
+disagreement is
+
+$$
+d_{irs} = \ell_{X_{ir}, X_{is}}.
+$$
+
+Observed disagreement $D_o$ averages $d_{irs}$ over subjects and rater pairs.
+The coefficients differ in the chance model behind $D_e$: Conger pairs each
+rater's own category distribution, Fleiss pools the raters' distributions,
+and Brennan-Prediger draws uniformly from the rating scale, so it needs that
+scale to be known (declare it with `categories` when some categories went
+unused).
+
+The `weight` argument picks the loss: `"nominal"` ($\ell_{cd}=1$ for
+$c \neq d$), or `"linear"` and `"quadratic"` for ordered categories, scaled by
+the range of the category scores $v$. The quadratic loss is
+
+$$
+\ell_{cd} =
+\frac{(v_c - v_d)^2}{(\max_j v_j - \min_j v_j)^2},
+$$
+
+and lets the
+coefficient be expressed through the rater means and covariance matrix, which
+is what the scored estimators `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"`
+exploit: they estimate those moments under missing data and map them to the
+coefficients.
+
+## Estimators under missing data
+
+The estimators split into moment estimators, consistent when ratings are
+missing completely at random (MCAR), and likelihood estimators, consistent
+when missingness may depend on the observed ratings (MAR). `NA` marks a
+missing rating.
 
 The simplest moment estimator averages the loss over the observed rater
 pairs:
@@ -39,7 +85,7 @@ $$
 $$
 
 with corresponding weighted marginal estimates for chance disagreement. This
-is the MCAR estimator for raw categorical ratings. The scored `"pairwise"`
+is the default and recommended estimator for categorical ratings. The scored `"pairwise"`
 estimator takes a different route to the same goal: it estimates each rater
 mean and each pairwise covariance from the subjects who observed it, and the
 quadratic coefficients are functions of those moments, so it is consistent
@@ -71,7 +117,7 @@ robust under MCAR even when the covariance is misspecified. The saturated model
 is the safer choice under MAR when the covariance may depart from compound
 symmetry.
 
-## Compound symmetry on a planned-incomplete design
+### Compound symmetry on a planned-incomplete design
 
 The saturated coefficients (`"pairwise"`, `"nt_fiml"`, `"cat_fiml"`) are
 functions of *every* pairwise second moment, so they are identified only when
@@ -105,11 +151,34 @@ agreement(dat.tenhove2025, estimator = "nt_fiml")
 ```
 
 The compound-symmetry estimator fits the same data. Declaring the `1`--`5`
-scale with `values` adds Brennan-Prediger to Conger and Fleiss:
+scale adds Brennan-Prediger to Conger and Fleiss:
 
 ```{r}
-agreement(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
+agreement(dat.tenhove2025, estimator = "nt_fiml_cs", categories = 1:5)
 ```
 
 All three coefficients come with sandwich standard errors, recovered from a
 design where the saturated estimators cannot be computed at all.
+
+## References
+
+Brennan, R. L., & Prediger, D. J. (1981). Coefficient kappa: Some uses,
+misuses, and alternatives. *Educational and Psychological Measurement*,
+41(3), 687–699.
+
+Cohen, J. (1960). A coefficient of agreement for nominal scales. *Educational
+and Psychological Measurement*, 20(1), 37–46.
+
+Cohen, J. (1968). Weighted kappa: Nominal scale agreement with provision for
+scaled disagreement or partial credit. *Psychological Bulletin*, 70(4),
+213–220.
+
+Conger, A. J. (1980). Integration and generalization of kappas for multiple
+raters. *Psychological Bulletin*, 88(2), 322–328.
+
+Fleiss, J. L. (1971). Measuring nominal scale agreement among many raters.
+*Psychological Bulletin*, 76(5), 378–382.
+
+ten Hove, D., Jorgensen, T. D., & van der Ark, L. A. (2025). How to estimate
+ICCs for interrater reliability from planned incomplete data. *Multivariate
+Behavioral Research*, 60(5). <https://doi.org/10.1080/00273171.2025.2507745>

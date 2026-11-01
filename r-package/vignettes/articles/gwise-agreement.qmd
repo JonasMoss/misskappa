@@ -85,7 +85,7 @@ $$
 and taking $d = V(l)$ supplies a symmetric multirater kernel for any $l$. With
 $g = 2$ this is half the pairwise loss, so the construction is a genuine
 extension of the loss-matrix picture in the
-[agreement-coefficients article](agreement-coefficients.html). Nominal and
+[coefficients and estimators article](missingness-estimators.html). Nominal and
 absolute losses give the `"nominal"` and `"linear"` kernels. The all-raters-equal
 kernel of Hubert (1977) is exposed as `"hubert"`.
 
@@ -119,20 +119,10 @@ pairwise case. There is no separate g-wise machinery to invoke.
 
 ## References
 
-Berry, K. J., Johnston, J. E., & Mielke, P. W. (2008). Weighted kappa for
-multiple raters. *Perceptual and Motor Skills*, 107(3), 837–848.
-
 Conger, A. J. (1980). Integration and generalization of kappas for multiple
 raters. *Psychological Bulletin*, 88(2), 322–328.
 
 Hubert, L. (1977). Kappa revisited. *Psychological Bulletin*, 84(2), 289–297.
-
-Janson, H., & Olsson, U. (2001). A measure of agreement for interval or nominal
-multivariate observations. *Educational and Psychological Measurement*, 61(2),
-277–289.
-
-Mielke, P. W., Berry, K. J., & Johnston, J. E. (2007). The exact variance of
-weighted kappa with multiple raters. *Psychological Reports*, 101(2), 655–660.
 
 Moss, J. (2024). Measures of agreement with multiple raters: Fréchet variances
 and inference. *Psychometrika*. <https://doi.org/10.1007/s11336-023-09945-2>

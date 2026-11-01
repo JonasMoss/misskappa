@@ -35,6 +35,14 @@ renames below.
   category) is reported as undefined with a warning, and its variance is `NA`
   instead of a misleading zero.
 
+## Documentation
+
+* The help pages are shorter and name the recommended default estimators
+  (`"ipw"` for `agreement()`, `"fleiss_cuzick"` for `agreement_counts()`).
+* The articles are consolidated into five: coefficients and estimators,
+  comparing coefficients (equality tests and custom contrasts), g-wise
+  agreement, vector-valued agreement, and validation.
+
 ## Minor
 
 * Error messages no longer show internal function calls.

@@ -7,47 +7,40 @@
 agreement_test(..., coef = NULL, paired = FALSE, value = 0)
 }
 \arguments{
-\item{...}{One or more `misskappa_estimate` objects from [agreement()] or
-[agreement_counts()] (a single fit tests `coef = value`). Names become labels
-in the output.}
+\item{...}{Fits from [agreement()] or [agreement_counts()]. Names label the
+output.}
 
-\item{coef}{Coefficient to compare. Defaults to the first coefficient of the
-first fit (`"Conger"` for [agreement()], `"Fleiss"` for [agreement_counts()]).}
+\item{coef}{Coefficient to compare. Defaults to the first one (`"Conger"`
+for [agreement()], `"Fleiss"` for [agreement_counts()]).}
 
 \item{paired}{`FALSE` (default) for independent samples, `TRUE` for fits on
-the same subjects in the same row order.}
+the same subjects.}
 
-\item{value}{Null value: the coefficient (single fit) or the difference
-between two fits (default `0`).}
+\item{value}{Null value for the coefficient (one fit) or the difference
+(two fits). Default `0`.}
 }
 \value{
 An `htest` object.
 }
 \description{
-Wald test that a chosen agreement coefficient is equal across two or more
-[agreement()] fits (or, with a single fit, equal to `value`). Pass the fits to
-`...`, naming them to label the output.
+Wald test that a coefficient is equal across two or more fits, or equal to
+`value` for a single fit. With more than two fits it tests that all are
+equal (`G - 1` degrees of freedom).
 
-By default the fits are treated as independent samples, so their variances
-add. Set `paired = TRUE` when the fits are computed on the **same subjects in
-the same row order** (two estimators, two weight schemes, two rated
-attributes, rater pairs, ...). The dependence is then taken from the
-per-subject influence functions (`fit$psi`), whose rows are matched by
-subject: by the row names of the rating data, or by row number when it has
-none. A subject that is unrated in one of the fits simply contributes
-nothing to that fit. With more than two fits this is the joint hypothesis
-that all are equal (`G - 1` degrees of freedom).
+Fits are independent samples by default, so their variances add. Use
+`paired = TRUE` for fits on the same subjects (two estimators, two
+attributes, two rater groups, ...): the dependence then comes from the
+per-subject influence rows, matched by the row names of the rating data, or
+by row number when there are none.
 }
 \examples{
-# Paired: are two rater pairs equally consistent on the same 50 subjects
-# (Zapf 2016)? The dependence is read from the per-subject influence
-# functions.
-agreement_test(AB = agreement(dat.zapf2016[, 1:2], estimator = "pairwise"),
-           CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
-           paired = TRUE)
+# Two studies with different subjects.
+agreement_test(gwet  = agreement(dat.gwet2014),
+               klein = agreement(dat.klein2018))
 
-# Independent samples (different subjects in two studies): variances add.
-agreement_test(gwet  = agreement(dat.gwet2014,  estimator = "ipw"),
-           klein = agreement(dat.klein2018, estimator = "ipw"))
+# Two rater pairs on the same 50 subjects.
+agreement_test(AB = agreement(dat.zapf2016[, 1:2], estimator = "pairwise"),
+               CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
+               paired = TRUE)
 
 }

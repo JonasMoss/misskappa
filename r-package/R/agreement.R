@@ -200,198 +200,98 @@
 #' Weighted agreement coefficients with missing data
 #'
 #' @description
-#' Estimates Conger / Fleiss / Brennan-Prediger weighted agreement
-#' coefficients for raw ratings with missing entries. Pick the estimator with
-#' `estimator`:
+#' Estimates Conger, Fleiss, and Brennan-Prediger agreement coefficients (with
+#' two raters, Conger is Cohen's kappa) from a subjects-by-raters matrix in
+#' which some ratings may be missing. Choose the estimator with `estimator`:
 #' \itemize{
-#'   \item `"ipw"`: inverse-probability-weighted moment estimator for
-#'     categorical ratings under MCAR, consistent under non-exchangeable raters
-#'     with rater-varying observation rates.
-#'   \item `"cat_fiml"`: saturated-multinomial full-information maximum
-#'     likelihood for categorical ratings under ignorable missingness.
-#'   \item `"pairwise"`: pairwise-available moment estimator for the
-#'     quadratically weighted (scored) coefficient under MCAR.
-#'   \item `"nt_fiml"`: robust normal-theory FIML (saturated covariance) for
-#'     the quadratically weighted coefficient under ignorable missingness.
-#'   \item `"nt_fiml_cs"`: the same FIML under the compound-symmetry
-#'     covariance model \eqn{\Sigma = \psi J + e I} (fixed raters, needs only a
-#'     connected rater co-observation graph).
+#'   \item `"ipw"` (default, recommended): inverse-probability weighting.
+#'     Consistent under MCAR, also with raters observed at different rates;
+#'     works with any `weight`.
+#'   \item `"cat_fiml"`: categorical full-information maximum likelihood.
+#'     Consistent under MAR; feasible for few raters and categories.
+#'   \item `"pairwise"`: moment estimator for quadratic weights, MCAR.
+#'   \item `"nt_fiml"`: robust normal-theory FIML for quadratic weights,
+#'     suited to MAR with roughly normal scores.
+#'   \item `"nt_fiml_cs"`: `"nt_fiml"` under the compound-symmetry covariance
+#'     \eqn{\Sigma = \psi J + e I}; needs only a connected rater co-observation
+#'     graph, so it handles planned-incomplete designs.
 #' }
+#' The last three treat ratings as numeric scores and use the quadratic
+#' weight.
 #'
-#' `"ipw"` and `"cat_fiml"` take categorical ratings and the nominal, linear,
-#' or quadratic `weight`. `"pairwise"`, `"nt_fiml"`, and `"nt_fiml_cs"` are
-#' quadratic by construction: they treat the ratings as numeric scores, and
-#' `weight` defaults to `"quadratic"` for them.
+#' @section Rating scale:
+#' Ratings may be numbers, strings, logicals, or factors. The scale defaults
+#' to the shared factor levels, or else the sorted observed ratings. Pass
+#' `categories` to declare the full scale including categories nobody used
+#' (`categories = 1:5` on a 1-5 scale where no one chose 5). The scale sets
+#' Brennan-Prediger's chance baseline and the range that scales the linear and
+#' quadratic weights. The scored estimators report Brennan-Prediger only when
+#' `categories`, `values`, or factor levels declare the scale.
 #'
-#' The rating scale is the set of categories a rating can take. Ratings may be
-#' numbers, strings, logicals, or factors. By default the scale is the sorted
-#' distinct observed ratings (or the shared levels when every column of a data
-#' frame is a factor with the same levels). Pass `categories` to declare the
-#' full scale, including categories nobody used: on a 1-5 scale where no one
-#' chose 5, `categories = 1:5` keeps five categories. The scale matters for
-#' Brennan-Prediger, whose chance baseline is a uniform draw from it, and for
-#' the linear and quadratic weights, which are scaled by the range of the
-#' category scores (`values`, by default the numeric categories or `1:C`).
+#' @section Missing data:
+#' Subjects with no ratings are dropped. Every rater must be observed, and
+#' every rater pair must rate at least one subject together (every g-tuple for
+#' `g > 2`), otherwise the coefficient is not identified and the call errors.
+#' `"nt_fiml_cs"` needs only a connected co-observation graph.
 #'
-#' Brennan-Prediger is reported only when the scale is known. The categorical
-#' estimators always have one (declared or observed). The scored estimators
-#' `"nt_fiml"` and `"nt_fiml_cs"` report it when `categories`, `values`, or
-#' factor levels declare a discrete scale, or for vector-valued ratings when
-#' `ranges` declares a continuous one. `"pairwise"` reports Conger and Fleiss
-#' only.
+#' @section Generalizations:
+#' `g > 2` uses g-wise kernels that compare `g` raters at once (with `"ipw"`
+#' or `"cat_fiml"`). A subjects-by-raters-by-features array gives
+#' vector-valued agreement; see the vector-valued agreement article.
 #'
-#' Subjects with no observed rating are dropped before fitting, so `n` counts
-#' the subjects with at least one rating.
-#'
-#' Two generalizations are reached through the same call. Set `g > 2` for the
-#' Frechet / Hubert g-wise (multirater) kernels with `"ipw"` or `"cat_fiml"`,
-#' which report the Conger-type (distinct rater combinations) and Fleiss-type
-#' coefficients. Pass a subjects-by-raters-by-features array to score
-#' vector-valued ratings. With `"ipw"` or `"pairwise"` and no feature metric the
-#' loss is component-separable (per-feature weights via `feature_weights`, or
-#' `loss = "rms"`). Pass a full feature metric `W` (or use `"nt_fiml"` /
-#' `"nt_fiml_cs"`) for the squared vector loss `(x - y)' W (x - y)`:
-#' `"pairwise"` is the moment estimator and `"nt_fiml"` / `"nt_fiml_cs"` the
-#' saturated / block compound-symmetry normal FIML
-#' (`Sigma = J_R \%x\% Psi + I_R \%x\% E`).
-#'
-#' For scalar fixed-rater coefficients with missing entries, the observed-data
-#' pattern must identify the requested functional. For ordinary pairwise kappa
-#' (`g = 2`, and all quadratic requests), every rater must be observed at least
-#' once and every rater pair must be jointly observed by at least one subject
-#' (`"nt_fiml_cs"` needs only a connected co-observation graph). For
-#' non-quadratic `g > 2`, every requested rater g-tuple must be jointly
-#' observed by at least one subject. Violations are reported as
-#' non-identification before the estimator runs.
-#'
-#' @param x A subjects-by-raters matrix or data frame of scalar ratings, or a
-#'   subjects-by-raters-by-features 3-D array of vector-valued ratings (the
-#'   array form is auto-detected). Category labels (numbers, strings,
-#'   logicals, or factors) for `"ipw"` / `"cat_fiml"`. Numeric scores, or
-#'   labels scored through `categories` / `values`, for `"pairwise"` /
-#'   `"nt_fiml"` / `"nt_fiml_cs"`. `NA` marks missing entries.
-#' @param estimator One of `"ipw"`, `"cat_fiml"`, `"pairwise"`, `"nt_fiml"`,
-#'   or `"nt_fiml_cs"`. Vector-valued ratings support `"ipw"` and `"pairwise"`
-#'   (component-separable) and, with the squared loss, `"pairwise"`,
-#'   `"nt_fiml"`, and `"nt_fiml_cs"`. For non-quadratic `g > 2` use `"ipw"`
-#'   (which equals the complete-data estimator when nothing is missing) or
-#'   `"cat_fiml"`.
-#' @param weight Weighting scheme: `"nominal"` (the default for `"ipw"` /
-#'   `"cat_fiml"`), `"linear"`, or `"quadratic"` (the only, and default, choice
-#'   for the scored estimators). `"hubert"` is the all-raters-equal multirater
-#'   kernel for `g > 2`. For vector-valued ratings `weight` selects the
-#'   component loss (`"nominal"` -> Hamming, `"linear"` -> L1, `"quadratic"` ->
-#'   squared).
-#' @param g Arity of the multirater disagreement kernel. `g = 2` (the default)
-#'   is ordinary pairwise kappa. `g > 2` uses the Frechet / Hubert g-wise
-#'   family. `weight = "quadratic"` is g-invariant, so `g` is ignored there and
-#'   the closed form is used. Not used for vector-valued ratings.
-#' @param values Optional numeric vector of category scores, one per category
-#'   (the declared `categories`, or else the sorted distinct observed
-#'   ratings), in the same order. For `"ipw"` / `"cat_fiml"` the scores
-#'   parameterize the linear and quadratic weights (default: numeric
-#'   categories themselves, otherwise `1:C`). For the scored estimators they
-#'   convert labels to scores and declare the discrete rating scale that
-#'   Brennan-Prediger needs. Not used for vector-valued ratings.
+#' @param x A subjects-by-raters matrix or data frame of ratings, or a
+#'   subjects-by-raters-by-features array of vector-valued ratings. `NA` marks
+#'   missing entries.
+#' @param estimator `"ipw"` (default), `"cat_fiml"`, `"pairwise"`,
+#'   `"nt_fiml"`, or `"nt_fiml_cs"`.
+#' @param weight `"nominal"` (default), `"linear"`, or `"quadratic"`. The
+#'   scored estimators always use `"quadratic"`. `"hubert"` is an
+#'   all-raters-equal kernel for `g > 2`. For vector-valued ratings it selects
+#'   the component loss (Hamming, absolute, or squared).
+#' @param g Number of raters the disagreement kernel compares at once. `2`
+#'   (default) is ordinary kappa. Quadratic agreement does not depend on `g`.
+#' @param values Optional numeric scores, one per category in scale order.
+#'   Defaults to the categories themselves when numeric, else `1:C`.
 #' @param categories Optional vector declaring the full rating scale in order,
-#'   for example `1:5` or `c("low", "mid", "high")`. Every observed rating must
-#'   be one of them; categories nobody used are kept. Defaults to the shared
-#'   factor levels, or else the sorted distinct observed ratings. Not used for
-#'   vector-valued ratings.
-#' @param em_options Named list of EM options for the likelihood estimators
-#'   (an error for `"ipw"` and `"pairwise"`). For `"cat_fiml"`: `tol`,
-#'   `max_iter`, `prune_tol`, `start_alpha`, `info_rcond`, and `flatten` (total
-#'   Dirichlet pseudo-mass spread over the complete pattern table. Any positive
-#'   value selects the unique interior posterior mode when the saturated
-#'   likelihood is flat, shrinking the fitted table toward uniform with weight
-#'   `flatten / (n + flatten)`. `0`, the default, is strict ML). Flattening is
-#'   a uniqueness device that leaves the point estimate essentially unchanged
-#'   but makes the reported standard errors conservative (roughly 50\% too wide
-#'   in calibration). For `"nt_fiml"` / `"nt_fiml_cs"`: `tol` and `max_iter`.
-#'   Pass any subset.
-#' @param ... Mode-specific arguments. Anything not listed here is an error.
-#'   For vector-valued ratings: `W`, a features-by-features symmetric
-#'   positive-semidefinite feature metric for the squared loss (with
-#'   `"pairwise"`, `"nt_fiml"`, `"nt_fiml_cs"`; the FIML estimators default to
-#'   the identity); `ranges`, a features-by-2 matrix of `(lo, hi)` score bounds
-#'   declaring a continuous rating scale for Brennan-Prediger (with
-#'   `"nt_fiml"` / `"nt_fiml_cs"`); and `feature_weights` / `loss` for the
-#'   component-separable `"ipw"` / `"pairwise"` path (non-negative per-feature
-#'   weights, and `loss = "rms"` for the root-mean-square loss). For `g > 2`:
-#'   `max_chance_tuples`, the cap on the number of chance tuples enumerated
-#'   (default `5e6`).
+#'   for example `1:5` or `c("low", "mid", "high")`.
+#' @param em_options Named list of EM settings for the likelihood estimators:
+#'   `tol` and `max_iter`, and for `"cat_fiml"` also `prune_tol`,
+#'   `start_alpha`, `info_rcond`, and `flatten`. `flatten > 0` adds a small
+#'   Dirichlet pseudo-count that makes the fitted table unique when the
+#'   likelihood is flat; the estimate barely moves but standard errors become
+#'   conservative. Settings an estimator does not use are an error.
+#' @param ... Arguments for vector-valued ratings: `W` (a feature metric for
+#'   the squared loss), `ranges` (a features-by-2 matrix of score bounds, for
+#'   Brennan-Prediger), `feature_weights`, and `loss = "rms"`. For `g > 2`:
+#'   `max_chance_tuples` (default `5e6`). Anything else is an error.
 #'
-#' @details
-#' The R interface exposes the main weighting schemes used in current
-#' agreement work: `"nominal"`, `"linear"`, and `"quadratic"` (plus the
-#' `"hubert"` g-wise kernel for `g > 2`). Older Krippendorff / irrCAC-style
-#' categorical schemes (`"ordinal"`, `"radical"`, `"ratio"`, `"circular"`,
-#' `"bipolar"`) remain in the C++ library for validation and parity work.
+#' @return A `misskappa_estimate`: the estimates, their covariance matrix,
+#'   the number of subjects `n`, the rating scale `categories`, and the
+#'   per-subject influence rows `psi`, with `vcov = crossprod(psi) / n^2`.
+#'   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
+#'   `stats::influence`.
 #'
 #' @references
 #' Moss, J. (in preparation). *Agreement coefficients with missing ratings.*
-#' Working paper (kappa-missing); citation to be updated on preprint and
-#' publication.
 #'
 #' Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
-#' Working paper (quadratic); citation to be updated on preprint and
-#' publication.
 #'
-#' Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
-#'
-#' Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
-#' coefficients among raters.
-#'
-#' @return An object of class `misskappa_estimate` carrying the named
-#'   coefficient estimates, their asymptotic covariance matrix, the number
-#'   of subjects `n`, and (for categorical or scored scalar ratings) the
-#'   rating scale used, `categories`. Methods: `print`, `coef`, `vcov`,
-#'   `confint`, `as.data.frame`, and `stats::influence`. The object also carries a `psi`
-#'   component (the n-by-K matrix of per-subject influence functions,
-#'   satisfying `vcov == crossprod(psi) / n^2`) for building custom contrasts
-#'   or joint tests.
+#' @seealso [agreement_counts()] for counts-format data, [agreement_test()]
+#'   to compare coefficients, [confint.misskappa_estimate()].
 #'
 #' @examples
-#' # Categorical ratings with missing entries (Gwet 2014): the
-#' # inverse-probability-weighted estimator under MCAR, with linear weights.
-#' agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
+#' # Five raters, three categories, some ratings missing.
+#' agreement(dat.klein2018)
 #'
-#' # Declare the full rating scale. The Gwet data use codes 0-3; declaring a
-#' # fifth, unused category changes Brennan-Prediger and the linear weights.
-#' agreement(dat.gwet2014, estimator = "ipw", weight = "linear",
-#'           categories = 0:4)
+#' # Ordered categories with linear weights, on a declared 1-4 scale.
+#' agreement(dat.klein2018, weight = "linear", categories = 1:4)
 #'
-#' # Scored coefficient (quadratic loss) via the pairwise-available moment
-#' # estimator. Treats the columns as numeric scores.
-#' agreement(dat.zapf2016, estimator = "pairwise")
+#' # Quadratic agreement on a 1-5 scale under MAR, normal theory.
+#' agreement(dat.zapf2016, estimator = "nt_fiml", categories = 1:5)
 #'
-#' # Normal-theory FIML. Declaring the 1-5 rating scale with `values` adds
-#' # Brennan-Prediger.
-#' agreement(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
-#'
-#' # Compound-symmetry covariance variant: the fixed-rater variance-component
-#' # model. Consistent and slightly more efficient than "nt_fiml" when the
-#' # structure holds, and identified by a connected (not necessarily complete)
-#' # rater co-observation graph.
-#' agreement(dat.zapf2016, estimator = "nt_fiml_cs")
-#'
-#' # Planned-incomplete design (synthetic): some rater pairs are never
-#' # co-observed, so the saturated estimators are not identified, but the
-#' # compound-symmetry estimator needs only a connected co-observation graph.
+#' # A planned-incomplete design: some rater pairs never meet, so only the
+#' # compound-symmetry estimator is identified.
 #' agreement(dat.tenhove2025, estimator = "nt_fiml_cs")
-#'
-#' # g-wise (multirater) nominal kappa over triples of raters.
-#' agreement(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
-#'
-#' # Vector-valued ratings: a subjects-by-raters-by-features array. Each of the
-#' # four expert observers classifies crackles at six chest sites, so a rating
-#' # is a six-vector. The default Hamming loss counts disagreeing sites.
-#' agreement(dat.vanbelle2019[, 1:4, ], estimator = "ipw")
-#'
-#' # Full feature-metric quadratic vector agreement under the block
-#' # compound-symmetry normal FIML, with a feature metric W over the six sites.
-#' sites <- dat.vanbelle2019[, 1:4, ]
-#' agreement(sites, estimator = "nt_fiml_cs", W = diag(dim(sites)[3]))
 #'
 #' @export
 agreement <- function(x,
@@ -671,50 +571,27 @@ agreement <- function(x,
 #' Convert rater-identified ratings to counts format
 #'
 #' @description
-#' Aggregates a subjects-by-raters matrix of categorical ratings into the
-#' subjects-by-categories counts format consumed by [agreement_counts()]: each
-#' row is one subject, each column one category, and `out[i, k]` is the number
-#' of raters who assigned subject `i` to category `k`. Missing entries (`NA`
-#' or, for numeric input, any non-finite value) are simply not counted, so a
-#' subject rated by a subset of raters contributes a row whose total is the
-#' number of raters who actually scored it.
-#'
-#' Aggregating to counts **discards rater identity**, which is exactly the
-#' exchangeable-raters representation. Feeding the result to
-#' `agreement_counts(estimator = "cat_fiml")` therefore fits the exchangeable
-#' count-FIML: the maximum-likelihood estimator one obtains by imposing rater
-#' exchangeability on the saturated categorical FIML of
-#' `agreement(estimator = "cat_fiml")`. Under genuinely non-exchangeable raters
-#' (rater-specific marginals), prefer the rater-identified
-#' `agreement(x, estimator = "cat_fiml")` instead, which keeps per-rater
-#' information.
+#' Turns a subjects-by-raters matrix of ratings into the subjects-by-categories
+#' counts used by [agreement_counts()]. Missing ratings are not counted, so a
+#' subject's row total is the number of raters who rated it. This discards
+#' rater identity: the raters become exchangeable.
 #'
 #' @param x A subjects-by-raters matrix or data frame of category labels
 #'   (integer codes, characters, or factors). `NA` (and, for numeric
 #'   input, any non-finite value) marks a missing rating.
-#' @param categories Optional vector giving the full set of categories and
-#'   their column order in the output. Defaults to the sorted unique observed
-#'   labels. Supply it to pin a known category set (including categories that
-#'   happen to be unobserved, which then appear as all-zero columns) or to
-#'   control column order. Observed labels outside `categories` are an error.
+#' @param categories Optional vector of all categories, in column order.
+#'   Unused categories become all-zero columns. Defaults to the sorted
+#'   observed labels.
 #'
 #' @return An integer subjects-by-categories matrix whose columns are named by
 #'   `categories` and whose row names are carried over from `x`. Suitable as
 #'   the `x` argument of [agreement_counts()].
 #'
-#' @seealso [agreement_counts()] for the count-format estimators.
-#'   [agreement()] for the rater-identified (non-exchangeable) estimators.
 #'
 #' @examples
-#' # Gwet (2014): 20 subjects, five raters, categories {0, 1, 2, 3}, with
-#' # missing ratings. Aggregate to counts, then fit the exchangeable
-#' # count-FIML (equivalent to exchangeability-constrained cat_fiml).
 #' counts <- ratings_to_counts(dat.gwet2014)
 #' head(counts)
-#' agreement_counts(counts, estimator = "cat_fiml")
-#'
-#' # The Fleiss-Cuzick moment estimator is available from the same counts.
-#' agreement_counts(counts, estimator = "fleiss_cuzick")
+#' agreement_counts(counts)
 #'
 #' @export
 ratings_to_counts <- function(x, categories = NULL) {
@@ -753,102 +630,56 @@ ratings_to_counts <- function(x, categories = NULL) {
   counts
 }
 
-#' Weighted agreement coefficients for counts-format input
+#' Agreement coefficients for counts-format data
 #'
 #' @description
-#' Estimates Fleiss and Brennan-Prediger weighted agreement coefficients
-#' for counts-format data: each row is one subject, each column is a
-#' category, and `x[i, k]` is the number of raters who assigned subject `i`
-#' to category `k`. Row sums (number of raters per subject) need not be
-#' uniform across subjects.
+#' Estimates Fleiss and Brennan-Prediger coefficients when each row is a
+#' subject and each column a category, with `x[i, k]` the number of raters who
+#' put subject `i` in category `k`. Rows may have different totals, which is
+#' how missing ratings show up in this format. Raters are anonymous, so they
+#' are treated as exchangeable and Conger is not reported. For rater-identified
+#' data use [agreement()]; [ratings_to_counts()] converts it to this format.
 #'
-#' The count-format moment estimator follows the Fleiss-Cuzick unequal-judges
-#' convention: observed row disagreement is weighted by `r_i - 1`, and chance
-#' disagreement uses the pooled rating-token margin. This differs from the
-#' unit-weighted distribution/count convention used by some software. The
-#' unit-weighted comparator is kept only in the C++ API for validation studies.
+#' \itemize{
+#'   \item `"fleiss_cuzick"` (default, recommended): the Fleiss-Cuzick moment
+#'     estimator, consistent under MCAR, any `weight`.
+#'   \item `"cat_fiml"`: full-information maximum likelihood over the
+#'     category compositions, consistent under MAR.
+#'   \item `"nt_fiml_cs"`: normal-theory compound-symmetry FIML, quadratic
+#'     weight only.
+#' }
+#' Rows with fewer than two ratings carry no agreement information; at least
+#' one row needs two or more.
 #'
-#' Rows with fewer than two observed ratings contain no within-subject pair
-#' information and receive zero observed-disagreement weight. At least one row
-#' with two or more ratings is required.
+#' @param x A subjects-by-categories matrix of non-negative counts.
+#' @param estimator `"fleiss_cuzick"` (default), `"cat_fiml"`, or
+#'   `"nt_fiml_cs"`.
+#' @param weight `"nominal"` (default), `"linear"`, or `"quadratic"`.
+#'   `"nt_fiml_cs"` always uses `"quadratic"`.
+#' @param values Optional numeric category scores for the linear and
+#'   quadratic weights. Defaults to `1:C`.
+#' @param r_total For `"cat_fiml"`: the number of raters each subject would
+#'   have with no missing ratings. Defaults to the largest row total.
+#' @param em_options Named list of EM settings for the likelihood estimators:
+#'   `tol` and `max_iter`, and for `"cat_fiml"` also `prune_tol`,
+#'   `start_alpha`, and `info_rcond`.
 #'
-#' Counts data discards rater identity, so all counts estimators impose
-#' exchangeability. The categorical count-FIML model treats full count
-#' compositions as exchangeable iid rater draws. The compound-symmetry
-#' estimators (`"nt_fiml_cs"` and the moment estimator `"fleiss_cuzick"`) fit
-#' the corresponding common-mean, compound-symmetry scored model
-#' \eqn{\Sigma = \psi J + e I}. For non-exchangeable raters, use rater-identified
-#' data and `agreement()` instead.
-#'
-#' The quadratic compound-symmetry likelihood estimator (`"nt_fiml_cs"`) works
-#' **directly on the counts**: each subject contributes only the sufficient
-#' statistics \eqn{(m_i, \sum_c n_{ic} v_c, \sum_c n_{ic} v_c^2)} of its observed
-#' ratings, so no realizing subjects-by-raters table is constructed. The
-#' coefficients are the `r_total`-invariant maps
-#' \eqn{\kappa_{\mathrm{Fleiss}} = \psi/(\psi+e)} and
-#' \eqn{\kappa_{\mathrm{BP}} = 1 - 2e/c_{\mathrm{BP}}}, and every route returns
-#' robust (sandwich) standard errors.
-#'
-#' To obtain counts from a rater-identified subjects-by-raters matrix, use
-#' [ratings_to_counts()]. Chaining it into `estimator = "cat_fiml"` fits the
-#' exchangeable categorical count-FIML.
-#'
-#' Conger is not reported (raters are not identified in this input format),
-#' and neither IPW nor Gwet are meaningful (per-rater observation rates are
-#' aggregated away by the counts representation).
-#'
-#' @param x A subjects-by-categories non-negative integer matrix.
-#' @param estimator One of `"fleiss_cuzick"` (the Fleiss-Cuzick count-format
-#'   moment estimator, the available-case / moment member of the
-#'   compound-symmetry family), `"cat_fiml"` (EM over the composition simplex
-#'   with multivariate hypergeometric weights for completing partial counts), or
-#'   `"nt_fiml_cs"` (the exchangeable common-mean compound-symmetry normal FIML,
-#'   quadratic weight only, the efficient ignorable-missingness MLE). All agree
-#'   when every row of `x` sums to `r_total`. With partial counts (some
-#'   `r_i < r_total`) `"cat_fiml"` and `"nt_fiml_cs"` are the efficient routes and
-#'   `"fleiss_cuzick"` is the consistent-under-MCAR moment estimator. For a
-#'   complete-case (listwise) analysis, drop the incomplete rows yourself and
-#'   pass the result to any estimator.
-#' @param weight Weighting scheme: `"nominal"` (default), `"linear"`, or
-#'   `"quadratic"`. `"nt_fiml_cs"` is quadratic only, and its default.
-#' @param values Optional length-C numeric vector of category scores used
-#'   by the metric weightings. Defaults to `1:C`.
-#' @param r_total Total number of raters per subject. Defaults to the
-#'   maximum observed row sum. Required for `"cat_fiml"` when rows have varying
-#'   totals and the maximum observed total is not the design total.
-#'   `"fleiss_cuzick"` and `"nt_fiml_cs"` are `r_total`-invariant and ignore it.
-#' @param em_options Named list of EM/optimiser options (an error for
-#'   `"fleiss_cuzick"`). For `estimator = "cat_fiml"`: `tol`, `max_iter`,
-#'   `prune_tol`, `start_alpha`, `info_rcond`. The raw-data `flatten` option
-#'   does not apply there: count-data categorical FIML fits a low-dimensional
-#'   composition model, not the saturated joint. For `estimator =
-#'   "nt_fiml_cs"`: `tol` and `max_iter` tune the optimiser.
+#' @return A `misskappa_estimate` with `Fleiss` and `Brennan-Prediger`; see
+#'   [agreement()].
 #'
 #' @references
+#' Fleiss, J. L., & Cuzick, J. (1979). The reliability of dichotomous
+#' judgments: Unequal numbers of judges per subject. *Applied Psychological
+#' Measurement*, 3(4), 537-542.
+#'
 #' Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
-#' Working paper (quadratic); citation to be updated on preprint and
-#' publication.
-#'
-#' Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
-#'
-#' Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
-#' coefficients among raters.
-#'
-#' @return A `misskappa_estimate` object with `Fleiss` and
-#'   `Brennan-Prediger` coefficients, the 2x2 vcov, the number of subjects
-#'   `n`, and a `psi` component of per-subject influence rows.
 #'
 #' @examples
-#' # Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
-#' # in counts format (one row per subject, one column per category).
-#' agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+#' # Fleiss (1971): 30 subjects, 6 raters, 5 diagnostic categories.
+#' agreement_counts(dat.fleiss1971)
 #'
-#' # Treat the categories as ordered scores with a quadratic loss.
-#' agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
-#'
-#' # Exchangeable common-mean compound-symmetry FIML, fit directly on the
-#' # per-subject counts (quadratic weight).
-#' agreement_counts(dat.fleiss1971, estimator = "nt_fiml_cs")
+#' # Ordered categories with quadratic weights.
+#' agreement_counts(dat.fleiss1971, weight = "quadratic")
 #'
 #' @export
 agreement_counts <- function(x,

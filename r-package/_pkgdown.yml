@@ -33,19 +33,11 @@ reference:
       - starts_with("dat.")
 
 articles:
-  - title: How-to guides
-    navbar: How-to
+  - title: Guides
+    navbar: Guides
     contents:
-      - articles/equality-tests
-      - articles/influence-functions
-      - articles/gwise-agreement
-  - title: Mathematical Guides
-    navbar: Mathematical Guides
-    contents:
-      - articles/agreement-coefficients
       - articles/missingness-estimators
-      - articles/validation
-  - title: Frontier / experimental
-    navbar: Frontier
-    contents:
+      - articles/equality-tests
+      - articles/gwise-agreement
       - articles/vector-valued-agreement
+      - articles/validation

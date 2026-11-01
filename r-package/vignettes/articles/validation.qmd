@@ -8,9 +8,9 @@ test suite and the C++ unit tests, and they run on every change.
 ## Parity with established software
 
 On complete data, the Conger, Fleiss, and Brennan-Prediger estimates and their
-variances agree with the `irrCAC` package (Gwet 2019) for raw ratings and for
-counts-format data. The `irrCAC` values are frozen as numeric literals in the
-test suite, so the check runs without `irrCAC` installed.
+variances match the `irrCAC` package (Gwet 2019) on a raw-ratings example and
+a counts-format example (nominal weights). The `irrCAC` values are frozen in
+the test suite, so the check runs without `irrCAC` installed.
 
 For scored ratings, the normal-theory FIML mean and covariance agree with the
 saturated estimator in `lavaan`. This comparison runs whenever `lavaan` is

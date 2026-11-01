@@ -11,11 +11,9 @@ ratings_to_counts(x, categories = NULL)
 (integer codes, characters, or factors). `NA` (and, for numeric
 input, any non-finite value) marks a missing rating.}
 
-\item{categories}{Optional vector giving the full set of categories and
-their column order in the output. Defaults to the sorted unique observed
-labels. Supply it to pin a known category set (including categories that
-happen to be unobserved, which then appear as all-zero columns) or to
-control column order. Observed labels outside `categories` are an error.}
+\item{categories}{Optional vector of all categories, in column order.
+Unused categories become all-zero columns. Defaults to the sorted
+observed labels.}
 }
 \value{
 An integer subjects-by-categories matrix whose columns are named by
@@ -23,37 +21,14 @@ An integer subjects-by-categories matrix whose columns are named by
   the `x` argument of [agreement_counts()].
 }
 \description{
-Aggregates a subjects-by-raters matrix of categorical ratings into the
-subjects-by-categories counts format consumed by [agreement_counts()]: each
-row is one subject, each column one category, and `out[i, k]` is the number
-of raters who assigned subject `i` to category `k`. Missing entries (`NA`
-or, for numeric input, any non-finite value) are simply not counted, so a
-subject rated by a subset of raters contributes a row whose total is the
-number of raters who actually scored it.
-
-Aggregating to counts **discards rater identity**, which is exactly the
-exchangeable-raters representation. Feeding the result to
-`agreement_counts(estimator = "cat_fiml")` therefore fits the exchangeable
-count-FIML: the maximum-likelihood estimator one obtains by imposing rater
-exchangeability on the saturated categorical FIML of
-`agreement(estimator = "cat_fiml")`. Under genuinely non-exchangeable raters
-(rater-specific marginals), prefer the rater-identified
-`agreement(x, estimator = "cat_fiml")` instead, which keeps per-rater
-information.
+Turns a subjects-by-raters matrix of ratings into the subjects-by-categories
+counts used by [agreement_counts()]. Missing ratings are not counted, so a
+subject's row total is the number of raters who rated it. This discards
+rater identity: the raters become exchangeable.
 }
 \examples{
-# Gwet (2014): 20 subjects, five raters, categories {0, 1, 2, 3}, with
-# missing ratings. Aggregate to counts, then fit the exchangeable
-# count-FIML (equivalent to exchangeability-constrained cat_fiml).
 counts <- ratings_to_counts(dat.gwet2014)
 head(counts)
-agreement_counts(counts, estimator = "cat_fiml")
+agreement_counts(counts)
 
-# The Fleiss-Cuzick moment estimator is available from the same counts.
-agreement_counts(counts, estimator = "fleiss_cuzick")
-
-}
-\seealso{
-[agreement_counts()] for the count-format estimators.
-  [agreement()] for the rater-identified (non-exchangeable) estimators.
 }

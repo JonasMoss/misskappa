@@ -85,10 +85,8 @@ The [package website](https://jonasmoss.github.io/misskappa/) has the
 reference and articles:
 
 - [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html)
-- [Missingness and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
-- [Agreement coefficients and loss matrices](https://jonasmoss.github.io/misskappa/articles/agreement-coefficients.html)
-- [Testing equality of agreement coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
-- [Working with influence functions](https://jonasmoss.github.io/misskappa/articles/influence-functions.html)
+- [Coefficients and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
+- [Comparing coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
 - [g-wise agreement](https://jonasmoss.github.io/misskappa/articles/gwise-agreement.html)
 - [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(in preparation)*
 - [How misskappa is validated](https://jonasmoss.github.io/misskappa/articles/validation.html)

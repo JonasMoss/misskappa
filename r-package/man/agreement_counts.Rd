@@ -2,7 +2,7 @@
 % Please edit documentation in R/agreement.R
 \name{agreement_counts}
 \alias{agreement_counts}
-\title{Weighted agreement coefficients for counts-format input}
+\title{Agreement coefficients for counts-format data}
 \usage{
 agreement_counts(
   x,
@@ -14,105 +14,59 @@ agreement_counts(
 )
 }
 \arguments{
-\item{x}{A subjects-by-categories non-negative integer matrix.}
+\item{x}{A subjects-by-categories matrix of non-negative counts.}
 
-\item{estimator}{One of `"fleiss_cuzick"` (the Fleiss-Cuzick count-format
-moment estimator, the available-case / moment member of the
-compound-symmetry family), `"cat_fiml"` (EM over the composition simplex
-with multivariate hypergeometric weights for completing partial counts), or
-`"nt_fiml_cs"` (the exchangeable common-mean compound-symmetry normal FIML,
-quadratic weight only, the efficient ignorable-missingness MLE). All agree
-when every row of `x` sums to `r_total`. With partial counts (some
-`r_i < r_total`) `"cat_fiml"` and `"nt_fiml_cs"` are the efficient routes and
-`"fleiss_cuzick"` is the consistent-under-MCAR moment estimator. For a
-complete-case (listwise) analysis, drop the incomplete rows yourself and
-pass the result to any estimator.}
+\item{estimator}{`"fleiss_cuzick"` (default), `"cat_fiml"`, or
+`"nt_fiml_cs"`.}
 
-\item{weight}{Weighting scheme: `"nominal"` (default), `"linear"`, or
-`"quadratic"`. `"nt_fiml_cs"` is quadratic only, and its default.}
+\item{weight}{`"nominal"` (default), `"linear"`, or `"quadratic"`.
+`"nt_fiml_cs"` always uses `"quadratic"`.}
 
-\item{values}{Optional length-C numeric vector of category scores used
-by the metric weightings. Defaults to `1:C`.}
+\item{values}{Optional numeric category scores for the linear and
+quadratic weights. Defaults to `1:C`.}
 
-\item{r_total}{Total number of raters per subject. Defaults to the
-maximum observed row sum. Required for `"cat_fiml"` when rows have varying
-totals and the maximum observed total is not the design total.
-`"fleiss_cuzick"` and `"nt_fiml_cs"` are `r_total`-invariant and ignore it.}
+\item{r_total}{For `"cat_fiml"`: the number of raters each subject would
+have with no missing ratings. Defaults to the largest row total.}
 
-\item{em_options}{Named list of EM/optimiser options (an error for
-`"fleiss_cuzick"`). For `estimator = "cat_fiml"`: `tol`, `max_iter`,
-`prune_tol`, `start_alpha`, `info_rcond`. The raw-data `flatten` option
-does not apply there: count-data categorical FIML fits a low-dimensional
-composition model, not the saturated joint. For `estimator =
-"nt_fiml_cs"`: `tol` and `max_iter` tune the optimiser.}
+\item{em_options}{Named list of EM settings for the likelihood estimators:
+`tol` and `max_iter`, and for `"cat_fiml"` also `prune_tol`,
+`start_alpha`, and `info_rcond`.}
 }
 \value{
-A `misskappa_estimate` object with `Fleiss` and
-  `Brennan-Prediger` coefficients, the 2x2 vcov, the number of subjects
-  `n`, and a `psi` component of per-subject influence rows.
+A `misskappa_estimate` with `Fleiss` and `Brennan-Prediger`; see
+  [agreement()].
 }
 \description{
-Estimates Fleiss and Brennan-Prediger weighted agreement coefficients
-for counts-format data: each row is one subject, each column is a
-category, and `x[i, k]` is the number of raters who assigned subject `i`
-to category `k`. Row sums (number of raters per subject) need not be
-uniform across subjects.
+Estimates Fleiss and Brennan-Prediger coefficients when each row is a
+subject and each column a category, with `x[i, k]` the number of raters who
+put subject `i` in category `k`. Rows may have different totals, which is
+how missing ratings show up in this format. Raters are anonymous, so they
+are treated as exchangeable and Conger is not reported. For rater-identified
+data use [agreement()]; [ratings_to_counts()] converts it to this format.
 
-The count-format moment estimator follows the Fleiss-Cuzick unequal-judges
-convention: observed row disagreement is weighted by `r_i - 1`, and chance
-disagreement uses the pooled rating-token margin. This differs from the
-unit-weighted distribution/count convention used by some software. The
-unit-weighted comparator is kept only in the C++ API for validation studies.
-
-Rows with fewer than two observed ratings contain no within-subject pair
-information and receive zero observed-disagreement weight. At least one row
-with two or more ratings is required.
-
-Counts data discards rater identity, so all counts estimators impose
-exchangeability. The categorical count-FIML model treats full count
-compositions as exchangeable iid rater draws. The compound-symmetry
-estimators (`"nt_fiml_cs"` and the moment estimator `"fleiss_cuzick"`) fit
-the corresponding common-mean, compound-symmetry scored model
-\eqn{\Sigma = \psi J + e I}. For non-exchangeable raters, use rater-identified
-data and `agreement()` instead.
-
-The quadratic compound-symmetry likelihood estimator (`"nt_fiml_cs"`) works
-**directly on the counts**: each subject contributes only the sufficient
-statistics \eqn{(m_i, \sum_c n_{ic} v_c, \sum_c n_{ic} v_c^2)} of its observed
-ratings, so no realizing subjects-by-raters table is constructed. The
-coefficients are the `r_total`-invariant maps
-\eqn{\kappa_{\mathrm{Fleiss}} = \psi/(\psi+e)} and
-\eqn{\kappa_{\mathrm{BP}} = 1 - 2e/c_{\mathrm{BP}}}, and every route returns
-robust (sandwich) standard errors.
-
-To obtain counts from a rater-identified subjects-by-raters matrix, use
-[ratings_to_counts()]. Chaining it into `estimator = "cat_fiml"` fits the
-exchangeable categorical count-FIML.
-
-Conger is not reported (raters are not identified in this input format),
-and neither IPW nor Gwet are meaningful (per-rater observation rates are
-aggregated away by the counts representation).
+\itemize{
+  \item `"fleiss_cuzick"` (default, recommended): the Fleiss-Cuzick moment
+    estimator, consistent under MCAR, any `weight`.
+  \item `"cat_fiml"`: full-information maximum likelihood over the
+    category compositions, consistent under MAR.
+  \item `"nt_fiml_cs"`: normal-theory compound-symmetry FIML, quadratic
+    weight only.
+}
+Rows with fewer than two ratings carry no agreement information; at least
+one row needs two or more.
 }
 \examples{
-# Fleiss (1971) psychiatric diagnoses: 30 subjects, 6 raters, 5 categories,
-# in counts format (one row per subject, one column per category).
-agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+# Fleiss (1971): 30 subjects, 6 raters, 5 diagnostic categories.
+agreement_counts(dat.fleiss1971)
 
-# Treat the categories as ordered scores with a quadratic loss.
-agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = "quadratic")
-
-# Exchangeable common-mean compound-symmetry FIML, fit directly on the
-# per-subject counts (quadratic weight).
-agreement_counts(dat.fleiss1971, estimator = "nt_fiml_cs")
+# Ordered categories with quadratic weights.
+agreement_counts(dat.fleiss1971, weight = "quadratic")
 
 }
 \references{
+Fleiss, J. L., & Cuzick, J. (1979). The reliability of dichotomous
+judgments: Unequal numbers of judges per subject. *Applied Psychological
+Measurement*, 3(4), 537-542.
+
 Moss, J. (in preparation). *Quadratically weighted agreement coefficients.*
-Working paper (quadratic); citation to be updated on preprint and
-publication.
-
-Krippendorff, K. (2011). Computing Krippendorff's alpha-reliability.
-
-Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement
-coefficients among raters.
 }

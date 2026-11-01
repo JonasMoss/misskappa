@@ -13,11 +13,8 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 `misskappa` estimates weighted agreement coefficients (Conger, Fleiss,
-Brennan–Prediger) when some ratings are **missing**, and
-attaches an asymptotic covariance matrix to every estimate so you get standard
-errors, confidence intervals, and equality tests for free. Each estimator is
-chosen with a single `estimator=` argument. You never have to remember a
-combination of `method` and `type` flags.
+Brennan–Prediger) when some ratings are **missing**, with standard errors,
+confidence intervals, and equality tests.
 
 ```{r}
 #| message: false
@@ -26,18 +23,21 @@ library(misskappa)
 
 ## A first agreement coefficient
 
-`dat.gwet2014` is a small categorical rating matrix (20 subjects, five
-raters, four categories) with some ratings missing (`NA`). The
-inverse-probability-weighted (IPW) estimator is consistent under
-missing-completely-at-random missingness:
+`dat.gwet2014` is a small rating matrix (20 subjects, five raters, four
+ordered categories) with some ratings missing (`NA`). The default estimator,
+inverse-probability weighting (`"ipw"`), is consistent when ratings are
+missing completely at random (MCAR) and is the recommended starting point:
 
 ```{r}
-fit <- agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
+#| warning: false
+fit <- agreement(dat.gwet2014, weight = "linear")
 fit
 ```
 
-The print method shows each coefficient with its standard error and a 95%
-confidence interval. The object carries everything you need:
+Ratings can be numbers, strings, or factors. `categories = 0:4` would declare
+a fifth, unused category, which changes Brennan–Prediger and the linear
+weights. The print method shows each coefficient with its standard error and
+a 95% confidence interval. The pieces are available directly:
 
 ```{r}
 coef(fit)
@@ -63,7 +63,7 @@ estimate, standard error, and interval.
 
 ## Choosing an estimator
 
-The right `estimator=` depends on the data and the missingness assumption:
+Start with `"ipw"`. The others suit specific situations:
 
 | Function and data | `estimator` | Assumption |
 |---|---|---|
@@ -76,32 +76,20 @@ The right `estimator=` depends on the data and the missingness assumption:
 | `agreement_counts()`, category counts | `"cat_fiml"` | Ignorable, exchangeable raters |
 | `agreement_counts()`, category counts | `"nt_fiml_cs"` | Ignorable, exchangeable raters, normal-theory |
 
-The scored estimators treat the categories as numbers and use the quadratic
-loss. Pass the scores directly, or integer codes together with `values`.
-Brennan–Prediger compares the observed disagreement with a uniform draw from
-the rating scale, so the scored estimators report it only when `values`
-declares that scale:
+Use `"cat_fiml"` when missingness may depend on the observed ratings (MAR)
+and there are few raters and categories. The scored estimators treat the
+categories as numbers and use the quadratic weight. They report
+Brennan–Prediger only when the scale is declared:
 
 ```{r}
 agreement(dat.zapf2016, estimator = "pairwise")
-agreement(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
+agreement(dat.zapf2016, estimator = "nt_fiml", categories = 1:5)
 ```
 
-The two normal-theory FIMLs differ only in the within-subject covariance they
-fit. `"nt_fiml"` is *saturated* (an unrestricted covariance) and `"nt_fiml_cs"`
-is *compound symmetry* `Sigma = psi J + e I`, the fixed-rater variance-component
-model. Compound symmetry needs only a connected rater co-observation graph (not
-every pair jointly observed) and is consistent and slightly more efficient when
-that structure holds. It is also best-calibrated under MCAR even when the
-covariance is misspecified. Prefer the saturated `"nt_fiml"` when the
-missingness may be MAR and the covariance could depart from compound symmetry
-(for example, rater subgroups with systematically different bias), where the
-structured model can become inconsistent but the saturated one stays robust.
-Because compound symmetry needs only a *connected* co-observation graph, it
-recovers the coefficient on planned-incomplete designs where the saturated
-estimators are not even identified. The
-[missingness and estimators](articles/missingness-estimators.html) article works
-through such a design.
+`"nt_fiml_cs"` assumes compound symmetry, which lets it work on
+planned-incomplete designs where some rater pairs never rate the same subject.
+The [estimators article](articles/missingness-estimators.html) explains the
+trade-offs and works through such a design.
 
 ## Counts-format data
 
@@ -110,50 +98,29 @@ use `agreement_counts()`. `dat.fleiss1971` is the classic psychiatric-diagnosis
 table (30 subjects, six raters, five categories):
 
 ```{r}
-agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+agreement_counts(dat.fleiss1971)
 ```
 
 `ratings_to_counts()` turns a subjects-by-raters matrix into this format.
 
-## Beyond pairwise: g-wise and vector-valued agreement
+## Beyond pairwise agreement
 
-The same `agreement()` reaches two generalizations. Set `g > 2` for *g-wise*
-agreement, where the disagreement kernel compares `g` raters at once (`g = 2` is
-ordinary pairwise kappa):
-
-```{r}
-agreement(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
-```
-
-And when each rating is a *vector*, pass a subjects-by-raters-by-features array.
-`dat.vanbelle2019` holds 28 observers classifying crackles at six chest sites
-for 20 patients. A component loss (`weight`) measures vector disagreement:
-
-```{r}
-agreement(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
-```
-
-The [g-wise agreement](articles/gwise-agreement.html) article develops the
-multirater kernels in full, and the
-[vector-valued agreement](articles/vector-valued-agreement.html) article covers
-the component-separable losses and the full feature-metric squared loss.
+Set `g > 2` for kernels that compare `g` raters at once, or pass a
+subjects-by-raters-by-features array for vector-valued ratings. The
+[g-wise](articles/gwise-agreement.html) and
+[vector-valued](articles/vector-valued-agreement.html) articles cover both.
 
 ## Testing whether coefficients are equal
 
-A common question is whether a coefficient is the *same* across two groups, two
-estimators, two timepoints, or several rater pairs. `agreement_test()`
-answers it and return a standard `htest`. By default the fits
-are independent samples and their variances add. Use `paired = TRUE` when the
-fits share the same subjects in the same order, and the dependence is then
-taken from the per-subject influence functions:
+`agreement_test()` tests whether a coefficient is the same across fits and
+returns an `htest`. Fits are independent samples by default. Use
+`paired = TRUE` for fits on the same subjects:
 
 ```{r}
 agreement_test(AB = agreement(dat.zapf2016[, 1:2], estimator = "pairwise"),
-           CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
-           paired = TRUE)
+               CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
+               paired = TRUE)
 ```
 
-See the [equality tests](articles/equality-tests.html) article for the
-one-sample, independent, paired, and *G*-way homogeneity cases worked out on
-real data, and the [mathematical guides](articles/index.html) for the
-loss-matrix formulation and the missing-data estimators.
+The [comparing coefficients](articles/equality-tests.html) article covers
+one-sample, paired, and several-fit tests and custom contrasts.
