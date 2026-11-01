@@ -26,11 +26,14 @@ renames below.
   chose 5 was treated as 1-4, and `values = 1:5` was an error.
 * `agreement()` accepts character, logical, and factor ratings. A data frame
   whose columns are factors with shared levels takes its scale from the levels.
-  Fits record the scale used as `fit$categories`.
+  Fits record the scale used as `fit$categories`. Text ratings have no order
+  of their own, so linear and quadratic weights and the scored estimators
+  need `categories` (or factors with shared levels) for them, and
+  `ratings_to_counts()` orders its columns by shared factor levels.
 * Influence rows are named by subject (row names, or row numbers), and
   `agreement_test(paired = TRUE)` matches fits by subject. A subject unrated
   in one fit contributes nothing to it, so fits with different missing rows
-  can be compared.
+  can be compared. Duplicated row names are an error in paired tests.
 * A coefficient whose chance disagreement is zero (every rating in one
   category) is reported as undefined with a warning, and its variance is `NA`
   instead of a misleading zero.

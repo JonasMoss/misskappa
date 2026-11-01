@@ -12,8 +12,10 @@ ratings_to_counts(x, categories = NULL)
 input, any non-finite value) marks a missing rating.}
 
 \item{categories}{Optional vector of all categories, in column order.
-Unused categories become all-zero columns. Defaults to the sorted
-observed labels.}
+Unused categories become all-zero columns. Defaults to the shared factor
+levels, or else the sorted observed labels. Pass it for text ratings
+that have an order, since the column order sets the linear and
+quadratic weights in [agreement_counts()].}
 }
 \value{
 An integer subjects-by-categories matrix whose columns are named by

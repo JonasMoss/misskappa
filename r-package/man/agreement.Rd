@@ -79,12 +79,16 @@ weight.
 \section{Rating scale}{
 
 Ratings may be numbers, strings, logicals, or factors. The scale defaults
-to the shared factor levels, or else the sorted observed ratings. Pass
+to the shared factor levels, or else the sorted observed ratings. Text
+ratings have no order of their own, so linear and quadratic weights and the
+scored estimators need `categories` (or factors with shared levels) for
+them. Pass
 `categories` to declare the full scale including categories nobody used
 (`categories = 1:5` on a 1-5 scale where no one chose 5). The scale sets
 Brennan-Prediger's chance baseline and the range that scales the linear and
-quadratic weights. The scored estimators report Brennan-Prediger only when
-`categories`, `values`, or factor levels declare the scale.
+quadratic weights. `"nt_fiml"` and `"nt_fiml_cs"` report Brennan-Prediger
+only when `categories`, `values`, or factor levels declare the scale;
+`"pairwise"` reports Conger and Fleiss only.
 }
 
 \section{Missing data}{

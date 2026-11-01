@@ -132,3 +132,40 @@ test_that("the exported surface is the four public functions", {
   expect_true(length(research) > 0L)
   expect_length(intersect(research, getNamespaceExports("misskappa")), 0L)
 })
+
+test_that("text ratings need a declared order for order-dependent weights", {
+  set.seed(7)
+  x <- matrix(sample(c("low", "mid", "high"), 60, TRUE), 20)
+  expect_s3_class(agreement(x), "misskappa_estimate")          # nominal is fine
+  expect_error(agreement(x, weight = "linear"), "no declared order")
+  expect_error(agreement(x, estimator = "nt_fiml"), "no declared order")
+  expect_error(agreement(x, weight = "linear", g = 3), "no declared order")
+  fit <- agreement(x, weight = "linear", categories = c("low", "mid", "high"))
+  expect_equal(fit$categories, c("low", "mid", "high"))
+
+  # Factor columns with different level sets give no shared order either.
+  df <- data.frame(a = factor(x[, 1], levels = c("low", "mid", "high")),
+                   b = factor(x[, 2], levels = c("low", "mid", "high", "x")),
+                   c = factor(x[, 3], levels = c("low", "mid", "high")))
+  expect_error(agreement(df, weight = "linear"), "no declared order")
+})
+
+test_that("ratings_to_counts keeps shared factor levels as column order", {
+  df <- data.frame(a = factor(c("low", "high", "mid"), levels = c("low", "mid", "high")),
+                   b = factor(c("mid", "high", "mid"), levels = c("low", "mid", "high")))
+  expect_equal(colnames(ratings_to_counts(df)), c("low", "mid", "high"))
+})
+
+test_that("subject ids come from explicit row names, and must be unique", {
+  set.seed(8)
+  d <- as.data.frame(matrix(sample(1:3, 18, TRUE), 6))
+  row.names(d) <- c(10L, 20L, 30L, 40L, 50L, 60L)
+  expect_equal(rownames(agreement(d)$psi), as.character(c(10, 20, 30, 40, 50, 60)))
+  expect_equal(rownames(agreement(as.data.frame(unname(as.matrix(d))))$psi),
+               as.character(1:6))
+
+  x <- matrix(sample(1:3, 18, TRUE), 6)
+  rownames(x) <- rep("same", 6)
+  a <- agreement(x)
+  expect_error(agreement_test(a, a, paired = TRUE), "duplicated row names")
+})

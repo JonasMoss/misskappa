@@ -88,6 +88,13 @@
            paste(n, collapse = ", "), ".", call. = FALSE)
     psi <- do.call(cbind, psis)
   } else {
+    dup <- vapply(ids, anyDuplicated, integer(1)) > 0L
+    if (any(dup)) {
+      stop(sprintf(paste0(
+        "paired = TRUE matches subjects by row name, but %s has duplicated ",
+        "row names. Give the rating data unique row names."),
+        paste(labels[dup], collapse = ", ")), call. = FALSE)
+    }
     all_ids <- unique(unlist(ids))
     psi <- vapply(psis, function(m) {
       out <- numeric(length(all_ids))

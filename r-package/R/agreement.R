@@ -102,6 +102,10 @@
     }
     x <- as.matrix(x)
   }
+  # Numeric and logical labels carry their own order; text labels are ordered
+  # only through declared categories, values, or shared factor levels.
+  ordered <- is.numeric(x) || is.logical(x) || !is.null(categories) ||
+    !is.null(values) || !is.null(factor_levels)
   if (!is.numeric(x) && !is.character(x) && !is.logical(x)) {
     stop("'x' must hold numeric, character, logical, or factor ratings.",
          call. = FALSE)
@@ -149,7 +153,18 @@
                   dimnames = dimnames(x))
   storage.mode(codes) <- "integer"
   list(codes = codes, categories = categories, values = values,
-       declared = declared)
+       declared = declared, ordered = ordered)
+}
+
+# Linear and quadratic weights, and the scored estimators, depend on the order
+# of the categories. Refuse to invent one (alphabetical) for text labels.
+.require_ordered <- function(r, what) {
+  if (!isTRUE(r$ordered)) {
+    stop(what, " needs ordered categories, but the ratings are text with no ",
+         "declared order. Pass 'categories' in scale order, or factor columns ",
+         "with shared levels.", call. = FALSE)
+  }
+  invisible(r)
 }
 
 # Numeric scores for the scored (quadratic) estimators. Plain numeric input
@@ -165,6 +180,7 @@
     }
   }
   r <- .code_ratings(x, categories, values)
+  .require_ordered(r, "A scored (quadratic) estimator")
   X <- matrix(r$values[r$codes], nrow(r$codes), ncol(r$codes),
               dimnames = dimnames(r$codes))
   list(X = X, values = r$values, declared = r$declared,
@@ -221,12 +237,16 @@
 #'
 #' @section Rating scale:
 #' Ratings may be numbers, strings, logicals, or factors. The scale defaults
-#' to the shared factor levels, or else the sorted observed ratings. Pass
+#' to the shared factor levels, or else the sorted observed ratings. Text
+#' ratings have no order of their own, so linear and quadratic weights and the
+#' scored estimators need `categories` (or factors with shared levels) for
+#' them. Pass
 #' `categories` to declare the full scale including categories nobody used
 #' (`categories = 1:5` on a 1-5 scale where no one chose 5). The scale sets
 #' Brennan-Prediger's chance baseline and the range that scales the linear and
-#' quadratic weights. The scored estimators report Brennan-Prediger only when
-#' `categories`, `values`, or factor levels declare the scale.
+#' quadratic weights. `"nt_fiml"` and `"nt_fiml_cs"` report Brennan-Prediger
+#' only when `categories`, `values`, or factor levels declare the scale;
+#' `"pairwise"` reports Conger and Fleiss only.
 #'
 #' @section Missing data:
 #' Subjects with no ratings are dropped. Every rater must be observed, and
@@ -385,9 +405,14 @@ agreement <- function(x,
       !(is.array(x) && length(dim(x)) == 3L)) {
     return(list(x = x, ids = NULL))
   }
-  ids <- if (is.data.frame(x)) attr(x, "row.names") else dimnames(x)[[1L]]
   n <- if (is.data.frame(x)) nrow(x) else dim(x)[1L]
-  if (is.null(ids) || is.integer(ids)) ids <- seq_len(n)
+  ids <- if (is.data.frame(x)) {
+    # Automatic data-frame row names count as none: use row numbers.
+    if (.row_names_info(x) < 0L) NULL else row.names(x)
+  } else {
+    dimnames(x)[[1L]]
+  }
+  if (is.null(ids)) ids <- seq_len(n)
   ids <- as.character(ids)
   m <- if (is.data.frame(x)) as.matrix(x) else x
   observed <- !is.na(m)
@@ -447,6 +472,9 @@ agreement <- function(x,
   }
 
   r <- .code_ratings(x, categories, values)
+  if (weight != "nominal") {
+    .require_ordered(r, sprintf('weight = "%s"', weight))
+  }
   cpp_weight <- if (weight == "nominal") "identity" else weight
   fit <- .kappa_raw_fit(
     r$codes,
@@ -492,6 +520,9 @@ agreement <- function(x,
     5000000L
   }
   r <- .code_ratings(x, categories, values)
+  if (map$family == "continuous") {
+    .require_ordered(r, sprintf('weight = "%s"', weight))
+  }
   xx <- if (map$family == "continuous") {
     matrix(r$values[r$codes], nrow(r$codes), ncol(r$codes))
   } else {
@@ -580,8 +611,10 @@ agreement <- function(x,
 #'   (integer codes, characters, or factors). `NA` (and, for numeric
 #'   input, any non-finite value) marks a missing rating.
 #' @param categories Optional vector of all categories, in column order.
-#'   Unused categories become all-zero columns. Defaults to the sorted
-#'   observed labels.
+#'   Unused categories become all-zero columns. Defaults to the shared factor
+#'   levels, or else the sorted observed labels. Pass it for text ratings
+#'   that have an order, since the column order sets the linear and
+#'   quadratic weights in [agreement_counts()].
 #'
 #' @return An integer subjects-by-categories matrix whose columns are named by
 #'   `categories` and whose row names are carried over from `x`. Suitable as
@@ -595,7 +628,14 @@ agreement <- function(x,
 #'
 #' @export
 ratings_to_counts <- function(x, categories = NULL) {
-  if (is.data.frame(x)) x <- as.matrix(x)
+  if (is.data.frame(x)) {
+    is_fac <- vapply(x, is.factor, logical(1))
+    if (is.null(categories) && length(is_fac) && all(is_fac)) {
+      lv <- lapply(x, levels)
+      if (all(vapply(lv, identical, logical(1), lv[[1L]]))) categories <- lv[[1L]]
+    }
+    x <- as.matrix(x)
+  }
   if (!is.matrix(x)) {
     stop("'x' must be a subjects-by-raters matrix or data frame.",
          call. = FALSE)
