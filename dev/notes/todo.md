@@ -15,6 +15,16 @@ still open.
 - [ ] **Release.** Version is 3.0.1 on master. Tag `v3.0.0` at the commit
       submitted to CRAN, not at master. Submit 3.0.1 after CRAN accepts 3.0.0
       (or fold it into a resubmission if CRAN asks for changes).
+- [ ] **Default `max_iter` is too low for sparse saturated fits.** With the
+      defaults (`tol = 1e-8`, `max_iter = 10000`) the companion paper's
+      simulation (C = 5, R = 5-6) lost about 5% of `cat_fiml` fits at
+      n = 1000 under rater-specific MCAR and anchor MAR to "EM did not
+      converge" (an error), likewise some count-FIML fits; 50000 converges
+      them. `nt_fiml`'s saturated step warns on 12-48% of fits on a balanced
+      incomplete block design (n = 40-200), and one checked case still had not
+      converged at 50000. Options: raise the default, accelerate the EM
+      (SQUAREM was dropped in 3.0.0), or stop on the coefficient's change
+      rather than the full table's.
 - [ ] **Optional estimate-side check.** If a selection warning is ever wanted
       back, bound the move directly: step from theta-hat along the null-space
       component of the gradient until a support cell hits zero (ratio test)
