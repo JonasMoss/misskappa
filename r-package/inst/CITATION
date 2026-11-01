@@ -13,11 +13,11 @@ citHeader("To cite misskappa in publications, use:")
 
 bibentry(
   bibtype = "Manual",
-  title   = "{misskappa}: Agreement Coefficients with Missing Data",
+  title   = "{misskappa}: Agreement Coefficients with Missing Ratings",
   author  = person("Jonas", "Moss"),
   year    = "2026",
   note    = paste("R package version", ver),
-  url     = "https://jonasmoss.github.io/misskappa"
+  url     = "https://CRAN.R-project.org/package=misskappa"
 )
 
 bibentry(

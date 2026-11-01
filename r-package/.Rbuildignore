@@ -7,3 +7,6 @@
 ^vignettes/articles$
 ^vignettes/\.quarto$
 ^misskappa\.Rcheck$
+^cran-comments\.md$
+^pkgdown$
+^CRAN-SUBMISSION$
