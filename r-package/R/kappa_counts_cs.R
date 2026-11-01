@@ -12,7 +12,7 @@
 #   Fleiss = psi / (psi + e),  Brennan-Prediger = 1 - 2 e / bp_chance,
 # matching .kqf_grad() at the equal-mean CS point. All routes return O(1)
 # per-subject influence rows obeying vcov = crossprod(psi) / n^2, so the SEs are
-# robust (empirical sandwich) and joint_vcov()-compatible. Derivation and
+# robust (empirical sandwich) and research_joint_vcov()-compatible. Derivation and
 # validation: dev/notes/counts-exchangeable-cs-direct.md, probe 41.
 
 # ---- sufficient statistics and coefficient maps -----------------------------

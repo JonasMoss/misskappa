@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -207,7 +208,7 @@ TEST_CASE("normal FIML quadratic kappa: complete data matches empirical BP") {
   RealVec values(5);
   values << 0.0, 1.0, 2.0, 3.0, 4.0;
 
-  auto empirical = ms::estimate_quadratic(x, values);
+  auto empirical = ms::research::estimate_quadratic(x, values);
   auto fiml = ms::estimate_quadratic_normal_fiml(x, values, EmOptions{});
   EmOptions opts{};
   opts.covariance = ms::NormalCovarianceModel::variance_components;

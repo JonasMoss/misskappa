@@ -103,7 +103,7 @@ test_that("legacy weighting schemes are internal-only", {
     expect_error(agreement_counts(counts, estimator = "fleiss_cuzick", weight = w),
                  "should be one of")
 
-    expect_s3_class(estimate_kappa_raw(x, method = "ipw", weight = w),
+    expect_s3_class(research_kappa_raw(x, method = "ipw", weight = w),
                     "misskappa_estimate")
     expect_type(rcpp_kappa_counts(counts, weight_type = w, values = NULL),
                 "list")
@@ -116,27 +116,27 @@ test_that("legacy weighting schemes are internal-only", {
 # --- internal estimator wrappers: validation guards ---
 
 test_that("internal estimator wrappers validate their inputs", {
-  expect_error(kappa_quadratic(list(1), 1:3), "matrix or data frame")
-  expect_error(kappa_quadratic(matrix(1, 4, 3), "a"), "'values' must be numeric")
+  expect_error(research_kappa_quadratic(list(1), 1:3), "matrix or data frame")
+  expect_error(research_kappa_quadratic(matrix(1, 4, 3), "a"), "'values' must be numeric")
 
   expect_error(agreement_counts(list(1)), "matrix or data frame")
   expect_error(agreement_counts(matrix("a", 4, 3)), "must be numeric")
 
-  expect_error(kappa_continuous(list(1)), "matrix or data frame")
-  expect_error(kappa_continuous(matrix("a", 4, 2)), "must be numeric")
+  expect_error(research_kappa_continuous(list(1)), "matrix or data frame")
+  expect_error(research_kappa_continuous(matrix("a", 4, 2)), "must be numeric")
 
-  expect_error(kappa_vector(matrix(1, 2, 2)), "subjects-by-raters-by-features")
-  expect_error(kappa_vector(array(1, c(2, 1, 1))), "two raters")
-  expect_error(kappa_vector(array("a", c(2, 2, 1))), "must be numeric")
-  expect_error(kappa_vector(array(1, c(3, 2, 2)), feature_weights = c(-1, 1)),
+  expect_error(.kappa_vector(matrix(1, 2, 2)), "subjects-by-raters-by-features")
+  expect_error(.kappa_vector(array(1, c(2, 1, 1))), "two raters")
+  expect_error(.kappa_vector(array("a", c(2, 2, 1))), "must be numeric")
+  expect_error(.kappa_vector(array(1, c(3, 2, 2)), feature_weights = c(-1, 1)),
                "non-negative")
 
-  expect_error(kappa_gwise(list(1)), "matrix or data frame")
-  expect_error(kappa_gwise(matrix("a", 4, 3)), "must be numeric")
-  expect_error(kappa_gwise(matrix(1:12, 4, 3), g = 99), "between 2 and ncol")
-  expect_error(kappa_gwise(matrix(1:12, 4, 3), max_chance_tuples = -5),
+  expect_error(research_kappa_gwise(list(1)), "matrix or data frame")
+  expect_error(research_kappa_gwise(matrix("a", 4, 3)), "must be numeric")
+  expect_error(research_kappa_gwise(matrix(1:12, 4, 3), g = 99), "between 2 and ncol")
+  expect_error(research_kappa_gwise(matrix(1:12, 4, 3), max_chance_tuples = -5),
                "positive integer")
-  expect_error(kappa_gwise(matrix(1:12, 4, 3), distance = "absolute",
+  expect_error(research_kappa_gwise(matrix(1:12, 4, 3), distance = "absolute",
                            method = "fiml"),
                "categorical g-wise")
 })

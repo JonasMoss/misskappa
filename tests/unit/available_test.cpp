@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -68,7 +69,7 @@ TEST_CASE("estimate_available: R=2, no missing, identity weights reproduces Cohe
   auto W = ms::loss::identity_weights(2);
   REQUIRE(W.has_value());
 
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(r.has_value());
   REQUIRE(r->estimates.size() == 3);
 
@@ -99,7 +100,7 @@ TEST_CASE("estimate_available: perfect agreement -> kappa = 1") {
     0, 0,
   });
   auto W = ms::loss::identity_weights(2);
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(r.has_value());
   // Disagreement is 0, so kappa = 1.
   CHECK(std::abs(r->estimates(0) - 1.0) < tol);
@@ -114,7 +115,7 @@ TEST_CASE("estimate_available: variance is symmetric and PSD") {
     1, 1, 0, 1, 1, 0, 0, 0,
   });
   auto W = ms::loss::identity_weights(2);
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(r.has_value());
 
   const RealMat& V = r->vcov;
@@ -139,7 +140,7 @@ TEST_CASE("estimate_available: missing data does not crash, returns finite") {
        1, na_code, 1,
        1, 0, 0;
   auto W = ms::loss::identity_weights(2);
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(r.has_value());
   for (Eigen::Index i = 0; i < r->estimates.size(); ++i) {
     CHECK(std::isfinite(r->estimates(i)));
@@ -150,7 +151,7 @@ TEST_CASE("estimate_available: too few raters -> invalid_argument") {
   IntMat x(3, 1);
   x << 0, 1, 0;
   auto W = ms::loss::identity_weights(2);
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::invalid_argument);
 }
@@ -158,7 +159,7 @@ TEST_CASE("estimate_available: too few raters -> invalid_argument") {
 TEST_CASE("estimate_available: out-of-range category code -> invalid_argument") {
   IntMat x = ratings_2(3, {0, 1, 1, 5, 0, 0});
   auto W = ms::loss::identity_weights(2);
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::invalid_argument);
 }
@@ -178,7 +179,7 @@ TEST_CASE("estimate_available: 3 categories with quadratic weights produces fini
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
   REQUIRE(W.has_value());
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(r.has_value());
   for (Eigen::Index i = 0; i < r->estimates.size(); ++i) {
     CHECK(std::isfinite(r->estimates(i)));

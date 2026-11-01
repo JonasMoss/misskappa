@@ -9,6 +9,7 @@
 
 #include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "detail_psi.hpp"
 
 #include <cmath>
@@ -124,6 +125,8 @@ Result<AcovResults> calculate_psi(
 
 }  // namespace
 
+namespace research {
+
 Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values) {
   const int C = static_cast<int>(values.size());
   if (C < 1) return misskappa::unexpected(Error::invalid_argument);
@@ -217,5 +220,7 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
   estimates(2) = bp_est;
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi_kappa), {}};
 }
+
+}  // namespace research
 
 }  // namespace misskappa

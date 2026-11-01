@@ -8,7 +8,7 @@ test_that("fit$psi returns the per-subject IF for categorical raw fits", {
   storage.mode(x) <- "integer"
 
   for (m in c("available", "ipw", "gwet")) {
-    fit <- estimate_kappa_raw(x, method =m, weight = "identity")
+    fit <- research_kappa_raw(x, method =m, weight = "identity")
     psi <- fit$psi
     expect_true(is.matrix(psi))
     expect_equal(dim(psi), c(n, 3L))
@@ -55,7 +55,7 @@ test_that("vcov = (1 / n^2) crossprod(psi) to floating-point noise", {
 
   for (m in c("available", "ipw", "gwet")) {
     for (w in c("identity", "linear", "quadratic")) {
-      fit <- estimate_kappa_raw(x, method =m, weight = w)
+      fit <- research_kappa_raw(x, method =m, weight = w)
       psi <- fit$psi
       v_reconstructed <- crossprod(psi) / (n * n)
       v_orig <- vcov(fit)
@@ -89,7 +89,7 @@ test_that("fit$psi returns per-subject IFs for FIML fits", {
     nrow = 12, byrow = TRUE
   )
   storage.mode(x) <- "integer"
-  fit <- suppressWarnings(estimate_kappa_raw(x, method ="fiml", weight = "quadratic"))
+  fit <- suppressWarnings(research_kappa_raw(x, method ="fiml", weight = "quadratic"))
   psi <- fit$psi
   expect_equal(dim(psi), c(12L, 3L))
   expect_equal(unname(crossprod(psi) / 144), unname(vcov(fit)),
@@ -106,14 +106,14 @@ test_that("fit$psi returns per-subject IFs for counts, continuous, and g-wise fi
                tolerance = 1e-10)
 
   xc <- matrix(stats::rnorm(40), nrow = 10)
-  fit_cont <- kappa_continuous(xc, method = "available", weight = "quadratic")
+  fit_cont <- research_kappa_continuous(xc, method = "available", weight = "quadratic")
   psi_cont <- fit_cont$psi
   expect_equal(dim(psi_cont), c(10L, 2L))
   expect_equal(unname(crossprod(psi_cont) / 100), unname(vcov(fit_cont)),
                tolerance = 1e-10)
 
   xg <- matrix(c(1, 1, 2, 1, 1, 2, 2, 3, 3), nrow = 3, byrow = TRUE)
-  fit_gwise <- kappa_gwise(xg, distance = "nominal")
+  fit_gwise <- research_kappa_gwise(xg, distance = "nominal")
   psi_gwise <- fit_gwise$psi
   expect_equal(dim(psi_gwise), c(3L, 2L))
 })
@@ -149,14 +149,14 @@ test_that("fit$psi returns per-subject IFs for quadratic fits", {
 
   xc <- matrix(stats::rnorm(40), nrow = 10)
   values <- c(1, 2, 3, 4, 5)[seq_len(min(ncol(xc), 5))]
-  fit_quad <- kappa_quadratic(xc, values = values)
+  fit_quad <- research_kappa_quadratic(xc, values = values)
   psi_quad <- fit_quad$psi
   expect_equal(dim(psi_quad), c(10L, 3L))
   expect_equal(unname(crossprod(psi_quad) / 100), unname(vcov(fit_quad)),
                tolerance = 1e-10)
 })
 
-test_that("joint_vcov() assembles a block matrix and recovers per-fit vcov on the diagonal blocks", {
+test_that("research_joint_vcov() assembles a block matrix and recovers per-fit vcov on the diagonal blocks", {
   set.seed(3)
   n <- 250L
   R <- 4L
@@ -165,9 +165,9 @@ test_that("joint_vcov() assembles a block matrix and recovers per-fit vcov on th
   x[matrix(stats::runif(n * R) < 0.3, n, R)] <- NA
   storage.mode(x) <- "integer"
 
-  ac  <- estimate_kappa_raw(x, method ="available")
-  ipw <- estimate_kappa_raw(x, method ="ipw")
-  V   <- joint_vcov(ac = ac, ipw = ipw)
+  ac  <- research_kappa_raw(x, method ="available")
+  ipw <- research_kappa_raw(x, method ="ipw")
+  V   <- research_joint_vcov(ac = ac, ipw = ipw)
 
   expect_equal(dim(V), c(6L, 6L))
   expect_true(isSymmetric(V))
@@ -183,21 +183,21 @@ test_that("joint_vcov() assembles a block matrix and recovers per-fit vcov on th
   )
 })
 
-test_that("joint_vcov() errors on mismatched n or non-IF fits", {
+test_that("research_joint_vcov() errors on mismatched n or non-IF fits", {
   set.seed(4)
   x1 <- matrix(sample.int(4L, 200, replace = TRUE), 50, 4)
   x2 <- matrix(sample.int(4L, 240, replace = TRUE), 60, 4)
   storage.mode(x1) <- "integer"
   storage.mode(x2) <- "integer"
 
-  fit1 <- estimate_kappa_raw(x1, method = "available")
-  fit2 <- estimate_kappa_raw(x2, method = "available")
-  expect_error(joint_vcov(fit1, fit2), "same number of subjects")
+  fit1 <- research_kappa_raw(x1, method = "available")
+  fit2 <- research_kappa_raw(x2, method = "available")
+  expect_error(research_joint_vcov(fit1, fit2), "same number of subjects")
 
-  expect_error(joint_vcov(fit1), "at least two")
+  expect_error(research_joint_vcov(fit1), "at least two")
 })
 
-test_that("joint_vcov() supports FIML fits", {
+test_that("research_joint_vcov() supports FIML fits", {
   x <- matrix(
     c(
       1, 1, 1,
@@ -216,9 +216,9 @@ test_that("joint_vcov() supports FIML fits", {
     nrow = 12, byrow = TRUE
   )
   storage.mode(x) <- "integer"
-  ac <- estimate_kappa_raw(x, method ="available", weight = "quadratic")
-  fiml <- suppressWarnings(estimate_kappa_raw(x, method ="fiml", weight = "quadratic"))
-  V <- joint_vcov(ac = ac, fiml = fiml)
+  ac <- research_kappa_raw(x, method ="available", weight = "quadratic")
+  fiml <- suppressWarnings(research_kappa_raw(x, method ="fiml", weight = "quadratic"))
+  V <- research_joint_vcov(ac = ac, fiml = fiml)
 
   expect_equal(dim(V), c(6L, 6L))
   expect_equal(unname(V[1:3, 1:3]), unname(vcov(ac)), tolerance = 1e-10)
@@ -234,9 +234,9 @@ test_that("Hausman contrast kappa_AC - kappa_IPW agrees between joint_vcov and d
   x[matrix(stats::runif(n * R) < 0.3, n, R)] <- NA
   storage.mode(x) <- "integer"
 
-  ac  <- estimate_kappa_raw(x, method ="available")
-  ipw <- estimate_kappa_raw(x, method ="ipw")
-  V   <- joint_vcov(ac = ac, ipw = ipw)
+  ac  <- research_kappa_raw(x, method ="available")
+  ipw <- research_kappa_raw(x, method ="ipw")
+  V   <- research_joint_vcov(ac = ac, ipw = ipw)
 
   c_vec <- c(1, 0, 0, -1, 0, 0)
   v_contrast <- as.numeric(crossprod(c_vec, V %*% c_vec))

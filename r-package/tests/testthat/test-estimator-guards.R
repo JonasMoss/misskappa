@@ -3,37 +3,37 @@
 # package namespace (as the other tests already do).
 
 test_that("kappa_quadratic_fiml validates input", {
-  expect_error(kappa_quadratic_fiml(list(1, 2)), "matrix or data frame")
-  expect_error(kappa_quadratic_fiml(matrix("a", 5, 3)), "must be numeric")
-  expect_error(kappa_quadratic_fiml(matrix(1, 5, 1)), "at least two raters")
+  expect_error(.kappa_quadratic_fiml(list(1, 2)), "matrix or data frame")
+  expect_error(.kappa_quadratic_fiml(matrix("a", 5, 3)), "must be numeric")
+  expect_error(.kappa_quadratic_fiml(matrix(1, 5, 1)), "at least two raters")
   expect_error(
-    kappa_quadratic_fiml(matrix(rnorm(40), 10, 4),
+    .kappa_quadratic_fiml(matrix(rnorm(40), 10, 4),
                          em_options = list(covariance = "ten_hove")),
     "unsupported em_options\\$covariance")
 
   set.seed(2)
   X <- matrix(rnorm(100), 25, 4)
   X[, 1] <- NA_real_
-  expect_error(kappa_quadratic_fiml(X), "every rater must be observed")
+  expect_error(.kappa_quadratic_fiml(X), "every rater must be observed")
 })
 
 test_that("kappa_vector_quadratic validates the array, W, and observation", {
-  expect_error(kappa_vector_quadratic(matrix(1, 2, 2)),
+  expect_error(.kappa_vector_quadratic(matrix(1, 2, 2)),
                "subjects-by-raters-by-features")
-  expect_error(kappa_vector_quadratic(array(1, c(2, 1, 1))), "two raters")
-  expect_error(kappa_vector_quadratic(array("a", c(2, 2, 1))), "must be numeric")
-  expect_error(kappa_vector_quadratic(array(1, c(5, 2, 2)), W = matrix(1, 3, 3)),
+  expect_error(.kappa_vector_quadratic(array(1, c(2, 1, 1))), "two raters")
+  expect_error(.kappa_vector_quadratic(array("a", c(2, 2, 1))), "must be numeric")
+  expect_error(.kappa_vector_quadratic(array(1, c(5, 2, 2)), W = matrix(1, 3, 3)),
                "features-by-features")
 
   set.seed(3)
   arr <- array(rnorm(5 * 2 * 2), c(5, 2, 2))
   arr[, 1, 1] <- NA_real_                    # one rater-feature cell never seen
-  expect_error(kappa_vector_quadratic(arr, method = "pairwise"),
+  expect_error(.kappa_vector_quadratic(arr, method = "pairwise"),
                "rater-feature cell")
-  expect_error(kappa_vector_quadratic(arr, method = "nt_fiml"),
+  expect_error(.kappa_vector_quadratic(arr, method = "nt_fiml"),
                "rater-feature cell")
   expect_error(
-    kappa_vector_quadratic(array(rnorm(5 * 2 * 2), c(5, 2, 2)),
+    .kappa_vector_quadratic(array(rnorm(5 * 2 * 2), c(5, 2, 2)),
                            method = "nt_fiml",
                            em_options = list(mean = "equal")),
     "equal-mean normal FIML is not yet implemented"

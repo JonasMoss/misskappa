@@ -1,4 +1,5 @@
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 
 #include "detail_pattern_checks.hpp"
 #include "detail_psi.hpp"
@@ -213,6 +214,8 @@ struct ActiveContinuousSubset {
 
 }  // namespace
 
+namespace research {
+
 Result<Estimation> estimate_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
     GwiseOptions opts) {
@@ -298,6 +301,8 @@ Result<Estimation> estimate_gwise(
   return finish_estimation(std::move(d_values), C_hat, F_hat, g,
                            std::move(mu_C_projection), std::move(mu_F_projection));
 }
+
+}  // namespace research
 
 Result<Estimation> estimate_ipw_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
@@ -467,6 +472,8 @@ Result<Estimation> estimate_ipw_gwise(
   return Estimation{std::move(estimates), std::move(vcov), std::move(psi), {}};
 }
 
+namespace research {
+
 Result<Estimation> estimate_gwise_continuous(
     RealMatView ratings, loss::GwiseContinuousDistance distance,
     GwiseOptions opts) {
@@ -550,6 +557,8 @@ Result<Estimation> estimate_gwise_continuous(
   return finish_estimation(std::move(d_values), C_hat, F_hat, g,
                            std::move(mu_C_projection), std::move(mu_F_projection));
 }
+
+}  // namespace research
 
 Result<Estimation> estimate_ipw_gwise_continuous(
     RealMatView ratings, loss::GwiseContinuousDistance distance,

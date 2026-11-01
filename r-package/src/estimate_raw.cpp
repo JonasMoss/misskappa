@@ -3,6 +3,7 @@
 #include "detail_kernel_moments.hpp"
 #include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "detail_psi.hpp"
 
 #include <cmath>
@@ -242,16 +243,24 @@ Result<Estimation> estimate_raw(
 
 // --- Public entry points -----------------------------------------------------
 
+namespace research {
+
 Result<Estimation> estimate_available(IntMatView ratings, RealMatView weights) {
   return estimate_raw(ratings, weights, detail::Reweighting::available);
 }
+
+}  // namespace research
 
 Result<Estimation> estimate_ipw(IntMatView ratings, RealMatView weights) {
   return estimate_raw(ratings, weights, detail::Reweighting::ipw);
 }
 
+namespace research {
+
 Result<Estimation> estimate_gwet(IntMatView ratings, RealMatView weights) {
   return estimate_raw(ratings, weights, detail::Reweighting::gwet);
 }
+
+}  // namespace research
 
 }  // namespace misskappa

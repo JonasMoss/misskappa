@@ -32,7 +32,7 @@ test_that("agreement() routes g > 2 categorical kernels and labels Conger/Fleiss
 
   # On complete data IPW is the complete-data g-wise estimator, which is why
   # agreement() no longer offers "pairwise" for g > 2.
-  direct <- kappa_gwise(x, distance = "nominal", method = "complete", g = 3L)
+  direct <- research_kappa_gwise(x, distance = "nominal", method = "complete", g = 3L)
   expect_equal(unname(fit$estimates), unname(direct$estimates),
                tolerance = 1e-12)
   expect_equal(unname(fit$vcov), unname(direct$vcov), tolerance = 1e-12)
@@ -81,7 +81,7 @@ test_that("agreement() g > 2 continuous (linear) supports ipw only", {
   fit_ipw <- agreement(x, estimator = "ipw", weight = "linear", g = 3L)
   expect_named(fit_ipw$estimates, c("Conger", "Fleiss"))
   expect_true(all(is.finite(fit_ipw$estimates)))
-  direct <- kappa_gwise(x, distance = "absolute", method = "complete", g = 3L)
+  direct <- research_kappa_gwise(x, distance = "absolute", method = "complete", g = 3L)
   expect_equal(unname(fit_ipw$estimates), unname(direct$estimates),
                tolerance = 1e-10)
   expect_error(agreement(x, estimator = "pairwise", weight = "linear", g = 3L),
@@ -147,18 +147,18 @@ test_that("agreement() detects 3-D arrays as vector-valued ratings", {
   expect_named(fit$estimates, c("Conger", "Fleiss"))
 
   # default weight = "nominal" maps to the Hamming component loss.
-  direct <- kappa_vector(arr, method = "pairwise", loss = "hamming")
+  direct <- .kappa_vector(arr, method = "pairwise", loss = "hamming")
   expect_equal(unname(fit$estimates), unname(direct$estimates))
 
   # weight -> loss mapping for the squared component loss.
   fit_sq <- agreement(arr, estimator = "ipw", weight = "quadratic")
-  direct_sq <- kappa_vector(arr, method = "ipw", loss = "squared")
+  direct_sq <- .kappa_vector(arr, method = "ipw", loss = "squared")
   expect_equal(unname(fit_sq$estimates), unname(direct_sq$estimates))
 
   # rms / feature_weights reachable through ...
   fit_rms <- agreement(arr, estimator = "ipw", loss = "rms",
                    feature_weights = c(1, 2))
-  direct_rms <- kappa_vector(arr, method = "ipw", loss = "rms",
+  direct_rms <- .kappa_vector(arr, method = "ipw", loss = "rms",
                              feature_weights = c(1, 2))
   expect_equal(unname(fit_rms$estimates), unname(direct_rms$estimates))
 

@@ -123,7 +123,7 @@
 #'   `as.data.frame`, and `stats::influence`.
 #'
 #' @noRd
-kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
+.kappa_quadratic_fiml <- function(x, values = NULL, em_options = list()) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.", call. = FALSE)
   }

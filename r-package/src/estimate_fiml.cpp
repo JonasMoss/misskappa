@@ -7,6 +7,7 @@
 // path is implemented; counts-format is out of Phase 1 scope.
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 
 #include "detail_fiml_diagnostics.hpp"
 
@@ -1095,6 +1096,8 @@ Result<Estimation> estimate_fiml(
   return map_fiml_kappa(*in_res, *em, weights, *workspace);
 }
 
+namespace research {
+
 Result<std::vector<Estimation>> estimate_fiml_many(
     IntMatView ratings, const std::vector<RealMat>& weights, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());
@@ -1130,6 +1133,8 @@ Result<std::vector<Estimation>> estimate_fiml_many(
   }
   return out;
 }
+
+}  // namespace research
 
 Result<Estimation> estimate_fiml_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,

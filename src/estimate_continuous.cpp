@@ -15,6 +15,7 @@
 #include "detail_kernel_moments.hpp"
 #include "detail_pattern_checks.hpp"
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "detail_psi.hpp"
 
 #include <cmath>
@@ -173,14 +174,22 @@ Result<Estimation> estimate_available_continuous(
   return estimate_continuous(ratings, loss, detail::Reweighting::available);
 }
 
+namespace research {
+
 Result<Estimation> estimate_ipw_continuous(
     RealMatView ratings, loss::ContinuousLoss loss) {
   return estimate_continuous(ratings, loss, detail::Reweighting::ipw);
 }
 
+}  // namespace research
+
+namespace research {
+
 Result<Estimation> estimate_gwet_continuous(
     RealMatView ratings, loss::ContinuousLoss loss) {
   return estimate_continuous(ratings, loss, detail::Reweighting::gwet);
 }
+
+}  // namespace research
 
 }  // namespace misskappa

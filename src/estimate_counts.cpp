@@ -14,6 +14,7 @@
 // observation rates are aggregated away by counts).
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "detail_psi.hpp"
 
 #include <cmath>
@@ -37,7 +38,9 @@ double observed_row_weight(double row_sum, CountWeighting weighting) {
 
 }  // namespace
 
-Result<Estimation> estimate_counts(
+namespace detail {
+
+Result<Estimation> estimate_counts_weighted(
     IntMatView counts, RealMatView weights, CountWeighting weighting) {
   const int n = static_cast<int>(counts.rows());
   const int C = static_cast<int>(counts.cols());
@@ -177,8 +180,19 @@ Result<Estimation> estimate_counts(
   return Estimation{std::move(estimates), std::move(kappa_cov), std::move(psi_kappa), {}};
 }
 
+}  // namespace detail
+
+namespace research {
+
+Result<Estimation> estimate_counts(
+    IntMatView counts, RealMatView weights, CountWeighting weighting) {
+  return detail::estimate_counts_weighted(counts, weights, weighting);
+}
+
+}  // namespace research
+
 Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights) {
-  return estimate_counts(counts, weights, CountWeighting::fleiss_cuzick);
+  return detail::estimate_counts_weighted(counts, weights, CountWeighting::fleiss_cuzick);
 }
 
 }  // namespace misskappa

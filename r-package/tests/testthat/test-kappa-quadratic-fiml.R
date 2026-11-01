@@ -42,7 +42,7 @@ vc_project <- function(S) {
 
 test_that("complete-data point matches the MLE-covariance plug-in", {
   X <- make_ratings(400L, 4L, miss = 0, seed = 11L, mu = c(0, 0.4, -0.3, 0.2))
-  fit <- kappa_quadratic_fiml(X)
+  fit <- .kappa_quadratic_fiml(X)
   n <- nrow(X)
   Smle <- stats::cov(X) * (n - 1) / n
   manual <- ref_kappa(colMeans(X), Smle, fit$bp_chance)
@@ -50,7 +50,7 @@ test_that("complete-data point matches the MLE-covariance plug-in", {
   expect_true(fit$moments$converged)
 })
 
-test_that("complete-data point matches kappa_quadratic(empirical)", {
+test_that("complete-data point matches research_kappa_quadratic(empirical)", {
   set.seed(21L)
   # scored 1..5 categorical ratings so kappa_quadratic's `values` is natural
   n <- 350L
@@ -59,18 +59,18 @@ test_that("complete-data point matches kappa_quadratic(empirical)", {
   X <- round(3 + subject + matrix(stats::rnorm(n * R, sd = 0.7), n, R))
   X <- matrix(pmin(5, pmax(1, X)), n, R)
   storage.mode(X) <- "double"
-  fit <- kappa_quadratic_fiml(X, values = 1:5)
-  fit_vc <- kappa_quadratic_fiml(
+  fit <- .kappa_quadratic_fiml(X, values = 1:5)
+  fit_vc <- .kappa_quadratic_fiml(
     X, values = 1:5, em_options = list(covariance = "variance_components")
   )
-  ref <- kappa_quadratic(X, values = 1:5)
+  ref <- research_kappa_quadratic(X, values = 1:5)
   expect_equal(coef(fit), coef(ref), tolerance = 1e-8)
   expect_equal(coef(fit_vc), coef(ref), tolerance = 1e-8)
 })
 
 test_that("variance-component covariance projects the complete-data covariance", {
   X <- make_ratings(400L, 4L, miss = 0, seed = 13L, mu = c(0, 0.4, -0.3, 0.2))
-  fit <- kappa_quadratic_fiml(
+  fit <- .kappa_quadratic_fiml(
     X, em_options = list(covariance = "variance_components")
   )
   n <- nrow(X)
@@ -86,7 +86,7 @@ test_that("variance-component covariance projects the complete-data covariance",
 
 test_that("equal-mean variance-component covariance gives exchangeable fit", {
   X <- make_ratings(400L, 4L, miss = 0, seed = 14L, mu = c(0, 0.4, -0.3, 0.2))
-  fit <- kappa_quadratic_fiml(
+  fit <- .kappa_quadratic_fiml(
     X, em_options = list(covariance = "variance-components", mean = " Common ")
   )
   expect_equal(fit$covariance, "variance_components")
@@ -101,7 +101,7 @@ test_that("equal-mean variance-component covariance gives exchangeable fit", {
 test_that("equal-mean normal FIML requires variance-component covariance", {
   X <- make_ratings(80L, 4L, miss = 0, seed = 15L)
   expect_error(
-    kappa_quadratic_fiml(X, em_options = list(mean = "equal")),
+    .kappa_quadratic_fiml(X, em_options = list(mean = "equal")),
     "requires em_options\\$covariance = \"variance_components\""
   )
 })
@@ -130,7 +130,7 @@ test_that("variance-component kappa allows connected incomplete co-observation",
 
 test_that("sandwich vcov satisfies the crossprod(psi)/n^2 influence contract", {
   X <- make_ratings(500L, 5L, miss = 0.2, seed = 2L)
-  fit <- kappa_quadratic_fiml(X)
+  fit <- .kappa_quadratic_fiml(X)
   psi <- fit$psi
   expect_true(is.matrix(psi))
   expect_equal(dim(psi), c(nrow(X), 3L))
@@ -165,22 +165,22 @@ test_that("analytic gradient G matches a numeric derivative wrt theta", {
   expect_equal(unname(grad$G), Gnum, tolerance = 1e-6)
 })
 
-test_that("kappa_continuous(method = 'fiml') routes here and validates weight", {
+test_that("research_kappa_continuous(method = 'fiml') routes here and validates weight", {
   X <- make_ratings(300L, 4L, miss = 0.15, seed = 9L)
-  fit <- kappa_continuous(X, method = "fiml", weight = "quadratic")
+  fit <- research_kappa_continuous(X, method = "fiml", weight = "quadratic")
   expect_equal(fit$method, "quadratic-fiml")
   expect_equal(names(coef(fit)), c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_error(
-    kappa_continuous(X, method = "fiml", weight = "linear"),
+    research_kappa_continuous(X, method = "fiml", weight = "linear"),
     "quadratic"
   )
 })
 
 test_that("fits plug into joint_vcov", {
   X <- make_ratings(350L, 5L, miss = 0.2, seed = 5L)
-  fitA <- kappa_quadratic_fiml(X)
-  fitB <- kappa_quadratic_fiml(X[, 1:4])
-  V <- joint_vcov(full = fitA, sub = fitB)
+  fitA <- .kappa_quadratic_fiml(X)
+  fitB <- .kappa_quadratic_fiml(X[, 1:4])
+  V <- research_joint_vcov(full = fitA, sub = fitB)
   expect_equal(dim(V), c(6L, 6L))
   expect_true(isSymmetric(V))
 })
@@ -191,8 +191,8 @@ test_that("vector quadratic complete data matches tensor plug-in and FIML", {
   X[, 2L, ] <- X[, 2L, ] + 0.25
   W <- matrix(c(1.0, 0.3, 0.3, 1.8), 2L, 2L)
 
-  fit_pair <- kappa_vector_quadratic(X, method = "pairwise", W = W)
-  fit_ml <- kappa_vector_quadratic(X, method = "nt_fiml", W = W)
+  fit_pair <- .kappa_vector_quadratic(X, method = "pairwise", W = W)
+  fit_ml <- .kappa_vector_quadratic(X, method = "nt_fiml", W = W)
 
   flat <- matrix(NA_real_, nrow = dim(X)[1L], ncol = dim(X)[2L] * dim(X)[3L])
   for (r in seq_len(dim(X)[2L])) {
@@ -219,7 +219,7 @@ test_that("vector quadratic block compound symmetry fits and reduces to scalar a
     b <- as.numeric(rnorm(d) %*% Lb)
     for (r in seq_len(R)) arr[i, r, ] <- mu[r, ] + b + as.numeric(rnorm(d) %*% Le)
   }
-  fit_cs <- kappa_vector_quadratic(arr, method = "nt_fiml_cs")
+  fit_cs <- .kappa_vector_quadratic(arr, method = "nt_fiml_cs")
   expect_equal(names(coef(fit_cs)), c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_true(all(is.finite(coef(fit_cs))))
   expect_equal(unname(crossprod(fit_cs$psi) / n^2), unname(vcov(fit_cs)),
@@ -238,8 +238,8 @@ test_that("vector quadratic block compound symmetry fits and reduces to scalar a
   X <- matrix(c(1, 1.2, 0.9, 1.1, 2, 2.2, 1.8, 2.1, 3, 2.8, 3.2, 3.1,
                 2, 2.4, 2.1, 2.3, 1, 1.5, 1.2, 1.3, 3, 2.9, 2.7, 2.8,
                 2.5, 2.3, 2.6, 2.4, 1.5, 1.7, 1.4, 1.6), 8, 4, byrow = TRUE)
-  vec1 <- kappa_vector_quadratic(array(X, c(8, 4, 1)), method = "nt_fiml_cs")
-  scl1 <- kappa_quadratic_fiml(
+  vec1 <- .kappa_vector_quadratic(array(X, c(8, 4, 1)), method = "nt_fiml_cs")
+  scl1 <- .kappa_quadratic_fiml(
     X, em_options = list(covariance = "variance_components"))
   expect_equal(unname(coef(vec1)), unname(coef(scl1)), tolerance = 1e-9)
   expect_equal(unname(vcov(vec1)), unname(vcov(scl1)), tolerance = 1e-9)
@@ -255,14 +255,14 @@ test_that("agreement() exposes the full-W vector estimators on the array surface
   # (without `ranges` the public surface omits Brennan-Prediger)
   for (est in c("nt_fiml", "nt_fiml_cs")) {
     pub <- agreement(arr, estimator = est, W = W)
-    ref <- kappa_vector_quadratic(arr, method = est, W = W)
+    ref <- .kappa_vector_quadratic(arr, method = est, W = W)
     expect_equal(pub$method, est)
     expect_equal(coef(pub), coef(ref)[c("Conger", "Fleiss")])
     expect_equal(names(coef(pub)), c("Conger", "Fleiss"))
   }
   pub_pair <- agreement(arr, estimator = "pairwise", W = W)
   expect_equal(coef(pub_pair),
-               coef(kappa_vector_quadratic(arr, method = "pairwise", W = W)))
+               coef(.kappa_vector_quadratic(arr, method = "pairwise", W = W)))
 
   # no W -> component-separable path is unchanged (diagonal weights, 2 coefs)
   comp <- agreement(arr, estimator = "pairwise")
@@ -287,7 +287,7 @@ test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
   # observed-range default
   obs <- t(vapply(seq_len(2L), function(a) range(arr[, , a]), numeric(2L)))
   for (est in c("nt_fiml", "nt_fiml_cs")) {
-    base <- kappa_vector_quadratic(arr, method = est, W = W)
+    base <- .kappa_vector_quadratic(arr, method = est, W = W)
     same <- agreement(arr, estimator = est, W = W, ranges = obs)
     expect_equal(coef(same), coef(base))
     # a different fixed range moves Brennan-Prediger but not Conger / Fleiss
@@ -305,7 +305,7 @@ test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
                      ranges = matrix(1:6, 3L, 2L)), "features-by-2")
   expect_error(agreement(arr, estimator = "pairwise", W = W, ranges = obs),
                "not used by")
-  expect_warning(kappa_vector_quadratic(arr, method = "pairwise", W = W,
+  expect_warning(.kappa_vector_quadratic(arr, method = "pairwise", W = W,
                                         ranges = obs),
                  "ignored for method")
 })
@@ -319,9 +319,9 @@ test_that("vector quadratic diagonal W matches component-separable squared loss"
     0, 1,  0, 0,  0, 1
   ), dim = c(5L, 3L, 2L))
   w <- c(1, 2)
-  fit_sep <- kappa_vector(X, method = "pairwise", loss = "squared",
+  fit_sep <- .kappa_vector(X, method = "pairwise", loss = "squared",
                           feature_weights = w)
-  fit_cov <- kappa_vector_quadratic(X, method = "pairwise", W = diag(w))
+  fit_cov <- .kappa_vector_quadratic(X, method = "pairwise", W = diag(w))
   expect_equal(coef(fit_cov), coef(fit_sep), tolerance = 1e-9)
 })
 
@@ -332,8 +332,8 @@ test_that("vector quadratic handles full-W missing data and IF covariance", {
   W <- matrix(c(1.2, 0.25, 0.25, 0.9), 2L, 2L)
   X[array(runif(length(X)) < 0.18, dim = dim(X))] <- NA_real_
 
-  fit_pair <- kappa_vector_quadratic(X, method = "pairwise", W = W)
-  fit_ml <- kappa_vector_quadratic(X, method = "nt_fiml", W = W)
+  fit_pair <- .kappa_vector_quadratic(X, method = "pairwise", W = W)
+  fit_ml <- .kappa_vector_quadratic(X, method = "nt_fiml", W = W)
 
   expect_equal(dim(fit_pair$psi), c(dim(X)[1L], 2L))
   expect_equal(dim(fit_ml$psi), c(dim(X)[1L], 3L))   # FIML adds Brennan-Prediger
@@ -348,24 +348,24 @@ test_that("vector quadratic handles full-W missing data and IF covariance", {
 test_that("vector quadratic validates the full feature metric", {
   X <- array(rnorm(80L * 3L * 2L), dim = c(80L, 3L, 2L))
   expect_error(
-    kappa_vector_quadratic(X, W = diag(3L)),
+    .kappa_vector_quadratic(X, W = diag(3L)),
     "features-by-features"
   )
   expect_error(
-    kappa_vector_quadratic(X, W = matrix(c(1, 0.2, 0.3, 1), 2L, 2L)),
+    .kappa_vector_quadratic(X, W = matrix(c(1, 0.2, 0.3, 1), 2L, 2L)),
     "symmetric"
   )
   expect_error(
-    kappa_vector_quadratic(X, W = matrix(c(1, 2, 2, 1), 2L, 2L)),
+    .kappa_vector_quadratic(X, W = matrix(c(1, 2, 2, 1), 2L, 2L)),
     "positive semidefinite"
   )
   # the block compound-symmetry covariance is now supported via the estimator
   # name; the equal-mean model is still not generalized to vector ratings
-  fit_cs <- kappa_vector_quadratic(
+  fit_cs <- .kappa_vector_quadratic(
     X, method = "nt_fiml", em_options = list(covariance = "variance_components"))
-  expect_equal(coef(fit_cs), coef(kappa_vector_quadratic(X, method = "nt_fiml_cs")))
+  expect_equal(coef(fit_cs), coef(.kappa_vector_quadratic(X, method = "nt_fiml_cs")))
   expect_error(
-    kappa_vector_quadratic(
+    .kappa_vector_quadratic(
       X, method = "nt_fiml", em_options = list(mean = "equal")),
     "equal-mean normal FIML is not yet implemented"
   )
@@ -374,7 +374,7 @@ test_that("vector quadratic validates the full feature metric", {
 test_that("saturated EM moments match the pure-R reference EM", {
   X <- make_ratings(500L, 5L, miss = 0.2, seed = 6L)
   X <- X[rowSums(is.finite(X)) > 0L, ]
-  fit <- kappa_quadratic_fiml(X)
+  fit <- .kappa_quadratic_fiml(X)
   em <- .amc_em(X, .amc_patterns(is.finite(X)))
   expect_equal(fit$moments$mu, unname(em$mu), tolerance = 1e-7)
   expect_equal(unname(fit$moments$Sigma), unname(em$Sigma), tolerance = 1e-7)
@@ -387,7 +387,7 @@ test_that("sandwich vcov matches the pure-R reference sandwich", {
   X <- make_ratings(500L, 4L, miss = 0.2, seed = 12L,
                     mu = c(-0.4, -0.1, 0.2, 0.5))
   X <- X[rowSums(is.finite(X)) > 0L, ]
-  fit <- kappa_quadratic_fiml(X)
+  fit <- .kappa_quadratic_fiml(X)
   p <- ncol(X); pstar <- p * (p + 1L) / 2L; n <- nrow(X)
   pat <- .amc_patterns(is.finite(X))
   vp <- .amc_vech_pos(p)
@@ -405,7 +405,7 @@ test_that("saturated EM moments match lavaan's h1 estimator", {
   skip_if_not_installed("lavaan")
   X <- make_ratings(500L, 6L, miss = 0.2, seed = 6L)
   X <- X[rowSums(is.finite(X)) > 0L, ]
-  fit <- kappa_quadratic_fiml(X)
+  fit <- .kappa_quadratic_fiml(X)
   Mp <- lavaan:::lav_data_mi_patterns(X)
   lav <- lavaan:::lav_mvn_mi_h1_est_moments(
     y = X, mp = Mp, tol = 1e-12, max_iter = 10000L)

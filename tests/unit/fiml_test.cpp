@@ -2,6 +2,7 @@
 
 #include "detail_fiml_diagnostics.hpp"
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -216,7 +217,7 @@ TEST_CASE("estimate_fiml: complete data supports non-symmetric weights") {
   W << 1.0, 0.2,
        0.7, 1.0;
 
-  auto available = ms::estimate_available(x, W);
+  auto available = ms::research::estimate_available(x, W);
   auto fiml = ms::estimate_fiml(x, W, EmOptions{});
   REQUIRE(available.has_value());
   REQUIRE(fiml.has_value());
@@ -373,7 +374,7 @@ TEST_CASE("estimate_fiml: missing rater-pair coefficient non-identification erro
   CHECK(r.error() == ms::Error::not_identified);
 
   const std::vector<RealMat> weights{*W};
-  auto many = ms::estimate_fiml_many(x, weights, EmOptions{});
+  auto many = ms::research::estimate_fiml_many(x, weights, EmOptions{});
   REQUIRE(!many.has_value());
   CHECK(many.error() == ms::Error::not_identified);
 }
@@ -383,7 +384,7 @@ TEST_CASE("estimate_fiml_gwise: complete data matches complete g-wise estimator"
   auto distance = ms::loss::frechet_nominal_distance(5);
   REQUIRE(distance.has_value());
 
-  auto complete = ms::estimate_gwise(x, *distance);
+  auto complete = ms::research::estimate_gwise(x, *distance);
   auto fiml = ms::estimate_fiml_gwise(x, *distance, EmOptions{});
   REQUIRE(complete.has_value());
   REQUIRE(fiml.has_value());

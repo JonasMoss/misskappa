@@ -42,6 +42,16 @@ renames below.
 
 ## Internals
 
+* Unexported code is split into plumbing (dot-prefixed helpers the public
+  functions call) and research entry points (`research_*()` in
+  `R/research.R`, and the C++ namespace `misskappa::research`), which no
+  public function reaches and which carry no stability promise. Former
+  internal names: `estimate_kappa_raw()` -> `research_kappa_raw()`,
+  `estimate_kappa_fiml_multi()` -> `research_kappa_fiml_multi()`,
+  `.kappa_pairwise_cs()` -> `research_kappa_pairwise_cs()`,
+  `kappa_quadratic()` -> `research_kappa_quadratic()`, `kappa_continuous()`
+  -> `research_kappa_continuous()`, `kappa_gwise()` ->
+  `research_kappa_gwise()`, `joint_vcov()` -> `research_joint_vcov()`.
 * The internal `wald_test()` and the C++-only SQUAREM option of the
   categorical EM are removed. Arbitrary contrasts are built from `fit$psi`
   (see the influence-functions article).

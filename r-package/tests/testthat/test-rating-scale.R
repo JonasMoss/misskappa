@@ -99,7 +99,7 @@ test_that("paired covariance matches joint_vcov on aligned fits", {
   X <- matrix(rnorm(300), 100)
   a <- agreement(X[, 1:2], estimator = "pairwise")
   b <- agreement(X[, 2:3], estimator = "pairwise")
-  V <- joint_vcov(a = a, b = b)
+  V <- research_joint_vcov(a = a, b = b)
   t1 <- agreement_test(a, b, paired = TRUE)
   d <- coef(a)[["Conger"]] - coef(b)[["Conger"]]
   v <- V["a.Conger", "a.Conger"] + V["b.Conger", "b.Conger"] -
@@ -121,4 +121,14 @@ test_that("errors do not name internal functions", {
   err <- tryCatch(agreement(matrix(1:6, 3), estimator = "ipw", values = 1:5),
                   error = identity)
   expect_null(conditionCall(err))
+})
+
+test_that("the exported surface is the four public functions", {
+  expect_setequal(getNamespaceExports("misskappa"),
+                  c("agreement", "agreement_counts", "agreement_test",
+                    "ratings_to_counts"))
+  ns <- ls(asNamespace("misskappa"), all.names = TRUE)
+  research <- grep("^research_", ns, value = TRUE)
+  expect_true(length(research) > 0L)
+  expect_length(intersect(research, getNamespaceExports("misskappa")), 0L)
 })

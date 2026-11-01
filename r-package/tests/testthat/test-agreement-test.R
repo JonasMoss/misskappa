@@ -31,7 +31,7 @@ test_that("agreement_test(paired) reproduces the internal joint_vcov contrast", 
   fb <- agreement(X[, 4:6], estimator = "pairwise")
 
   kt <- agreement_test(fa, fb, paired = TRUE)
-  V  <- joint_vcov(a = fa, b = fb)
+  V  <- research_joint_vcov(a = fa, b = fb)
   d  <- coef(fa)[["Conger"]] - coef(fb)[["Conger"]]
   v  <- V["a.Conger", "a.Conger"] + V["b.Conger", "b.Conger"] -
     2 * V["a.Conger", "b.Conger"]

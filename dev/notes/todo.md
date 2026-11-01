@@ -20,8 +20,10 @@ still open.
 - [x] **Repo pruning.** `experiments/` and research notes moved to the private
       papers repo; `docs/logo.png`, C++ SQUAREM, and `wald_test()` dropped.
 - [ ] **Private papers on the new names.** The WIP paper scripts call
-      `kappa()` / `kappa_counts()` / `kappa_test()`; switch them to the new
-      names (or pin them to `alpha-final`).
+      `kappa()` / `kappa_counts()` / `kappa_test()` and internals such as
+      `estimate_kappa_fiml_multi()` (now `research_kappa_fiml_multi()`; the
+      full map is in NEWS.md); switch them to the new names (or pin them to
+      `alpha-final`).
 - [ ] **Completed papers out of the public tree.** Drop `papers/guessing` and
       `papers/kappa-sd` after making their own repos public or archiving them
       on Zenodo (needs the author), then fix the README Contents and badge,
@@ -98,8 +100,8 @@ still open.
         and count-format quadratic `nt_fiml`. Verify each delete-one point
         functional against its fitted estimator instead of silently attaching
         an empirical substitute.
-      - Cover the standalone/internal surfaces: `kappa_quadratic()`,
-        `estimate_kappa_fiml_multi()`, available-case/Gwet continuous kappa,
+      - Cover the research surfaces: `research_kappa_quadratic()`,
+        `research_kappa_fiml_multi()`, available-case/Gwet continuous kappa,
         and all supported `g > 2` nominal/Hubert/linear functionals.
       - Generalize delete-one summaries to vector-valued ratings: the
         component-separable pairwise/IPW routes and the full-`W` quadratic

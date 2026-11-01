@@ -1,4 +1,5 @@
 #include "misskappa/inference.hpp"
+#include "misskappa/research.hpp"
 
 #include <cmath>
 #include <limits>
@@ -338,6 +339,8 @@ Result<KappaDeleteOneEstimation> delete_one_kappa_counts_complete(
   return out;
 }
 
+namespace research {
+
 Result<RealMat> jackknife_covariance(RealMatView leave_one_out) {
   const int n = static_cast<int>(leave_one_out.rows());
   const int K = static_cast<int>(leave_one_out.cols());
@@ -355,5 +358,7 @@ Result<RealMat> jackknife_covariance(RealMatView leave_one_out) {
       (static_cast<double>(n - 1) / n) * centered.transpose() * centered;
   return covariance;
 }
+
+}  // namespace research
 
 }  // namespace misskappa

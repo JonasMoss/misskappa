@@ -23,7 +23,7 @@ test_that("compound-symmetry estimators fit the incomplete design", {
   x <- dat.tenhove2025
   fits <- list(
     nt_fiml_cs = agreement(x, estimator = "nt_fiml_cs", values = 1:5),
-    pairwise_cs = .kappa_pairwise_cs(x, values = 1:5)  # internal since 2.0.0
+    pairwise_cs = research_kappa_pairwise_cs(x, values = 1:5)  # internal since 2.0.0
   )
   for (fit in fits) {
     expect_s3_class(fit, "misskappa_estimate")
@@ -41,7 +41,7 @@ test_that("compound-symmetry estimators fit the incomplete design", {
 test_that("nt_fiml_cs and pairwise_cs share their MCAR limit", {
   x <- dat.tenhove2025
   a <- agreement(x, estimator = "nt_fiml_cs", values = 1:5)$estimates
-  b <- .kappa_pairwise_cs(x, values = 1:5)$estimates
+  b <- research_kappa_pairwise_cs(x, values = 1:5)$estimates
   expect_lt(max(abs(a - b)), 0.05)
 })
 

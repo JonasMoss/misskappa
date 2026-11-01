@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/inference.hpp"
 #include "misskappa/loss.hpp"
 
@@ -276,11 +277,11 @@ Rcpp::List rcpp_kappa_raw(
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "available") {
-    r = misskappa::estimate_available(in.ratings_indexed, in.weights);
+    r = misskappa::research::estimate_available(in.ratings_indexed, in.weights);
   } else if (method == "ipw") {
     r = misskappa::estimate_ipw(in.ratings_indexed, in.weights);
   } else if (method == "gwet") {
-    r = misskappa::estimate_gwet(in.ratings_indexed, in.weights);
+    r = misskappa::research::estimate_gwet(in.ratings_indexed, in.weights);
   } else if (method == "fiml") {
     misskappa::EmOptions opts = parse_em_options(em_options);
     r = misskappa::estimate_fiml(in.ratings_indexed, in.weights, opts);
@@ -323,7 +324,7 @@ Rcpp::List rcpp_kappa_fiml_multi(
   }
 
   misskappa::EmOptions opts = parse_em_options(em_options);
-  auto fits = unwrap(misskappa::estimate_fiml_many(
+  auto fits = unwrap(misskappa::research::estimate_fiml_many(
       in.ratings_indexed, weights, opts));
 
   Rcpp::List out(fits.size());
@@ -396,7 +397,7 @@ Rcpp::List rcpp_kappa_quadratic(
   Eigen::VectorXd v(values.size());
   for (int i = 0; i < values.size(); ++i) v(i) = values[i];
 
-  auto r = misskappa::estimate_quadratic(ratings, v);
+  auto r = misskappa::research::estimate_quadratic(ratings, v);
   return estimation_to_list(unwrap(std::move(r)));
 }
 
@@ -537,9 +538,9 @@ Rcpp::List rcpp_kappa_continuous(
   if (method == "available") {
     r = misskappa::estimate_available_continuous(ratings, loss);
   } else if (method == "ipw") {
-    r = misskappa::estimate_ipw_continuous(ratings, loss);
+    r = misskappa::research::estimate_ipw_continuous(ratings, loss);
   } else if (method == "gwet") {
-    r = misskappa::estimate_gwet_continuous(ratings, loss);
+    r = misskappa::research::estimate_gwet_continuous(ratings, loss);
   } else {
     Rcpp::stop("Unknown method for continuous data: " + method);
   }
@@ -698,7 +699,7 @@ Rcpp::List rcpp_kappa_gwise_categorical(
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "complete") {
-    r = misskappa::estimate_gwise(ratings, distance, opts);
+    r = misskappa::research::estimate_gwise(ratings, distance, opts);
   } else if (method == "ipw") {
     r = misskappa::estimate_ipw_gwise(ratings, distance, opts);
   } else if (method == "fiml") {
@@ -739,7 +740,7 @@ Rcpp::List rcpp_kappa_gwise_continuous(
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "complete") {
-    r = misskappa::estimate_gwise_continuous(ratings, distance, opts);
+    r = misskappa::research::estimate_gwise_continuous(ratings, distance, opts);
   } else if (method == "ipw") {
     r = misskappa::estimate_ipw_gwise_continuous(ratings, distance, opts);
   } else {

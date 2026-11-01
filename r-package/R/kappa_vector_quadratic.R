@@ -1,6 +1,6 @@
 # Quadratic vector kappa via first and second moments.
 #
-# This is the vector analogue of kappa_quadratic_fiml(): for squared vector
+# This is the vector analogue of .kappa_quadratic_fiml(): for squared vector
 # loss with a full feature metric W, Conger and Fleiss are smooth functions of
 # the stacked rater-feature mean and covariance. The pairwise path is the
 # pairwise-available covariance plug-in; the FIML path reuses the saturated
@@ -210,7 +210,7 @@
 #' feature-weight matrix. The `"pairwise"` method uses pairwise-available
 #' covariance moments and is MCAR-oriented (Conger and Fleiss only). The
 #' `"nt_fiml"` method fits the saturated normal mean/covariance by EM and is
-#' the vector analogue of [kappa_quadratic_fiml()]. The `"nt_fiml_cs"` method
+#' the vector analogue of [.kappa_quadratic_fiml()]. The `"nt_fiml_cs"` method
 #' fits the same normal FIML under the block compound-symmetry covariance
 #' `Sigma = J_R \%x\% Psi + I_R \%x\% E`. With a quadratic weight this
 #' is the covariance/variance-components route used for Lin's concordance
@@ -272,7 +272,7 @@
 #' reproducibility. \emph{Biometrics}, 45(1), 255--268.
 #'
 #' @noRd
-kappa_vector_quadratic <- function(x,
+.kappa_vector_quadratic <- function(x,
                                    method = c("pairwise", "nt_fiml", "nt_fiml_cs"),
                                    W = NULL,
                                    em_options = list(),

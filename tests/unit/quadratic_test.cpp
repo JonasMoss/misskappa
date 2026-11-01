@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -42,7 +43,7 @@ TEST_CASE("estimate_quadratic raw: matches legacy on 12-subject 3-rater fixture"
   RealVec v(5);
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
 
-  auto r = ms::estimate_quadratic(x, v);
+  auto r = ms::research::estimate_quadratic(x, v);
   REQUIRE(r.has_value());
   REQUIRE(r->estimates.size() == 3);
 
@@ -61,7 +62,7 @@ TEST_CASE("estimate_quadratic raw: variance is symmetric and PSD") {
   RealMat x = twelve_subject_3rater_quadratic();
   RealVec v(5);
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
-  auto r = ms::estimate_quadratic(x, v);
+  auto r = ms::research::estimate_quadratic(x, v);
   REQUIRE(r.has_value());
   const RealMat& V = r->vcov;
   CHECK((V - V.transpose()).cwiseAbs().maxCoeff() < 1e-10);
@@ -84,7 +85,7 @@ TEST_CASE("estimate_quadratic raw: perfect agreement -> kappa = 1") {
        5, 5, 5;
   RealVec v(5);
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
-  auto r = ms::estimate_quadratic(x, v);
+  auto r = ms::research::estimate_quadratic(x, v);
   REQUIRE(r.has_value());
   CHECK(std::abs(r->estimates(0) - 1.0) < tol);
   CHECK(std::abs(r->estimates(1) - 1.0) < tol);
@@ -101,7 +102,7 @@ TEST_CASE("estimate_quadratic raw: singleton rows contribute to marginal moments
        na_d, na_d, 5;
   RealVec v(5);
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
-  auto r = ms::estimate_quadratic(x, v);
+  auto r = ms::research::estimate_quadratic(x, v);
   REQUIRE(r.has_value());
 
   CHECK(std::abs(r->estimates(0) - 0.29357798165137616) < tol);  // Conger
@@ -118,7 +119,7 @@ TEST_CASE("estimate_quadratic raw: no co-observed pair -> not_identified") {
        na_d, 2, na_d;
   RealVec v(5);
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
-  auto r = ms::estimate_quadratic(x, v);
+  auto r = ms::research::estimate_quadratic(x, v);
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::not_identified);
 }

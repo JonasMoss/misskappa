@@ -6,7 +6,7 @@ test_that("agreement() routes the four methods and returns the S3 shape", {
   storage.mode(x) <- "integer"
 
   for (m in c("available", "ipw", "fiml", "gwet")) {
-    fit <- estimate_kappa_raw(x, method = m, weight = "identity")
+    fit <- research_kappa_raw(x, method = m, weight = "identity")
     expect_s3_class(fit, "misskappa_estimate")
     expect_named(fit$estimates, c("Conger", "Fleiss", "Brennan-Prediger"))
     expect_equal(dim(fit$vcov), c(3L, 3L))
@@ -19,7 +19,7 @@ test_that("available-case on a Cohen-style 2-rater example matches the textbook 
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),
     nrow = 10, byrow = TRUE
   )
-  fit <- estimate_kappa_raw(x, method = "available", weight = "identity")
+  fit <- research_kappa_raw(x, method = "available", weight = "identity")
   # Cohen's kappa for this contingency table is 0.4.
   expect_equal(unname(fit$estimates["Conger"]), 0.4, tolerance = 1e-9)
   expect_equal(unname(fit$estimates["Brennan-Prediger"]), 0.4, tolerance = 1e-9)
@@ -27,7 +27,7 @@ test_that("available-case on a Cohen-style 2-rater example matches the textbook 
 
 test_that("S3 methods on misskappa_estimate behave", {
   x <- matrix(c(0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1), nrow = 6, byrow = TRUE)
-  fit <- estimate_kappa_raw(x, method = "available", weight = "identity")
+  fit <- research_kappa_raw(x, method = "available", weight = "identity")
 
   est <- coef(fit)
   expect_named(est, c("Conger", "Fleiss", "Brennan-Prediger"))
@@ -62,8 +62,8 @@ test_that("FIML matches available on complete data, identity weight", {
     c(0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1),
     nrow = 10, byrow = TRUE
   )
-  fit_av <- estimate_kappa_raw(x, method = "available", weight = "identity")
-  fit_ml <- estimate_kappa_raw(x, method = "fiml", weight = "identity")
+  fit_av <- research_kappa_raw(x, method = "available", weight = "identity")
+  fit_ml <- research_kappa_raw(x, method = "fiml", weight = "identity")
   expect_equal(unname(fit_ml$estimates), unname(fit_av$estimates),
                tolerance = 1e-6)
 })
@@ -79,7 +79,7 @@ test_that("multi-weight FIML helper matches repeated FIML fits", {
   ), ncol = 4, byrow = TRUE)
   x <- rbind(complete_support, missing_rows)
 
-  multi <- estimate_kappa_fiml_multi(
+  multi <- research_kappa_fiml_multi(
     x,
     weights = c("identity", "linear", "quadratic"),
     values = c(0, 1)
@@ -87,7 +87,7 @@ test_that("multi-weight FIML helper matches repeated FIML fits", {
   expect_named(multi, c("identity", "linear", "quadratic"))
 
   for (w in names(multi)) {
-    single <- estimate_kappa_raw(x, method = "fiml", weight = w,
+    single <- research_kappa_raw(x, method = "fiml", weight = w,
                                  values = c(0, 1))
     expect_equal(unname(multi[[w]]$estimates), unname(single$estimates),
                  tolerance = 1e-10)
@@ -107,14 +107,14 @@ test_that("Bundled datasets load", {
   expect_true(is.numeric(as.matrix(dat.zapf2016)))
 })
 
-test_that("kappa_continuous() handles available/ipw/gwet and matches legacy", {
+test_that("research_kappa_continuous() handles available/ipw/gwet and matches legacy", {
   x <- matrix(c(
     1.0, 1.2, 0.9,  3.5, 3.4, 3.6,  2.0, 2.1, 1.9,  4.0, 4.2, 3.8,
     1.5, 1.4, 1.6,  3.0, 2.9, 3.1,  2.5, 2.6, 2.4,  4.5, 4.4, 4.6,
     1.0, NA,  1.1,  3.5, 3.6, NA
   ), nrow = 10, byrow = TRUE)
 
-  fit_av <- kappa_continuous(x, method = "available", weight = "quadratic")
+  fit_av <- research_kappa_continuous(x, method = "available", weight = "quadratic")
   expect_s3_class(fit_av, "misskappa_estimate")
   expect_named(fit_av$estimates, c("Conger", "Fleiss"))
   expect_equal(unname(fit_av$estimates["Conger"]), 0.9893902893012867,
@@ -122,22 +122,22 @@ test_that("kappa_continuous() handles available/ipw/gwet and matches legacy", {
   expect_equal(unname(fit_av$estimates["Fleiss"]), 0.9893337228643995,
                tolerance = 1e-9)
 
-  fit_ipw <- kappa_continuous(x, method = "ipw", weight = "quadratic")
+  fit_ipw <- research_kappa_continuous(x, method = "ipw", weight = "quadratic")
   expect_equal(unname(fit_ipw$estimates["Conger"]), 0.9889592202554336,
                tolerance = 1e-9)
 
-  fit_gw <- kappa_continuous(x, method = "gwet", weight = "quadratic")
+  fit_gw <- research_kappa_continuous(x, method = "gwet", weight = "quadratic")
   expect_equal(unname(fit_gw$estimates["Conger"]), 0.9893896826901533,
                tolerance = 1e-9)
 })
 
-test_that("kappa_quadratic() matches legacy on a small raw fixture", {
+test_that("research_kappa_quadratic() matches legacy on a small raw fixture", {
   x <- matrix(c(
     1, 2, 1,  2, 2, 3,  3, 3, 3,  4, 4, 5,
     5, 5, 5,  1, 1, 2,  3, 3, 4,  4, 5, 4,
     2, 3, 2,  5, 4, 5,  1, 2, NA, 3, NA, 4
   ), nrow = 12, byrow = TRUE)
-  fit <- kappa_quadratic(x, values = c(1, 2, 3, 4, 5))
+  fit <- research_kappa_quadratic(x, values = c(1, 2, 3, 4, 5))
   expect_named(fit$estimates, c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_equal(unname(fit$estimates["Conger"]), 0.8374174174174175,
                tolerance = 1e-9)
@@ -145,7 +145,7 @@ test_that("kappa_quadratic() matches legacy on a small raw fixture", {
                tolerance = 1e-9)
 })
 
-test_that("kappa_quadratic() exposes empirical covariance and influence rows", {
+test_that("research_kappa_quadratic() exposes empirical covariance and influence rows", {
   x <- matrix(c(
     1, 2, 1,
     2, 2, 3,
@@ -154,7 +154,7 @@ test_that("kappa_quadratic() exposes empirical covariance and influence rows", {
     5, 5, 5,
     NA, NA, NA
   ), nrow = 6, byrow = TRUE)
-  fit <- kappa_quadratic(x, values = c(1, 2, 3, 4, 5))
+  fit <- research_kappa_quadratic(x, values = c(1, 2, 3, 4, 5))
   expect_true(all(is.finite(fit$vcov)))
   expect_equal(dim(fit$psi), c(6L, 3L))
   expect_equal(unname(crossprod(fit$psi) / 36),
@@ -235,7 +235,7 @@ test_that("agreement_counts(nt_fiml) matches raw exchangeable normal FIML", {
   # Oracle: the exchangeable (equal-mean, compound-symmetry) raw normal FIML.
   # mean = "equal" is not a public agreement() option (mean-free surface), so the
   # internal backend is exercised directly.
-  raw <- kappa_quadratic_fiml(
+  raw <- .kappa_quadratic_fiml(
     X, values = 1:5,
     em_options = list(covariance = "variance_components", mean = "equal"))
   by_counts <- agreement_counts(cnt, estimator = "nt_fiml_cs", values = 1:5)
@@ -316,7 +316,7 @@ test_that("nt_fiml / nt_fiml_cs select the covariance structure by name", {
   expect_null(cs$covariance)            # name carries the structure
   expect_null(cs$mean)
   # nt_fiml_cs matches the internal compound-symmetry backend
-  ref <- kappa_quadratic_fiml(
+  ref <- .kappa_quadratic_fiml(
     X, em_options = list(covariance = "variance_components"))
   expect_equal(unname(coef(cs)), unname(coef(ref)[1:2]), tolerance = 1e-6)
   # saturated and CS are genuinely different fits under missingness
@@ -329,7 +329,7 @@ test_that("pairwise_cs is the moment companion to nt_fiml_cs", {
   b <- rnorm(n, 0, 1)
   X <- matrix(mu, n, R, byrow = TRUE) + b + matrix(rnorm(n * R, 0, sqrt(.5)), n, R)
 
-  fit <- .kappa_pairwise_cs(X)          # internal since 2.0.0
+  fit <- research_kappa_pairwise_cs(X)          # internal since 2.0.0
   expect_equal(fit$method, "pairwise_cs")
   expect_equal(fit$weight, "quadratic")
   expect_equal(names(coef(fit)), c("Conger", "Fleiss", "Brennan-Prediger"))
@@ -339,7 +339,7 @@ test_that("pairwise_cs is the moment companion to nt_fiml_cs", {
                tolerance = 1e-10)
   # shares the probability limit with nt_fiml_cs (both consistent for the same
   # CS estimand); agree on large complete data
-  cs <- kappa_quadratic_fiml(
+  cs <- .kappa_quadratic_fiml(
     X, em_options = list(covariance = "variance_components"))
   expect_equal(unname(coef(fit)), unname(coef(cs)), tolerance = 0.01)
 })
@@ -354,7 +354,7 @@ test_that("internal pairwise_cs allows connected incomplete co-observation", {
   half <- n / 2
   X[seq_len(half), 4L] <- NA
   X[(half + 1L):n, 1L] <- NA
-  fit <- expect_silent(.kappa_pairwise_cs(X))
+  fit <- expect_silent(research_kappa_pairwise_cs(X))
   expect_true(all(is.finite(coef(fit))))
   expect_true(all(is.finite(diag(vcov(fit)))))
   expect_error(agreement(X, estimator = "pairwise_cs"), "should be one of")
@@ -380,13 +380,13 @@ test_that("em_options are validated per estimator", {
   expect_error(agreement(X, estimator = "ipw", foo = 1), "not used by")
 })
 
-test_that("kappa_continuous() with identity loss on perfect agreement -> 1", {
+test_that("research_kappa_continuous() with identity loss on perfect agreement -> 1", {
   x <- matrix(c(1.0, 1.0, 2.5, 2.5, 3.3, 3.3), nrow = 3, byrow = TRUE)
-  fit <- kappa_continuous(x, method = "available", weight = "quadratic")
+  fit <- research_kappa_continuous(x, method = "available", weight = "quadratic")
   expect_equal(unname(fit$estimates["Conger"]), 1.0, tolerance = 1e-9)
 })
 
-test_that("kappa_vector() internal wrapper handles component-separable losses", {
+test_that(".kappa_vector() internal wrapper handles component-separable losses", {
   x <- array(c(
     0, 1,  0, 1,  1, 1,
     1, 0,  1, 0,  1, 1,
@@ -395,9 +395,9 @@ test_that("kappa_vector() internal wrapper handles component-separable losses", 
     0, 1,  0, 0,  0, 1
   ), dim = c(5L, 3L, 2L))
 
-  fit_pair <- kappa_vector(x, method = "pairwise", loss = "hamming",
+  fit_pair <- .kappa_vector(x, method = "pairwise", loss = "hamming",
                            feature_weights = c(1, 2))
-  fit_ipw <- kappa_vector(x, method = "ipw", loss = "hamming",
+  fit_ipw <- .kappa_vector(x, method = "ipw", loss = "hamming",
                           feature_weights = c(1, 2))
   expect_s3_class(fit_pair, "misskappa_estimate")
   expect_named(fit_pair$estimates, c("Conger", "Fleiss"))
@@ -407,7 +407,7 @@ test_that("kappa_vector() internal wrapper handles component-separable losses", 
 
   x[1, 1, 2] <- NA_real_
   x[2, 3, 1] <- NA_real_
-  fit_rms <- kappa_vector(x, method = "ipw", loss = "rms",
+  fit_rms <- .kappa_vector(x, method = "ipw", loss = "rms",
                           feature_weights = c(1, 2))
   expect_true(all(is.finite(fit_rms$estimates)))
   expect_equal(dim(fit_rms$psi), c(5L, 2L))
@@ -415,7 +415,7 @@ test_that("kappa_vector() internal wrapper handles component-separable losses", 
                tolerance = 1e-10)
 })
 
-test_that("kappa_gwise() estimates Frechet and Hubert complete-data coefficients", {
+test_that("research_kappa_gwise() estimates Frechet and Hubert complete-data coefficients", {
   x <- matrix(c(
     1, 1, 2, 1, 1,
     1, 2, 3, 2, 2,
@@ -423,7 +423,7 @@ test_that("kappa_gwise() estimates Frechet and Hubert complete-data coefficients
     2, 3, 4, 4, 5
   ), nrow = 4, byrow = TRUE)
 
-  fit_nom <- kappa_gwise(x, distance = "nominal")
+  fit_nom <- research_kappa_gwise(x, distance = "nominal")
   expect_s3_class(fit_nom, "misskappa_estimate")
   expect_named(fit_nom$estimates, c("Conger", "Fleiss"))
   expect_equal(unname(fit_nom$estimates["Conger"]), 0.23353293413173815,
@@ -432,13 +432,13 @@ test_that("kappa_gwise() estimates Frechet and Hubert complete-data coefficients
                tolerance = 1e-9)
   expect_equal(dim(fit_nom$psi), c(4L, 2L))
 
-  fit_abs <- kappa_gwise(x, distance = "absolute")
+  fit_abs <- research_kappa_gwise(x, distance = "absolute")
   expect_equal(unname(fit_abs$estimates["Conger"]), 0.45877378435517835,
                tolerance = 1e-9)
   expect_equal(unname(fit_abs$estimates["Fleiss"]), 0.44821878125323300,
                tolerance = 1e-9)
 
-  fit_hubert <- kappa_gwise(matrix(c(1, 1, 1, 2, 2, 2), nrow = 2, byrow = TRUE),
+  fit_hubert <- research_kappa_gwise(matrix(c(1, 1, 1, 2, 2, 2), nrow = 2, byrow = TRUE),
                             distance = "hubert")
   expect_equal(unname(fit_hubert$estimates), c(1, 1), tolerance = 1e-9)
 })

@@ -171,17 +171,11 @@
        categories = r$categories)
 }
 
-# Internal: full categorical-kappa dispatch over every C++ method
-# ("available", "ipw", "gwet", "fiml"). The public agreement() exposes only
-# "ipw" / "cat_fiml"; simulations reach the dropped methods (available-case,
-# Gwet) through this helper, which returns the same misskappa_estimate object.
-estimate_kappa_raw <- function(x,
-                               method = c("available", "ipw", "fiml", "gwet"),
-                               weight = "identity",
-                               values = NULL,
-                               em_options = list(),
-                               categories = NULL) {
-  method <- match.arg(method)
+# Categorical raw-rating fit for any C++ method ("ipw", "fiml", and the
+# research methods "available", "gwet"). agreement() calls it with "ipw" or
+# "fiml"; research_kappa_raw() exposes the rest.
+.kappa_raw_fit <- function(x, method, weight = "identity", values = NULL,
+                           em_options = list(), categories = NULL) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
@@ -201,61 +195,6 @@ estimate_kappa_raw <- function(x,
                        method = method, weight = weight)
   .attach_raw_kappa_delete_one(fit, x_mat, weight, values, em_options,
                                categories)
-}
-
-#' Multi-weight saturated categorical FIML kappa (internal)
-#'
-#' @description
-#' Fits the saturated multinomial FIML model once, then maps the fitted
-#' distribution to several agreement-weight functionals. This is intended for
-#' simulations and validation code that need nominal, linear, and quadratic
-#' Cat-FIML coefficients for the same data matrix. The public [agreement()] API
-#' deliberately keeps one `weight` per call.
-#'
-#' This fixed-rater functional requires every rater to be observed and every
-#' rater pair to be jointly observed by at least one subject. Otherwise the
-#' requested saturated pairwise agreement functional is not identified.
-#'
-#' @param x A subjects-by-raters matrix of integer category codes. `NA`s
-#'   indicate missing entries.
-#' @param weights Character vector containing any of `"identity"`,
-#'   `"nominal"`, `"linear"`, or `"quadratic"`. `"nominal"` is an alias for
-#'   `"identity"`.
-#' @param values Optional numeric category scores for metric weights.
-#' @param em_options Named list of categorical EM options.
-#'
-#' @return A named list of `misskappa_estimate` objects.
-#'
-#' @noRd
-estimate_kappa_fiml_multi <- function(x,
-                                      weights = c("identity", "linear", "quadratic"),
-                                      values = NULL,
-                                      em_options = list()) {
-  if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.", call. = FALSE)
-  }
-  x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
-  storage.mode(x_mat) <- "integer"
-
-  choices <- c("identity", "nominal", "linear", "quadratic")
-  weights <- match.arg(weights, choices, several.ok = TRUE)
-  weights <- unique(ifelse(weights == "nominal", "identity", weights))
-
-  raw <- rcpp_kappa_fiml_multi(
-    x = x_mat,
-    weight_types = weights,
-    values = values,
-    em_options = em_options
-  )
-
-  out <- lapply(seq_along(raw), function(i) {
-    if (i == 1L) .warn_null_frac(raw[[i]]$null_frac, em_options)
-    .new_estimate(raw[[i]], c("Conger", "Fleiss", "Brennan-Prediger"),
-                  method = "fiml", weight = weights[[i]])
-  })
-  names(out) <- weights
-  out
 }
 
 #' Weighted agreement coefficients with missing data
@@ -586,14 +525,15 @@ agreement <- function(x,
     }
     sc <- .scored_ratings(x, categories, values)
     if (estimator == "pairwise") {
-      fit <- kappa_continuous(sc$X, method = "available", weight = "quadratic")
+      fit <- .kappa_continuous_fit(sc$X, method = "available",
+                                   weight = "quadratic")
     } else {
       em_options$covariance <- if (estimator == "nt_fiml_cs") {
         "variance_components"
       } else {
         "saturated"
       }
-      fit <- kappa_quadratic_fiml(sc$X, values = sc$values,
+      fit <- .kappa_quadratic_fiml(sc$X, values = sc$values,
                                   em_options = em_options)
       fit$covariance <- NULL    # the estimator name carries the structure
       fit$mean <- NULL
@@ -608,7 +548,7 @@ agreement <- function(x,
 
   r <- .code_ratings(x, categories, values)
   cpp_weight <- if (weight == "nominal") "identity" else weight
-  fit <- estimate_kappa_raw(
+  fit <- .kappa_raw_fit(
     r$codes,
     method = if (estimator == "ipw") "ipw" else "fiml",
     weight = cpp_weight,
@@ -623,7 +563,7 @@ agreement <- function(x,
 }
 
 # g > 2, non-quadratic. Maps the public weight to a g-wise kernel and the
-# public estimator to the backend method, then delegates to kappa_gwise().
+# public estimator to the backend method, then delegates to .kappa_gwise().
 .kappa_scalar_gwise <- function(x, estimator, weight, g, values, categories,
                                 em_options, dots) {
   map <- switch(weight,
@@ -658,7 +598,7 @@ agreement <- function(x,
     r$codes
   }
 
-  fit <- kappa_gwise(xx, distance = map$distance, method = method, g = g,
+  fit <- .kappa_gwise(xx, distance = map$distance, method = method, g = g,
                      em_options = em_options,
                      max_chance_tuples = max_chance_tuples)
   fit$method <- estimator
@@ -682,7 +622,7 @@ agreement <- function(x,
       stop(sprintf('estimator = "%s" requires weight = "quadratic".', estimator),
            call. = FALSE)
     }
-    fit <- kappa_vector_quadratic(x, method = estimator, W = W,
+    fit <- .kappa_vector_quadratic(x, method = estimator, W = W,
                                   em_options = em_options, ranges = ranges)
     if (is.null(ranges)) fit <- .drop_coefficients(fit, "Brennan-Prediger")
     fit$method <- estimator
@@ -696,7 +636,7 @@ agreement <- function(x,
       stop('a full feature metric W requires weight = "quadratic".',
            call. = FALSE)
     }
-    fit <- kappa_vector_quadratic(x, method = "pairwise", W = W)
+    fit <- .kappa_vector_quadratic(x, method = "pairwise", W = W)
     fit$method <- estimator
     fit$weight <- "quadratic"
     return(fit)
@@ -721,55 +661,11 @@ agreement <- function(x,
         weight), call. = FALSE)
     )
   }
-  fit <- kappa_vector(x, method = estimator, loss = loss,
+  fit <- .kappa_vector(x, method = estimator, loss = loss,
                       feature_weights = dots$feature_weights)
   fit$method <- estimator
   fit$weight <- if (!is.null(dots$loss)) dots$loss else weight
   fit
-}
-
-#' Closed-form quadratic-loss kappa estimator
-#'
-#' @description
-#' Closed-form moment-based estimator for the quadratically-weighted
-#' Conger / Fleiss / Brennan-Prediger family. Treats categorical ratings
-#' as numeric scores and uses per-rater means and covariances.
-#'
-#' Use this when the quadratic weighting is the right loss and a parametric
-#' moment-based estimate is preferred over the U-statistic version
-#' (`agreement(x, estimator = "pairwise")`). The two
-#' agree under the usual asymptotics. The closed form can be faster on
-#' large `n`.
-#'
-#' With missing ratings, every rater must be observed at least once and every
-#' rater pair must be jointly observed by at least one subject.
-#'
-#' @param x A subjects-by-raters numeric matrix of category scores. `NA`
-#'   marks missing entries.
-#' @param values Length-C numeric vector of category scores. The quadratic
-#'   loss is `(values[i] - values[j])^2 / (max - min)^2`.
-#'   The covariance is the empirical covariance of the reduced quadratic
-#'   moment summaries from their row-wise estimating equations.
-#'
-#' @return A `misskappa_estimate` object with `Conger`, `Fleiss`,
-#'   `Brennan-Prediger` coefficients, the 3x3 vcov, and per-subject
-#'   influence-function rows.
-#'
-#' @noRd
-kappa_quadratic <- function(x, values) {
-  if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.", call. = FALSE)
-  }
-  x_mat <- as.matrix(x)
-  storage.mode(x_mat) <- "double"
-  if (!is.numeric(values)) stop("'values' must be numeric.", call. = FALSE)
-
-  out <- rcpp_kappa_quadratic(
-    x = x_mat,
-    values = as.numeric(values)
-  )
-  .new_estimate(out, c("Conger", "Fleiss", "Brennan-Prediger"),
-                method = "quadratic", weight = "quadratic")
 }
 
 #' Convert rater-identified ratings to counts format
@@ -1017,80 +913,11 @@ agreement_counts <- function(x,
   .label_subjects(fit, ids)
 }
 
-#' Weighted agreement coefficients for continuous ratings
-#'
-#' @description
-#' Estimates Conger / Fleiss weighted agreement coefficients for raw
-#' real-valued ratings under missing data. The MCAR moment routes
-#' (`"available"`, `"ipw"`, `"gwet"`) cover any continuous loss kernel. The
-#' normal-FIML route (`"fiml"`, quadratic kernel only) fits a multivariate-
-#' normal covariance by EM and is valid under ignorable (MCAR or MAR)
-#' missingness. The default covariance model is saturated. `em_options =
-#' list(covariance = "variance_components")` fits the compound-symmetry
-#' (fixed-rater) covariance model. Missing entries are encoded as `NA` (or any
-#' non-finite value).
-#'
-#' For the saturated missing-data routes here, every rater must be observed at
-#' least once and every rater pair must be jointly observed by at least one
-#' subject. The compound-symmetry normal-FIML covariance model only requires
-#' a connected rater co-observation graph.
-#'
-#' @param x A subjects-by-raters numeric matrix.
-#' @param method One of `"available"`, `"ipw"`, `"gwet"`, or `"fiml"`.
-#'   `"fiml"` requires `weight = "quadratic"` and dispatches to
-#'   [kappa_quadratic_fiml()].
-#' @param weight Continuous loss kernel: `"identity"` (binary 0/1),
-#'   `"linear"`, `"quadratic"`, `"radical"`, or `"ratio"`. The data range
-#'   `[min(x), max(x)]` is used to parameterise the kernel. Only
-#'   `"quadratic"` is available with `method = "fiml"`.
-#' @param values Optional finite numeric score vector used only for
-#'   `method = "fiml"` to define Brennan-Prediger's uniform chance baseline.
-#'   If `NULL`, the continuous uniform baseline on the observed score range is
-#'   used.
-#' @param em_options Used only when `method = "fiml"`: named list with `tol`,
-#'   `max_iter`, `covariance`, and `mean`. `covariance = "saturated"` fits the
-#'   unrestricted covariance (default). `"variance_components"` fits
-#'   the compound-symmetry (fixed-rater) covariance model
-#'   \eqn{\Sigma = \psi J + e I}. `mean = "free"` estimates one mean per
-#'   rater/item (default). `mean = "equal"` estimates a common mean and
-#'   requires `covariance = "variance_components"`.
-#'
-#' @return A `misskappa_estimate` object carrying named coefficients
-#'   (`Conger`, `Fleiss`, `Brennan-Prediger`) and the 3x3 asymptotic
-#'   covariance matrix for `method = "fiml"`. Other continuous methods carry
-#'   `Conger` and `Fleiss`.
-#'
-#' @noRd
-kappa_continuous <- function(x,
-                             method = c("available", "ipw", "gwet", "fiml"),
-                             weight = c("quadratic", "linear", "identity",
-                                        "unweighted", "radical", "ratio"),
-                             values = NULL,
-                             em_options = list()) {
-  method <- match.arg(method)
-  weight <- match.arg(weight)
-
-  if (!is.matrix(x) && !is.data.frame(x)) {
-    stop("'x' must be a matrix or data frame.", call. = FALSE)
-  }
-  x_mat <- as.matrix(x)
-  if (!is.numeric(x_mat)) stop("'x' must be numeric.", call. = FALSE)
-  storage.mode(x_mat) <- "double"
-
-  if (method == "fiml") {
-    if (weight != "quadratic") {
-      stop("method = \"fiml\" is only defined for the quadratic kernel; the ",
-           "normal-FIML coefficients are functions of the mean and covariance ",
-           "only under quadratic weighting.", call. = FALSE)
-    }
-    return(kappa_quadratic_fiml(x_mat, values = values, em_options = em_options))
-  }
-
-  out <- rcpp_kappa_continuous(
-    x = x_mat,
-    method = method,
-    weight_type = weight
-  )
+# Continuous-rating moment fit (plumbing). agreement(estimator = "pairwise")
+# calls it with method "available" and the quadratic kernel;
+# research_kappa_continuous() exposes the other methods and kernels.
+.kappa_continuous_fit <- function(x_mat, method, weight) {
+  out <- rcpp_kappa_continuous(x = x_mat, method = method, weight_type = weight)
   fit <- .new_estimate(out, c("Conger", "Fleiss"), method = method,
                        weight = weight)
   .attach_continuous_kappa_delete_one(fit, x_mat, weight)
@@ -1121,7 +948,7 @@ kappa_continuous <- function(x,
 #'   coefficients and a 2x2 influence-function covariance matrix.
 #'
 #' @noRd
-kappa_vector <- function(x,
+.kappa_vector <- function(x,
                          method = c("pairwise", "ipw"),
                          loss = c("hamming", "absolute", "squared", "rms"),
                          feature_weights = NULL) {
@@ -1199,7 +1026,7 @@ kappa_vector <- function(x,
 #'   coefficients and a 2x2 influence-function covariance matrix.
 #'
 #' @noRd
-kappa_gwise <- function(x,
+.kappa_gwise <- function(x,
                         distance = c("nominal", "absolute", "quadratic", "hubert"),
                         method = c("complete", "ipw", "fiml"),
                         g = NULL,

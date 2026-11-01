@@ -43,7 +43,7 @@ test_that("cat_fiml allows benign nuisance non-identification", {
 
 test_that("raw FIML backend errors on coefficient non-identification", {
   expect_error(
-    misskappa:::estimate_kappa_raw(chain_missing_pair_3rater_2cat(),
+    misskappa:::research_kappa_raw(chain_missing_pair_3rater_2cat(),
                                    method = "fiml", weight = "identity"),
     "not identified"
   )

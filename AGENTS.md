@@ -238,14 +238,26 @@ Interface rules:
 - One constructor, `.new_estimate()` in `R/estimate_object.R`, builds every
   fit object.
 
-Kept in the tree but **internal** (`@noRd`, reachable with `:::` for
-simulations): Gwet's reweighting and available-case for categorical kappa
-(`estimate_kappa_raw()`), the full continuous dispatch (`kappa_continuous()`),
-g-wise agreement (`kappa_gwise()`), the compound-symmetry moment estimator
-(`.kappa_pairwise_cs()`), the multi-weight categorical FIML
-(`estimate_kappa_fiml_multi()`, used by the kappa-missing simulation), the
-closed-form `kappa_quadratic()`, and the IF-based joint covariance
-`joint_vcov()`.
+Three tiers, kept visibly apart:
+
+- **Public:** the four exported functions above plus S3 methods. A test pins
+  the export list.
+- **Plumbing:** unexported, dot-prefixed helpers that the public functions call
+  (`.kappa_raw_fit()`, `.kappa_continuous_fit()`, `.kappa_gwise()`,
+  `.kappa_vector()`, `.kappa_vector_quadratic()`, `.kappa_quadratic_fiml()`,
+  `.kappa_counts_cs()`, ...). They live next to the public code.
+- **Research:** entry points no public call reaches, all in
+  `r-package/R/research.R` and named `research_*()`: the available-case and
+  Gwet comparators (`research_kappa_raw()`), all continuous methods and
+  kernels (`research_kappa_continuous()`), complete-data g-wise
+  (`research_kappa_gwise()`), the multi-weight categorical FIML
+  (`research_kappa_fiml_multi()`, used by the kappa-missing simulation), the
+  compound-symmetry moment estimator (`research_kappa_pairwise_cs()`, planned
+  for the quadratic paper), the closed-form `research_kappa_quadratic()`, and
+  the joint influence covariance `research_joint_vcov()`. Unsupported, never
+  exported, free to change. Their C++ counterparts live in
+  `misskappa::research` (`include/misskappa/research.hpp`). New
+  non-promoted code goes in these places, not in the public files.
 
 ## Namespace layout
 
@@ -253,6 +265,10 @@ The C++ surface lives in one namespace, `misskappa`. Sub-namespaces are
 introduced only when there is a clear boundary:
 
 - `misskappa::loss` — weight matrix and loss-function factories.
+- `misskappa::research` — research-only entry points (comparators,
+  complete-data special cases, multi-weight FIML, closed-form quadratic,
+  jackknife covariance) that no public R function reaches. Declared in
+  `research.hpp`; unsupported.
 - `misskappa` (top-level) — all estimator entry points and shared types.
   Input shape is encoded in the function name (`_counts`, `_continuous`)
   rather than via per-shape sub-namespaces; this keeps callers from

@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -212,7 +213,7 @@ TEST_CASE("Counts: F&C and unit-weighted conventions differ when row sums vary")
   CHECK(std::abs(fc->estimates(0) - 17.0 / 66.0) < tol);
   CHECK(std::abs(fc->estimates(1) - 8.0 / 11.0) < tol);
 
-  auto unit = ms::estimate_counts(x, *W, ms::CountWeighting::unit_weighted);
+  auto unit = ms::research::estimate_counts(x, *W, ms::CountWeighting::unit_weighted);
   REQUIRE(unit.has_value());
   CHECK(std::abs(unit->estimates(0) + 0.5) < tol);
   CHECK(std::abs(unit->estimates(1) - 0.0) < tol);

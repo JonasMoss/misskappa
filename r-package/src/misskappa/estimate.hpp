@@ -85,31 +85,13 @@ struct NormalFimlEstimation {
 // disagreement coefficients on L = 1 - weights internally.
 //
 // Estimates returned: (Conger, Fleiss, Brennan-Prediger). Cohen's kappa is
-// the R=2 case of Fleiss / Conger. With missing ratings, fixed-rater raw
+// the R=2 case of Fleiss / Conger. The available-case and Gwet reweightings
+// live in misskappa::research (research.hpp). With missing ratings, fixed-rater raw
 // coefficients require every rater to be observed and every rater pair to be
 // jointly observed by at least one subject; otherwise the saturated pairwise
 // functional is not identified and the estimators return Error::not_identified.
-Result<Estimation> estimate_available(IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_ipw      (IntMatView ratings, RealMatView weights);
 Result<Estimation> estimate_fiml     (IntMatView ratings, RealMatView weights, EmOptions opts);
-Result<std::vector<Estimation>> estimate_fiml_many(
-    IntMatView ratings, const std::vector<RealMat>& weights, EmOptions opts);
-
-Result<Estimation> estimate_gwet     (IntMatView ratings, RealMatView weights);
-
-// --- Closed-form quadratic estimator (raw, real-valued) --------------------
-//
-// Moment-based estimator for the quadratically-weighted Cohen / Fleiss /
-// Conger / Brennan-Prediger family. Treats categorical ratings as numeric
-// scores; missing entries are NaN. Closed form via per-rater means and
-// covariances; variance uses the asymptotic covariance of those moments
-// with the delta method.
-//
-// `ratings` is n x R real-valued; `values` is the length-C category-score
-// vector used to define the quadratic loss. With missing ratings, every rater
-// pair must be jointly observed by at least one subject. Returns (Conger,
-// Fleiss, Brennan-Prediger).
-Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values);
 
 // --- Counts-format input ---------------------------------------------------
 //
@@ -119,9 +101,9 @@ Result<Estimation> estimate_quadratic(RealMatView ratings, const RealVec& values
 // rater identity is not preserved, so IPW / Gwet (which need rater-specific
 // observation rates) are not meaningful here.
 //
-// Count-data moment weighting. The public R counts estimator uses
-// fleiss_cuzick. unit_weighted is kept in the C++ surface for parity studies
-// against software that averages each subject's row agreement equally.
+// Count-data moment weighting. The public estimator uses fleiss_cuzick.
+// unit_weighted (research::estimate_counts) is for parity studies against
+// software that averages each subject's row agreement equally.
 enum class CountWeighting {
   fleiss_cuzick,  // row disagreement weight r_i - 1; F&C unequal-judges convention.
   unit_weighted,  // row disagreement weight 1; irrCAC distribution/count convention.
@@ -129,12 +111,9 @@ enum class CountWeighting {
 
 // Estimates returned: (Fleiss, Brennan-Prediger). Conger requires identified
 // raters and is not in scope for counts. `estimate_available_counts` is the
-// Fleiss--Cuzick count moment estimator; use `estimate_counts(...,
-// CountWeighting::unit_weighted)` only for comparator/oracle studies. Rows
+// Fleiss--Cuzick count moment estimator. Rows
 // with r_i < 2 contain no within-subject pair information and receive zero
 // observed-disagreement weight; at least one row with r_i >= 2 is required.
-Result<Estimation> estimate_counts(
-    IntMatView counts, RealMatView weights, CountWeighting weighting);
 Result<Estimation> estimate_available_counts(IntMatView counts, RealMatView weights);
 
 // FIML / EM counterpart of estimate_available_counts. Models the full
@@ -163,9 +142,8 @@ Result<Estimation> estimate_fiml_counts(
 // disagreement against a uniform reference distribution is not meaningful
 // without a finite category count. With missing ratings, every rater pair must
 // be jointly observed by at least one subject.
+// The IPW and Gwet reweightings live in misskappa::research.
 Result<Estimation> estimate_available_continuous(RealMatView ratings, loss::ContinuousLoss loss);
-Result<Estimation> estimate_ipw_continuous      (RealMatView ratings, loss::ContinuousLoss loss);
-Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::ContinuousLoss loss);
 
 // Normal-theory FIML estimators for smooth functions of the fitted mean and
 // covariance. The default covariance model is saturated; EmOptions may select
@@ -204,33 +182,27 @@ Result<Estimation> estimate_ipw_vector(
 
 // --- Closed rectangular g-wise estimators -----------------------------------
 //
-// Complete-data, categorical IPW, and categorical FIML estimators for
+// Categorical / continuous IPW and categorical FIML estimators for
 // symmetric g-wise disagreement kernels. This is the Frechet / Hubert-style
 // multirater-distance family: observed disagreement averages a g-argument
 // distance over within-item rater combinations; chance disagreement uses
 // Cohen-type (distinct rater combinations) and Fleiss-type (all ordered rater
 // tuples) V-statistics.
 //
-// `estimate_gwise` and `estimate_gwise_continuous` are complete-data only.
-// `estimate_ipw_gwise` accepts categorical ratings with `na_code`, and
+// The complete-data-only versions live in misskappa::research; with no missing
+// ratings the IPW estimators reduce to them. `estimate_ipw_gwise` accepts categorical ratings with `na_code`, and
 // `estimate_ipw_gwise_continuous` accepts non-finite missing ratings, under
 // the same MCAR IPW convention as the pairwise IPW estimators.
 // `estimate_fiml_gwise` fits the saturated categorical full-response
 // distribution by EM under ignorable missingness. Estimates returned:
 // (Cohen, Fleiss). With missing ratings, every requested rater g-tuple must be
 // jointly observed by at least one subject.
-Result<Estimation> estimate_gwise(
-    IntMatView ratings, loss::GwiseCategoricalDistance distance,
-    GwiseOptions opts = {});
 Result<Estimation> estimate_ipw_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
     GwiseOptions opts = {});
 Result<Estimation> estimate_fiml_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
     EmOptions em_opts, GwiseOptions gwise_opts = {});
-Result<Estimation> estimate_gwise_continuous(
-    RealMatView ratings, loss::GwiseContinuousDistance distance,
-    GwiseOptions opts = {});
 Result<Estimation> estimate_ipw_gwise_continuous(
     RealMatView ratings, loss::GwiseContinuousDistance distance,
     GwiseOptions opts = {});
