@@ -12,6 +12,15 @@ still open.
       the estimate never moved) is gone; `se_cutoff_ratio` (SE at
       `info_rcond / 100` over the reported SE) is new and warns above 1.25
       (0-1.5% of fits; warned fits have worse SE calibration). See NEWS.
+- [ ] **Decide: should 3.0.1 warn at all?** The companion paper's main
+      simulation (160,000 replicates, max_iter 50000) found that within a
+      design, fits with `se_cutoff_ratio` above the threshold have nearly the
+      same SE/SD and coverage as fits below it (differences of 0.01-0.1 and
+      1-7 points, any threshold from 1.01 to 1.25); the ratio flags hard
+      designs, not bad fits, and fires on up to 30% of fits (rater-specific
+      MCAR, n = 1000). Options: keep the warning (quiet in most designs), or
+      drop it and keep `se_cutoff_ratio` and `null_frac` as silent
+      diagnostics.
 - [ ] **Release.** Version is 3.0.1 on master. Tag `v3.0.0` at the commit
       submitted to CRAN, not at master. Submit 3.0.1 after CRAN accepts 3.0.0
       (or fold it into a resubmission if CRAN asks for changes).
