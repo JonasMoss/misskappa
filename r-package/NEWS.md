@@ -39,9 +39,10 @@ renames below.
 
 * The help pages are shorter and name the recommended default estimators
   (`"ipw"` for `agreement()`, `"fleiss_cuzick"` for `agreement_counts()`).
-* The articles are consolidated into five: coefficients and estimators,
-  comparing coefficients (equality tests and custom contrasts), g-wise
-  agreement, vector-valued agreement, and validation.
+* The documentation is consolidated into three pages: the getting-started
+  vignette (now including equality tests and custom contrasts), a
+  coefficients, estimators, and validation article, and a beyond-pairwise
+  article (g-wise kernels and vector-valued ratings).
 
 ## Minor
 

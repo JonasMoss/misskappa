@@ -237,7 +237,7 @@
 #' @section Generalizations:
 #' `g > 2` uses g-wise kernels that compare `g` raters at once (with `"ipw"`
 #' or `"cat_fiml"`). A subjects-by-raters-by-features array gives
-#' vector-valued agreement; see the vector-valued agreement article.
+#' vector-valued agreement; see the beyond-pairwise article.
 #'
 #' @param x A subjects-by-raters matrix or data frame of ratings, or a
 #'   subjects-by-raters-by-features array of vector-valued ratings. `NA` marks

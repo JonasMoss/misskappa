@@ -37,7 +37,4 @@ articles:
     navbar: Guides
     contents:
       - articles/missingness-estimators
-      - articles/equality-tests
-      - articles/gwise-agreement
-      - articles/vector-valued-agreement
-      - articles/validation
+      - articles/beyond-pairwise

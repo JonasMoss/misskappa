@@ -1,6 +1,6 @@
 # Public equality-test front door. It stands on the exposed primitives (coef,
 # vcov, and the fit$psi influence-function component). Arbitrary contrasts are
-# built from fit$psi directly (see the comparing-coefficients article).
+# built from fit$psi directly (see the getting-started vignette).
 
 .fit_labels <- function(fits) {
   labs <- names(fits)

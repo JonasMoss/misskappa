@@ -86,12 +86,9 @@ work with `coef()`, `vcov()`, `confint()`, and `as.data.frame()`.
 The [package website](https://jonasmoss.github.io/misskappa/) has the
 reference and articles:
 
-- [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html)
-- [Coefficients and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
-- [Comparing coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
-- [g-wise agreement](https://jonasmoss.github.io/misskappa/articles/gwise-agreement.html)
-- [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(in preparation)*
-- [How misskappa is validated](https://jonasmoss.github.io/misskappa/articles/validation.html)
+- [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html), including comparing coefficients
+- [Coefficients, estimators, and validation](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
+- [Beyond pairwise agreement](https://jonasmoss.github.io/misskappa/articles/beyond-pairwise.html): g-wise kernels and vector-valued ratings *(vector part in preparation)*
 - [C++ API reference](https://jonasmoss.github.io/misskappa/cpp/)
 
 ## Development
