@@ -19,8 +19,6 @@ We support weighted variants of Cohen’s kappa ([1960](https://doi.org/10.1177/
 
 Missing data is handled by several estimators. For categorical data, `Cat-FIML` is efficient under MAR and MCAR assumptions. For quadratic weights, pairwise is consistent under MCAR, while robust `NT-FIML` ([Yuan & Bentler, 2000](https://doi.org/10.1111/0081-1750.00078)) is consistent under MCAR and efficient under MCAR and MAR under normality. For general weights and arbitrary data, IPW is consistent under MCAR.
 
-In addition to agreement coefficients, misskappa estimates Cronbach’s coefficient alpha ([1951](https://doi.org/10.1007/BF02310555)) under missing data, with pairwise-available, robust `NT-FIML` ([Zhang & Yuan, 2016](https://doi.org/10.1177/0013164415594658)), and categorical `Cat-FIML` estimators.
-
 ## Installation
 
 Install the R package from GitHub with [remotes](https://remotes.r-lib.org/).
@@ -40,13 +38,13 @@ library(misskappa)
 
 ### Basic agreement
 
-The workhorse is `kappa()`. Here five raters sort subjects into three categories,
+The workhorse is `agreement()`. Here five raters sort subjects into three categories,
 and some of the ratings are missing ([Klein,
 2018](https://doi.org/10.1177/1536867X1801800408)). The IPW estimator stays
 consistent under MCAR:
 
 ``` r
-kappa(dat.klein2018, estimator = "ipw")
+agreement(dat.klein2018, estimator = "ipw")
 #> misskappa: estimator = ipw, weight = nominal, n = 10
 #>                  estimate     se  lower  upper
 #> Conger             0.4301 0.1050 0.2244 0.6358
@@ -58,15 +56,15 @@ You get back the weighted Conger, Fleiss, and Brennan–Prediger coefficients,
 each with a standard error. (With two raters you would get Cohen’s kappa
 instead of its multirater cousin Conger.)
 
-Want to know whether two studies agree to the same degree? `kappa_test()` checks
-it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
+Want to know whether two studies agree to the same degree? `agreement_test()`
+checks it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
 so the two samples are independent, which is the default. (Pass `paired = TRUE`
 for fits on the same subjects.)
 
 ``` r
-kappa_test(
-  gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-  klein = kappa(dat.klein2018, estimator = "ipw")
+agreement_test(
+  gwet  = agreement(dat.gwet2014,  estimator = "ipw"),
+  klein = agreement(dat.klein2018, estimator = "ipw")
 )
 #> Warning: rater pair(s) rater4-rater5 co-observed by only one subject; the
 #> corresponding pairwise covariance is degenerate and the standard error
@@ -82,11 +80,11 @@ kappa_test(
 #> 0.4233051 0.4301049
 ```
 
-`kappa()` also does *g-wise* kernels, where the disagreement function compares
-`g > 2` raters at once instead of averaging over pairs:
+`agreement()` also does *g-wise* kernels, where the disagreement function
+compares `g > 2` raters at once instead of averaging over pairs:
 
 ``` r
-kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+agreement(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 #> Warning: rater 3-tuple(s) rater1-rater4-rater5, rater2-rater4-rater5,
 #> rater3-rater4-rater5 co-observed by only one subject; the corresponding
 #> observed-disagreement term is degenerate and the standard error unreliable.
@@ -96,51 +94,12 @@ kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 #> Fleiss   0.4308 0.0861 0.2620 0.5997
 ```
 
-### Coefficient alpha
-
-misskappa estimates Cronbach’s alpha under missing data too. Here it runs on the
-Neuroticism items of [`psych::bfi`](https://CRAN.R-project.org/package=psych).
-That is 2800 respondents from the [SAPA project](https://www.sapa-project.org/)
-([Revelle, Wilt & Rosenthal,
-2010](https://doi.org/10.1007/978-1-4419-1210-7_2)), and 106 of them skipped at
-least one answer. Robust normal-theory FIML keeps every respondent:
-
-``` r
-data(bfi, package = "psych")
-N <- paste0("N", 1:5)
-alpha(bfi[, N], estimator = "nt_fiml")
-#> misskappa: estimator = nt_fiml, n = 2800
-#>       estimate    se lower  upper
-#> alpha   0.8138 0.006 0.802 0.8256
-```
-
-`alpha_test()` compares reliabilities the same way `kappa_test()` compares
-agreement. Is the Neuroticism scale equally reliable for men and women?
-
-Different people answer in each group, so the samples are independent again:
-
-``` r
-g <- split(seq_len(nrow(bfi)), bfi$gender)
-alpha_test(
-  men   = alpha(bfi[g[["1"]], N], estimator = "nt_fiml"),
-  women = alpha(bfi[g[["2"]], N], estimator = "nt_fiml"))
-#> 
-#>  Independent-sample Wald test of equal alpha across 2 fits
-#> 
-#> data:  men, women
-#> X-squared = 3.3766, df = 1, p-value = 0.06613
-#> alternative hypothesis: true difference in alpha is not equal to 0
-#> sample estimates:
-#>       men     women 
-#> 0.7959317 0.8209147
-```
-
 ### Vector-valued ratings
 
 Sometimes a rating is itself a vector, with one weight per component. The
 CRACKLES auscultation data ship this way: each observer scores six chest sites
 per patient, so a single verdict is a six-component vector. Pass the array and
-`kappa()` takes the vector path, with the same `pairwise` and `ipw` estimators
+`agreement()` takes the vector path, with the same `pairwise` and `ipw` estimators
 as the scalar case.
 
 None of the inference is new. A missing component drops out of the rater pairs
@@ -153,7 +112,7 @@ designs (King and Chinchilli 2001, Carrasco and Jover 2003).
 What is still in preparation is the construction, not the inference: the
 component-separable weighted family, the full feature-coupling matrix `W` that
 ties components together instead of weighting them one at a time, and the paper
-behind them. Passing `W` to `kappa()` selects the coupled squared loss, with a
+behind them. Passing `W` to `agreement()` selects the coupled squared loss, with a
 moment estimator and two normal-theory FIMLs. The [vector-valued agreement
 article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html)
 walks through it.

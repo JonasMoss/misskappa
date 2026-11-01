@@ -83,7 +83,7 @@ jobs:
 
       - name: Check R package
         # This job stays lightweight: the Quarto vignette engine and the
-        # heavier Suggests (lavaan, psych, quarto) are not installed here --
+        # heavier Suggests (lavaan, quarto) are not installed here --
         # they are exercised by the Docs workflow. Skip building vignettes and
         # treat absent Suggests as a NOTE rather than an error.
         env:
@@ -99,7 +99,7 @@ jobs:
       # package with testthat's JunitReporter so Codecov Test Analytics gets a
       # per-test report. stop_on_failure = FALSE lets the reporter flush the
       # XML first; we then exit non-zero ourselves so a real failure still reds
-      # the job. Missing Suggests (lavaan/psych) self-skip, exactly as in the
+      # the job. Missing Suggests (lavaan) self-skip, exactly as in the
       # check above.
       - name: Install package for test reporting
         if: ${{ !cancelled() }}

@@ -70,7 +70,7 @@ jobs:
         # Without lavaan it self-skips (skip_if_not_installed), matching ci.yml.
         run: |
           install.packages(c("Rcpp", "RcppEigen", "roxygen2", "testthat",
-                             "covr", "psych"))
+                             "covr"))
 
       - name: Vendor C++ into the R package
         run: dev/vendor-cpp.sh

@@ -26,8 +26,9 @@ still open.
       `papers/kappa-sd` after making their own repos public or archiving them
       on Zenodo (needs the author), then fix the README Contents and badge,
       `just paper`, and the AGENTS.md papers bullets.
-- [ ] **Release check** (`just r-check-release`) and **tag `v3.0.0`**; push
-      the `alpha-final` tag with it (the author pushes).
+- [x] **Release check.** Full `R CMD check` with the Quarto vignettes:
+      Status OK (2026-11-01).
+- [ ] **Tag `v3.0.0`** and push it with `alpha-final` (the author pushes).
 - [ ] **CRAN prep (if submitting).** Windows/macOS CI (r-lib
       check-r-package), win-builder/rhub, and the arXiv ids for the two
       in-preparation citations.
