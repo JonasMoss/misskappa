@@ -12,7 +12,7 @@ format:
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-<img src="r-package/man/figures/logo.png" alt="misskappa" align="right" width="300">
+<img src="r-package/man/figures/logo.png" alt="misskappa" align="right" width="192">
 
 # misskappa
 

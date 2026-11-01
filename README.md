@@ -2,7 +2,7 @@
 
 <!-- README.md is generated from README.qmd. Please edit that file and run `quarto render README.qmd`. -->
 
-<img src="r-package/man/figures/logo.png" alt="misskappa" align="right" width="300">
+<img src="r-package/man/figures/logo.png" alt="misskappa" align="right" width="192">
 
 # misskappa
 
