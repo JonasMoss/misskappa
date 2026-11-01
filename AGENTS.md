@@ -139,7 +139,7 @@ The R package builds in two modes; pick by what you're doing.
   `@export`, NAMESPACE, man pages) — `r-dev` only relinks existing exports.
 
 **Fast vs. full `R CMD check`.** Use `just r-check` in the dev loop: it skips the
-Quarto vignettes and downgrades absent Suggests to a NOTE (mirroring CI), so it is
+vignette and downgrades absent Suggests to a NOTE (mirroring CI), so it is
 much cheaper than the old behaviour. Run `just r-check-release` **only before a
 release/tag** — that is the one that renders the vignettes and checks the full
 tarball as `remotes::install_github` / CRAN and the Docs workflow do. Vignette
@@ -160,7 +160,9 @@ busts ccache's path-sensitive hash).
 ## Documentation
 
 The documentation site is generated, not hand-edited. `pkgdown` is the front
-door for the R package under `r-package/`, Quarto articles under
+door for the R package under `r-package/`, the shipped R Markdown vignette
+(`vignettes/misskappa.Rmd`; R Markdown rather than Quarto so CRAN's Windows
+machines can rebuild it), Quarto articles under
 `r-package/vignettes/articles/` carry the mathematical exposition, and Doxygen
 generates the C++ API reference from `include/misskappa/` into `/cpp/` inside
 the built site.

@@ -18,7 +18,7 @@ Description: Estimates chance-corrected agreement coefficients (Cohen's,
     tests that compare coefficients across groups, raters, or estimators.
     Also handles counts-format data, multirater g-wise agreement (Moss
     (2024) <doi:10.1007/s11336-023-09945-2>), and vector-valued ratings.
-URL: https://jonasmoss.github.io/misskappa
+URL: https://jonasmoss.github.io/misskappa/, https://github.com/JonasMoss/misskappa
 BugReports: https://github.com/JonasMoss/misskappa/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -37,8 +37,8 @@ Suggests:
     testthat (>= 3.0.0),
     lavaan,
     knitr,
-    quarto
-VignetteBuilder: quarto
+    rmarkdown
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 Config/roxygen2/load: source
 Config/roxygen2/markdown: true

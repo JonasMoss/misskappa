@@ -132,8 +132,8 @@ jobs:
           files: ./r-junit.xml
           flags: r
 
-  # CRAN-style check across platforms: --as-cran, vignettes built with Quarto,
-  # all Suggests installed. The committed r-package/src is already vendored
+  # CRAN-style check across platforms: --as-cran, the R Markdown vignette
+  # built, all Suggests installed. The committed r-package/src is already vendored
   # (the `r` job verifies that), so the package directory is checked as is.
   cran-check:
     name: R CMD check --as-cran (${{ matrix.config.os }}, R ${{ matrix.config.r }})
@@ -151,8 +151,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-
-      - uses: quarto-dev/quarto-actions/setup@v2
 
       - uses: r-lib/actions/setup-r@v2
         with:
