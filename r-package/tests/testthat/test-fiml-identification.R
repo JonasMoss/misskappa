@@ -51,8 +51,8 @@ test_that("raw FIML backend errors on coefficient non-identification", {
 
 sparse_benign_3rater_3cat <- function() {
   # All rater pairs co-observed, but n = 12 cannot support the saturated 3^3
-  # joint: the former hard gradient gate fired here; now it is a warning plus
-  # a null_frac diagnostic.
+  # joint: the former hard gradient gate fired here; it later became a
+  # warning and is now only the null_frac diagnostic.
   x <- matrix(c(
     1, 1, 1,
     2, 2, NA,
@@ -71,27 +71,60 @@ sparse_benign_3rater_3cat <- function() {
   x
 }
 
-test_that("sparse benign cat_fiml succeeds with a null_frac warning", {
+test_that("sparse benign cat_fiml keeps null_frac without warning", {
   x <- sparse_benign_3rater_3cat()
-  expect_warning(
-    fit <- misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic"),
-    "not uniquely identified"
+  expect_no_warning(
+    fit <- misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic")
   )
   expect_true(all(is.finite(fit$estimates)))
   expect_true(all(is.finite(fit$vcov)))
   expect_named(fit$null_frac, c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_true(all(fit$null_frac >= 0 & fit$null_frac <= 1))
   expect_gt(max(fit$null_frac), 0.01)
+  expect_named(fit$se_cutoff_ratio, c("Conger", "Fleiss", "Brennan-Prediger"))
+  expect_true(all(fit$se_cutoff_ratio >= 1))
 })
 
-test_that("flatten quiets the warning and selects a nearby posterior mode", {
+test_that("se_cutoff_ratio equals the SE ratio of a refit at info_rcond / 100", {
+  x <- sparse_benign_3rater_3cat()
+  base <- misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic",
+                               em_options = list(info_rcond = 1e-2))
+  probe <- suppressWarnings(
+    misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic",
+                         em_options = list(info_rcond = 1e-4))
+  )
+  expect_equal(probe$estimates, base$estimates, tolerance = 1e-10)
+  expect_equal(base$se_cutoff_ratio,
+               sqrt(diag(probe$vcov)) / sqrt(diag(base$vcov)),
+               tolerance = 1e-6)
+})
+
+test_that("the SE-stability warning fires only above the threshold", {
+  warn_se <- misskappa:::.warn_fiml_se
+  expect_no_warning(warn_se(NULL))
+  expect_no_warning(warn_se(numeric(0)))
+  expect_no_warning(warn_se(c(Conger = 1, Fleiss = 1.2, `Brennan-Prediger` = NA)))
+  expect_warning(warn_se(c(Conger = 1, Fleiss = 2)), "information cutoff")
+  expect_warning(warn_se(c(Conger = Inf)), "information cutoff")
+})
+
+test_that("research multi-weight FIML carries se_cutoff_ratio per weight", {
+  x <- sparse_benign_3rater_3cat()
+  fits <- misskappa:::research_kappa_fiml_multi(x, c("nominal", "quadratic"))
+  for (f in fits) {
+    expect_named(f$se_cutoff_ratio, c("Conger", "Fleiss", "Brennan-Prediger"))
+    expect_true(all(f$se_cutoff_ratio >= 1))
+  }
+})
+
+test_that("flatten selects a nearby posterior mode", {
   x <- sparse_benign_3rater_3cat()
   strict <- suppressWarnings(
     misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic")
   )
-  expect_no_warning(
-    flat <- misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic",
-                             em_options = list(flatten = 0.1))
+  flat <- suppressWarnings(
+    misskappa::agreement(x, estimator = "cat_fiml", weight = "quadratic",
+                         em_options = list(flatten = 0.1))
   )
   expect_true(all(is.finite(flat$estimates)))
   # Total pseudo-mass 0.1 against n = 12 shrinks toward uniform with weight

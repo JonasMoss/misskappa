@@ -174,11 +174,18 @@ Rcpp::List estimation_to_list(const misskappa::Estimation& e) {
   for (Eigen::Index i = 0; i < e.null_frac.size(); ++i) {
     null_frac[i] = e.null_frac(i);
   }
+  // se_cutoff_ratio is the FIML SE stability check (SE at info_rcond / 100
+  // over the reported SE); empty for estimators without it.
+  Rcpp::NumericVector se_cutoff_ratio(e.se_cutoff_ratio.size());
+  for (Eigen::Index i = 0; i < e.se_cutoff_ratio.size(); ++i) {
+    se_cutoff_ratio[i] = e.se_cutoff_ratio(i);
+  }
   return Rcpp::List::create(
       Rcpp::Named("estimates") = est,
       Rcpp::Named("vcov") = vcov,
       Rcpp::Named("psi") = psi,
-      Rcpp::Named("null_frac") = null_frac);
+      Rcpp::Named("null_frac") = null_frac,
+      Rcpp::Named("se_cutoff_ratio") = se_cutoff_ratio);
 }
 
 misskappa::EmOptions parse_em_options(Rcpp::List em_options) {

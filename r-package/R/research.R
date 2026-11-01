@@ -103,7 +103,7 @@ research_kappa_fiml_multi <- function(x,
   )
 
   out <- lapply(seq_along(raw), function(i) {
-    if (i == 1L) .warn_null_frac(raw[[i]]$null_frac, em_options)
+    if (i == 1L) .warn_fiml_se(raw[[i]]$se_cutoff_ratio)
     .new_estimate(raw[[i]], c("Conger", "Fleiss", "Brennan-Prediger"),
                   method = "fiml", weight = weights[[i]])
   })

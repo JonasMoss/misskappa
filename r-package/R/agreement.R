@@ -1,28 +1,25 @@
-# Surface the FIML null-space diagnostic: `null_frac` is, per coefficient,
-# the fraction of the delta-method gradient lying in the truncated null space
-# of the Louis information. Zero means the coefficient is an estimable
-# function of the identified directions; larger values mean the saturated
-# nuisance fit is selection-dependent along directions the coefficient
-# touches, so warn once and keep the estimate.
-.warn_null_frac <- function(null_frac, em_options = list(), threshold = 0.01) {
-  if (is.null(null_frac) || length(null_frac) == 0L) return(invisible(NULL))
-  # With flattening the posterior mode is unique, so the selection-dependence
-  # half of the message no longer applies; the diagnostic stays available in
-  # the returned object either way.
-  flatten <- em_options[["flatten"]]
-  if (!is.null(flatten) && is.finite(flatten) && flatten > 0) {
+# Warn when a FIML standard error is fragile. `se_cutoff_ratio` is, per
+# coefficient, the SE recomputed with the Louis eigenvalue cutoff lowered
+# 100-fold divided by the reported SE. A ratio well above 1 means the SE leans
+# on weakly identified directions near the cutoff, as happens when the
+# saturated table is sparse relative to the sample. The null-space fraction
+# (`null_frac`) is kept in the fit but no longer warns: across simulations the
+# point estimate does not move between likelihood maximizers by any
+# practical amount, while the SE sensitivity it was meant to flag is not
+# predicted by it.
+.warn_fiml_se <- function(se_cutoff_ratio, threshold = 1.25) {
+  if (is.null(se_cutoff_ratio) || length(se_cutoff_ratio) == 0L) {
     return(invisible(NULL))
   }
-  mx <- max(c(null_frac, 0), na.rm = TRUE)
-  if (is.finite(mx) && mx > threshold) {
+  ratio <- se_cutoff_ratio[!is.na(se_cutoff_ratio)]
+  if (length(ratio) == 0L) return(invisible(NULL))
+  mx <- max(ratio)
+  if (mx > threshold) {
     warning(sprintf(paste0(
-      "The saturated joint distribution is not uniquely identified from the ",
-      "observed missing-data patterns (null-space gradient fraction %.3f). ",
-      "The coefficient is still identified, but the point estimate depends ",
-      "on which likelihood maximizer the EM selected, and the SE uses a ",
-      "rank-truncated pseudo-inverse. Pass em_options = list(flatten = 0.1) ",
-      "to select a unique interior posterior mode (point estimate essentially ",
-      "unchanged; standard errors become conservative)."), mx), call. = FALSE)
+      "The FIML standard error depends on the information cutoff: it grows ",
+      "by a factor of %.2f when em_options$info_rcond is lowered 100-fold. ",
+      "The saturated table is sparse for this sample, so treat Wald ",
+      "intervals with caution."), mx), call. = FALSE)
   }
   invisible(NULL)
 }
@@ -206,7 +203,7 @@
   out <- rcpp_kappa_raw(x = x_mat, method = method, weight_type = weight,
                         values = values, em_options = em_options,
                         categories = categories)
-  .warn_null_frac(out$null_frac, em_options)
+  .warn_fiml_se(out$se_cutoff_ratio)
   fit <- .new_estimate(out, c("Conger", "Fleiss", "Brennan-Prediger"),
                        method = method, weight = weight)
   .attach_raw_kappa_delete_one(fit, x_mat, weight, values, em_options,
@@ -276,10 +273,12 @@
 #'   for example `1:5` or `c("low", "mid", "high")`.
 #' @param em_options Named list of EM settings for the likelihood estimators:
 #'   `tol` and `max_iter`, and for `"cat_fiml"` also `prune_tol`,
-#'   `start_alpha`, `info_rcond`, and `flatten`. `flatten > 0` adds a small
-#'   Dirichlet pseudo-count that makes the fitted table unique when the
-#'   likelihood is flat; the estimate barely moves but standard errors become
-#'   conservative. Settings an estimator does not use are an error.
+#'   `start_alpha`, `info_rcond`, and `flatten`. `info_rcond` is the relative
+#'   eigenvalue cutoff of the information matrix used for the standard
+#'   errors. `flatten > 0` adds a small Dirichlet pseudo-count that makes the
+#'   fitted table unique when the likelihood is flat; the estimate barely
+#'   moves but standard errors become conservative. Settings an estimator
+#'   does not use are an error.
 #' @param ... Arguments for vector-valued ratings: `W` (a feature metric for
 #'   the squared loss), `ranges` (a features-by-2 matrix of score bounds, for
 #'   Brennan-Prediger), `feature_weights`, and `loss = "rms"`. For `g > 2`:
@@ -288,6 +287,11 @@
 #' @return A `misskappa_estimate`: the estimates, their covariance matrix,
 #'   the number of subjects `n`, the rating scale `categories`, and the
 #'   per-subject influence rows `psi`, with `vcov = crossprod(psi) / n^2`.
+#'   `"cat_fiml"` fits also carry two diagnostics per coefficient:
+#'   `null_frac`, the share of the coefficient's gradient that lies in
+#'   directions the likelihood does not identify, and `se_cutoff_ratio`, the
+#'   standard error recomputed with `info_rcond` lowered 100-fold divided by
+#'   the reported one. A warning is issued when `se_cutoff_ratio` exceeds 1.25.
 #'   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
 #'   `stats::influence`.
 #'

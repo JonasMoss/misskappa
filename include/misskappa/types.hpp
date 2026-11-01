@@ -37,6 +37,13 @@ struct Estimation {
   // the pseudo-inverse SE omits the truncated directions. Empty for
   // estimators where the check does not apply.
   RealVec null_frac;
+  // Per-coefficient SE stability check for the same FIML estimators: the
+  // standard error recomputed with the Louis eigenvalue cutoff lowered
+  // 100-fold (info_rcond / 100), divided by the reported standard error.
+  // Always >= 1; values well above 1 mean the SE leans on weakly identified
+  // directions near the cutoff (typical of a sparse saturated table). Empty
+  // for estimators where the check does not apply.
+  RealVec se_cutoff_ratio;
 };
 
 }  // namespace misskappa

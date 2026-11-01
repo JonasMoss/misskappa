@@ -39,10 +39,12 @@ for example `1:5` or `c("low", "mid", "high")`.}
 
 \item{em_options}{Named list of EM settings for the likelihood estimators:
 `tol` and `max_iter`, and for `"cat_fiml"` also `prune_tol`,
-`start_alpha`, `info_rcond`, and `flatten`. `flatten > 0` adds a small
-Dirichlet pseudo-count that makes the fitted table unique when the
-likelihood is flat; the estimate barely moves but standard errors become
-conservative. Settings an estimator does not use are an error.}
+`start_alpha`, `info_rcond`, and `flatten`. `info_rcond` is the relative
+eigenvalue cutoff of the information matrix used for the standard
+errors. `flatten > 0` adds a small Dirichlet pseudo-count that makes the
+fitted table unique when the likelihood is flat; the estimate barely
+moves but standard errors become conservative. Settings an estimator
+does not use are an error.}
 
 \item{...}{Arguments for vector-valued ratings: `W` (a feature metric for
 the squared loss), `ranges` (a features-by-2 matrix of score bounds, for
@@ -53,6 +55,11 @@ Brennan-Prediger), `feature_weights`, and `loss = "rms"`. For `g > 2`:
 A `misskappa_estimate`: the estimates, their covariance matrix,
   the number of subjects `n`, the rating scale `categories`, and the
   per-subject influence rows `psi`, with `vcov = crossprod(psi) / n^2`.
+  `"cat_fiml"` fits also carry two diagnostics per coefficient:
+  `null_frac`, the share of the coefficient's gradient that lies in
+  directions the likelihood does not identify, and `se_cutoff_ratio`, the
+  standard error recomputed with `info_rcond` lowered 100-fold divided by
+  the reported one. A warning is issued when `se_cutoff_ratio` exceeds 1.25.
   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
   `stats::influence`.
 }

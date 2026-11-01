@@ -1,3 +1,17 @@
+# misskappa 3.0.1
+
+* `agreement(estimator = "cat_fiml")` no longer warns that the saturated
+  joint distribution is not uniquely identified. Simulations showed the
+  point estimate does not move between likelihood maximizers by any
+  practical amount, so the warning fired on most missing-at-random fits
+  without meaning anything. The diagnostic stays in the fit as `null_frac`.
+* New SE-stability check for `"cat_fiml"`: fits carry `se_cutoff_ratio`, the
+  standard error recomputed with `info_rcond` lowered 100-fold divided by the
+  reported one, and warn when it exceeds 1.25. This flags standard errors
+  that lean on weakly identified directions of a sparse saturated table,
+  which `null_frac` did not detect. The warning no longer recommends
+  `flatten`.
+
 # misskappa 3.0.0
 
 First CRAN release.

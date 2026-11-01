@@ -5,6 +5,21 @@ TODOs live in the separate private papers repo, not here. Finished work is
 recorded in `r-package/NEWS.md` and git history; keep this file to what is
 still open.
 
+## 3.0.1 release
+
+- [x] **cat_fiml warning reworked.** The `null_frac` warning (fired on 70-93%
+      of fits at package defaults in the companion paper's calibration, while
+      the estimate never moved) is gone; `se_cutoff_ratio` (SE at
+      `info_rcond / 100` over the reported SE) is new and warns above 1.25
+      (0-1.5% of fits; warned fits have worse SE calibration). See NEWS.
+- [ ] **Release.** Version is 3.0.1 on master. Tag `v3.0.0` at the commit
+      submitted to CRAN, not at master. Submit 3.0.1 after CRAN accepts 3.0.0
+      (or fold it into a resubmission if CRAN asks for changes).
+- [ ] **Optional estimate-side check.** If a selection warning is ever wanted
+      back, bound the move directly: step from theta-hat along the null-space
+      component of the gradient until a support cell hits zero (ratio test)
+      and warn only if the coefficient changes by more than 0.1 SE.
+
 ## 3.0.0 release
 
 - [x] **Agreement only.** Coefficient alpha removed (C++ and R); last present
@@ -54,43 +69,6 @@ still open.
 - [x] **Release check.** Full `R CMD check` with the Quarto vignette:
       Status OK (0 errors, 0 warnings, 0 notes).
 ## Open (library)
-
-- [ ] **Rework the cat_fiml non-identification warning (next release).**
-      `.warn_null_frac()` warns when more than 1% of the delta-method gradient
-      lies in the dropped null space of the Louis information. Evidence from
-      the companion paper's simulation probe (private papers repo, C = 5,
-      R = 5-6, n = 1000) and study 32 (June):
-        * It fires too often to mean anything: about half of all fits, 97-100%
-          under MAR, 67-93% under MCAR with rater-specific rates.
-        * The estimate it warns about does not move: refits with
-          `start_alpha` 0.01 / 0.1 / 1 differ by <= 3e-5 and `flatten = 0.1`
-          by <= 2e-4 (sampling SD 0.012-0.025); study 32 never saw > 0.01 SE.
-        * The real fragility is the SE, and `null_frac` does not detect it.
-          Between `info_rcond` 1e-4 and 1e-6 the SE changes by a factor of
-          1.0-3.0 (weakly identified directions just above the cutoff). The
-          cell with the largest `null_frac` (0.065) moved at most 1.33x; the
-          one with the smallest (0.012) moved up to 3x.
-        * The message recommends `flatten`, which inflates SEs 1.6-3.4x.
-      Proposal:
-        1. Stop warning on `null_frac` alone; keep `fit$null_frac` in the
-           object and document it. If an estimate-side check is still wanted,
-           bound the movement directly: step from theta-hat along the
-           null-space component of the gradient until a support cell hits
-           zero (ratio test) and warn only if the resulting change in the
-           coefficient exceeds 0.1 SE. (Sketch; check the reduced-coordinate
-           bookkeeping.)
-        2. Add an SE-stability diagnostic from the eigendecomposition the
-           variance step already does (no refit): recompute the SE with the
-           cutoff at `info_rcond / 100`, store the ratio as
-           `fit$se_cutoff_ratio`, and warn when it exceeds a threshold (1.25
-           to start; calibrate on the companion paper's simulation). Message:
-           the SE depends on the information cutoff (x vs y), typical of a
-           sparse saturated table, so treat Wald intervals with caution.
-        3. Drop the `flatten` recommendation from the message (flatten is a
-           uniqueness device; its SEs are conservative).
-      Touch points: `R/agreement.R` (`.warn_null_frac`), the variance step in
-      `src/estimate_fiml.cpp` (`apply_fiml_variance_workspace`), the shared
-      warning call in `R/research.R`, docs for `em_options`, NEWS, tests.
 
 - [ ] **MASS-RENAME the two methods-paper citations on preprint + publication.**
       WIP scaffold LANDED 2026-06-17: the two papers are now forward-referenced

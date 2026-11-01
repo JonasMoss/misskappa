@@ -2,7 +2,8 @@
 # S3 methods (print, coef, vcov, confint, as.data.frame).
 
 # Build a misskappa_estimate from a backend result `out` carrying `estimates`,
-# `vcov`, `psi` (n x K influence rows), and optionally `null_frac`. Extra named
+# `vcov`, `psi` (n x K influence rows), and optionally the FIML diagnostics
+# `null_frac` and `se_cutoff_ratio`. Extra named
 # fields (moments, bp_chance, g, W, ...) are appended; NULL extras are skipped.
 .new_estimate <- function(out, coefficients, method, weight, ...) {
   K <- length(coefficients)
@@ -25,6 +26,10 @@
   if (length(out$null_frac) == K) {
     fit$null_frac <- stats::setNames(as.numeric(out$null_frac), coefficients)
   }
+  if (length(out$se_cutoff_ratio) == K) {
+    fit$se_cutoff_ratio <- stats::setNames(as.numeric(out$se_cutoff_ratio),
+                                           coefficients)
+  }
   extra <- list(...)
   extra <- extra[!vapply(extra, is.null, logical(1))]
   fit[names(extra)] <- extra
@@ -44,7 +49,7 @@
 }
 
 # Remove coefficients from a fit, keeping estimates, vcov, influence rows, the
-# null-space diagnostic, and the delete-one summaries consistent.
+# FIML diagnostics, and the delete-one summaries consistent.
 .drop_coefficients <- function(fit, drop) {
   keep <- !names(fit$estimates) %in% drop
   if (all(keep)) return(fit)
@@ -54,6 +59,9 @@
     fit$psi <- fit$psi[, keep, drop = FALSE]
   }
   if (!is.null(fit$null_frac)) fit$null_frac <- fit$null_frac[keep]
+  if (!is.null(fit$se_cutoff_ratio)) {
+    fit$se_cutoff_ratio <- fit$se_cutoff_ratio[keep]
+  }
   d1 <- fit$delete_one
   if (!is.null(d1)) {
     d1$estimate <- d1$estimate[keep]

@@ -40,6 +40,10 @@ void check_three_coef_variance_contract(const ms::Estimation& e, int n) {
   CHECK(e.null_frac.array().isFinite().all());
   CHECK(e.null_frac.minCoeff() >= 0.0);
   CHECK(e.null_frac.maxCoeff() <= 1.0);
+
+  REQUIRE(e.se_cutoff_ratio.size() == 3);
+  CHECK(e.se_cutoff_ratio.array().isFinite().all());
+  CHECK(e.se_cutoff_ratio.minCoeff() >= 1.0);
 }
 
 IntMat ten_subject_2rater() {
@@ -245,6 +249,33 @@ TEST_CASE("estimate_fiml: sparse MAR fixture succeeds with null-frac diagnostic"
   // Sample information is rank-deficient along directions the coefficients
   // touch; the diagnostic must say so.
   CHECK(r->null_frac.maxCoeff() > 1e-3);
+}
+
+TEST_CASE("estimate_fiml: se_cutoff_ratio matches a refit at info_rcond / 100") {
+  // The ratio is computed from one eigendecomposition; it must equal the SE
+  // ratio between two fits that differ only in the cutoff (the cutoff does
+  // not touch the EM, so the estimates agree too).
+  IntMat x = twelve_subject_3rater_3cat();
+  RealVec v(3);
+  v << 1.0, 2.0, 3.0;
+  auto W = ms::loss::quadratic_weights(3, v);
+  EmOptions base{};
+  base.info_rcond = 1e-2;
+  EmOptions probe = base;
+  probe.info_rcond = base.info_rcond / 100.0;
+  auto r1 = ms::estimate_fiml(x, *W, base);
+  auto r2 = ms::estimate_fiml(x, *W, probe);
+  REQUIRE(r1.has_value());
+  REQUIRE(r2.has_value());
+  CHECK((r1->estimates - r2->estimates).cwiseAbs().maxCoeff() < 1e-12);
+  REQUIRE(r1->se_cutoff_ratio.size() == 3);
+  for (Eigen::Index j = 0; j < 3; ++j) {
+    const double se1 = std::sqrt(r1->vcov(j, j));
+    const double se2 = std::sqrt(r2->vcov(j, j));
+    if (se1 > 0.0) {
+      CHECK(r1->se_cutoff_ratio(j) == doctest::Approx(se2 / se1).epsilon(1e-8));
+    }
+  }
 }
 
 TEST_CASE("estimate_fiml: complete data has zero null-frac diagnostic") {

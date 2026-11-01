@@ -84,7 +84,12 @@ struct FimlVarianceResult {
   RealMat vcov;
   RealMat psi;
   RealVec null_frac;
+  RealVec se_cutoff_ratio;
 };
+
+// The SE stability check recomputes each variance with the eigenvalue cutoff
+// scaled by this factor.
+constexpr double se_cutoff_probe_factor = 0.01;
 
 // --- Encoding / decoding of categorical patterns as base-c integers ---
 
@@ -655,6 +660,7 @@ Result<FimlVarianceResult> apply_fiml_variance_workspace(
   out.vcov = RealMat::Zero(q, q);
   out.psi = RealMat::Zero(n, q);
   out.null_frac = RealVec::Zero(q);
+  out.se_cutoff_ratio = RealVec::Ones(q);
 
   if (jacobian.cols() != n_final) {
     return misskappa::unexpected(Error::numerical_error);
@@ -683,12 +689,23 @@ Result<FimlVarianceResult> apply_fiml_variance_workspace(
 
   RealMat y = RealMat::Zero(n_groups, q);
   RealVec retained_norm_sq = RealVec::Zero(q);
+  // Variance diagonals at the reported cutoff and at the probe cutoff; the
+  // eigenvectors are orthonormal, so diag(y^T y) = sum_k coeff_k^2 / lambda_k^2.
+  RealVec var_kept = RealVec::Zero(q);
+  RealVec var_probe = RealVec::Zero(q);
+  const double probe_threshold = se_cutoff_probe_factor * workspace.threshold;
   for (Eigen::Index k = 0; k < workspace.eigenvalues.size(); ++k) {
     const double lambda = workspace.eigenvalues(k);
-    if (!(lambda > workspace.threshold) || !std::isfinite(lambda)) continue;
+    if (!(lambda > probe_threshold) || !std::isfinite(lambda)) continue;
 
     const Eigen::RowVectorXd coeff =
         workspace.eigenvectors.col(k).transpose() * bt;
+    const Eigen::RowVectorXd var_term =
+        (coeff.array().square() / (lambda * lambda)).matrix();
+    var_probe += var_term.transpose();
+    if (!(lambda > workspace.threshold)) continue;
+
+    var_kept += var_term.transpose();
     y.noalias() += workspace.eigenvectors.col(k) * (coeff / lambda);
     for (Eigen::Index j = 0; j < q; ++j) {
       retained_norm_sq(j) += coeff(j) * coeff(j) / lambda;
@@ -696,6 +713,13 @@ Result<FimlVarianceResult> apply_fiml_variance_workspace(
   }
   if (!y.allFinite() || !retained_norm_sq.allFinite()) {
     return misskappa::unexpected(Error::numerical_error);
+  }
+  for (Eigen::Index j = 0; j < q; ++j) {
+    if (var_kept(j) > 0.0 && std::isfinite(var_probe(j))) {
+      out.se_cutoff_ratio(j) = std::sqrt(std::max(1.0, var_probe(j) / var_kept(j)));
+    } else if (var_probe(j) > 0.0) {
+      out.se_cutoff_ratio(j) = std::numeric_limits<double>::infinity();
+    }
   }
 
   out.vcov = y.transpose() * y;
@@ -1067,7 +1091,8 @@ Result<Estimation> map_fiml_kappa(
   if (!variance) return misskappa::unexpected(variance.error());
 
   return Estimation{std::move(estimates), std::move(variance->vcov),
-                    std::move(variance->psi), std::move(variance->null_frac)};
+                    std::move(variance->psi), std::move(variance->null_frac),
+                    std::move(variance->se_cutoff_ratio)};
 }
 
 }  // namespace
@@ -1189,7 +1214,8 @@ Result<Estimation> estimate_fiml_gwise(
   if (!variance) return misskappa::unexpected(variance.error());
 
   return Estimation{std::move(estimates), std::move(variance->vcov),
-                    std::move(variance->psi), std::move(variance->null_frac)};
+                    std::move(variance->psi), std::move(variance->null_frac),
+                    std::move(variance->se_cutoff_ratio)};
 }
 
 namespace detail {
