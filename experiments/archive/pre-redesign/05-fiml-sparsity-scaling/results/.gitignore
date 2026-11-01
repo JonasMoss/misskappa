@@ -1,3 +1,0 @@
-# Keep the directory; ignore bulky local dumps.
-raw/
-*.rds

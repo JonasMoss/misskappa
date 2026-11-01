@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -80,8 +81,8 @@ TEST_CASE("G-wise nominal Frechet: g=2 matches pairwise identity kappa") {
   REQUIRE(distance.has_value());
   REQUIRE(weights.has_value());
 
-  auto gwise = ms::estimate_gwise(x, *distance, ms::GwiseOptions{2});
-  auto pairwise = ms::estimate_available(x, *weights);
+  auto gwise = ms::research::estimate_gwise(x, *distance, ms::GwiseOptions{2});
+  auto pairwise = ms::research::estimate_available(x, *weights);
   REQUIRE(gwise.has_value());
   REQUIRE(pairwise.has_value());
 
@@ -95,7 +96,7 @@ TEST_CASE("G-wise nominal Frechet IPW: complete data matches complete estimator"
   auto distance = ms::loss::frechet_nominal_distance(5);
   REQUIRE(distance.has_value());
 
-  auto complete = ms::estimate_gwise(x, *distance);
+  auto complete = ms::research::estimate_gwise(x, *distance);
   auto ipw = ms::estimate_ipw_gwise(x, *distance);
   REQUIRE(complete.has_value());
   REQUIRE(ipw.has_value());
@@ -131,7 +132,7 @@ TEST_CASE("G-wise nominal Frechet: all-rater mode disagreement fixture") {
   auto distance = ms::loss::frechet_nominal_distance(5);
   REQUIRE(distance.has_value());
 
-  auto r = ms::estimate_gwise(x, *distance);
+  auto r = ms::research::estimate_gwise(x, *distance);
   REQUIRE(r.has_value());
   REQUIRE(r->estimates.size() == 2);
   CHECK(std::abs(r->estimates(0) - 0.23353293413173815) < tol);
@@ -145,7 +146,7 @@ TEST_CASE("G-wise absolute Frechet: all-rater median disagreement fixture") {
   auto distance = ms::loss::frechet_absolute_distance();
   REQUIRE(distance.has_value());
 
-  auto r = ms::estimate_gwise_continuous(x, *distance);
+  auto r = ms::research::estimate_gwise_continuous(x, *distance);
   REQUIRE(r.has_value());
   CHECK(std::abs(r->estimates(0) - 0.45877378435517835) < tol);
   CHECK(std::abs(r->estimates(1) - 0.44821878125323300) < tol);
@@ -160,7 +161,7 @@ TEST_CASE("G-wise absolute Frechet IPW: complete data matches complete estimator
   auto distance = ms::loss::frechet_absolute_distance();
   REQUIRE(distance.has_value());
 
-  auto complete = ms::estimate_gwise_continuous(x, *distance);
+  auto complete = ms::research::estimate_gwise_continuous(x, *distance);
   auto ipw = ms::estimate_ipw_gwise_continuous(x, *distance);
   REQUIRE(complete.has_value());
   REQUIRE(ipw.has_value());
@@ -179,7 +180,7 @@ TEST_CASE("G-wise continuous IPW: g=2 matches pairwise continuous IPW") {
   REQUIRE(absolute_loss.has_value());
   auto gwise_absolute =
       ms::estimate_ipw_gwise_continuous(x, *absolute_distance, ms::GwiseOptions{2});
-  auto pairwise_absolute = ms::estimate_ipw_continuous(x, *absolute_loss);
+  auto pairwise_absolute = ms::research::estimate_ipw_continuous(x, *absolute_loss);
   REQUIRE(gwise_absolute.has_value());
   REQUIRE(pairwise_absolute.has_value());
   CHECK((gwise_absolute->estimates - pairwise_absolute->estimates).cwiseAbs().maxCoeff() < tol);
@@ -191,7 +192,7 @@ TEST_CASE("G-wise continuous IPW: g=2 matches pairwise continuous IPW") {
   REQUIRE(quadratic_loss.has_value());
   auto gwise_quadratic =
       ms::estimate_ipw_gwise_continuous(x, *quadratic_distance, ms::GwiseOptions{2});
-  auto pairwise_quadratic = ms::estimate_ipw_continuous(x, *quadratic_loss);
+  auto pairwise_quadratic = ms::research::estimate_ipw_continuous(x, *quadratic_loss);
   REQUIRE(gwise_quadratic.has_value());
   REQUIRE(pairwise_quadratic.has_value());
   CHECK((gwise_quadratic->estimates - pairwise_quadratic->estimates).cwiseAbs().maxCoeff() < tol);
@@ -202,7 +203,7 @@ TEST_CASE("G-wise continuous IPW: g=2 matches pairwise continuous IPW") {
   REQUIRE(identity_loss.has_value());
   auto gwise_hubert =
       ms::estimate_ipw_gwise_continuous(x, *hubert_distance, ms::GwiseOptions{2});
-  auto pairwise_identity = ms::estimate_ipw_continuous(x, *identity_loss);
+  auto pairwise_identity = ms::research::estimate_ipw_continuous(x, *identity_loss);
   REQUIRE(gwise_hubert.has_value());
   REQUIRE(pairwise_identity.has_value());
   CHECK((gwise_hubert->estimates - pairwise_identity->estimates).cwiseAbs().maxCoeff() < tol);
@@ -222,10 +223,10 @@ TEST_CASE("G-wise quadratic Frechet is g-invariant (justifies R short-circuit)")
   auto distance = ms::loss::frechet_quadratic_distance();
   REQUIRE(distance.has_value());
 
-  auto base = ms::estimate_gwise_continuous(x, *distance, ms::GwiseOptions{2});
+  auto base = ms::research::estimate_gwise_continuous(x, *distance, ms::GwiseOptions{2});
   REQUIRE(base.has_value());
   for (int g = 3; g <= 5; ++g) {
-    auto fit = ms::estimate_gwise_continuous(x, *distance, ms::GwiseOptions{g});
+    auto fit = ms::research::estimate_gwise_continuous(x, *distance, ms::GwiseOptions{g});
     REQUIRE(fit.has_value());
     CHECK((fit->estimates - base->estimates).cwiseAbs().maxCoeff() < tol);
   }
@@ -233,7 +234,7 @@ TEST_CASE("G-wise quadratic Frechet is g-invariant (justifies R short-circuit)")
   // ... and the g-invariant value equals the closed-form quadratic estimator.
   ms::RealVec v(5);
   v << 1.0, 2.0, 3.0, 4.0, 5.0;
-  auto closed = ms::estimate_quadratic(x, v);
+  auto closed = ms::research::estimate_quadratic(x, v);
   REQUIRE(closed.has_value());
   CHECK(std::abs(base->estimates(0) - closed->estimates(0)) < tol);  // Conger
   CHECK(std::abs(base->estimates(1) - closed->estimates(1)) < tol);  // Fleiss
@@ -247,7 +248,7 @@ TEST_CASE("G-wise Hubert disagreement: perfect agreement returns one") {
   auto distance = ms::loss::hubert_categorical_distance(3);
   REQUIRE(distance.has_value());
 
-  auto r = ms::estimate_gwise(x, *distance);
+  auto r = ms::research::estimate_gwise(x, *distance);
   REQUIRE(r.has_value());
   CHECK(std::abs(r->estimates(0) - 1.0) < tol);
   CHECK(std::abs(r->estimates(1) - 1.0) < tol);
@@ -290,12 +291,12 @@ TEST_CASE("G-wise estimator rejects missing and oversized direct jobs") {
   REQUIRE(distance.has_value());
 
   x(0, 0) = ms::na_code;
-  auto missing = ms::estimate_gwise(x, *distance);
+  auto missing = ms::research::estimate_gwise(x, *distance);
   REQUIRE(!missing.has_value());
   CHECK(missing.error() == ms::Error::invalid_argument);
 
   x = frechet_fixture_int();
-  auto oversized = ms::estimate_gwise(x, *distance, ms::GwiseOptions{5, 100});
+  auto oversized = ms::research::estimate_gwise(x, *distance, ms::GwiseOptions{5, 100});
   REQUIRE(!oversized.has_value());
   CHECK(oversized.error() == ms::Error::not_supported);
 }
@@ -373,7 +374,7 @@ TEST_CASE("G-wise categorical chance uses finite support instead of n^g item tup
   auto distance = ms::loss::frechet_nominal_distance(2);
   REQUIRE(distance.has_value());
 
-  auto r = ms::estimate_gwise(x, *distance, ms::GwiseOptions{3, 100});
+  auto r = ms::research::estimate_gwise(x, *distance, ms::GwiseOptions{3, 100});
   REQUIRE(r.has_value());
   CHECK(std::isfinite(r->estimates(0)));
   CHECK(std::isfinite(r->estimates(1)));
@@ -384,7 +385,7 @@ TEST_CASE("G-wise covariance is symmetric and PSD") {
   auto distance = ms::loss::frechet_quadratic_distance();
   REQUIRE(distance.has_value());
 
-  auto r = ms::estimate_gwise_continuous(x, *distance);
+  auto r = ms::research::estimate_gwise_continuous(x, *distance);
   REQUIRE(r.has_value());
   CHECK((r->vcov - r->vcov.transpose()).cwiseAbs().maxCoeff() < 1e-12);
 

@@ -89,7 +89,7 @@ r-dev:
   @cmake --preset opt
   @cmake --build --preset opt --target misskappa --parallel $(nproc)   # lib only — skip the unit-test exe
   @root="$(pwd)"; \
-    rsync -a --delete \
+    rsync -a --delete --delete-excluded \
       --exclude='*.o' --exclude='*.so' --exclude='*.dll' --exclude='symbols.rds' \
       r-package/ build-rdev/; \
     cp dev/r-makevars-dev build-rdev/src/Makevars; \
@@ -112,7 +112,7 @@ r-check: vendor r-docs
     R CMD build r-package --no-build-vignettes; \
     R CMD check --no-manual --no-build-vignettes misskappa_*.tar.gz
 
-# Builds the Quarto vignettes (needs quarto/lavaan/psych) and checks the full
+# Builds the Quarto vignettes (needs quarto; lavaan for one parity test) and checks the full
 # tarball, as `remotes::install_github` / CRAN would. The fast `r-check` is the
 # day-to-day dev check.
 # Full R CMD check with vignettes — run before a release/tag, not in the dev loop.
@@ -122,10 +122,6 @@ r-check-release: vendor r-docs
     trap cleanup EXIT; \
     R CMD build r-package; \
     R CMD check --no-manual misskappa_*.tar.gz
-
-# Regenerate irrCAC oracle fixtures (requires R + irrCAC installed).
-regen-oracle:
-  @Rscript tests/tools/regen_oracle.R
 
 # Build pkgdown site. Requires the R packages pkgdown and quarto; vendors first
 # because pkgdown installs/loads the R package. If Pandoc is only available via

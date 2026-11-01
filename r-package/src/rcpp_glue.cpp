@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "misskappa/estimate.hpp"
-#include "misskappa/diagnostics.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/inference.hpp"
 #include "misskappa/loss.hpp"
 
@@ -82,18 +82,37 @@ Eigen::MatrixXd make_agreement_weights(
 PreparedInputs prepare_inputs(
     const Rcpp::IntegerMatrix& x,
     const std::string& weight_type,
-    Rcpp::Nullable<Rcpp::NumericVector> values) {
-  // Collect unique non-NA category values.
-  std::set<int> cat_set;
-  for (int i = 0; i < x.nrow(); ++i) {
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
+  // The category set is either declared by the caller (in the given order,
+  // possibly including categories nobody used) or the sorted observed codes.
+  std::vector<int> cats;
+  bool any_observed = false;
+  for (int i = 0; i < x.nrow() && !any_observed; ++i) {
     for (int j = 0; j < x.ncol(); ++j) {
-      const int v = x(i, j);
-      if (v == NA_INTEGER) continue;
-      cat_set.insert(v);
+      if (x(i, j) != NA_INTEGER) { any_observed = true; break; }
     }
   }
-  if (cat_set.empty()) Rcpp::stop("All ratings are missing.");
-  std::vector<int> cats(cat_set.begin(), cat_set.end());
+  if (!any_observed) Rcpp::stop("All ratings are missing.");
+  if (categories.isNotNull()) {
+    Rcpp::IntegerVector cv(categories);
+    std::set<int> seen;
+    for (int k = 0; k < cv.size(); ++k) {
+      if (cv[k] == NA_INTEGER || !seen.insert(cv[k]).second) {
+        Rcpp::stop("'categories' must be distinct and non-missing.");
+      }
+      cats.push_back(cv[k]);
+    }
+  } else {
+    std::set<int> cat_set;
+    for (int i = 0; i < x.nrow(); ++i) {
+      for (int j = 0; j < x.ncol(); ++j) {
+        const int v = x(i, j);
+        if (v != NA_INTEGER) cat_set.insert(v);
+      }
+    }
+    cats.assign(cat_set.begin(), cat_set.end());
+  }
   const int C = static_cast<int>(cats.size());
 
   std::map<int, int> cat_to_idx;
@@ -104,7 +123,15 @@ PreparedInputs prepare_inputs(
   for (int i = 0; i < x.nrow(); ++i) {
     for (int j = 0; j < x.ncol(); ++j) {
       const int v = x(i, j);
-      mapped(i, j) = (v == NA_INTEGER) ? kPkgNaCode : cat_to_idx.at(v);
+      if (v == NA_INTEGER) {
+        mapped(i, j) = kPkgNaCode;
+        continue;
+      }
+      const auto it = cat_to_idx.find(v);
+      if (it == cat_to_idx.end()) {
+        Rcpp::stop("A rating is not among the declared 'categories'.");
+      }
+      mapped(i, j) = it->second;
     }
   }
 
@@ -114,7 +141,7 @@ PreparedInputs prepare_inputs(
   Eigen::VectorXd v(C);
   if (values.isNotNull()) {
     Rcpp::NumericVector vv(values);
-    if (vv.size() != C) Rcpp::stop("Length of 'values' must equal the number of unique categories.");
+    if (vv.size() != C) Rcpp::stop("Length of 'values' must equal the number of categories.");
     for (int i = 0; i < C; ++i) v(i) = vv[i];
   } else {
     for (int i = 0; i < C; ++i) v(i) = static_cast<double>(cats[i]);
@@ -160,8 +187,6 @@ misskappa::EmOptions parse_em_options(Rcpp::List em_options) {
     opts.tol = Rcpp::as<double>(em_options["tol"]);
   if (em_options.containsElementNamed("max_iter"))
     opts.max_iter = Rcpp::as<int>(em_options["max_iter"]);
-  if (em_options.containsElementNamed("fd_h"))
-    opts.fd_h = Rcpp::as<double>(em_options["fd_h"]);
   if (em_options.containsElementNamed("prune_tol"))
     opts.prune_tol = Rcpp::as<double>(em_options["prune_tol"]);
   if (em_options.containsElementNamed("start_alpha"))
@@ -246,16 +271,17 @@ Rcpp::List rcpp_kappa_raw(
     std::string method,
     std::string weight_type,
     Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
-  PreparedInputs in = prepare_inputs(x, weight_type, values);
+    Rcpp::List em_options,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values, categories);
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "available") {
-    r = misskappa::estimate_available(in.ratings_indexed, in.weights);
+    r = misskappa::research::estimate_available(in.ratings_indexed, in.weights);
   } else if (method == "ipw") {
     r = misskappa::estimate_ipw(in.ratings_indexed, in.weights);
   } else if (method == "gwet") {
-    r = misskappa::estimate_gwet(in.ratings_indexed, in.weights);
+    r = misskappa::research::estimate_gwet(in.ratings_indexed, in.weights);
   } else if (method == "fiml") {
     misskappa::EmOptions opts = parse_em_options(em_options);
     r = misskappa::estimate_fiml(in.ratings_indexed, in.weights, opts);
@@ -269,8 +295,9 @@ Rcpp::List rcpp_kappa_raw(
 Rcpp::List rcpp_kappa_delete_one(
     const Rcpp::IntegerMatrix& x,
     std::string weight_type,
-    Rcpp::Nullable<Rcpp::NumericVector> values) {
-  PreparedInputs in = prepare_inputs(x, weight_type, values);
+    Rcpp::Nullable<Rcpp::NumericVector> values,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
+  PreparedInputs in = prepare_inputs(x, weight_type, values, categories);
   auto r = misskappa::delete_one_kappa_complete(
       in.ratings_indexed, in.weights);
   return kappa_delete_one_to_list(unwrap(std::move(r)));
@@ -281,10 +308,11 @@ Rcpp::List rcpp_kappa_fiml_multi(
     const Rcpp::IntegerMatrix& x,
     Rcpp::CharacterVector weight_types,
     Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
+    Rcpp::List em_options,
+    Rcpp::Nullable<Rcpp::IntegerVector> categories = R_NilValue) {
   if (weight_types.size() < 1) Rcpp::stop("'weight_types' must be non-empty.");
   const std::string first_weight = Rcpp::as<std::string>(weight_types[0]);
-  PreparedInputs in = prepare_inputs(x, first_weight, values);
+  PreparedInputs in = prepare_inputs(x, first_weight, values, categories);
 
   std::vector<Eigen::MatrixXd> weights;
   weights.reserve(static_cast<std::size_t>(weight_types.size()));
@@ -296,7 +324,7 @@ Rcpp::List rcpp_kappa_fiml_multi(
   }
 
   misskappa::EmOptions opts = parse_em_options(em_options);
-  auto fits = unwrap(misskappa::estimate_fiml_many(
+  auto fits = unwrap(misskappa::research::estimate_fiml_many(
       in.ratings_indexed, weights, opts));
 
   Rcpp::List out(fits.size());
@@ -305,64 +333,6 @@ Rcpp::List rcpp_kappa_fiml_multi(
   }
   out.attr("names") = names;
   return out;
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_raw(
-    const Rcpp::IntegerMatrix& x,
-    std::string method,
-    Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
-  PreparedInputs in = prepare_inputs(x, "identity", values);
-
-  misskappa::Result<misskappa::Estimation> r;
-  if (method == "available") {
-    r = misskappa::estimate_alpha_available(in.ratings_indexed, in.values);
-  } else if (method == "fiml") {
-    misskappa::EmOptions opts = parse_em_options(em_options);
-    r = misskappa::estimate_alpha_fiml(in.ratings_indexed, in.values, opts);
-  } else {
-    Rcpp::stop("Unknown method: " + method);
-  }
-  return estimation_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_available_continuous(const Rcpp::NumericMatrix& x) {
-  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
-  for (int i = 0; i < x.nrow(); ++i) {
-    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
-  }
-
-  auto r = misskappa::estimate_alpha_available_continuous(ratings);
-  return estimation_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_delete_one(const Rcpp::NumericMatrix& x) {
-  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
-  for (int i = 0; i < x.nrow(); ++i) {
-    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
-  }
-  auto r = misskappa::delete_one_alpha_complete(ratings);
-  return delete_one_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_normal_fiml(
-    const Rcpp::NumericMatrix& x,
-    Rcpp::List em_options) {
-  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
-  for (int i = 0; i < x.nrow(); ++i) {
-    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
-  }
-
-  misskappa::EmOptions opts = parse_em_options(em_options);
-  auto r = unwrap(misskappa::estimate_alpha_normal_fiml(ratings, opts));
-  if (!r.converged) {
-    Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
-  }
-  return normal_fiml_to_list(r);
 }
 
 // [[Rcpp::export]]
@@ -417,30 +387,6 @@ Rcpp::List rcpp_kappa_fiml_counts(
 }
 
 // [[Rcpp::export]]
-Rcpp::List rcpp_fiml_louis_spectrum(
-    const Rcpp::IntegerMatrix& x,
-    std::string weight_type,
-    Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
-  PreparedInputs in = prepare_inputs(x, weight_type, values);
-  misskappa::EmOptions opts = parse_em_options(em_options);
-  auto r = unwrap(misskappa::diagnose_fiml_louis(in.ratings_indexed, in.weights, opts));
-  return Rcpp::List::create(
-      Rcpp::Named("eigenvalues") = to_numeric_vector(r.eigenvalues),
-      Rcpp::Named("gradient_projection") = to_numeric_vector(r.gradient_projection),
-      Rcpp::Named("variance_contribution") = to_numeric_vector(r.variance_contribution),
-      Rcpp::Named("variance") = r.variance,
-      Rcpp::Named("lambda_max") = r.lambda_max,
-      Rcpp::Named("threshold") = r.threshold,
-      Rcpp::Named("retained_rank") = r.retained_rank,
-      Rcpp::Named("kappa_conger") = r.kappa_conger,
-      Rcpp::Named("n_subjects") = static_cast<double>(r.n_subjects),
-      Rcpp::Named("n_patterns") = static_cast<double>(r.n_patterns),
-      Rcpp::Named("C") = r.c,
-      Rcpp::Named("R") = r.R);
-}
-
-// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_quadratic(
     const Rcpp::NumericMatrix& x,
     Rcpp::NumericVector values) {
@@ -451,7 +397,7 @@ Rcpp::List rcpp_kappa_quadratic(
   Eigen::VectorXd v(values.size());
   for (int i = 0; i < values.size(); ++i) v(i) = values[i];
 
-  auto r = misskappa::estimate_quadratic(ratings, v);
+  auto r = misskappa::research::estimate_quadratic(ratings, v);
   return estimation_to_list(unwrap(std::move(r)));
 }
 
@@ -592,9 +538,9 @@ Rcpp::List rcpp_kappa_continuous(
   if (method == "available") {
     r = misskappa::estimate_available_continuous(ratings, loss);
   } else if (method == "ipw") {
-    r = misskappa::estimate_ipw_continuous(ratings, loss);
+    r = misskappa::research::estimate_ipw_continuous(ratings, loss);
   } else if (method == "gwet") {
-    r = misskappa::estimate_gwet_continuous(ratings, loss);
+    r = misskappa::research::estimate_gwet_continuous(ratings, loss);
   } else {
     Rcpp::stop("Unknown method for continuous data: " + method);
   }
@@ -753,7 +699,7 @@ Rcpp::List rcpp_kappa_gwise_categorical(
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "complete") {
-    r = misskappa::estimate_gwise(ratings, distance, opts);
+    r = misskappa::research::estimate_gwise(ratings, distance, opts);
   } else if (method == "ipw") {
     r = misskappa::estimate_ipw_gwise(ratings, distance, opts);
   } else if (method == "fiml") {
@@ -794,7 +740,7 @@ Rcpp::List rcpp_kappa_gwise_continuous(
 
   misskappa::Result<misskappa::Estimation> r;
   if (method == "complete") {
-    r = misskappa::estimate_gwise_continuous(ratings, distance, opts);
+    r = misskappa::research::estimate_gwise_continuous(ratings, distance, opts);
   } else if (method == "ipw") {
     r = misskappa::estimate_ipw_gwise_continuous(ratings, distance, opts);
   } else {

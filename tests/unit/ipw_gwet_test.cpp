@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -64,9 +65,9 @@ TEST_CASE("Complete data: available / IPW / Gwet agree exactly") {
   auto W = ms::loss::identity_weights(2);
   REQUIRE(W.has_value());
 
-  auto r_av  = ms::estimate_available(x, *W);
+  auto r_av  = ms::research::estimate_available(x, *W);
   auto r_ipw = ms::estimate_ipw(x, *W);
-  auto r_gw  = ms::estimate_gwet(x, *W);
+  auto r_gw  = ms::research::estimate_gwet(x, *W);
 
   REQUIRE(r_av.has_value());
   REQUIRE(r_ipw.has_value());
@@ -102,7 +103,7 @@ TEST_CASE("Available with quadratic weights matches legacy on the same fixture")
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
 
-  auto r = ms::estimate_available(x, *W);
+  auto r = ms::research::estimate_available(x, *W);
   REQUIRE(r.has_value());
 
   CHECK(std::abs(r->estimates(0) - 0.6997960652591171) < 1e-12);
@@ -116,7 +117,7 @@ TEST_CASE("Gwet with quadratic weights matches legacy on the same fixture") {
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
 
-  auto r = ms::estimate_gwet(x, *W);
+  auto r = ms::research::estimate_gwet(x, *W);
   REQUIRE(r.has_value());
 
   CHECK(std::abs(r->estimates(0) - 0.6998600746268656) < 1e-12);
@@ -145,7 +146,7 @@ TEST_CASE("IPW under uniform MCAR is close to available-case") {
   }
 
   auto W = ms::loss::identity_weights(3);
-  auto r_av = ms::estimate_available(x, *W);
+  auto r_av = ms::research::estimate_available(x, *W);
   auto r_ipw = ms::estimate_ipw(x, *W);
   REQUIRE(r_av.has_value());
   REQUIRE(r_ipw.has_value());
@@ -183,7 +184,7 @@ TEST_CASE("Gwet variance is symmetric and PSD on quadratic-weight fixture") {
   RealVec v(3);
   v << 1.0, 2.0, 3.0;
   auto W = ms::loss::quadratic_weights(3, v);
-  auto r = ms::estimate_gwet(x, *W);
+  auto r = ms::research::estimate_gwet(x, *W);
   REQUIRE(r.has_value());
   check_symmetric_psd(r->vcov);
 }
@@ -209,7 +210,7 @@ TEST_CASE("Gwet rejects a rater with zero observations") {
        1, 0, na_code,
        0, 0, na_code;
   auto W = ms::loss::identity_weights(2);
-  auto r = ms::estimate_gwet(x, *W);
+  auto r = ms::research::estimate_gwet(x, *W);
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::not_identified);
 }
@@ -224,9 +225,9 @@ TEST_CASE("Raw moment estimators reject incomplete rater co-observation graph") 
        na_code, 1, 1;
   auto W = ms::loss::identity_weights(2);
 
-  auto available = ms::estimate_available(x, *W);
+  auto available = ms::research::estimate_available(x, *W);
   auto ipw = ms::estimate_ipw(x, *W);
-  auto gwet = ms::estimate_gwet(x, *W);
+  auto gwet = ms::research::estimate_gwet(x, *W);
   REQUIRE(!available.has_value());
   REQUIRE(!ipw.has_value());
   REQUIRE(!gwet.has_value());

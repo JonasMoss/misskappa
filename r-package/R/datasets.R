@@ -8,7 +8,7 @@
 #' @source Fleiss, J. L. (1971). Measuring nominal scale agreement among many
 #'   raters. \emph{Psychological Bulletin}, 76(5), 378-382.
 #' @examples
-#' kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+#' agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 #' @keywords datasets
 "dat.fleiss1971"
 
@@ -24,7 +24,7 @@
 #' @source Carried over from the legacy `misskappa` package. It appears as an
 #'   example in Gwet, K. L. (2014), \emph{Handbook of Inter-Rater Reliability}.
 #' @examples
-#' kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
+#' agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
 #' @keywords datasets
 "dat.gwet2014"
 
@@ -41,7 +41,7 @@
 #'   interrater agreement in Stata. \emph{The Stata Journal}, 18(4), 871-901.
 #'   \doi{10.1177/1536867X1801800408}
 #' @examples
-#' kappa(dat.klein2018, estimator = "ipw")
+#' agreement(dat.klein2018, estimator = "ipw")
 #' @keywords datasets
 "dat.klein2018"
 
@@ -56,7 +56,7 @@
 #'   codes `1`--`5`.
 #' @source Carried over from the legacy `misskappa` package (Zapf et al., 2016).
 #' @examples
-#' kappa(dat.zapf2016, estimator = "pairwise")
+#' agreement(dat.zapf2016, estimator = "pairwise")
 #' @keywords datasets
 "dat.zapf2016"
 
@@ -89,51 +89,9 @@
 #' smile <- with(dat.mcduff2019,
 #'               tapply(rating_smile, list(item, judge), function(z) z[1]))
 #' smile <- matrix(as.numeric(smile), nrow = nrow(smile))
-#' kappa_counts(ratings_to_counts(smile), weight = "quadratic")
+#' agreement_counts(ratings_to_counts(smile), weight = "quadratic")
 #' @keywords datasets
 "dat.mcduff2019"
-
-#' Holzinger & Swineford (1939) mental-ability battery
-#'
-#' The classic factor-analysis teaching dataset: 301 seventh- and eighth-grade
-#' students from two schools each take nine cognitive-ability tests. The nine
-#' continuous scored items split into three subscales, *visual* (`x1`--`x3`),
-#' *textual* (`x4`--`x6`), and *speed* (`x7`--`x9`), which makes it a compact,
-#' complete real battery for coefficient alpha: estimate a subscale's alpha with
-#' [alpha()], compare reliabilities across the three subscales with a G-way
-#' [alpha_test()], or compare a subscale across the two schools with an
-#' independent-sample [alpha_test()]. Being complete, it is also a convenient
-#' base for illustrating the missing-data estimators under deliberate amputation.
-#' The data are factual 1939 measurements and are in the public domain.
-#'
-#' @format A 301 x 15 data frame:
-#'   \describe{
-#'     \item{id}{subject identifier.}
-#'     \item{sex}{1 = male, 2 = female.}
-#'     \item{ageyr, agemo}{age, years and months.}
-#'     \item{school}{factor, with levels `"Pasteur"` (n = 156) and `"Grant-White"` (n = 145).}
-#'     \item{grade}{school grade.}
-#'     \item{x1, x2, x3}{visual subscale: visual perception, cubes, lozenges.}
-#'     \item{x4, x5, x6}{textual subscale: paragraph comprehension, sentence
-#'       completion, word meaning.}
-#'     \item{x7, x8, x9}{speed subscale: speeded addition, speeded dot counting,
-#'       speeded discrimination of straight and curved capitals.}
-#'   }
-#' @source The `HolzingerSwineford1939` data frame distributed with the
-#'   \pkg{lavaan} package, originally Holzinger & Swineford (1939).
-#' @references
-#'   Holzinger, K. J., & Swineford, F. (1939). \emph{A study in factor analysis:
-#'   The stability of a bi-factor solution}. Supplementary Educational
-#'   Monographs, No. 48. University of Chicago.
-#'
-#'   Rosseel, Y. (2012). lavaan: An R package for structural equation modeling.
-#'   \emph{Journal of Statistical Software}, 48(2), 1-36.
-#'   \doi{10.18637/jss.v048.i02}
-#' @examples
-#' # Coefficient alpha for the textual subscale (continuous items).
-#' alpha(dat.holzinger1939[, c("x4", "x5", "x6")], estimator = "nt_fiml")
-#' @keywords datasets
-"dat.holzinger1939"
 
 #' Vanbelle (2019) crackles lung-sound agreement study (vector-valued ratings)
 #'
@@ -144,7 +102,7 @@
 #' the Netherlands `NLD`, pulmonologists `PUL`, and medical students `STU`).
 #' Because each observer rates a patient at all six sites, every rating is a
 #' six-component *vector*, which makes this the worked example for the
-#' vector-valued (component-separable) path of [kappa()]: pass the array and
+#' vector-valued (component-separable) path of [agreement()]: pass the array and
 #' pick a component loss with `weight`. Ratings are complete (no missing
 #' entries). The data are factual binary classifications and are treated as
 #' public domain.
@@ -173,7 +131,7 @@
 #' @examples
 #' # Vector-valued agreement across the six sites for the four expert observers,
 #' # with the default Hamming component loss (count of disagreeing sites).
-#' kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+#' agreement(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 #' @keywords datasets
 "dat.vanbelle2019"
 
@@ -188,11 +146,11 @@
 #' overlapping panels (raters `1,2,3`, then `3,4,5`, then `5,6,1`), so the rater
 #' co-observation graph is *connected but not complete*. Some rater pairs
 #' (for example raters 2 and 4) never rate the same subject. That is exactly the
-#' regime where the saturated coefficients are not identified: `kappa()` with
+#' regime where the saturated coefficients are not identified: `agreement()` with
 #' `estimator = "pairwise"`, `"nt_fiml"`, or `"cat_fiml"` stops with an
-#' identifiability error, while the compound-symmetry estimators
-#' `"nt_fiml_cs"` and `"pairwise_cs"`, which need only a connected graph, still
-#' fit. The build script `data_raw/tenhove2025.R` regenerates it from a fixed
+#' identifiability error, while the compound-symmetry estimator
+#' `"nt_fiml_cs"`, which needs only a connected graph, still fits. The build
+#' script `data_raw/tenhove2025.R` regenerates it from a fixed
 #' seed.
 #'
 #' @format A 60 x 6 integer matrix. Columns `rater1`--`rater6` hold ordinal
@@ -208,10 +166,9 @@
 #' @examples
 #' # The co-observation graph is connected but incomplete, so the saturated
 #' # estimators are not identified ...
-#' try(kappa(dat.tenhove2025, estimator = "nt_fiml"))
+#' try(agreement(dat.tenhove2025, estimator = "nt_fiml"))
 #'
-#' # ... while the compound-symmetry estimators need only connectivity.
-#' kappa(dat.tenhove2025, estimator = "nt_fiml_cs")
-#' kappa(dat.tenhove2025, estimator = "pairwise_cs")
+#' # ... while the compound-symmetry estimator needs only connectivity.
+#' agreement(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
 #' @keywords datasets
 "dat.tenhove2025"

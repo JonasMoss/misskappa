@@ -24,7 +24,7 @@ test_that("available raw complete-data matches the irrCAC oracle", {
   )
   storage.mode(x) <- "integer"
 
-  fit <- estimate_kappa_raw(x, method = "available", weight = "identity")
+  fit <- research_kappa_raw(x, method = "available", weight = "identity")
 
   oracle_estimate <- c(
     Conger = 0.21052631578947364,
@@ -45,7 +45,7 @@ test_that("available raw complete-data matches the irrCAC oracle", {
 })
 
 test_that("counts complete-data matches the irrCAC oracle", {
-  fit <- kappa_counts(dat.fleiss1971, weight = "nominal")
+  fit <- agreement_counts(dat.fleiss1971, weight = "nominal")
 
   oracle_estimate <- c(
     Fleiss = 0.43024452006014097,

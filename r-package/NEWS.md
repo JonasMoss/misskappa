@@ -1,33 +1,160 @@
-# misskappa (development version)
+# misskappa 3.0.0
+
+misskappa is now an agreement-only package. Code written for 2.0.0 needs the
+renames below.
+
+## Breaking changes
+
+* Coefficient alpha is removed: `alpha()`, `alpha_test()`, the C++ alpha
+  estimators, and the `dat.holzinger1939` dataset. The last commit with alpha
+  is tagged `alpha-final`.
+* The public functions are renamed so the package no longer masks
+  `base::kappa()`: `kappa()` is now `agreement()`, `kappa_counts()` is
+  `agreement_counts()`, and `kappa_test()` is `agreement_test()`.
+* Subjects with no observed rating are dropped by every estimator, so `n` and
+  the influence rows count only rated subjects. Before, the normal-theory
+  FIMLs dropped them and the other estimators kept them.
+* Numeric ratings are matched as labels, so 0.5 and 1.2 are two categories.
+  Before, the categorical estimators silently truncated them to integers.
+
+## New features
+
+* `agreement()` gains `categories`, which declares the full rating scale,
+  including categories nobody used. The scale sets Brennan-Prediger's chance
+  baseline and the range that scales the linear and quadratic weights. Before,
+  both came from the observed categories only, so a 1-5 scale on which nobody
+  chose 5 was treated as 1-4, and `values = 1:5` was an error.
+* `agreement()` accepts character, logical, and factor ratings. A data frame
+  whose columns are factors with shared levels takes its scale from the levels.
+  Fits record the scale used as `fit$categories`. Text ratings have no order
+  of their own, so linear and quadratic weights and the scored estimators
+  need `categories` (or factors with shared levels) for them, and
+  `ratings_to_counts()` orders its columns by shared factor levels.
+* Influence rows are named by subject (row names, or row numbers), and
+  `agreement_test(paired = TRUE)` matches fits by subject. A subject unrated
+  in one fit contributes nothing to it, so fits with different missing rows
+  can be compared. Duplicated row names are an error in paired tests.
+* A coefficient whose chance disagreement is zero (every rating in one
+  category) is reported as undefined with a warning, and its variance is `NA`
+  instead of a misleading zero.
+
+## Documentation
+
+* The help pages are shorter and name the recommended default estimators
+  (`"ipw"` for `agreement()`, `"fleiss_cuzick"` for `agreement_counts()`).
+* The documentation is consolidated into three pages: the getting-started
+  vignette (now including equality tests and custom contrasts), a
+  coefficients, estimators, and validation article, and a beyond-pairwise
+  article (g-wise kernels and vector-valued ratings).
+
+## Minor
+
+* Error messages no longer show internal function calls.
+* `psych` and `coefficientalpha` leave Suggests.
+
+## Internals
+
+* Unexported code is split into plumbing (dot-prefixed helpers the public
+  functions call) and research entry points (`research_*()` in
+  `R/research.R`, and the C++ namespace `misskappa::research`), which no
+  public function reaches and which carry no stability promise. Former
+  internal names: `estimate_kappa_raw()` -> `research_kappa_raw()`,
+  `estimate_kappa_fiml_multi()` -> `research_kappa_fiml_multi()`,
+  `.kappa_pairwise_cs()` -> `research_kappa_pairwise_cs()`,
+  `kappa_quadratic()` -> `research_kappa_quadratic()`, `kappa_continuous()`
+  -> `research_kappa_continuous()`, `kappa_gwise()` ->
+  `research_kappa_gwise()`, `joint_vcov()` -> `research_joint_vcov()`.
+* The internal `wald_test()` and the C++-only SQUAREM option of the
+  categorical EM are removed. Arbitrary contrasts are built from `fit$psi`
+  (see the influence-functions article).
+* The simulation experiments and research notes moved out of the public
+  repository.
+
+# misskappa 2.0.0
+
+This release tightens the R interface. Several changes break code written for
+1.x, so read the first section before upgrading.
+
+## Breaking changes
+
+* Brennan-Prediger is reported only when the rating scale is declared. The
+  scored estimators `kappa(estimator = "nt_fiml")` and `"nt_fiml_cs"` report it
+  when `values` is supplied (a uniform draw from the declared scores) and, for
+  vector-valued ratings, when `ranges` is supplied. Before, they fell back to a
+  continuous uniform on the observed score range, so the coefficient depended
+  on whether `values` was passed (for codes 1 to 5 the two chance baselines
+  differ by a factor of 1.5) and drifted with the sample range. The categorical
+  estimators `"ipw"` and `"cat_fiml"` are unchanged.
+* `kappa_counts(estimator = "nt_fiml")` is renamed `"nt_fiml_cs"`, so that the
+  estimator name carries the covariance structure everywhere (it fits the
+  exchangeable compound-symmetry model). It now defaults to
+  `weight = "quadratic"`.
+* `kappa()` errors on `...` arguments that do not apply to the input, such as
+  typos, `W` on a matrix, `values` or `g` on an array, or `ranges` with
+  `"pairwise"`. Every estimator also errors on `em_options` entries it does not
+  read, including any `em_options` for the moment estimators.
+* The `em_options$covariance` and `em_options$mean` shims deprecated in 1.2.0
+  are removed (use `estimator = "nt_fiml_cs"`), and so is the no-op
+  `em_options$fd_h`.
+* `kappa(estimator = "pairwise")` no longer runs the complete-data g-wise
+  estimator for non-quadratic `g > 2`. Use `"ipw"`, which is the same estimator
+  when no ratings are missing.
+* `kappa(estimator = "pairwise_cs")` is no longer offered. The estimator stays
+  in the package as an internal function for simulations.
+* The `sim` list of simulation helpers is removed.
+* `kappa_test()` and `alpha_test()` default to `paired = FALSE` (independent
+  samples), as `t.test()` does. `kappa_test()` compares the first coefficient
+  of the first fit by default (`"Conger"` for `kappa()`, `"Fleiss"` for
+  `kappa_counts()`), and `value` must be 0 when more than two fits are
+  compared.
+* Alpha fits no longer carry `weight = "score"`, and vector-valued fits record
+  the `weight` the user asked for (the component loss stays in `fit$loss`).
 
 ## New features
 
 * Complete-data small-sample intervals: supported `kappa()`, `kappa_counts()`,
-  and `alpha()` fits now carry exact leave-one-subject-out evaluations.
+  and `alpha()` fits carry exact leave-one-subject-out evaluations.
   `confint(method = "jackknife")` forms natural, Fisher, or log-complement
   transformed delete-one t intervals. Exact-boundary kappa uses a one-sided
-  disagreement-event/chance fallback; exact-boundary alpha remains explicitly
+  disagreement-event/chance fallback, and exact-boundary alpha is explicitly
   unsupported. Wald intervals remain the default, and missing-data inference
   is unchanged.
-
+* Fits record the number of subjects `n`, which `print()` shows. `print()`
+  also notes when a normal-theory EM did not converge.
+* `as.data.frame()` gains `estimator`, `lower`, and `upper` columns, so fits
+  can be stacked with `rbind()`. Extra arguments go to `confint()`.
+* `kappa_test()` and `alpha_test()` results carry `null.value` and
+  `alternative`, so the printed test states its hypothesis.
 * New dataset `dat.tenhove2025`: a *synthetic* planned-incomplete inter-rater
   design (60 subjects, 6 raters, ordinal `1`--`5` scores) whose rater
   co-observation graph is connected but not complete, in the style of the
-  planned-incomplete ICC designs of ten Hove et al. (2025). It illustrates the
-  compound-symmetry estimators (`"nt_fiml_cs"`, `"pairwise_cs"`) recovering the
-  coefficient on a design where the saturated estimators are not identified.
+  planned-incomplete ICC designs of ten Hove et al. (2025). It shows
+  `"nt_fiml_cs"` recovering the coefficient on a design where the saturated
+  estimators are not identified.
 
 ## Documentation
 
+* `?confint.misskappa_estimate` lists where jackknife intervals are available,
+  and `as.data.frame()` has its own help page.
+* Internal functions no longer have help pages.
 * New "Working With Influence Functions" how-to article: the
   `vcov == crossprod(psi) / n^2` identity, and building custom contrasts and
   paired comparisons by hand from `fit$psi` / `influence()`.
 * The "Missingness And Estimators" article gains a worked compound-symmetry
   example on `dat.tenhove2025` (saturated non-identified versus CS fit).
-* `kappa()`, `alpha()`, and `kappa_counts()` now reference the two methods
-  papers (in preparation), and `inst/CITATION` lists them as placeholders to be
+* `kappa()`, `alpha()`, and `kappa_counts()` reference the two methods papers
+  (in preparation), and `inst/CITATION` lists them as placeholders to be
   updated on preprint and on publication.
-* `kappa_counts()` examples now include the exchangeable `estimator = "nt_fiml"`.
+
+## Internals
+
+* The test suite no longer calls the sibling package magmaan. The normal-FIML
+  parity tests compare against a pure-R reference EM and sandwich kept in a
+  test helper. `utils` joins Imports and `coefficientalpha` joins Suggests.
+* The C++ library drops `EmOptions::fd_h` and moves the research-only Louis
+  diagnostic and the `build_psi_from_phi()` helper into private headers. Its
+  headers now state that the C++ interface is the R package's engine and
+  carries no separate stability guarantee.
 
 # misskappa 1.2.0
 

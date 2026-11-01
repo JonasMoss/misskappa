@@ -1,20 +1,21 @@
 # Quadratic vector kappa via first and second moments.
 #
-# This is the vector analogue of kappa_quadratic_fiml(): for squared vector
+# This is the vector analogue of .kappa_quadratic_fiml(): for squared vector
 # loss with a full feature metric W, Conger and Fleiss are smooth functions of
 # the stacked rater-feature mean and covariance. The pairwise path is the
 # pairwise-available covariance plug-in; the FIML path reuses the saturated
-# normal EM / score / information helpers from alpha_continuous.R.
+# normal EM / score / information machinery of the C++ normal-FIML backend.
 
 .kvq_flatten <- function(x) {
   dims <- dim(x)
   if (length(dims) != 3L) {
-    stop("'x' must be a subjects-by-raters-by-features array.")
+    stop("'x' must be a subjects-by-raters-by-features array.", call. = FALSE)
   }
   if (dims[1L] < 1L || dims[2L] < 2L || dims[3L] < 1L) {
-    stop("'x' must have at least one subject, two raters, and one feature.")
+    stop("'x' must have at least one subject, two raters, and one feature.",
+         call. = FALSE)
   }
-  if (!is.numeric(x)) stop("'x' must be numeric.")
+  if (!is.numeric(x)) stop("'x' must be numeric.", call. = FALSE)
   storage.mode(x) <- "double"
 
   n <- dims[1L]; R <- dims[2L]; p <- dims[3L]
@@ -31,12 +32,13 @@
   if (is.null(W)) W <- diag(p)
   W <- as.matrix(W)
   if (!is.numeric(W) || any(dim(W) != c(p, p)) || any(!is.finite(W))) {
-    stop("'W' must be a finite numeric features-by-features matrix.")
+    stop("'W' must be a finite numeric features-by-features matrix.",
+         call. = FALSE)
   }
-  if (max(abs(W - t(W))) > 1e-10) stop("'W' must be symmetric.")
+  if (max(abs(W - t(W))) > 1e-10) stop("'W' must be symmetric.", call. = FALSE)
   W <- (W + t(W)) / 2
   ev <- eigen(W, symmetric = TRUE, only.values = TRUE)$values
-  if (min(ev) < -1e-8) stop("'W' must be positive semidefinite.")
+  if (min(ev) < -1e-8) stop("'W' must be positive semidefinite.", call. = FALSE)
   W
 }
 
@@ -45,10 +47,12 @@
   ranges <- as.matrix(ranges)
   if (!is.numeric(ranges) || nrow(ranges) != p || ncol(ranges) != 2L ||
       any(!is.finite(ranges))) {
-    stop("'ranges' must be a finite features-by-2 matrix of (lo, hi) per feature.")
+    stop("'ranges' must be a finite features-by-2 matrix of (lo, hi) per feature.",
+         call. = FALSE)
   }
   widths <- ranges[, 2L] - ranges[, 1L]
-  if (any(widths <= 0)) stop("'ranges' must have hi > lo for every feature.")
+  if (any(widths <= 0)) stop("'ranges' must have hi > lo for every feature.",
+                             call. = FALSE)
   as.numeric(widths)
 }
 
@@ -111,7 +115,8 @@
   q <- ncol(X)
   M <- is.finite(X)
   if (any(colSums(M) == 0L)) {
-    stop("every rater-feature cell must be observed for at least one subject.")
+    stop("every rater-feature cell must be observed for at least one subject.",
+         call. = FALSE)
   }
 
   X0 <- X
@@ -123,7 +128,8 @@
 
   p1 <- count / n
   p2 <- crossprod(M) / n
-  if (any(p2 <= 0)) stop("every rater-feature pair needs at least one overlap.")
+  if (any(p2 <= 0)) stop("every rater-feature pair needs at least one overlap.",
+                         call. = FALSE)
   Sigma <- matrix(0, q, q)
   for (a in seq_len(q)) {
     for (b in a:q) {
@@ -163,7 +169,8 @@
   X <- X[rowSums(is.finite(X)) > 0L, , drop = FALSE]
   Rmiss <- is.finite(X)
   if (any(colSums(Rmiss) == 0L)) {
-    stop("every rater-feature cell must be observed for at least one subject.")
+    stop("every rater-feature cell must be observed for at least one subject.",
+         call. = FALSE)
   }
   opt <- utils::modifyList(
     list(tol = 1e-8, max_iter = 10000L), em_options
@@ -203,7 +210,7 @@
 #' feature-weight matrix. The `"pairwise"` method uses pairwise-available
 #' covariance moments and is MCAR-oriented (Conger and Fleiss only). The
 #' `"nt_fiml"` method fits the saturated normal mean/covariance by EM and is
-#' the vector analogue of [kappa_quadratic_fiml()]. The `"nt_fiml_cs"` method
+#' the vector analogue of [.kappa_quadratic_fiml()]. The `"nt_fiml_cs"` method
 #' fits the same normal FIML under the block compound-symmetry covariance
 #' `Sigma = J_R \%x\% Psi + I_R \%x\% E`. With a quadratic weight this
 #' is the covariance/variance-components route used for Lin's concordance
@@ -232,9 +239,7 @@
 #' @param em_options Used by `"nt_fiml"` / `"nt_fiml_cs"`. A named list with `tol`
 #'   and `max_iter`. The covariance structure is selected by `method` (the
 #'   estimator name), so `mean` must be `"free"`. The exchangeable equal-mean
-#'   model has not been generalized to vector-valued ratings. `fd_h` is accepted
-#'   for backward compatibility and ignored because the observed information is
-#'   analytic.
+#'   model has not been generalized to vector-valued ratings.
 #' @param ranges Optional features-by-2 matrix of `(lo, hi)` score bounds, one
 #'   row per feature, that fixes the Brennan-Prediger chance baseline
 #'   `sum_a W_aa (hi_a - lo_a)^2 / 6` instead of estimating each width from the
@@ -266,8 +271,8 @@
 #' Lin, L. I.-K. (1989). A concordance correlation coefficient to evaluate
 #' reproducibility. \emph{Biometrics}, 45(1), 255--268.
 #'
-#' @keywords internal
-kappa_vector_quadratic <- function(x,
+#' @noRd
+.kappa_vector_quadratic <- function(x,
                                    method = c("pairwise", "nt_fiml", "nt_fiml_cs"),
                                    W = NULL,
                                    em_options = list(),
@@ -286,24 +291,20 @@ kappa_vector_quadratic <- function(x,
   } else {
     # the estimator name selects the covariance structure, mirroring the scalar
     # surface: nt_fiml is saturated, nt_fiml_cs the block compound symmetry.
-    if (method == "nt_fiml_cs") em_options$covariance <- "variance_components"
+    em_options$covariance <- if (method == "nt_fiml_cs") {
+      "variance_components"
+    } else {
+      "saturated"
+    }
     .kvq_fiml(prep$X, prep$R, prep$features, W, em_options = em_options,
               widths = widths)
   }
 
-  structure(
-    list(
-      estimates = fit$estimates,
-      vcov = fit$vcov,
-      psi = fit$psi,
-      method = paste0("vector-quadratic-", method),
-      weight = "quadratic",
-      W = W,
-      moments = list(mu = fit$mu, Sigma = fit$Sigma,
-                     summaries = fit$summaries,
-                     iterations = fit$iterations,
-                     converged = fit$converged)
-    ),
-    class = "misskappa_estimate"
-  )
+  .new_estimate(fit, names(fit$estimates),
+                method = paste0("vector-quadratic-", method),
+                weight = "quadratic", W = W,
+                moments = list(mu = fit$mu, Sigma = fit$Sigma,
+                               summaries = fit$summaries,
+                               iterations = fit$iterations,
+                               converged = fit$converged))
 }

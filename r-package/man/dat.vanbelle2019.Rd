@@ -31,7 +31,7 @@ recorded at six chest sites, classified for the presence of crackles
 the Netherlands `NLD`, pulmonologists `PUL`, and medical students `STU`).
 Because each observer rates a patient at all six sites, every rating is a
 six-component *vector*, which makes this the worked example for the
-vector-valued (component-separable) path of [kappa()]: pass the array and
+vector-valued (component-separable) path of [agreement()]: pass the array and
 pick a component loss with `weight`. Ratings are complete (no missing
 entries). The data are factual binary classifications and are treated as
 public domain.
@@ -39,7 +39,7 @@ public domain.
 \examples{
 # Vector-valued agreement across the six sites for the four expert observers,
 # with the default Hamming component loss (count of disagreeing sites).
-kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+agreement(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 }
 \references{
 Vanbelle, S. (2019). Asymptotic variability of (multilevel) multirater

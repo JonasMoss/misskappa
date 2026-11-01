@@ -1,7 +1,6 @@
-# Public equality-test front doors. These stand on the exposed primitives
-# (coef, vcov, and the fit$psi influence-function component); the general
-# linear-hypothesis engine (joint_vcov / wald_test) stays internal for the
-# rare arbitrary-contrast case.
+# Public equality-test front door. It stands on the exposed primitives (coef,
+# vcov, and the fit$psi influence-function component). Arbitrary contrasts are
+# built from fit$psi directly (see the getting-started vignette).
 
 .fit_labels <- function(fits) {
   labs <- names(fits)
@@ -17,36 +16,26 @@
 # independent -> block-diagonal of the per-fit vcovs.
 .coef_equality_test <- function(fits, coef, paired, value, labels) {
   if (!all(vapply(fits, inherits, logical(1), "misskappa_estimate")))
-    stop("all inputs must be 'misskappa_estimate' objects.")
+    stop("all inputs must be 'misskappa_estimate' objects.", call. = FALSE)
   G <- length(fits)
+  if (G > 2L && !identical(value, 0)) {
+    stop("'value' must be 0 when comparing more than two fits.", call. = FALSE)
+  }
   for (i in seq_len(G))
     if (!coef %in% names(stats::coef(fits[[i]])))
-      stop(sprintf('coefficient "%s" not found in %s.', coef, labels[i]))
+      stop(sprintf('coefficient "%s" not found in %s.', coef, labels[i]),
+           call. = FALSE)
   beta <- vapply(fits, function(f) stats::coef(f)[[coef]], numeric(1))
 
   if (G == 1L) {
     se2  <- stats::vcov(fits[[1L]])[coef, coef]
     stat <- (beta - value)^2 / se2
     df   <- 1L
-    method <- sprintf("One-sample Wald test that %s = %g", coef, value)
+    method <- sprintf("One-sample Wald test of %s", coef)
+    null_value <- stats::setNames(value, coef)
   } else {
     if (paired) {
-      psis <- lapply(seq_len(G), function(i) {
-        m <- fits[[i]]$psi
-        if (is.null(m) || prod(dim(m)) == 0L)
-          stop(sprintf("paired = TRUE needs influence functions; %s has none.",
-                       labels[i]))
-        m[, coef]
-      })
-      if (length(unique(lengths(psis))) != 1L)
-        stop("paired fits must have the same number of subjects; got ",
-             paste(lengths(psis), collapse = ", "), ".")
-      ids <- lapply(fits, function(f) rownames(f$psi))   # alignment check, if ids present
-      if (!any(vapply(ids, is.null, logical(1))) && length(unique(ids)) != 1L)
-        stop("paired fits are not row-aligned (their fit$psi subject ids differ).")
-      psi <- do.call(cbind, psis)
-      n   <- nrow(psi)
-      V   <- crossprod(psi) / (as.numeric(n) * as.numeric(n))
+      V <- .paired_vcov(fits, coef, labels)
     } else {
       V <- diag(vapply(fits, function(f) stats::vcov(f)[coef, coef], numeric(1)), G)
     }
@@ -54,9 +43,14 @@
     delta <- as.numeric(L %*% beta) - value
     stat  <- as.numeric(crossprod(delta, qr.solve(L %*% V %*% t(L), delta)))
     df    <- G - 1L
-    method <- sprintf("%s test of equal %s across %d fits",
-                      if (paired) "Paired (dependent)" else "Independent-sample",
+    method <- sprintf("%s Wald test of equal %s across %d fits",
+                      if (paired) "Paired" else "Independent-sample",
                       coef, G)
+    null_value <- if (G == 2L) {
+      stats::setNames(value, sprintf("difference in %s", coef))
+    } else {
+      NULL
+    }
   }
 
   structure(list(
@@ -64,110 +58,97 @@
     parameter = stats::setNames(df, "df"),
     p.value   = stats::pchisq(stat, df, lower.tail = FALSE),
     estimate  = stats::setNames(beta, labels),
+    null.value = null_value,
+    alternative = if (is.null(null_value)) NULL else "two.sided",
     method    = method,
     data.name = paste(labels, collapse = ", ")
   ), class = "htest")
 }
 
-#' Test equality of a kappa agreement coefficient across fits
-#'
-#' @description
-#' Wald test that a chosen kappa coefficient is equal across two or more
-#' [kappa()] fits (or, with a single fit, equal to `value`). Pass the fits to
-#' `...`, naming them to label the output.
-#'
-#' Set `paired = TRUE` when the fits are computed on the **same subjects in the
-#' same row order** (two estimators, two weight schemes, two rated attributes,
-#' rater pairs, ...). The dependence is taken from the per-subject influence
-#' functions (`fit$psi`). Set `paired = FALSE` for independent samples, where
-#' the variances add. With more than two fits this is the joint hypothesis that
-#' all are equal (`G - 1` degrees of freedom).
-#'
-#' @param ... Two or more `misskappa_estimate` objects from [kappa()] (a single
-#'   fit tests `coef = value`). Names become labels in the output.
-#' @param coef Coefficient to compare. Default `"Conger"`.
-#' @param paired `TRUE` (default) for same-subject fits, `FALSE` for independent
-#'   samples.
-#' @param value Null value: the coefficient (single fit) or the pairwise
-#'   difference (default `0`).
-#'
-#' @return An `htest` object.
-#'
-#' @examples
-#' # Paired: are two rater pairs equally consistent on the same 50 subjects
-#' # (Zapf 2016)? The dependence is read from the per-subject influence
-#' # functions, so paired = TRUE (the default) is appropriate.
-#' kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
-#'            CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
-#'            coef = "Conger")
-#'
-#' # Independent samples (different subjects in two studies): variances add.
-#' kappa_test(gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-#'            klein = kappa(dat.klein2018, estimator = "ipw"),
-#'            coef = "Conger", paired = FALSE)
-#'
-#' @export
-kappa_test <- function(..., coef = "Conger", paired = TRUE, value = 0) {
-  fits <- list(...)
-  if (length(fits) < 1L) stop("kappa_test() needs at least one fit.")
-  .coef_equality_test(fits, coef = coef, paired = paired, value = value,
-                      labels = .fit_labels(fits))
+# Covariance of one coefficient across fits on the same subjects, from the
+# per-subject influence rows. Each fit's influence rows are scaled by its own
+# subject count, so Cov(theta_j, theta_k) = sum_i psi_ij psi_ik / (n_j n_k).
+# Rows are matched by subject id (agreement() names them by row name or row
+# number). A subject missing from a fit, because it had no ratings there,
+# contributes zero influence to that fit. Fits without ids must have the same
+# number of rows and are matched by position.
+.paired_vcov <- function(fits, coef, labels) {
+  psis <- lapply(seq_along(fits), function(i) {
+    m <- fits[[i]]$psi
+    if (is.null(m) || prod(dim(m)) == 0L)
+      stop(sprintf("paired = TRUE needs influence functions; %s has none.",
+                   labels[i]), call. = FALSE)
+    m[, coef, drop = FALSE]
+  })
+  n <- vapply(psis, nrow, numeric(1))
+  ids <- lapply(psis, rownames)
+  if (any(vapply(ids, is.null, logical(1)))) {
+    if (length(unique(n)) != 1L)
+      stop("paired fits must have the same number of subjects; got ",
+           paste(n, collapse = ", "), ".", call. = FALSE)
+    psi <- do.call(cbind, psis)
+  } else {
+    dup <- vapply(ids, anyDuplicated, integer(1)) > 0L
+    if (any(dup)) {
+      stop(sprintf(paste0(
+        "paired = TRUE matches subjects by row name, but %s has duplicated ",
+        "row names. Give the rating data unique row names."),
+        paste(labels[dup], collapse = ", ")), call. = FALSE)
+    }
+    all_ids <- unique(unlist(ids))
+    psi <- vapply(psis, function(m) {
+      out <- numeric(length(all_ids))
+      out[match(rownames(m), all_ids)] <- m[, 1L]
+      out
+    }, numeric(length(all_ids)))
+    psi <- matrix(psi, nrow = length(all_ids))
+  }
+  psi <- sweep(psi, 2L, n, "/")
+  crossprod(psi)
 }
 
-#' Test equality of coefficient alpha across fits
+#' Test equality of an agreement coefficient across fits
 #'
 #' @description
-#' Wald test that coefficient alpha is equal across two or more [alpha()] fits
-#' (or, with a single fit, equal to `value`). See [kappa_test()] for the
-#' `paired` semantics. `alpha` is the only coefficient, so there is no `coef`
-#' argument.
+#' Wald test that a coefficient is equal across two or more fits, or equal to
+#' `value` for a single fit. With more than two fits it tests that all are
+#' equal (`G - 1` degrees of freedom).
 #'
-#' @param ... Two or more `misskappa_estimate` objects from [alpha()]. Names
-#'   become labels in the output.
-#' @param paired `TRUE` (default) for same-subject fits, `FALSE` for independent
-#'   samples.
-#' @param value Null value for the difference (or, with one fit, for alpha).
-#'   Default `0`.
+#' Fits are independent samples by default, so their variances add. Use
+#' `paired = TRUE` for fits on the same subjects (two estimators, two
+#' attributes, two rater groups, ...): the dependence then comes from the
+#' per-subject influence rows, matched by the row names of the rating data, or
+#' by row number when there are none.
+#'
+#' @param ... Fits from [agreement()] or [agreement_counts()]. Names label the
+#'   output.
+#' @param coef Coefficient to compare. Defaults to the first one (`"Conger"`
+#'   for [agreement()], `"Fleiss"` for [agreement_counts()]).
+#' @param paired `FALSE` (default) for independent samples, `TRUE` for fits on
+#'   the same subjects.
+#' @param value Null value for the coefficient (one fit) or the difference
+#'   (two fits). Default `0`.
 #'
 #' @return An `htest` object.
 #'
 #' @examples
-#' # Do the three Holzinger-Swineford (1939) subscales have equal reliability?
-#' # The same students take all three, so the fits are paired (G-way, df = 2).
-#' subs <- list(visual  = c("x1", "x2", "x3"),
-#'              textual = c("x4", "x5", "x6"),
-#'              speed   = c("x7", "x8", "x9"))
-#' fits <- lapply(subs, function(v)
-#'   alpha(dat.holzinger1939[, v], estimator = "nt_fiml"))
-#' do.call(alpha_test, c(fits, list(paired = TRUE)))
+#' # Two studies with different subjects.
+#' agreement_test(gwet  = agreement(dat.gwet2014),
+#'                klein = agreement(dat.klein2018))
 #'
-#' @examplesIf requireNamespace("psych", quietly = TRUE)
-#' # Real missing data with groups: psych::bfi. The same 2800 respondents take
-#' # all five Big Five scales. Reverse-key the negatively-worded items first.
-#' data(bfi, package = "psych")
-#' neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
-#' bfi[neg] <- 7 - bfi[neg]
-#'
-#' # Dependent: are Neuroticism and Extraversion equally reliable? The same
-#' # respondents answer both, so the estimates are paired.
-#' N <- paste0("N", 1:5)
-#' E <- paste0("E", 1:5)
-#' alpha_test(N = alpha(bfi[, N], estimator = "nt_fiml"),
-#'            E = alpha(bfi[, E], estimator = "nt_fiml"),
-#'            paired = TRUE)
-#'
-#' # Independent: is Conscientiousness equally reliable across the two genders?
-#' g <- split(seq_len(nrow(bfi)), bfi$gender)
-#' C <- paste0("C", 1:5)
-#' alpha_test(
-#'   men   = alpha(bfi[g[["1"]], C], estimator = "nt_fiml"),
-#'   women = alpha(bfi[g[["2"]], C], estimator = "nt_fiml"),
-#'   paired = FALSE)
+#' # Two rater pairs on the same 50 subjects.
+#' agreement_test(AB = agreement(dat.zapf2016[, 1:2], estimator = "pairwise"),
+#'                CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
+#'                paired = TRUE)
 #'
 #' @export
-alpha_test <- function(..., paired = TRUE, value = 0) {
+agreement_test <- function(..., coef = NULL, paired = FALSE, value = 0) {
   fits <- list(...)
-  if (length(fits) < 1L) stop("alpha_test() needs at least one fit.")
-  .coef_equality_test(fits, coef = "alpha", paired = paired, value = value,
+  if (length(fits) < 1L) stop("agreement_test() needs at least one fit.",
+                              call. = FALSE)
+  if (is.null(coef) && inherits(fits[[1L]], "misskappa_estimate")) {
+    coef <- names(fits[[1L]]$estimates)[1L]
+  }
+  .coef_equality_test(fits, coef = coef, paired = paired, value = value,
                       labels = .fit_labels(fits))
 }

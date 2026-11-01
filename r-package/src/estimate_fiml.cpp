@@ -7,7 +7,9 @@
 // path is implemented; counts-format is out of Phase 1 scope.
 
 #include "misskappa/estimate.hpp"
-#include "misskappa/diagnostics.hpp"
+#include "misskappa/research.hpp"
+
+#include "detail_fiml_diagnostics.hpp"
 
 #include "detail_pattern_checks.hpp"
 
@@ -345,27 +347,6 @@ void em_sweep(
   out = (out.array() + cfg.delta).matrix() / cfg.denom;
 }
 
-bool valid_em_state(Eigen::VectorXd& theta, const EmInput& in) {
-  for (Eigen::Index i = 0; i < theta.size(); ++i) {
-    if (!(theta(i) >= 0.0) || !std::isfinite(theta(i))) return false;
-  }
-  const double total = theta.sum();
-  if (total <= zero_tol) return false;
-  theta /= total;
-
-  for (std::size_t g = 0; g < in.group_n_subjects.size(); ++g) {
-    const std::uint32_t n_comps = in.group_n_completions[g];
-    if (n_comps == 0) continue;
-    const std::uint32_t offset = in.group_offsets[g];
-    double sum_w = 0.0;
-    for (std::uint32_t k = 0; k < n_comps; ++k) {
-      sum_w += theta(static_cast<Eigen::Index>(in.completion_indices[offset + k]));
-    }
-    if (sum_w <= singular_tol) return false;
-  }
-  return true;
-}
-
 EmIterStatus run_plain_em_iterations(
     Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
   EmIterStatus status;
@@ -384,56 +365,6 @@ EmIterStatus run_plain_em_iterations(
   return status;
 }
 
-EmIterStatus run_squarem_iterations(
-    Eigen::VectorXd& theta, const EmInput& in, const EmLoopConfig& cfg) {
-  EmIterStatus status;
-  Eigen::VectorXd t1(theta.size()), t2(theta.size()), tx(theta.size());
-  Eigen::VectorXd r(theta.size()), v(theta.size());
-  while (status.iterations < cfg.iter_cap) {
-    em_sweep(theta, t1, in, cfg);
-    ++status.iterations;
-    if ((t1 - theta).cwiseAbs().maxCoeff() < cfg.tol) {
-      theta.swap(t1);
-      status.converged = true;
-      return status;
-    }
-    if (status.iterations >= cfg.iter_cap) {
-      theta.swap(t1);
-      return status;
-    }
-
-    em_sweep(t1, t2, in, cfg);
-    ++status.iterations;
-    if ((t2 - t1).cwiseAbs().maxCoeff() < cfg.tol) {
-      theta.swap(t2);
-      status.converged = true;
-      return status;
-    }
-
-    r.noalias() = t1 - theta;
-    v.noalias() = t2 - t1;
-    v -= r;
-    const double vnorm = v.norm();
-    double alpha = (vnorm > 0.0) ? -r.norm() / vnorm : -1.0;
-    if (alpha > -1.0) alpha = -1.0;
-
-    tx = theta - 2.0 * alpha * r + (alpha * alpha) * v;
-    if (!valid_em_state(tx, in)) {
-      theta.swap(t2);
-      continue;
-    }
-    if (status.iterations >= cfg.iter_cap) {
-      theta.swap(t2);
-      return status;
-    }
-
-    em_sweep(tx, t1, in, cfg);
-    ++status.iterations;
-    theta.swap(t1);
-  }
-  return status;
-}
-
 EmIterStatus run_em_iterations(
     Eigen::VectorXd& theta, const EmInput& in, EmOptions opts) {
   std::size_t n_total_subjects = 0;
@@ -442,9 +373,6 @@ EmIterStatus run_em_iterations(
     return EmIterStatus{0, true};
   }
   const EmLoopConfig cfg = make_em_loop_config(theta.size(), n_total_subjects, opts);
-  if (opts.acceleration == EmAcceleration::squarem) {
-    return run_squarem_iterations(theta, in, cfg);
-  }
   return run_plain_em_iterations(theta, in, cfg);
 }
 
@@ -1102,70 +1030,6 @@ Result<GwiseFimlMap> build_gwise_fiml_map(
   return m;
 }
 
-Result<void> validate_alpha_values(const RealVec& values) {
-  if (values.size() < 1) return misskappa::unexpected(Error::invalid_argument);
-  for (Eigen::Index k = 0; k < values.size(); ++k) {
-    if (!std::isfinite(values(k))) return misskappa::unexpected(Error::invalid_argument);
-  }
-  return {};
-}
-
-struct AlphaMap {
-  double alpha = std::numeric_limits<double>::quiet_NaN();
-  Eigen::VectorXd gradient;
-};
-
-AlphaMap build_alpha_map(const EmRunResult& em, const RealVec& values) {
-  const int R = em.R;
-  const Eigen::Index n_final = em.theta_hat.size();
-  const Eigen::VectorXd& theta = em.theta_hat;
-  const double factor = static_cast<double>(R) / static_cast<double>(R - 1);
-
-  RealMat pattern_scores = RealMat::Zero(n_final, R);
-  RealVec score_sum = RealVec::Zero(n_final);
-  RealVec score_sq_sum = RealVec::Zero(n_final);
-  RealVec mu = RealVec::Zero(R);
-  double e_score_sum_sq = 0.0;
-  double e_item_sq = 0.0;
-  double mean_score_sum = 0.0;
-
-  for (Eigen::Index u = 0; u < n_final; ++u) {
-    const auto row = unrank_tuple(em.pattern_indices[static_cast<std::size_t>(u)], R, em.c);
-    double s = 0.0;
-    double ss = 0.0;
-    for (int j = 0; j < R; ++j) {
-      const double y = values(row[static_cast<std::size_t>(j)]);
-      pattern_scores(u, j) = y;
-      mu(j) += theta(u) * y;
-      s += y;
-      ss += y * y;
-    }
-    score_sum(u) = s;
-    score_sq_sum(u) = ss;
-    mean_score_sum += theta(u) * s;
-    e_score_sum_sq += theta(u) * s * s;
-    e_item_sq += theta(u) * ss;
-  }
-
-  const double t1 = e_score_sum_sq - mean_score_sum * mean_score_sum;
-  const double t2 = e_item_sq - mu.squaredNorm();
-
-  AlphaMap out;
-  out.gradient = Eigen::VectorXd::Zero(n_final);
-  if (std::abs(t1) <= singular_tol) return out;
-  out.alpha = factor * (1.0 - t2 / t1);
-
-  for (Eigen::Index u = 0; u < n_final; ++u) {
-    const double grad_t1 = score_sum(u) * score_sum(u)
-                           - 2.0 * mean_score_sum * score_sum(u);
-    double mu_dot_y = 0.0;
-    for (int j = 0; j < R; ++j) mu_dot_y += mu(j) * pattern_scores(u, j);
-    const double grad_t2 = score_sq_sum(u) - 2.0 * mu_dot_y;
-    out.gradient(u) = factor * (t2 * grad_t1 - t1 * grad_t2) / (t1 * t1);
-  }
-  return out;
-}
-
 Result<Estimation> map_fiml_kappa(
     const EmInput& in, const EmRunResult& em, RealMatView weights,
     const FimlVarianceWorkspace& workspace) {
@@ -1232,6 +1096,8 @@ Result<Estimation> estimate_fiml(
   return map_fiml_kappa(*in_res, *em, weights, *workspace);
 }
 
+namespace research {
+
 Result<std::vector<Estimation>> estimate_fiml_many(
     IntMatView ratings, const std::vector<RealMat>& weights, EmOptions opts) {
   const int n = static_cast<int>(ratings.rows());
@@ -1267,6 +1133,8 @@ Result<std::vector<Estimation>> estimate_fiml_many(
   }
   return out;
 }
+
+}  // namespace research
 
 Result<Estimation> estimate_fiml_gwise(
     IntMatView ratings, loss::GwiseCategoricalDistance distance,
@@ -1325,39 +1193,7 @@ Result<Estimation> estimate_fiml_gwise(
                     std::move(variance->psi), std::move(variance->null_frac)};
 }
 
-Result<Estimation> estimate_alpha_fiml(
-    IntMatView ratings, const RealVec& values, EmOptions opts) {
-  const int n = static_cast<int>(ratings.rows());
-  const int R = static_cast<int>(ratings.cols());
-  if (n < 1) return misskappa::unexpected(Error::invalid_argument);
-  if (R < 2) return misskappa::unexpected(Error::invalid_argument);
-  auto valid = validate_alpha_values(values);
-  if (!valid) return misskappa::unexpected(valid.error());
-  const int C = static_cast<int>(values.size());
-
-  auto in_res = preprocess_raw(ratings, C);
-  if (!in_res) return misskappa::unexpected(in_res.error());
-  auto pattern_identified =
-      detail::require_complete_pair_observation(detail::observed_mask(ratings));
-  if (!pattern_identified) return misskappa::unexpected(pattern_identified.error());
-  auto em = run_em_preprocessed(*in_res, C, opts);
-  if (!em) return misskappa::unexpected(em.error());
-  if (em->theta_hat.size() == 0) return misskappa::unexpected(Error::numerical_error);
-  auto workspace = build_fiml_variance_workspace(*em, *in_res, opts);
-  if (!workspace) return misskappa::unexpected(workspace.error());
-
-  const AlphaMap m = build_alpha_map(*em, values);
-  RealVec estimates(1);
-  estimates(0) = m.alpha;
-
-  RealMat jacobian(1, em->theta_hat.size());
-  jacobian.row(0) = m.gradient.transpose();
-  auto variance = apply_fiml_variance_workspace(*in_res, *em, *workspace, jacobian);
-  if (!variance) return misskappa::unexpected(variance.error());
-
-  return Estimation{std::move(estimates), std::move(variance->vcov),
-                    std::move(variance->psi), std::move(variance->null_frac)};
-}
+namespace detail {
 
 Result<FimlLouisDiagnostic> diagnose_fiml_louis(
     IntMatView ratings, RealMatView weights, EmOptions opts) {
@@ -1428,5 +1264,7 @@ Result<FimlLouisDiagnostic> diagnose_fiml_louis(
   }
   return out;
 }
+
+}  // namespace detail
 
 }  // namespace misskappa

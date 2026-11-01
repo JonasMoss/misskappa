@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "misskappa/estimate.hpp"
+#include "misskappa/research.hpp"
 #include "misskappa/loss.hpp"
 
 #include <Eigen/Eigenvalues>
@@ -74,7 +75,7 @@ TEST_CASE("Continuous IPW matches legacy: quadratic loss") {
   auto [mn, mx] = finite_range(x);
   auto loss = ms::loss::quadratic_loss(mn, mx);
 
-  auto r = ms::estimate_ipw_continuous(x, *loss);
+  auto r = ms::research::estimate_ipw_continuous(x, *loss);
   REQUIRE(r.has_value());
   CHECK(std::abs(r->estimates(0) - 0.9889592202554336) < tol);
   CHECK(std::abs(r->estimates(1) - 0.9888908233278307) < tol);
@@ -85,7 +86,7 @@ TEST_CASE("Continuous Gwet matches legacy: quadratic loss") {
   auto [mn, mx] = finite_range(x);
   auto loss = ms::loss::quadratic_loss(mn, mx);
 
-  auto r = ms::estimate_gwet_continuous(x, *loss);
+  auto r = ms::research::estimate_gwet_continuous(x, *loss);
   REQUIRE(r.has_value());
   CHECK(std::abs(r->estimates(0) - 0.9893896826901533) < tol);
   CHECK(std::abs(r->estimates(1) - 0.9893239524499280) < tol);
@@ -132,8 +133,8 @@ TEST_CASE("Continuous: complete data, all three methods agree exactly") {
   auto loss = ms::loss::quadratic_loss(mn, mx);
 
   auto r_av  = ms::estimate_available_continuous(x, *loss);
-  auto r_ipw = ms::estimate_ipw_continuous(x, *loss);
-  auto r_gw  = ms::estimate_gwet_continuous(x, *loss);
+  auto r_ipw = ms::research::estimate_ipw_continuous(x, *loss);
+  auto r_gw  = ms::research::estimate_gwet_continuous(x, *loss);
   REQUIRE(r_av.has_value());
   REQUIRE(r_ipw.has_value());
   REQUIRE(r_gw.has_value());
@@ -193,7 +194,7 @@ TEST_CASE("Continuous IPW rejects a rater with zero observations") {
        3.0, 2.5, na_d,
        1.5, 2.0, na_d;
   auto loss = ms::loss::quadratic_loss(1.0, 3.0);
-  auto r = ms::estimate_ipw_continuous(x, *loss);
+  auto r = ms::research::estimate_ipw_continuous(x, *loss);
   REQUIRE(!r.has_value());
   CHECK(r.error() == ms::Error::not_identified);
 }
@@ -209,8 +210,8 @@ TEST_CASE("Continuous estimators reject incomplete rater co-observation graph") 
   auto loss = ms::loss::quadratic_loss(1.0, 2.0);
 
   auto available = ms::estimate_available_continuous(x, *loss);
-  auto ipw = ms::estimate_ipw_continuous(x, *loss);
-  auto gwet = ms::estimate_gwet_continuous(x, *loss);
+  auto ipw = ms::research::estimate_ipw_continuous(x, *loss);
+  auto gwet = ms::research::estimate_gwet_continuous(x, *loss);
   REQUIRE(!available.has_value());
   REQUIRE(!ipw.has_value());
   REQUIRE(!gwet.has_value());

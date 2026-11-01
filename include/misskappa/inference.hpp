@@ -45,24 +45,12 @@ Result<KappaDeleteOneEstimation> delete_one_kappa_complete(
     RealMatView ratings, loss::ContinuousLoss loss);
 
 // Count-format ratings. Outputs are (Fleiss, Brennan--Prediger), using the
-// same count weighting as estimate_counts(). Delete-one coefficient and
+// same count weighting as the count moment estimators. Delete-one coefficient and
 // chance values are exact even when row totals vary. Boundary item moments
 // are exposed only when all row totals are equal and at least two.
 Result<KappaDeleteOneEstimation> delete_one_kappa_counts_complete(
     IntMatView counts, RealMatView weights,
     CountWeighting weighting = CountWeighting::fleiss_cuzick);
-
-// Complete scored item matrix. Output is coefficient alpha. Ratings must be
-// finite and n >= 3. Alpha has no binomial item-disagreement boundary payload,
-// so the generic DeleteOneEstimation is sufficient.
-Result<DeleteOneEstimation> delete_one_alpha_complete(RealMatView ratings);
-
-// Generic delete-one jackknife covariance:
-//   (n - 1) / n * sum_i (theta_{(-i)} - mean theta_{(-.)})
-//                         (theta_{(-i)} - mean theta_{(-.)})'.
-// This utility is independent of the coefficient and transformation used to
-// produce `leave_one_out`.
-Result<RealMat> jackknife_covariance(RealMatView leave_one_out);
 
 }  // namespace misskappa
 

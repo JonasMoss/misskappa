@@ -8,8 +8,10 @@ A C++17 library for **agreement coefficients** — Cohen / Fleiss / Brennan-Pred
 and friends — with arbitrary numbers of raters, arbitrary pairwise loss matrices,
 and support for missing categorical ratings under MCAR and MAR. The primary
 audience is methods developers. The R package under `r-package/` is a thin
-Rcpp wrapper over the prebuilt static library, intended for empirical examples
-and the accompanying manuscripts under `papers/`.
+Rcpp wrapper over the library (vendored into the package for installs),
+intended for empirical examples and the accompanying manuscripts. The C++
+library is the R package's engine: its interface follows the package's needs
+and carries no separate stability guarantee (stated in `estimate.hpp`).
 
 The combined draft was split into a family of companion papers — IPW + AC/Gwet
 comparison, FIML / semiparametric efficiency under MAR, and the closed-form
@@ -34,9 +36,10 @@ paper") in notes that reference them.
   (`Estimation`, `EmResult`, option bags like `EmOptions`).
 - **No `std::function` on the hot path.** Continuous loss functions pass as
   small POD wrappers around function pointers.
-- **`irrCAC` is the oracle for closed-data agreement.** C++ golden tests read
-  JSON fixtures written by `tests/tools/regen_oracle.R` (which calls installed
-  irrCAC) and assert agreement to a documented tolerance. CI does not invoke R.
+- **`irrCAC` is the oracle for closed-data agreement.** Its complete-data
+  estimates and variances are frozen as literals in
+  `r-package/tests/testthat/test-parity-oracle.R`, so CI never needs irrCAC.
+  Refresh them from a local irrCAC install when a convention changes.
 - **Legacy is reference, not foundation.** The original C++17 + Armadillo
   implementation was deleted on 2026-06-02; it lives on in git history (last
   at `6b30f98`, retrievable with `git checkout 6b30f98 -- dev/legacy/misskappa`)
@@ -48,20 +51,21 @@ paper") in notes that reference them.
 - `include/misskappa/` — public headers (stable surface).
 - `src/` — implementations plus private `detail_*.hpp`.
 - `tests/unit/` — focused unit tests (doctest, header-only).
-- `tests/golden/` — fixture-based parity checks against irrCAC.
-- `tests/fixtures/` — checked-in JSON. Regenerate via `tests/tools/regen_oracle.R`.
-- `tests/tools/` — maintainer-only fixture-generation scripts (R).
+- `r-package/tests/testthat/` — R tests, including the frozen irrCAC parity
+  oracle and a pure-R normal-FIML reference (`helper-normal-fiml-oracle.R`).
 - `r-package/` — Rcpp bindings; consumes the prebuilt `libmisskappa.a`,
   separate from and not part of the C++ build.
 - `papers/` — the completed, published manuscripts that ship with this repo
   (`papers/guessing/` and `papers/kappa-sd/`), each with its own sources,
   bibliography, figures, tables, and reproduction scripts. Work-in-progress
   manuscripts (the kappa companion papers and the standalone coefficient-alpha
-  paper) live in a separate private repository, not here.
-- `docs/` — repo-level documentation assets, including shared artwork such as
-  the project logo. Generated docs output is under `docs/site/` and is ignored;
-  do not commit generated HTML.
-- `dev/notes/` — repo-level development notes (port plan, validation plan, todo).
+  paper), the simulation experiments (`experiments/`), and research notes
+  live in a separate private repository, not here.
+- `docs/` — the Doxygen configuration. Generated docs output is under
+  `docs/site/` and is ignored; do not commit generated HTML. The logo lives in
+  `r-package/man/figures/`.
+- `dev/` — build and coverage scripts; `dev/notes/todo.md` is the single
+  backlog. Research notes belong in the private papers repository.
 - `external/` (ignored) — optional upstream source mirrors for reading.
 - `resources/` (ignored) — local data and scratch.
 
@@ -98,8 +102,7 @@ Repo-root `justfile` wraps the common loops: `just build`, `just test`
 `just r-dev` (fast dev install — see "R package build" below),
 `just r-check` (fast `R CMD check` — no vignettes; `just r-check-release` for
 the full vignette-building release check), `just paper <slug>` (delegates
-to `papers/<slug>/justfile`, e.g. `just paper ipw pdf`), and
-`just regen-oracle` (regenerates `tests/fixtures/`). Coverage recipes are
+to `papers/<slug>/justfile`). Coverage recipes are
 `just cpp-cov` (clang source-based instrumentation + `llvm-cov` over the
 doctest suite; per-file summary plus HTML under `build-cov/coverage-html/`),
 `just r-cov` (`covr` over the testthat suite, which also reports the vendored
@@ -187,44 +190,74 @@ entry point per estimator, with C++ argument structure kept visible. Small R
 helpers are fine when they compose existing wrappers, validate R-shaped inputs,
 or preserve names for inspection; they should not contain parallel kappa logic.
 
-Public R surface (release target: GitHub-first; estimators + CIs, hypothesis
-tests deferred):
+Public R surface (3.0.0, GitHub-first). The package is agreement-only:
+coefficient alpha was removed in 3.0.0 (last present at tag `alpha-final`,
+which the alpha-missing paper pins).
 
 - Estimators select the method with a single `estimator=` argument:
-  - `kappa(x, estimator, weight, values, ...)` — raw ratings. `estimator` is
-    `"ipw"` or `"cat_fiml"` for categorical ratings (integer codes, any
-    `weight`), or `"pairwise"` / `"nt_fiml"` for the quadratically weighted
-    scored coefficient (these treat `x` as numeric scores and require
-    `weight = "quadratic"`). Absorbs the former `kappa_continuous`.
-  - `kappa_counts(x, estimator, weight, ...)` — counts-format input;
-    `estimator` is `"fleiss_cuzick"` or `"cat_fiml"`.
-  - `alpha(x, estimator, values, ...)` — coefficient alpha; `estimator` is
-    `"pairwise"`, `"cat_fiml"`, or `"nt_fiml"`. `alpha_continuous()` /
-    `alpha_cat_fiml()` are its internal backends.
+  - `agreement(x, estimator, weight, g, values, em_options, ...)` — raw ratings.
+    `"ipw"` / `"cat_fiml"` for categorical ratings (integer codes, any
+    `weight`); `"pairwise"` / `"nt_fiml"` / `"nt_fiml_cs"` for the
+    quadratically weighted scored coefficient (numeric scores, weight defaults
+    to `"quadratic"`). `g > 2` selects the g-wise kernels (`"ipw"`,
+    `"cat_fiml"`); a 3-D array selects vector-valued ratings, with `W`,
+    `ranges`, `feature_weights`, `loss` passed through `...`.
+  - `agreement_counts(x, estimator, weight, values, r_total, em_options)` —
+    counts-format input; `"fleiss_cuzick"`, `"cat_fiml"`, or `"nt_fiml_cs"`
+    (exchangeable compound symmetry, quadratic only).
   The two FIMLs are named distinctly (`cat_fiml` = saturated multinomial,
   `nt_fiml` = robust normal-theory) so one token never denotes two estimators;
-  the unweighted loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
-- S3 methods on `misskappa_estimate`: `print`, `coef`, `vcov`, `as.data.frame`,
-  `confint` (Wald CIs from `vcov`; `transform = "fisher"` gives a delta-method
-  interval on the `atanh` scale), and `stats::influence` (returns the
-  per-subject influence-function rows stored as `fit$psi`).
-- `sim` — a list of simulation closures (`sim$mcar`, `sim$mar_truth`,
-  `sim$jsm`). Exposed as a single object so simulation helpers occupy one
-  manual entry rather than many.
-- Datasets carried over from the legacy package: `dat.fleiss1971`,
-  `dat.gwet2014`, `dat.klein2018`, `dat.zapf2016`, `dat.mcduff2019`.
+  a `_cs` suffix always means the compound-symmetry covariance; the unweighted
+  loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
+- `ratings_to_counts()` converts rater-identified ratings to counts.
+- `agreement_test()` — `t.test`-style Wald equality tests
+  returning `htest` (independent samples by default, `paired = TRUE` uses the
+  stacked influence rows).
+- S3 methods on `misskappa_estimate`: `print`, `coef`, `vcov`,
+  `as.data.frame` (with CI columns), `confint` (Wald by default,
+  `method = "jackknife"` on supported complete-data fits, `transform =
+  "fisher"` / `"log_complement"`), and `stats::influence` (the per-subject
+  influence rows stored as `fit$psi`). Fits also carry `n`.
+- Datasets: `dat.fleiss1971`, `dat.gwet2014`, `dat.klein2018`,
+  `dat.zapf2016`, `dat.mcduff2019`, `dat.vanbelle2019`,
+  and the synthetic `dat.tenhove2025`.
 
-Kept in the tree but **unexported / internal** (`@keywords internal`), reachable
-for simulations: the estimators dropped from the public surface — Gwet's
-reweighting and available-case for categorical `kappa` (via
-`estimate_kappa_raw()`), the full continuous dispatch (`kappa_continuous()`), and
-g-wise agreement (`kappa_gwise()`) — plus the inference engine `joint_vcov()` and
-`wald_test()` (IF-based joint covariance + Wald contrast, including the
-dependent/paired case) and the closed-form `kappa_quadratic()`. A `t.test`-style
-`kappa_test()` / `alpha_test()` front door over that engine is the natural next
-addition: one-sample and independent two-sample work for every estimator, and —
-now that `se_type = "normal"` is gone and every estimator carries `fit$psi`
-influence rows — paired works for every estimator too.
+Interface rules:
+
+- Every argument either applies to the call or errors. Inapplicable `...`
+  arguments and unknown `em_options` entries are errors, never silently
+  ignored.
+- The rating scale is `categories` (declared), else shared factor levels,
+  else the sorted observed labels; `values` scores it. Labels may be numeric,
+  character, logical, or factor, and are matched exactly (never truncated).
+- Brennan-Prediger needs a known rating scale. Categorical estimators always
+  have one; the scored estimators report it only when `categories`, `values`,
+  or factor levels (or `ranges` for vector ratings) declare it.
+- Subjects with no observed rating are dropped by every estimator. Influence
+  rows (`fit$psi`) are named by subject, and paired tests align on the names.
+- One constructor, `.new_estimate()` in `R/estimate_object.R`, builds every
+  fit object.
+
+Three tiers, kept visibly apart:
+
+- **Public:** the four exported functions above plus S3 methods. A test pins
+  the export list.
+- **Plumbing:** unexported, dot-prefixed helpers that the public functions call
+  (`.kappa_raw_fit()`, `.kappa_continuous_fit()`, `.kappa_gwise()`,
+  `.kappa_vector()`, `.kappa_vector_quadratic()`, `.kappa_quadratic_fiml()`,
+  `.kappa_counts_cs()`, ...). They live next to the public code.
+- **Research:** entry points no public call reaches, all in
+  `r-package/R/research.R` and named `research_*()`: the available-case and
+  Gwet comparators (`research_kappa_raw()`), all continuous methods and
+  kernels (`research_kappa_continuous()`), complete-data g-wise
+  (`research_kappa_gwise()`), the multi-weight categorical FIML
+  (`research_kappa_fiml_multi()`, used by the kappa-missing simulation), the
+  compound-symmetry moment estimator (`research_kappa_pairwise_cs()`, planned
+  for the quadratic paper), the closed-form `research_kappa_quadratic()`, and
+  the joint influence covariance `research_joint_vcov()`. Unsupported, never
+  exported, free to change. Their C++ counterparts live in
+  `misskappa::research` (`include/misskappa/research.hpp`). New
+  non-promoted code goes in these places, not in the public files.
 
 ## Namespace layout
 
@@ -232,6 +265,10 @@ The C++ surface lives in one namespace, `misskappa`. Sub-namespaces are
 introduced only when there is a clear boundary:
 
 - `misskappa::loss` — weight matrix and loss-function factories.
+- `misskappa::research` — research-only entry points (comparators,
+  complete-data special cases, multi-weight FIML, closed-form quadratic,
+  jackknife covariance) that no public R function reaches. Declared in
+  `research.hpp`; unsupported.
 - `misskappa` (top-level) — all estimator entry points and shared types.
   Input shape is encoded in the function name (`_counts`, `_continuous`)
   rather than via per-shape sub-namespaces; this keeps callers from
@@ -244,7 +281,7 @@ or in anonymous namespaces inside the `.cpp` that owns them.
 ## Conventions
 
 - Lowercase `snake_case` for filenames and free functions; `CamelCase` for
-  types; constants are `snake_case` (`version_major`, `na_code`, etc.).
+  types; constants are `snake_case` (e.g. `na_code`).
 - Public headers include with `#include "misskappa/foo.hpp"`. Private detail
   headers under `src/detail_*.hpp` include with relative paths.
 - Comments only when the why is non-obvious. Headers carry the contract.
@@ -289,7 +326,8 @@ consult it when porting or debugging an estimator, retrieve it with
 `git checkout 6b30f98 -- dev/legacy/misskappa` (then `git rm --cached` /
 `rm -rf` when done) and read the math out of `kappanp.cpp`, `emdiscrete.{h,cpp}`,
 `kappaml.cpp`, `common.cpp`. Rewrite on Eigen + `Result<T>` in the new tree and
-back the result with an irrCAC fixture under `tests/golden/`.
+back the result with a frozen irrCAC parity value in
+`r-package/tests/testthat/test-parity-oracle.R`.
 
 Do not copy code mechanically — the legacy code uses exceptions, `Rcpp::stop`,
 and `arma::` types throughout. The port is a rewrite that preserves the

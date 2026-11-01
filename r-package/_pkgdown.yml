@@ -17,39 +17,24 @@ navbar:
 reference:
   - title: Estimators
     contents:
-      - alpha
-      - kappa
-      - kappa_counts
+      - agreement
+      - agreement_counts
       - ratings_to_counts
   - title: Hypothesis tests
     contents:
-      - kappa_test
-      - alpha_test
+      - agreement_test
   - title: Inference
     contents:
       - confint.misskappa_estimate
+      - as.data.frame.misskappa_estimate
       - influence.misskappa_estimate
-  - title: Simulation helpers
-    contents:
-      - sim
   - title: Datasets
     contents:
       - starts_with("dat.")
 
 articles:
-  - title: How-to guides
-    navbar: How-to
+  - title: Guides
+    navbar: Guides
     contents:
-      - articles/equality-tests
-      - articles/influence-functions
-      - articles/gwise-agreement
-  - title: Mathematical Guides
-    navbar: Mathematical Guides
-    contents:
-      - articles/agreement-coefficients
       - articles/missingness-estimators
-      - articles/validation
-  - title: Frontier / experimental
-    navbar: Frontier
-    contents:
-      - articles/vector-valued-agreement
+      - articles/beyond-pairwise

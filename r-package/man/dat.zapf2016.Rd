@@ -21,6 +21,6 @@ missing entries, it is a convenient base for the complete-data coefficients
 and for illustrating the equality tests across rater pairs.
 }
 \examples{
-kappa(dat.zapf2016, estimator = "pairwise")
+agreement(dat.zapf2016, estimator = "pairwise")
 }
 \keyword{datasets}

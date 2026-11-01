@@ -2,200 +2,108 @@
 
 <!-- README.md is generated from README.qmd. Please edit that file and run `quarto render README.qmd`. -->
 
-<img src="docs/logo.png" alt="misskappa" align="right" width="300">
+<img src="r-package/man/figures/logo.png" alt="misskappa" align="right" width="192">
 
 # misskappa
 
 [![CI](https://github.com/JonasMoss/misskappa/actions/workflows/ci.yml/badge.svg)](https://github.com/JonasMoss/misskappa/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/JonasMoss/misskappa/graph/badge.svg)](https://codecov.io/gh/JonasMoss/misskappa)
 ![Code: MIT](https://img.shields.io/badge/code-MIT-blue)
-![Papers: CC BY 4.0](https://img.shields.io/badge/papers-CC_BY_4.0-lightgrey)
-![missing data: handled](https://img.shields.io/badge/missing%20data-handled%20%F0%9F%98%8E-success)
 
-A C++17 library and R package for weighted agreement coefficients with any number of raters,
-arbitrary pairwise loss matrices, and support for missing ratings.
+An R package, backed by a C++17 library, for weighted agreement coefficients
+with any number of raters and missing ratings: Cohen’s kappa
+([1960](https://doi.org/10.1177/001316446002000104),
+[1968](https://doi.org/10.1037/h0026256)), Conger’s kappa
+([1980](https://doi.org/10.1037/0033-2909.88.2.322)), Fleiss’ kappa
+([1971](https://doi.org/10.1037/h0031619)), and the Brennan–Prediger
+coefficient ([1981](https://doi.org/10.1177/001316448104100307)).
 
-We support weighted variants of Cohen’s kappa ([1960](https://doi.org/10.1177/001316446002000104), [1968](https://doi.org/10.1037/h0026256)), its multirater variant Conger’s kappa ([1980](https://doi.org/10.1037/0033-2909.88.2.322)), Fleiss’ kappa ([1971](https://doi.org/10.1037/h0031619)), and the Brennan–Prediger coefficient ([1981](https://doi.org/10.1177/001316448104100307)).
-
-Missing data is handled by several estimators. For categorical data, `Cat-FIML` is efficient under MAR and MCAR assumptions. For quadratic weights, pairwise is consistent under MCAR, while robust `NT-FIML` ([Yuan & Bentler, 2000](https://doi.org/10.1111/0081-1750.00078)) is consistent under MCAR and efficient under MCAR and MAR under normality. For general weights and arbitrary data, IPW is consistent under MCAR.
-
-In addition to agreement coefficients, misskappa estimates Cronbach’s coefficient alpha ([1951](https://doi.org/10.1007/BF02310555)) under missing data, with pairwise-available, robust `NT-FIML` ([Zhang & Yuan, 2016](https://doi.org/10.1177/0013164415594658)), and categorical `Cat-FIML` estimators.
+Missing ratings are handled by inverse-probability weighting (`"ipw"`,
+consistent under MCAR), categorical full-information maximum likelihood
+(`"cat_fiml"`, efficient under MAR), and, for quadratic weights, a pairwise
+moment estimator (`"pairwise"`, MCAR) and robust normal-theory FIML
+(`"nt_fiml"`, [Yuan & Bentler, 2000](https://doi.org/10.1111/0081-1750.00078)).
+Every estimate comes with a standard error.
 
 ## Installation
 
-Install the R package from GitHub with [remotes](https://remotes.r-lib.org/).
-It builds from source, so a C++17 toolchain is required (Rtools on Windows, the
-Command Line Tools on macOS).
+The package builds from source, so it needs a C++17 toolchain (Rtools on
+Windows, the Command Line Tools on macOS).
 
 ``` r
 # install.packages("remotes")
 remotes::install_github("JonasMoss/misskappa", subdir = "r-package")
 ```
 
-## Usage (R)
+## Usage
 
 ``` r
 library(misskappa)
 ```
 
-### Basic agreement
-
-The workhorse is `kappa()`. Here five raters sort subjects into three categories,
-and some of the ratings are missing ([Klein,
-2018](https://doi.org/10.1177/1536867X1801800408)). The IPW estimator stays
-consistent under MCAR:
+Five raters sort subjects into three categories, and some ratings are missing
+([Klein, 2018](https://doi.org/10.1177/1536867X1801800408)):
 
 ``` r
-kappa(dat.klein2018, estimator = "ipw")
-#> misskappa: estimator=ipw, weight=nominal
+agreement(dat.klein2018, estimator = "ipw")
+#> misskappa: estimator = ipw, weight = nominal, n = 10
 #>                  estimate     se  lower  upper
 #> Conger             0.4301 0.1050 0.2244 0.6358
 #> Fleiss             0.4054 0.1196 0.1710 0.6399
 #> Brennan-Prediger   0.4204 0.1136 0.1978 0.6430
 ```
 
-You get back the weighted Conger, Fleiss, and Brennan–Prediger coefficients,
-each with a standard error. (With two raters you would get Cohen’s kappa
-instead of its multirater cousin Conger.)
+Ratings may be numbers, strings, or factors. Pass `weight = "linear"` or
+`"quadratic"` for ordered categories, and `categories = 1:5` to declare the
+full rating scale when some categories went unused.
 
-Want to know whether two studies agree to the same degree? `kappa_test()` checks
-it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
-so the two samples are independent and we set `paired = FALSE`:
+`agreement_test()` compares coefficients across fits. These two studies have
+different subjects, so the samples are independent (use `paired = TRUE` for
+fits on the same subjects):
 
 ``` r
-kappa_test(
-  gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-  klein = kappa(dat.klein2018, estimator = "ipw"),
-  coef = "Conger", paired = FALSE
+agreement_test(
+  gwet  = agreement(dat.gwet2014,  estimator = "ipw"),
+  klein = agreement(dat.klein2018, estimator = "ipw")
 )
 #> 
-#>  Independent-sample test of equal Conger across 2 fits
+#>  Independent-sample Wald test of equal Conger across 2 fits
 #> 
 #> data:  gwet, klein
 #> X-squared = 0.0019646, df = 1, p-value = 0.9646
+#> alternative hypothesis: true difference in Conger is not equal to 0
 #> sample estimates:
 #>      gwet     klein 
 #> 0.4233051 0.4301049
 ```
 
-`kappa()` also does *g-wise* kernels, where the disagreement function compares
-`g > 2` raters at once instead of averaging over pairs:
-
-``` r
-kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
-#> misskappa: estimator=ipw, weight=nominal, g=3
-#>        estimate     se  lower  upper
-#> Conger   0.4369 0.0850 0.2703 0.6034
-#> Fleiss   0.4308 0.0861 0.2620 0.5997
-```
-
-### Coefficient alpha
-
-misskappa estimates Cronbach’s alpha under missing data too. Here it runs on the
-Neuroticism items of [`psych::bfi`](https://CRAN.R-project.org/package=psych).
-That is 2800 respondents from the [SAPA project](https://www.sapa-project.org/)
-([Revelle, Wilt & Rosenthal,
-2010](https://doi.org/10.1007/978-1-4419-1210-7_2)), and 106 of them skipped at
-least one answer. Robust normal-theory FIML keeps every respondent:
-
-``` r
-data(bfi, package = "psych")
-N <- paste0("N", 1:5)
-alpha(bfi[, N], estimator = "nt_fiml")
-#> misskappa: estimator=nt_fiml, weight=score
-#>       estimate    se lower  upper
-#> alpha   0.8138 0.006 0.802 0.8256
-```
-
-`alpha_test()` compares reliabilities the same way `kappa_test()` compares
-agreement. Is the Neuroticism scale equally reliable for men and women?
-
-Different people answer in each group, so the samples are independent again:
-
-``` r
-g <- split(seq_len(nrow(bfi)), bfi$gender)
-alpha_test(
-  men   = alpha(bfi[g[["1"]], N], estimator = "nt_fiml"),
-  women = alpha(bfi[g[["2"]], N], estimator = "nt_fiml"),
-  paired = FALSE)
-#> 
-#>  Independent-sample test of equal alpha across 2 fits
-#> 
-#> data:  men, women
-#> X-squared = 3.3766, df = 1, p-value = 0.06613
-#> sample estimates:
-#>       men     women 
-#> 0.7959317 0.8209147
-```
-
-### Vector-valued ratings
-
-Sometimes a rating is itself a vector, with one weight per component. The
-CRACKLES auscultation data ship this way: each observer scores six chest sites
-per patient, so a single verdict is a six-component vector. Pass the array and
-`kappa()` takes the vector path, with the same `pairwise` and `ipw` estimators
-as the scalar case.
-
-None of the inference is new. A missing component drops out of the rater pairs
-it touches, and the estimators are the standard missing-data ones used
-throughout the package. For the quadratic weight the coefficient equals Lin's
-concordance correlation coefficient, and fitting it to incomplete data is the
-variance-components approach long used for that coefficient under unbalanced
-designs (King and Chinchilli 2001, Carrasco and Jover 2003).
-
-What is still in preparation is the construction, not the inference: the
-component-separable weighted family, the full feature-coupling matrix that ties
-components together instead of weighting them one at a time, and the paper
-behind them. That full-matrix route stays internal for now because its
-per-pattern covariance step is fragile when a feature never varies. The
-[vector-valued agreement
-article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html)
-walks through it.
-
-Every result is a `misskappa_estimate` object holding the estimates and their
-covariance matrix. Reach for `coef()`, `vcov()`, and `confint()` when you want
-the pieces.
+The package also handles counts-format data (`agreement_counts()`), *g*-wise
+kernels that compare `g > 2` raters at once, and vector-valued ratings. Fits
+work with `coef()`, `vcov()`, `confint()`, and `as.data.frame()`.
 
 ## Documentation
 
-The [package website](https://jonasmoss.github.io/misskappa/) has the full
-reference and the worked-example articles:
+The [package website](https://jonasmoss.github.io/misskappa/) has the
+reference and articles:
 
-- [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html)
-- [g-wise agreement](https://jonasmoss.github.io/misskappa/articles/gwise-agreement.html)
-- [Agreement coefficients and loss matrices](https://jonasmoss.github.io/misskappa/articles/agreement-coefficients.html)
-- [Missingness and estimators](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
-- [Testing equality of agreement coefficients](https://jonasmoss.github.io/misskappa/articles/equality-tests.html)
-- [Validation strategy](https://jonasmoss.github.io/misskappa/articles/validation.html)
-- [Vector-valued agreement](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html) *(in preparation)*
+- [Getting started](https://jonasmoss.github.io/misskappa/articles/misskappa.html), including comparing coefficients
+- [Coefficients, estimators, and validation](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html)
+- [Beyond pairwise agreement](https://jonasmoss.github.io/misskappa/articles/beyond-pairwise.html): g-wise kernels and vector-valued ratings *(vector part in preparation)*
 - [C++ API reference](https://jonasmoss.github.io/misskappa/cpp/)
 
-## Contents
+## Development
 
-- **C++17 library** in `include/misskappa/` and `src/`
-- **R package** in `r-package/`, wrapping the library via Rcpp
-- **Manuscripts** in `papers/`, the completed papers accompanying this package
-
-## Quick build
-
-``` sh
-cmake --preset dev
-cmake --build --preset dev
-ctest --preset dev
-```
-
-Or via `just`:
+The C++ library (`include/misskappa/`, `src/`) is the engine of the R package
+(`r-package/`) and has no separate stability promise. `papers/` holds the
+completed papers that accompany the package. `AGENTS.md` has the project
+conventions.
 
 ``` sh
-just test            # dev build + ctest
-just r-install       # build opt + install R package
-just r-check         # R CMD check + testthat
-just paper <slug>    # build the manuscript PDF for papers/<slug>/
+just test        # C++ dev build + tests
+just r-install   # vendor the C++ into the R package and install it
+just r-check     # fast R CMD check (no vignettes)
 ```
-
-See `AGENTS.md` for the project contract and each paper’s `AGENTS.md` for
-manuscript-specific direction.
 
 ## License
 
-**Code** under the MIT License, **Papers** under CC BY 4.
+Code under the MIT License, papers under CC BY 4.0.
