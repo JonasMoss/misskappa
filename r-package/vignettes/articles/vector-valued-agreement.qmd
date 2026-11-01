@@ -11,7 +11,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ## In preparation
 
 The inference here is ordinary. The same `pairwise` and `ipw` estimators as
-scalar `kappa()`, applied one component at a time, so a missing component just
+scalar `agreement()`, applied one component at a time, so a missing component just
 drops from the rater pairs it touches. For the quadratic weight the coefficient
 is Lin's concordance correlation coefficient, and fitting it to incomplete data
 is the variance-components approach long used for that coefficient under
@@ -41,7 +41,7 @@ dimnames(dat.vanbelle2019)$site
 dat.vanbelle2019["1", "EXP1", ]   # patient 1, observer EXP1, the six sites
 ```
 
-Pass the array and `kappa()` takes the vector-valued path automatically.
+Pass the array and `agreement()` takes the vector-valued path automatically.
 
 ## Mathematical description
 
@@ -78,7 +78,7 @@ of Janson & Olsson (2001).
 ## The expert panel
 
 ```{r}
-kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+agreement(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 ```
 
 The Conger coefficient by observer group reproduces the kind of breakdown
@@ -89,7 +89,7 @@ least:
 groups <- c("EXP", "NOR", "RUS", "WAL", "NLD", "PUL", "STU")
 conger <- sapply(groups, function(grp) {
   cols <- paste0(grp, 1:4)
-  coef(kappa(dat.vanbelle2019[, cols, ], estimator = "pairwise"))["Conger"]
+  coef(agreement(dat.vanbelle2019[, cols, ], estimator = "pairwise"))["Conger"]
 })
 round(sort(conger, decreasing = TRUE), 3)
 ```
@@ -101,7 +101,7 @@ root-mean-square component loss). On the complete CRACKLES data IPW agrees with 
 pairwise estimator:
 
 ```{r}
-kappa(dat.vanbelle2019[, 1:4, ], estimator = "ipw",
+agreement(dat.vanbelle2019[, 1:4, ], estimator = "ipw",
       feature_weights = c(1, 1, 1, 1, 0.5, 0.5))
 ```
 
@@ -136,7 +136,7 @@ which that coefficient has long been estimated under unbalanced repeated measure
 (King & Chinchilli 2001, Carrasco & Jover 2003). What is new is the full matrix $W$ coupling features, not the
 way incomplete data are handled.
 
-Passing a feature metric `W` to `kappa()` selects this squared loss.
+Passing a feature metric `W` to `agreement()` selects this squared loss.
 `"pairwise"` is the moment estimator, `"nt_fiml"` the saturated normal FIML, and
 `"nt_fiml_cs"` the FIML under the block compound-symmetry covariance
 $\Sigma = J_R \otimes \Psi + I_R \otimes E$, the vector analogue of the scalar
@@ -145,8 +145,8 @@ compound-symmetry estimates agree on the complete CRACKLES data:
 
 ```{r}
 sites <- dat.vanbelle2019[, 1:4, ]
-kappa(sites, estimator = "pairwise", W = diag(6))
-kappa(sites, estimator = "nt_fiml_cs", W = diag(6))
+agreement(sites, estimator = "pairwise", W = diag(6))
+agreement(sites, estimator = "nt_fiml_cs", W = diag(6))
 ```
 
 The saturated `"nt_fiml"` inverts per-pattern covariance blocks and fails with a

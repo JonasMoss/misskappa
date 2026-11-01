@@ -2,7 +2,7 @@
 #
 # Fits the exchangeable common-mean CS normal model Sigma = psi J + e I straight
 # from the counts, with no realizing subjects-by-raters table, no r_total, and no
-# EM. Backs kappa_counts(estimator = "nt_fiml_cs") for weight = "quadratic" (the
+# EM. Backs agreement_counts(estimator = "nt_fiml_cs") for weight = "quadratic" (the
 # moment / available-case slot is filled by the Fleiss-Cuzick estimator).
 # A subject contributes only its observed sub-vector of
 # size m_i; under exchangeability that marginal is again CS-normal with the same
@@ -118,7 +118,7 @@
                                converged = opt$convergence == 0L))
 }
 
-# ---- entry point (kappa_counts(estimator = "nt_fiml_cs")) --------------------
+# ---- entry point (agreement_counts(estimator = "nt_fiml_cs")) --------------------
 
 .kappa_counts_cs <- function(x_mat, values, em_options = list()) {
   C <- ncol(x_mat)

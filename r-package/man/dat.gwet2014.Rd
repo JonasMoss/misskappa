@@ -22,6 +22,6 @@ legacy `misskappa` package: 20 subjects, five raters, four categories
 example for the missing-data categorical estimators.
 }
 \examples{
-kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
+agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
 }
 \keyword{datasets}

@@ -43,24 +43,22 @@ jackknife standard error, and use a Student t critical value with `n - 1`
 degrees of freedom.
 
 Besides the natural and Fisher scales, `transform = "log_complement"` uses
-the upper-bound-only transform `-log(1 - theta)`. It remains defined for
-alpha values below -1. At an exact kappa boundary, a degenerate transformed
-jackknife is replaced by a one-sided hybrid: a Clopper--Pearson upper limit
-for the probability of any item disagreement is divided by a delete-one t
-lower limit for chance disagreement. Alpha has no corresponding binomial
-item event, so an exact-boundary alpha interval is returned as `NA`.
+the upper-bound-only transform `-log(1 - theta)`, which stays defined for
+coefficients below -1. At an exact boundary (perfect agreement), a
+degenerate transformed jackknife is replaced by a one-sided hybrid: a
+Clopper--Pearson upper limit for the probability of any item disagreement is
+divided by a delete-one t lower limit for chance disagreement. When that
+fallback is unavailable the interval is returned as `NA` with a warning.
 }
 \section{Jackknife availability}{
 
 The exact delete-one summaries behind `method = "jackknife"` are attached
 automatically to fits with at least three subjects in these cases:
 \itemize{
-  \item [kappa()] on complete scalar ratings: `"ipw"` and `"cat_fiml"`
+  \item [agreement()] on complete scalar ratings: `"ipw"` and `"cat_fiml"`
     (`g = 2`), and `"pairwise"`.
-  \item [kappa_counts()]: `"fleiss_cuzick"` for any row totals, and
+  \item [agreement_counts()]: `"fleiss_cuzick"` for any row totals, and
     `"cat_fiml"` when every row has the same total.
-  \item [alpha()] on complete data: `"pairwise"`, `"cat_fiml"`, and
-    `"nt_fiml"`.
 }
 Fits on incomplete data, `g > 2`, vector-valued ratings, the
 compound-symmetry estimators, and categorical FIML with `flatten > 0` support
@@ -68,10 +66,10 @@ only `method = "wald"`.
 }
 
 \examples{
-fit <- kappa(dat.gwet2014, estimator = "ipw")
+fit <- agreement(dat.gwet2014, estimator = "ipw")
 confint(fit)                       # natural-scale Wald interval
 confint(fit, transform = "fisher") # Fisher z interval, always within (-1, 1)
-complete_fit <- kappa_counts(dat.fleiss1971)
+complete_fit <- agreement_counts(dat.fleiss1971)
 confint(complete_fit, method = "jackknife", transform = "fisher")
 
 }

@@ -11,7 +11,7 @@ test_that("complete categorical kappa carries exact delete-one summaries", {
   ), nrow = 8, byrow = TRUE)
 
   for (weight in c("nominal", "linear", "quadratic")) {
-    fit <- kappa(x, estimator = "ipw", weight = weight)
+    fit <- agreement(x, estimator = "ipw", weight = weight)
     expect_equal(dim(fit$delete_one$leave_one_out), c(nrow(x), 3L))
     expect_equal(unname(fit$delete_one$estimate), unname(coef(fit)),
                  tolerance = 1e-10)
@@ -25,7 +25,7 @@ test_that("complete categorical kappa carries exact delete-one summaries", {
 })
 
 test_that("counts and continuous kappa expose the same interval option", {
-  counts <- kappa_counts(dat.fleiss1971, weight = "quadratic")
+  counts <- agreement_counts(dat.fleiss1971, weight = "quadratic")
   expect_equal(dim(counts$delete_one$leave_one_out),
                c(nrow(dat.fleiss1971), 2L))
   expect_true(all(is.finite(confint(
@@ -40,29 +40,11 @@ test_that("counts and continuous kappa expose the same interval option", {
     1.0, 1.5, 1.2,
     3.0, 2.9, 2.7
   ), nrow = 6, byrow = TRUE)
-  continuous <- kappa(ratings, estimator = "pairwise")
+  continuous <- agreement(ratings, estimator = "pairwise")
   expect_equal(dim(continuous$delete_one$leave_one_out), c(6L, 2L))
   expect_true(all(is.finite(confint(
     continuous, method = "jackknife", transform = "fisher"
   ))))
-})
-
-test_that("alpha supports transformed exact-delete-one intervals", {
-  x <- matrix(c(
-    1.0, 1.2, 1.1,
-    2.0, 2.1, 2.0,
-    3.0, 2.8, 3.2,
-    2.0, 2.2, 2.4,
-    1.0, 1.5, 1.2,
-    3.0, 2.9, 2.7,
-    2.0, 2.0, 2.1
-  ), nrow = 7, byrow = TRUE)
-  fit <- alpha(x, estimator = "pairwise")
-  expect_equal(dim(fit$delete_one$leave_one_out), c(7L, 1L))
-  ci <- confint(fit, method = "jackknife", transform = "log_complement")
-  expect_true(all(is.finite(ci)))
-  expect_lt(ci[1L, 1L], ci[1L, 2L])
-  expect_lt(ci[1L, 2L], 1)
 })
 
 test_that("perfect kappa uses the boundary fallback", {
@@ -74,24 +56,13 @@ test_that("perfect kappa uses the boundary fallback", {
     0, 4, 0,
     0, 0, 4
   ), nrow = 6, byrow = TRUE)
-  fit <- kappa_counts(counts)
+  fit <- agreement_counts(counts)
   ci <- confint(fit, method = "jackknife", transform = "fisher")
 
   expect_true(all(attr(ci, "boundary_fallback")))
   expect_equal(unname(ci[, 2L]), c(1, 1))
   expect_true(all(is.finite(ci[, 1L])))
   expect_true(all(ci[, 1L] < 1))
-})
-
-test_that("perfect alpha reports its unsupported boundary explicitly", {
-  score <- rep(c(1, 2, 3, 4, 5, 6), 3L)
-  x <- matrix(score, ncol = 3)
-  fit <- alpha(x, estimator = "pairwise")
-  expect_warning(
-    ci <- confint(fit, method = "jackknife", transform = "log_complement"),
-    "no kappa boundary fallback"
-  )
-  expect_true(all(is.na(ci)))
 })
 
 test_that("jackknife intervals remain complete-data only", {
@@ -103,14 +74,14 @@ test_that("jackknife intervals remain complete-data only", {
     1, 2, 1,
     3, 3, 2
   ), nrow = 6, byrow = TRUE)
-  fit <- kappa(x, estimator = "ipw", weight = "nominal")
+  fit <- agreement(x, estimator = "ipw", weight = "nominal")
   expect_null(fit$delete_one)
   expect_error(confint(fit, method = "jackknife"),
                "unavailable for this fit")
 })
 
 test_that("Wald remains the unchanged default and accepts log-complement", {
-  fit <- kappa_counts(dat.fleiss1971)
+  fit <- agreement_counts(dat.fleiss1971)
   ci <- confint(fit)
   z <- qnorm(0.975)
   expected <- cbind(coef(fit) - z * sqrt(diag(vcov(fit))),

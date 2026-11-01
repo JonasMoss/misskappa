@@ -101,14 +101,14 @@ identifiability error before the estimator runs:
 
 ```{r}
 #| error: true
-kappa(dat.tenhove2025, estimator = "nt_fiml")
+agreement(dat.tenhove2025, estimator = "nt_fiml")
 ```
 
 The compound-symmetry estimator fits the same data. Declaring the `1`--`5`
 scale with `values` adds Brennan-Prediger to Conger and Fleiss:
 
 ```{r}
-kappa(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
+agreement(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
 ```
 
 All three coefficients come with sandwich standard errors, recovered from a

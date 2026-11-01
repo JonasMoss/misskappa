@@ -27,7 +27,7 @@ error, and confidence limits from [confint()][confint.misskappa_estimate].
 Fits from several calls can be stacked with `rbind()`.
 }
 \examples{
-fit <- kappa(dat.gwet2014, estimator = "ipw")
+fit <- agreement(dat.gwet2014, estimator = "ipw")
 as.data.frame(fit)
 
 }

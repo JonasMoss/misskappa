@@ -1,7 +1,7 @@
 # Identifiability / estimability guard for the observed missing-data pattern.
 #
-# A saturated agreement coefficient -- Cronbach's alpha, or Conger / Cohen /
-# Brennan-Prediger kappa -- is a functional of *every* pairwise second moment, so
+# A saturated agreement coefficient -- Conger / Cohen / Brennan-Prediger
+# kappa -- is a functional of *every* pairwise second moment, so
 # it is identified from the observed data only if every column pair is jointly
 # observed by at least one subject: the co-observation graph must be COMPLETE, not
 # merely connected. Connectivity suffices only for structured / exchangeable
@@ -13,7 +13,7 @@
 # initialisation-pinned value in a flat, rank-deficient direction -- more
 # dangerous than the NA pairwise deletion returns -- and its pseudo-inverse
 # silently absorbs that direction. So this check gates *before* the estimator
-# runs and errors for every estimator. The counts interface (kappa_counts) is the
+# runs and errors for every estimator. The counts interface (agreement_counts) is the
 # exchangeable representation -- rater identity is discarded -- so the
 # complete-graph condition is vacuous there and this guard is not applied to it.
 

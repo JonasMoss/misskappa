@@ -188,27 +188,27 @@ entry point per estimator, with C++ argument structure kept visible. Small R
 helpers are fine when they compose existing wrappers, validate R-shaped inputs,
 or preserve names for inspection; they should not contain parallel kappa logic.
 
-Public R surface (2.0.0, GitHub-first):
+Public R surface (3.0.0, GitHub-first). The package is agreement-only:
+coefficient alpha was removed in 3.0.0 (last present at tag `alpha-final`,
+which the alpha-missing paper pins).
 
 - Estimators select the method with a single `estimator=` argument:
-  - `kappa(x, estimator, weight, g, values, em_options, ...)` — raw ratings.
+  - `agreement(x, estimator, weight, g, values, em_options, ...)` — raw ratings.
     `"ipw"` / `"cat_fiml"` for categorical ratings (integer codes, any
     `weight`); `"pairwise"` / `"nt_fiml"` / `"nt_fiml_cs"` for the
     quadratically weighted scored coefficient (numeric scores, weight defaults
     to `"quadratic"`). `g > 2` selects the g-wise kernels (`"ipw"`,
     `"cat_fiml"`); a 3-D array selects vector-valued ratings, with `W`,
     `ranges`, `feature_weights`, `loss` passed through `...`.
-  - `kappa_counts(x, estimator, weight, values, r_total, em_options)` —
+  - `agreement_counts(x, estimator, weight, values, r_total, em_options)` —
     counts-format input; `"fleiss_cuzick"`, `"cat_fiml"`, or `"nt_fiml_cs"`
     (exchangeable compound symmetry, quadratic only).
-  - `alpha(x, estimator, values, em_options)` — coefficient alpha;
-    `"pairwise"`, `"cat_fiml"`, `"nt_fiml"`, or `"nt_fiml_cs"`.
   The two FIMLs are named distinctly (`cat_fiml` = saturated multinomial,
   `nt_fiml` = robust normal-theory) so one token never denotes two estimators;
   a `_cs` suffix always means the compound-symmetry covariance; the unweighted
   loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
 - `ratings_to_counts()` converts rater-identified ratings to counts.
-- `kappa_test()` / `alpha_test()` — `t.test`-style Wald equality tests
+- `agreement_test()` — `t.test`-style Wald equality tests
   returning `htest` (independent samples by default, `paired = TRUE` uses the
   stacked influence rows).
 - S3 methods on `misskappa_estimate`: `print`, `coef`, `vcov`,
@@ -217,7 +217,7 @@ Public R surface (2.0.0, GitHub-first):
   "fisher"` / `"log_complement"`), and `stats::influence` (the per-subject
   influence rows stored as `fit$psi`). Fits also carry `n`.
 - Datasets: `dat.fleiss1971`, `dat.gwet2014`, `dat.klein2018`,
-  `dat.zapf2016`, `dat.mcduff2019`, `dat.holzinger1939`, `dat.vanbelle2019`,
+  `dat.zapf2016`, `dat.mcduff2019`, `dat.vanbelle2019`,
   and the synthetic `dat.tenhove2025`.
 
 Interface rules:

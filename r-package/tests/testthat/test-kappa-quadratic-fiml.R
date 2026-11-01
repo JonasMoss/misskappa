@@ -119,10 +119,10 @@ test_that("variance-component kappa allows connected incomplete co-observation",
   ), ncol = 3, byrow = TRUE)
 
   expect_error(
-    kappa(X, estimator = "nt_fiml"),
+    agreement(X, estimator = "nt_fiml"),
     "co-observation graph is incomplete"
   )
-  fit <- kappa(X, estimator = "nt_fiml_cs", weight = "quadratic")
+  fit <- agreement(X, estimator = "nt_fiml_cs", weight = "quadratic")
   expect_equal(fit$method, "nt_fiml_cs")
   expect_true(all(is.finite(coef(fit))))
   expect_true(all(is.finite(vcov(fit))))
@@ -249,7 +249,7 @@ test_that("vector quadratic block compound symmetry fits and reduces to scalar a
   expect_equal(unname(vcov(vec1)), unname(vcov(scl1)), tolerance = 1e-9)
 })
 
-test_that("kappa() exposes the full-W vector estimators on the array surface", {
+test_that("agreement() exposes the full-W vector estimators on the array surface", {
   set.seed(44L)
   arr <- array(rnorm(150L * 4L * 2L), dim = c(150L, 4L, 2L))
   arr[, 2L, ] <- arr[, 2L, ] + 0.3
@@ -258,26 +258,26 @@ test_that("kappa() exposes the full-W vector estimators on the array surface", {
   # public array dispatch matches the internal full-W backend
   # (without `ranges` the public surface omits Brennan-Prediger)
   for (est in c("nt_fiml", "nt_fiml_cs")) {
-    pub <- kappa(arr, estimator = est, W = W)
+    pub <- agreement(arr, estimator = est, W = W)
     ref <- kappa_vector_quadratic(arr, method = est, W = W)
     expect_equal(pub$method, est)
     expect_equal(coef(pub), coef(ref)[c("Conger", "Fleiss")])
     expect_equal(names(coef(pub)), c("Conger", "Fleiss"))
   }
-  pub_pair <- kappa(arr, estimator = "pairwise", W = W)
+  pub_pair <- agreement(arr, estimator = "pairwise", W = W)
   expect_equal(coef(pub_pair),
                coef(kappa_vector_quadratic(arr, method = "pairwise", W = W)))
 
   # no W -> component-separable path is unchanged (diagonal weights, 2 coefs)
-  comp <- kappa(arr, estimator = "pairwise")
+  comp <- agreement(arr, estimator = "pairwise")
   expect_equal(names(coef(comp)), c("Conger", "Fleiss"))
 
   # guards
-  expect_error(kappa(arr, estimator = "ipw", W = W), "not used by")
-  expect_error(kappa(arr, estimator = "pairwise", W = W, typo = 1), "typo")
-  expect_error(kappa(arr, estimator = "ipw", g = 3), "'g' does not apply")
-  expect_error(kappa(arr, estimator = "ipw", values = 1:2), "'values'")
-  expect_error(kappa(arr, estimator = "nt_fiml_cs", W = W, weight = "linear"),
+  expect_error(agreement(arr, estimator = "ipw", W = W), "not used by")
+  expect_error(agreement(arr, estimator = "pairwise", W = W, typo = 1), "typo")
+  expect_error(agreement(arr, estimator = "ipw", g = 3), "'g' does not apply")
+  expect_error(agreement(arr, estimator = "ipw", values = 1:2), "'values'")
+  expect_error(agreement(arr, estimator = "nt_fiml_cs", W = W, weight = "linear"),
                "quadratic")
 })
 
@@ -292,10 +292,10 @@ test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
   obs <- t(vapply(seq_len(2L), function(a) range(arr[, , a]), numeric(2L)))
   for (est in c("nt_fiml", "nt_fiml_cs")) {
     base <- kappa_vector_quadratic(arr, method = est, W = W)
-    same <- kappa(arr, estimator = est, W = W, ranges = obs)
+    same <- agreement(arr, estimator = est, W = W, ranges = obs)
     expect_equal(coef(same), coef(base))
     # a different fixed range moves Brennan-Prediger but not Conger / Fleiss
-    wide <- kappa(arr, estimator = est, W = W, ranges = rbind(c(-5, 5), c(-4, 4)))
+    wide <- agreement(arr, estimator = est, W = W, ranges = rbind(c(-5, 5), c(-4, 4)))
     expect_equal(coef(wide)[c("Conger", "Fleiss")],
                  coef(base)[c("Conger", "Fleiss")])
     expect_false(isTRUE(all.equal(coef(wide)[["Brennan-Prediger"]],
@@ -303,11 +303,11 @@ test_that("ranges fixes the vector Brennan-Prediger chance baseline", {
   }
 
   # validation; pairwise (no Brennan-Prediger) rejects ranges
-  expect_error(kappa(arr, estimator = "nt_fiml", W = W,
+  expect_error(agreement(arr, estimator = "nt_fiml", W = W,
                      ranges = rbind(c(1, 1), c(0, 2))), "hi > lo")
-  expect_error(kappa(arr, estimator = "nt_fiml", W = W,
+  expect_error(agreement(arr, estimator = "nt_fiml", W = W,
                      ranges = matrix(1:6, 3L, 2L)), "features-by-2")
-  expect_error(kappa(arr, estimator = "pairwise", W = W, ranges = obs),
+  expect_error(agreement(arr, estimator = "pairwise", W = W, ranges = obs),
                "not used by")
   expect_warning(kappa_vector_quadratic(arr, method = "pairwise", W = W,
                                         ranges = obs),
@@ -403,4 +403,16 @@ test_that("sandwich vcov matches the pure-R reference sandwich", {
   G <- .kqf_grad(mu, Sigma, fit$bp_chance)$G
   V_oracle <- G %*% acov %*% t(G)
   expect_equal(unname(vcov(fit)), unname(V_oracle), tolerance = 1e-6)
+})
+
+test_that("saturated EM moments match lavaan's h1 estimator", {
+  skip_if_not_installed("lavaan")
+  X <- make_ratings(500L, 6L, miss = 0.2, seed = 6L)
+  X <- X[rowSums(is.finite(X)) > 0L, ]
+  fit <- kappa_quadratic_fiml(X)
+  Mp <- lavaan:::lav_data_mi_patterns(X)
+  lav <- lavaan:::lav_mvn_mi_h1_est_moments(
+    y = X, mp = Mp, tol = 1e-12, max_iter = 10000L)
+  expect_equal(unname(fit$moments$mu), unname(lav$Mu), tolerance = 1e-6)
+  expect_equal(unname(fit$moments$Sigma), unname(lav$Sigma), tolerance = 1e-6)
 })

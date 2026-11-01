@@ -4,7 +4,7 @@
 # loss with a full feature metric W, Conger and Fleiss are smooth functions of
 # the stacked rater-feature mean and covariance. The pairwise path is the
 # pairwise-available covariance plug-in; the FIML path reuses the saturated
-# normal EM / score / information helpers from alpha_continuous.R.
+# normal EM / score / information machinery of the C++ normal-FIML backend.
 
 .kvq_flatten <- function(x) {
   dims <- dim(x)

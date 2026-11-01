@@ -29,7 +29,7 @@ library(misskappa)
 `fit$psi`.
 
 ```{r}
-fit <- kappa(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
+fit <- agreement(dat.tenhove2025, estimator = "nt_fiml_cs", values = 1:5)
 psi <- influence(fit)
 dim(psi)
 head(psi, 3)
@@ -67,8 +67,8 @@ independence assumption. Here the Conger coefficient of two rater pairs is
 compared on the same 50 subjects of the Zapf (2016) data:
 
 ```{r}
-f_ab <- kappa(dat.zapf2016[, 1:2], estimator = "pairwise")
-f_cd <- kappa(dat.zapf2016[, 3:4], estimator = "pairwise")
+f_ab <- agreement(dat.zapf2016[, 1:2], estimator = "pairwise")
+f_cd <- agreement(dat.zapf2016[, 3:4], estimator = "pairwise")
 
 est <- coef(f_ab)["Conger"] - coef(f_cd)["Conger"]
 d   <- influence(f_ab)[, "Conger"] - influence(f_cd)[, "Conger"]
@@ -77,7 +77,7 @@ c(estimate = est, se = se, z = est / se)
 ```
 
 The packaged version of exactly this calculation is
-`kappa_test(f_ab, f_cd, paired = TRUE)` (see the
+`agreement_test(f_ab, f_cd, paired = TRUE)` (see the
 [equality tests](equality-tests.html) article). Rolling it by hand is only
 worthwhile for contrasts the test front door does not cover.
 
@@ -88,7 +88,7 @@ Every estimator in `misskappa` returns `psi`:
 * the IPW and `"pairwise"` moment estimators
 * the categorical and normal-theory FIMLs (saturated `"nt_fiml"` and
   compound-symmetry `"nt_fiml_cs"`)
-* the counts-format estimators and every `alpha()` estimator
+* the counts-format estimators
 
 Any two fits on the same subjects can therefore be combined through their
 aligned influence rows.

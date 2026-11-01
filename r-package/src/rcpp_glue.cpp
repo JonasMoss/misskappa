@@ -305,64 +305,6 @@ Rcpp::List rcpp_kappa_fiml_multi(
 }
 
 // [[Rcpp::export]]
-Rcpp::List rcpp_alpha_raw(
-    const Rcpp::IntegerMatrix& x,
-    std::string method,
-    Rcpp::Nullable<Rcpp::NumericVector> values,
-    Rcpp::List em_options) {
-  PreparedInputs in = prepare_inputs(x, "identity", values);
-
-  misskappa::Result<misskappa::Estimation> r;
-  if (method == "available") {
-    r = misskappa::estimate_alpha_available(in.ratings_indexed, in.values);
-  } else if (method == "fiml") {
-    misskappa::EmOptions opts = parse_em_options(em_options);
-    r = misskappa::estimate_alpha_fiml(in.ratings_indexed, in.values, opts);
-  } else {
-    Rcpp::stop("Unknown method: " + method);
-  }
-  return estimation_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_available_continuous(const Rcpp::NumericMatrix& x) {
-  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
-  for (int i = 0; i < x.nrow(); ++i) {
-    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
-  }
-
-  auto r = misskappa::estimate_alpha_available_continuous(ratings);
-  return estimation_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_delete_one(const Rcpp::NumericMatrix& x) {
-  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
-  for (int i = 0; i < x.nrow(); ++i) {
-    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
-  }
-  auto r = misskappa::delete_one_alpha_complete(ratings);
-  return delete_one_to_list(unwrap(std::move(r)));
-}
-
-// [[Rcpp::export]]
-Rcpp::List rcpp_alpha_normal_fiml(
-    const Rcpp::NumericMatrix& x,
-    Rcpp::List em_options) {
-  Eigen::MatrixXd ratings(x.nrow(), x.ncol());
-  for (int i = 0; i < x.nrow(); ++i) {
-    for (int j = 0; j < x.ncol(); ++j) ratings(i, j) = x(i, j);
-  }
-
-  misskappa::EmOptions opts = parse_em_options(em_options);
-  auto r = unwrap(misskappa::estimate_alpha_normal_fiml(ratings, opts));
-  if (!r.converged) {
-    Rcpp::warning("saturated EM did not converge in %d iterations.", opts.max_iter);
-  }
-  return normal_fiml_to_list(r);
-}
-
-// [[Rcpp::export]]
 Rcpp::List rcpp_kappa_fiml_counts(
     const Rcpp::IntegerMatrix& x,
     std::string weight_type,

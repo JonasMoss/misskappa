@@ -686,32 +686,6 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   return out;
 }
 
-GradientResult alpha_gradient(const RealVec& mu, const RealMat& sigma) {
-  const int p = static_cast<int>(mu.size());
-  const int pstar = vech_size(p);
-  const int q = p + pstar;
-  const double trace = sigma.diagonal().sum();
-  const double total = sigma.sum();
-  const double factor = static_cast<double>(p) / static_cast<double>(p - 1);
-
-  GradientResult out;
-  out.estimates = RealVec(1);
-  out.estimates(0) = factor * (1.0 - trace / total);
-  out.gradient = RealMat::Zero(1, q);
-
-  int k = 0;
-  for (int j = 0; j < p; ++j) {
-    for (int i = j; i < p; ++i) {
-      const double a = (i == j) ? 1.0 : 0.0;
-      const double b = (i == j) ? 1.0 : 2.0;
-      out.gradient(0, p + k) = factor * (trace * b / (total * total) - a / total);
-      ++k;
-    }
-  }
-  (void)mu;
-  return out;
-}
-
 GradientResult scalar_quadratic_gradient(
     const RealVec& mu, const RealMat& sigma, double bp_chance) {
   const int R = static_cast<int>(mu.size());
@@ -917,13 +891,6 @@ GradientResult vector_quadratic_gradient(
 }
 
 }  // namespace
-
-Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
-    RealMatView ratings, EmOptions opts) {
-  return estimate_normal_fiml_impl(ratings, opts, [](const RealVec& mu, const RealMat& sigma) {
-    return alpha_gradient(mu, sigma);
-  });
-}
 
 Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
     RealMatView ratings, const RealVec& values, EmOptions opts) {

@@ -25,7 +25,7 @@ This is the public S3 adapter for R's `stats::influence()` generic. The
 `joint_vcov()` and the equality-test helpers.
 }
 \examples{
-fit <- kappa(dat.gwet2014, estimator = "ipw")
+fit <- agreement(dat.gwet2014, estimator = "ipw")
 psi <- stats::influence(fit)
 all.equal(vcov(fit), crossprod(psi) / nrow(psi)^2)
 

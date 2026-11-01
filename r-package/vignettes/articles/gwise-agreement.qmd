@@ -31,8 +31,8 @@ cannot express. The kernels come from the Fréchet / Hubert multirater family
 ```{r}
 # Pairwise (g = 2) versus triple-wise (g = 3) nominal agreement on the
 # Gwet (2014) categorical data (five raters, some ratings missing).
-kappa(dat.gwet2014, estimator = "ipw", weight = "nominal")
-kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+agreement(dat.gwet2014, estimator = "ipw", weight = "nominal")
+agreement(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 ```
 
 The `g = 3` coefficient is not a reweighting of the pairwise one. It asks a
@@ -102,13 +102,13 @@ all-raters-equal kernel, defined only for `g > 2`).
 
 Quadratic (squared-error) disagreement is special: it decomposes into pairwise
 terms, so the combinatorial constant cancels in the kappa ratio and the g-wise
-coefficient equals the pairwise one for *every* `g`. `kappa()` exploits this:
+coefficient equals the pairwise one for *every* `g`. `agreement()` exploits this:
 with `weight = "quadratic"` the `g` argument is ignored and the cheap closed form
 is used instead of the $g^{\text{th}}$-order enumeration.
 
 ```{r}
-g2 <- coef(kappa(dat.gwet2014, estimator = "pairwise", weight = "quadratic"))
-g4 <- coef(kappa(dat.gwet2014, estimator = "pairwise", weight = "quadratic", g = 4))
+g2 <- coef(agreement(dat.gwet2014, estimator = "pairwise", weight = "quadratic"))
+g4 <- coef(agreement(dat.gwet2014, estimator = "pairwise", weight = "quadratic", g = 4))
 rbind(g2 = g2, g4 = g4)
 ```
 

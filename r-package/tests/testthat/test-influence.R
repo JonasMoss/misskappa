@@ -36,7 +36,7 @@ test_that("stats::influence() returns the stored psi matrix", {
   )
   storage.mode(x) <- "integer"
 
-  fit <- suppressWarnings(kappa(x, estimator = "cat_fiml", weight = "quadratic"))
+  fit <- suppressWarnings(agreement(x, estimator = "cat_fiml", weight = "quadratic"))
   psi <- stats::influence(fit)
 
   expect_equal(psi, fit$psi)
@@ -99,7 +99,7 @@ test_that("fit$psi returns per-subject IFs for FIML fits", {
 test_that("fit$psi returns per-subject IFs for counts, continuous, and g-wise fits", {
   counts <- matrix(c(5, 5, 0, 8, 2, 0, 0, 3, 7, 4, 1, 5), nrow = 4, byrow = TRUE)
   storage.mode(counts) <- "integer"
-  fit_counts <- kappa_counts(counts, estimator = "fleiss_cuzick")
+  fit_counts <- agreement_counts(counts, estimator = "fleiss_cuzick")
   psi_counts <- fit_counts$psi
   expect_equal(dim(psi_counts), c(4L, 2L))
   expect_equal(unname(crossprod(psi_counts) / 16), unname(vcov(fit_counts)),
@@ -133,7 +133,7 @@ test_that("fit$psi returns per-subject IFs for FIML counts fits", {
     nrow = 8, byrow = TRUE
   )
   storage.mode(counts) <- "integer"
-  fit <- kappa_counts(counts, estimator = "cat_fiml", r_total = 4)
+  fit <- agreement_counts(counts, estimator = "cat_fiml", r_total = 4)
   psi <- fit$psi
   expect_equal(dim(psi), c(8L, 2L))
   expect_equal(unname(crossprod(psi) / 64), unname(vcov(fit)),

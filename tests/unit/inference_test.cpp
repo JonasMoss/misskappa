@@ -149,30 +149,6 @@ TEST_CASE("unit-weighted count delete-one matches exact variable-row refits") {
   }
 }
 
-TEST_CASE("alpha delete-one matches exact covariance refits") {
-  ms::RealMat x(7, 3);
-  x << 1.0, 1.2, 1.1,
-       2.0, 2.1, 2.0,
-       3.0, 2.8, 3.2,
-       2.0, 2.2, 2.4,
-       1.0, 1.5, 1.2,
-       3.0, 2.9, 2.7,
-       2.0, 2.0, 2.1;
-
-  auto summary = ms::delete_one_alpha_complete(x);
-  REQUIRE(summary.has_value());
-  auto full = ms::estimate_alpha_available_continuous(x);
-  REQUIRE(full.has_value());
-  CHECK(std::abs(summary->estimate(0) - full->estimates(0)) < tol);
-
-  for (int i = 0; i < x.rows(); ++i) {
-    const ms::RealMat reduced = delete_real_row(x, i);
-    auto fit = ms::estimate_alpha_available_continuous(reduced);
-    REQUIRE(fit.has_value());
-    CHECK(std::abs(summary->leave_one_out(i, 0) - fit->estimates(0)) < tol);
-  }
-}
-
 TEST_CASE("generic jackknife covariance uses the delete-one scaling") {
   ms::RealMat leave_one_out(4, 2);
   leave_one_out << 1.0, 2.0,
@@ -202,7 +178,9 @@ TEST_CASE("delete-one summaries reject missing data and too-small samples") {
   ms::RealMat y(2, 2);
   y << 1.0, 1.0,
        2.0, 2.0;
-  auto small = ms::delete_one_alpha_complete(y);
+  auto loss = ms::loss::quadratic_loss(1.0, 2.0);
+  REQUIRE(loss.has_value());
+  auto small = ms::delete_one_kappa_complete(y, *loss);
   REQUIRE(!small.has_value());
   CHECK(small.error() == ms::Error::invalid_argument);
 }

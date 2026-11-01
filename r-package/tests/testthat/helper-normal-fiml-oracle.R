@@ -1,5 +1,5 @@
 # Pure-R reference implementation of the saturated normal FIML used as a test
-# oracle for the C++ normal-FIML backend (alpha and quadratic kappa): the EM
+# oracle for the C++ normal-FIML backend (quadratic kappa): the EM
 # for (mu, Sigma), the analytic casewise scores, a finite-difference observed
 # information, and the quadratic-kappa gradient. These used to live in the
 # package namespace; they are test-only.
@@ -82,7 +82,7 @@
 
 # n x q matrix of casewise scores of the observed-data Gaussian log-likelihood
 # wrt theta = (mu, vech(Sigma)). Analytic; the off-diagonal vech score carries
-# the factor 2 of the symmetric pair, matching .amc_alpha_grad_s().
+# the factor 2 of the symmetric pair.
 .amc_score_matrix <- function(mu, Sigma, X, patterns, vech_pos, p, pstar) {
   n <- nrow(X)
   S <- matrix(0, n, p + pstar)

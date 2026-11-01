@@ -184,8 +184,6 @@ Result<Estimation> estimate_gwet_continuous     (RealMatView ratings, loss::Cont
 // dropped, matching the R-level convention. Scalar quadratic FIML returns
 // (Conger, Fleiss, Brennan-Prediger); pass an empty `values` vector to use the
 // continuous uniform BP baseline on the observed score range.
-Result<NormalFimlEstimation> estimate_alpha_normal_fiml(
-    RealMatView ratings, EmOptions opts);
 Result<NormalFimlEstimation> estimate_quadratic_normal_fiml(
     RealMatView ratings, const RealVec& values, EmOptions opts);
 // `ranges`, when non-empty, fixes the per-feature score width (hi - lo) used by
@@ -212,23 +210,6 @@ Result<Estimation> estimate_pairwise_vector(
     RealMatView ratings, int features, loss::ComponentSeparableLoss loss);
 Result<Estimation> estimate_ipw_vector(
     RealMatView ratings, int features, loss::ComponentSeparableLoss loss);
-
-// --- Coefficient alpha ------------------------------------------------------
-//
-// `ratings` is n x R with categories in [0, C-1] or `na_code`; `values` is the
-// length-C score vector used to turn categories into item scores.
-// `ratings_continuous` is n x R with finite item scores and non-finite missing
-// entries. The available estimators use pairwise covariance moments and are
-// MCAR baselines. The categorical FIML estimator fits the saturated C^R
-// full-response distribution by EM and maps it to alpha through the implied
-// covariance matrix, so it is intended for small fixed-category batteries.
-//
-// With missing responses, every item pair must be jointly observed by at least
-// one subject. Estimate returned: (alpha).
-Result<Estimation> estimate_alpha_available(IntMatView ratings, const RealVec& values);
-Result<Estimation> estimate_alpha_available_continuous(RealMatView ratings);
-Result<Estimation> estimate_alpha_fiml(
-    IntMatView ratings, const RealVec& values, EmOptions opts);
 
 // --- Closed rectangular g-wise estimators -----------------------------------
 //

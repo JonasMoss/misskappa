@@ -45,7 +45,7 @@ test_that("available raw complete-data matches the irrCAC oracle", {
 })
 
 test_that("counts complete-data matches the irrCAC oracle", {
-  fit <- kappa_counts(dat.fleiss1971, weight = "nominal")
+  fit <- agreement_counts(dat.fleiss1971, weight = "nominal")
 
   oracle_estimate <- c(
     Fleiss = 0.43024452006014097,

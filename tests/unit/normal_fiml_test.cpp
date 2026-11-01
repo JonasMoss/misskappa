@@ -42,12 +42,6 @@ Moments complete_equal_mean_moments(const RealMat& x) {
   return out;
 }
 
-double alpha_from_sigma(const RealMat& sigma) {
-  const int p = static_cast<int>(sigma.cols());
-  return (static_cast<double>(p) / static_cast<double>(p - 1)) *
-         (1.0 - sigma.diagonal().sum() / sigma.sum());
-}
-
 double continuous_bp_chance(const RealMat& x) {
   double lo = std::numeric_limits<double>::infinity();
   double hi = -std::numeric_limits<double>::infinity();
@@ -193,59 +187,6 @@ RealMat benchmark_items(int n, int p, double missing_prob, unsigned seed) {
 }
 
 }  // namespace
-
-TEST_CASE("normal FIML alpha: complete data matches MLE covariance alpha") {
-  const RealMat x = complete_items();
-  const Moments m = complete_moments(x);
-
-  auto r = ms::estimate_alpha_normal_fiml(x, EmOptions{});
-  REQUIRE(r.has_value());
-  CHECK(r->converged);
-  CHECK(std::abs(r->fit.estimates(0) - alpha_from_sigma(m.sigma)) < tol);
-  CHECK((r->mu - m.mu).cwiseAbs().maxCoeff() < tol);
-  CHECK((r->sigma - m.sigma).cwiseAbs().maxCoeff() < tol);
-  check_influence_contract(*r, static_cast<int>(x.rows()), 1);
-}
-
-TEST_CASE("normal FIML alpha: variance components projects complete covariance") {
-  const RealMat x = complete_items();
-  const Moments m = complete_moments(x);
-  const RealMat sigma_vc = variance_component_projection(m.sigma);
-  EmOptions opts{};
-  opts.covariance = ms::NormalCovarianceModel::variance_components;
-
-  auto r = ms::estimate_alpha_normal_fiml(x, opts);
-  REQUIRE(r.has_value());
-  CHECK(r->converged);
-  CHECK((r->mu - m.mu).cwiseAbs().maxCoeff() < tol);
-  CHECK((r->sigma - sigma_vc).cwiseAbs().maxCoeff() < tol);
-  CHECK(std::abs(r->fit.estimates(0) - alpha_from_sigma(sigma_vc)) < tol);
-  check_influence_contract(*r, static_cast<int>(x.rows()), 1);
-}
-
-TEST_CASE("normal FIML alpha: variance components allows connected patterns") {
-  RealMat x(8, 3);
-  x << 1.0, 1.1, na_d,
-       2.0, 2.1, na_d,
-       3.0, 3.2, na_d,
-       na_d, 1.0, 1.2,
-       na_d, 2.0, 2.3,
-       na_d, 3.1, 3.4,
-       1.5, na_d, na_d,
-       na_d, na_d, 2.6;
-
-  auto saturated = ms::estimate_alpha_normal_fiml(x, EmOptions{});
-  REQUIRE(!saturated.has_value());
-  CHECK(saturated.error() == ms::Error::not_identified);
-
-  EmOptions opts{};
-  opts.covariance = ms::NormalCovarianceModel::variance_components;
-  auto structured = ms::estimate_alpha_normal_fiml(x, opts);
-  REQUIRE(structured.has_value());
-  CHECK(structured->fit.estimates.allFinite());
-  CHECK(structured->fit.vcov.allFinite());
-  check_influence_contract(*structured, static_cast<int>(x.rows()), 1);
-}
 
 TEST_CASE("normal FIML quadratic kappa: complete data matches moment formula") {
   const RealMat x = complete_items();

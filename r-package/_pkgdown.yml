@@ -17,14 +17,12 @@ navbar:
 reference:
   - title: Estimators
     contents:
-      - alpha
-      - kappa
-      - kappa_counts
+      - agreement
+      - agreement_counts
       - ratings_to_counts
   - title: Hypothesis tests
     contents:
-      - kappa_test
-      - alpha_test
+      - agreement_test
   - title: Inference
     contents:
       - confint.misskappa_estimate

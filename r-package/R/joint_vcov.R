@@ -35,7 +35,7 @@
 #' x <- matrix(sample.int(5, n * R, replace = TRUE), n, R)
 #' x[matrix(runif(n * R) < 0.3, n, R)] <- NA
 #' ac  <- estimate_kappa_raw(x, method = "available")
-#' ipw <- kappa(x, estimator = "ipw")
+#' ipw <- agreement(x, estimator = "ipw")
 #' V   <- joint_vcov(ac = ac, ipw = ipw)
 #'
 #' # Hausman-style Wald test of kappa_AC = kappa_IPW (Conger).

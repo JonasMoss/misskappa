@@ -16,7 +16,7 @@
 #' @return A numeric matrix of per-subject influence-function rows.
 #'
 #' @examples
-#' fit <- kappa(dat.gwet2014, estimator = "ipw")
+#' fit <- agreement(dat.gwet2014, estimator = "ipw")
 #' psi <- stats::influence(fit)
 #' all.equal(vcov(fit), crossprod(psi) / nrow(psi)^2)
 #'

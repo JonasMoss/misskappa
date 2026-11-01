@@ -35,7 +35,7 @@ missing-data example. There are 273 items, 121 judges, and 1365 rows.
 smile <- with(dat.mcduff2019,
               tapply(rating_smile, list(item, judge), function(z) z[1]))
 smile <- matrix(as.numeric(smile), nrow = nrow(smile))
-kappa_counts(ratings_to_counts(smile), weight = "quadratic")
+agreement_counts(ratings_to_counts(smile), weight = "quadratic")
 }
 \references{
 McDuff, D., & Girard, J. M. (2019). Democratizing Psychological

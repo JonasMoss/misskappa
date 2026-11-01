@@ -20,7 +20,7 @@ subjects, five raters, three categories (`1`--`3`), with some ratings missing
 (`NA`). A minimal example for the missing-data categorical estimators.
 }
 \examples{
-kappa(dat.klein2018, estimator = "ipw")
+agreement(dat.klein2018, estimator = "ipw")
 }
 \references{
 Klein, D. (2018). Implementing a general framework for assessing

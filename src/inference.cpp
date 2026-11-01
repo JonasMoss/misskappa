@@ -68,19 +68,6 @@ double count_row_weight(double r, CountWeighting weighting) {
   return weighting == CountWeighting::fleiss_cuzick ? r - 1.0 : 1.0;
 }
 
-double alpha_from_sums(
-    const RealVec& sum, const RealMat& cross, int n, int items) {
-  if (n < 1) return std::numeric_limits<double>::quiet_NaN();
-  const RealVec mean = sum / static_cast<double>(n);
-  const RealMat sigma = cross / static_cast<double>(n) - mean * mean.transpose();
-  const double total = sigma.sum();
-  if (std::abs(total) <= zero_tol) {
-    return std::numeric_limits<double>::quiet_NaN();
-  }
-  const double factor = static_cast<double>(items) / (items - 1);
-  return factor * (1.0 - sigma.diagonal().sum() / total);
-}
-
 }  // namespace
 
 Result<KappaDeleteOneEstimation> delete_one_kappa_complete(
@@ -347,32 +334,6 @@ Result<KappaDeleteOneEstimation> delete_one_kappa_counts_complete(
 
   if (equal_row_totals && row_total(0) >= 2.0 && is_unit_bounded(loss)) {
     out.item_disagreement = std::move(row_disagreement);
-  }
-  return out;
-}
-
-Result<DeleteOneEstimation> delete_one_alpha_complete(RealMatView ratings) {
-  const int n = static_cast<int>(ratings.rows());
-  const int items = static_cast<int>(ratings.cols());
-  if (n < 3 || items < 2) return misskappa::unexpected(Error::invalid_argument);
-  for (Eigen::Index i = 0; i < ratings.rows(); ++i) {
-    for (Eigen::Index j = 0; j < ratings.cols(); ++j) {
-      if (!std::isfinite(ratings(i, j))) {
-        return misskappa::unexpected(Error::invalid_argument);
-      }
-    }
-  }
-
-  const RealVec sum = ratings.colwise().sum().transpose();
-  const RealMat cross = ratings.transpose() * ratings;
-  DeleteOneEstimation out;
-  out.estimate.resize(1);
-  out.estimate(0) = alpha_from_sums(sum, cross, n, items);
-  out.leave_one_out.resize(n, 1);
-  for (int i = 0; i < n; ++i) {
-    const RealVec row = ratings.row(i).transpose();
-    out.leave_one_out(i, 0) =
-        alpha_from_sums(sum - row, cross - row * row.transpose(), n - 1, items);
   }
   return out;
 }

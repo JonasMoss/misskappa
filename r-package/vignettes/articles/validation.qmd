@@ -13,9 +13,8 @@ counts-format data. The `irrCAC` values are frozen as numeric literals in the
 test suite, so the check runs without `irrCAC` installed.
 
 For scored ratings, the normal-theory FIML mean and covariance agree with the
-saturated estimator in `lavaan`, and the standard error of coefficient alpha
-agrees with `coefficientalpha` (Zhang and Yuan 2016) with `varphi = 0`. These
-two comparisons run whenever those packages are installed.
+saturated estimator in `lavaan`. This comparison runs whenever `lavaan` is
+installed.
 
 ## Independent reference implementations
 
@@ -53,7 +52,3 @@ are studied by simulation in the companion methods papers (in preparation).
 
 Gwet, K. L. (2019). irrCAC: Computing chance-corrected agreement coefficients
 among raters. R package.
-
-Zhang, Z., & Yuan, K.-H. (2016). Robust coefficients alpha and omega and
-confidence intervals with outlying observations and missing data.
-*Educational and Psychological Measurement*, 76(3), 387-411.

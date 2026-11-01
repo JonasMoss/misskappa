@@ -85,7 +85,7 @@
 #'
 #' @description
 #' Wald test that a chosen kappa coefficient is equal across two or more
-#' [kappa()] fits (or, with a single fit, equal to `value`). Pass the fits to
+#' [agreement()] fits (or, with a single fit, equal to `value`). Pass the fits to
 #' `...`, naming them to label the output.
 #'
 #' By default the fits are treated as independent samples, so their variances
@@ -95,11 +95,11 @@
 #' per-subject influence functions (`fit$psi`). With more than two fits this is
 #' the joint hypothesis that all are equal (`G - 1` degrees of freedom).
 #'
-#' @param ... One or more `misskappa_estimate` objects from [kappa()] or
-#'   [kappa_counts()] (a single fit tests `coef = value`). Names become labels
+#' @param ... One or more `misskappa_estimate` objects from [agreement()] or
+#'   [agreement_counts()] (a single fit tests `coef = value`). Names become labels
 #'   in the output.
 #' @param coef Coefficient to compare. Defaults to the first coefficient of the
-#'   first fit (`"Conger"` for [kappa()], `"Fleiss"` for [kappa_counts()]).
+#'   first fit (`"Conger"` for [agreement()], `"Fleiss"` for [agreement_counts()]).
 #' @param paired `FALSE` (default) for independent samples, `TRUE` for fits on
 #'   the same subjects in the same row order.
 #' @param value Null value: the coefficient (single fit) or the difference
@@ -111,79 +111,21 @@
 #' # Paired: are two rater pairs equally consistent on the same 50 subjects
 #' # (Zapf 2016)? The dependence is read from the per-subject influence
 #' # functions.
-#' kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
-#'            CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
+#' agreement_test(AB = agreement(dat.zapf2016[, 1:2], estimator = "pairwise"),
+#'            CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
 #'            paired = TRUE)
 #'
 #' # Independent samples (different subjects in two studies): variances add.
-#' kappa_test(gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-#'            klein = kappa(dat.klein2018, estimator = "ipw"))
+#' agreement_test(gwet  = agreement(dat.gwet2014,  estimator = "ipw"),
+#'            klein = agreement(dat.klein2018, estimator = "ipw"))
 #'
 #' @export
-kappa_test <- function(..., coef = NULL, paired = FALSE, value = 0) {
+agreement_test <- function(..., coef = NULL, paired = FALSE, value = 0) {
   fits <- list(...)
-  if (length(fits) < 1L) stop("kappa_test() needs at least one fit.")
+  if (length(fits) < 1L) stop("agreement_test() needs at least one fit.")
   if (is.null(coef) && inherits(fits[[1L]], "misskappa_estimate")) {
     coef <- names(fits[[1L]]$estimates)[1L]
   }
   .coef_equality_test(fits, coef = coef, paired = paired, value = value,
-                      labels = .fit_labels(fits))
-}
-
-#' Test equality of coefficient alpha across fits
-#'
-#' @description
-#' Wald test that coefficient alpha is equal across two or more [alpha()] fits
-#' (or, with a single fit, equal to `value`). See [kappa_test()] for the
-#' `paired` semantics. `alpha` is the only coefficient, so there is no `coef`
-#' argument.
-#'
-#' @param ... Two or more `misskappa_estimate` objects from [alpha()]. Names
-#'   become labels in the output.
-#' @param paired `FALSE` (default) for independent samples, `TRUE` for fits on
-#'   the same subjects in the same row order.
-#' @param value Null value for the difference between two fits (or, with one
-#'   fit, for alpha). Default `0`.
-#'
-#' @return An `htest` object.
-#'
-#' @examples
-#' # Do the three Holzinger-Swineford (1939) subscales have equal reliability?
-#' # The same students take all three, so the fits are paired (G-way, df = 2).
-#' subs <- list(visual  = c("x1", "x2", "x3"),
-#'              textual = c("x4", "x5", "x6"),
-#'              speed   = c("x7", "x8", "x9"))
-#' fits <- lapply(subs, function(v)
-#'   alpha(dat.holzinger1939[, v], estimator = "nt_fiml"))
-#' do.call(alpha_test, c(fits, list(paired = TRUE)))
-#'
-#' @examplesIf requireNamespace("psych", quietly = TRUE)
-#' # Real missing data with groups: psych::bfi. The same 2800 respondents take
-#' # all five Big Five scales. Reverse-key the negatively-worded items first.
-#' data(bfi, package = "psych")
-#' neg <- c("A1", "C4", "C5", "E1", "E2", "O2", "O5")
-#' bfi[neg] <- 7 - bfi[neg]
-#'
-#' # Dependent: are Neuroticism and Extraversion equally reliable? The same
-#' # respondents answer both, so the estimates are paired.
-#' N <- paste0("N", 1:5)
-#' E <- paste0("E", 1:5)
-#' alpha_test(N = alpha(bfi[, N], estimator = "nt_fiml"),
-#'            E = alpha(bfi[, E], estimator = "nt_fiml"),
-#'            paired = TRUE)
-#'
-#' # Independent: is Conscientiousness equally reliable across the two genders?
-#' g <- split(seq_len(nrow(bfi)), bfi$gender)
-#' C <- paste0("C", 1:5)
-#' alpha_test(
-#'   men   = alpha(bfi[g[["1"]], C], estimator = "nt_fiml"),
-#'   women = alpha(bfi[g[["2"]], C], estimator = "nt_fiml"),
-#'   paired = FALSE)
-#'
-#' @export
-alpha_test <- function(..., paired = FALSE, value = 0) {
-  fits <- list(...)
-  if (length(fits) < 1L) stop("alpha_test() needs at least one fit.")
-  .coef_equality_test(fits, coef = "alpha", paired = paired, value = value,
                       labels = .fit_labels(fits))
 }

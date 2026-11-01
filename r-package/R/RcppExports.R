@@ -13,22 +13,6 @@ rcpp_kappa_fiml_multi <- function(x, weight_types, values, em_options) {
     .Call(`_misskappa_rcpp_kappa_fiml_multi`, x, weight_types, values, em_options)
 }
 
-rcpp_alpha_raw <- function(x, method, values, em_options) {
-    .Call(`_misskappa_rcpp_alpha_raw`, x, method, values, em_options)
-}
-
-rcpp_alpha_available_continuous <- function(x) {
-    .Call(`_misskappa_rcpp_alpha_available_continuous`, x)
-}
-
-rcpp_alpha_delete_one <- function(x) {
-    .Call(`_misskappa_rcpp_alpha_delete_one`, x)
-}
-
-rcpp_alpha_normal_fiml <- function(x, em_options) {
-    .Call(`_misskappa_rcpp_alpha_normal_fiml`, x, em_options)
-}
-
 rcpp_kappa_fiml_counts <- function(x, weight_type, values, r_total, em_options) {
     .Call(`_misskappa_rcpp_kappa_fiml_counts`, x, weight_type, values, r_total, em_options)
 }

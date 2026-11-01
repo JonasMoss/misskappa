@@ -32,7 +32,7 @@
 # function of the rating support (treated as constant, as in the other quadratic
 # paths). Validated against a subject-level bootstrap.
 #
-# Internal since 2.0.0: no longer selectable through kappa(); reachable for
+# Internal since 2.0.0: no longer selectable through agreement(); reachable for
 # simulations as misskappa:::.kappa_pairwise_cs().
 
 # t3 sampling bias = tr(A V), A = I - 11'/R, V = Cov(mu_hat):

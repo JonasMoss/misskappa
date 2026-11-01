@@ -31,9 +31,6 @@ We support weighted variants of Cohen's kappa ([1960](https://doi.org/10.1177/00
 
 Missing data is handled by several estimators. For categorical data, `Cat-FIML` is efficient under MAR and MCAR assumptions. For quadratic weights, pairwise is consistent under MCAR, while robust `NT-FIML` ([Yuan & Bentler, 2000](https://doi.org/10.1111/0081-1750.00078)) is consistent under MCAR and efficient under MCAR and MAR under normality. For general weights and arbitrary data, IPW is consistent under MCAR.
 
-In addition to agreement coefficients, misskappa estimates Cronbach's coefficient alpha ([1951](https://doi.org/10.1007/BF02310555)) under missing data, with pairwise-available, robust `NT-FIML` ([Zhang & Yuan, 2016](https://doi.org/10.1177/0013164415594658)), and categorical `Cat-FIML` estimators.
-
-
 ## Installation
 
 Install the R package from GitHub with [remotes](https://remotes.r-lib.org/).
@@ -54,63 +51,36 @@ library(misskappa)
 
 ### Basic agreement
 
-The workhorse is `kappa()`. Here five raters sort subjects into three categories,
+The workhorse is `agreement()`. Here five raters sort subjects into three categories,
 and some of the ratings are missing ([Klein,
 2018](https://doi.org/10.1177/1536867X1801800408)). The IPW estimator stays
 consistent under MCAR:
 
 ```{r}
-kappa(dat.klein2018, estimator = "ipw")
+agreement(dat.klein2018, estimator = "ipw")
 ```
 
 You get back the weighted Conger, Fleiss, and Brennan--Prediger coefficients,
 each with a standard error. (With two raters you would get Cohen's kappa
 instead of its multirater cousin Conger.)
 
-Want to know whether two studies agree to the same degree? `kappa_test()` checks
-it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
+Want to know whether two studies agree to the same degree? `agreement_test()`
+checks it for you. The Gwet (2014) and Klein (2018) data come from different subjects,
 so the two samples are independent, which is the default. (Pass `paired = TRUE`
 for fits on the same subjects.)
 
 ```{r}
-kappa_test(
-  gwet  = kappa(dat.gwet2014,  estimator = "ipw"),
-  klein = kappa(dat.klein2018, estimator = "ipw")
+agreement_test(
+  gwet  = agreement(dat.gwet2014,  estimator = "ipw"),
+  klein = agreement(dat.klein2018, estimator = "ipw")
 )
 ```
 
-`kappa()` also does *g-wise* kernels, where the disagreement function compares
-`g > 2` raters at once instead of averaging over pairs:
+`agreement()` also does *g-wise* kernels, where the disagreement function
+compares `g > 2` raters at once instead of averaging over pairs:
 
 ```{r}
-kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
-```
-
-### Coefficient alpha
-
-misskappa estimates Cronbach's alpha under missing data too. Here it runs on the
-Neuroticism items of [`psych::bfi`](https://CRAN.R-project.org/package=psych).
-That is 2800 respondents from the [SAPA project](https://www.sapa-project.org/)
-([Revelle, Wilt & Rosenthal,
-2010](https://doi.org/10.1007/978-1-4419-1210-7_2)), and 106 of them skipped at
-least one answer. Robust normal-theory FIML keeps every respondent:
-
-```{r}
-data(bfi, package = "psych")
-N <- paste0("N", 1:5)
-alpha(bfi[, N], estimator = "nt_fiml")
-```
-
-`alpha_test()` compares reliabilities the same way `kappa_test()` compares
-agreement. Is the Neuroticism scale equally reliable for men and women?
-
-Different people answer in each group, so the samples are independent again:
-
-```{r}
-g <- split(seq_len(nrow(bfi)), bfi$gender)
-alpha_test(
-  men   = alpha(bfi[g[["1"]], N], estimator = "nt_fiml"),
-  women = alpha(bfi[g[["2"]], N], estimator = "nt_fiml"))
+agreement(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 ```
 
 ### Vector-valued ratings
@@ -118,7 +88,7 @@ alpha_test(
 Sometimes a rating is itself a vector, with one weight per component. The
 CRACKLES auscultation data ship this way: each observer scores six chest sites
 per patient, so a single verdict is a six-component vector. Pass the array and
-`kappa()` takes the vector path, with the same `pairwise` and `ipw` estimators
+`agreement()` takes the vector path, with the same `pairwise` and `ipw` estimators
 as the scalar case.
 
 None of the inference is new. A missing component drops out of the rater pairs
@@ -131,7 +101,7 @@ designs (King and Chinchilli 2001, Carrasco and Jover 2003).
 What is still in preparation is the construction, not the inference: the
 component-separable weighted family, the full feature-coupling matrix `W` that
 ties components together instead of weighting them one at a time, and the paper
-behind them. Passing `W` to `kappa()` selects the coupled squared loss, with a
+behind them. Passing `W` to `agreement()` selects the coupled squared loss, with a
 moment estimator and two normal-theory FIMLs. The [vector-valued agreement
 article](https://jonasmoss.github.io/misskappa/articles/vector-valued-agreement.html)
 walks through it.

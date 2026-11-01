@@ -1,13 +1,23 @@
+# Wrap a C++ normal-FIML result (estimates, vcov, psi, fitted moments) as a
+# misskappa_estimate.
+.normal_fiml_from_cpp <- function(raw, estimate_names, method, weight) {
+  .new_estimate(raw, estimate_names, method = method, weight = weight,
+                moments = list(
+                  mu = as.numeric(raw$mu),
+                  Sigma = raw$Sigma,
+                  iterations = as.integer(raw$iterations),
+                  converged = isTRUE(raw$converged)
+                ))
+}
+
 # Quadratic (Conger / Fleiss / Brennan-Prediger) kappa for continuous ratings
 # under ignorable missingness, via a normal FIML / EM covariance and a
-# delta-method standard error. This is the quadratic-kappa counterpart of
-# alpha_continuous(): the two share the C++ normal EM, the analytic casewise
-# scores, the observed information, and the sandwich contraction. The only
+# delta-method standard error. The C++ normal EM supplies the analytic casewise
+# scores, the observed information, and the sandwich contraction; the
 # coefficient-specific piece is the gradient (a pure-R reference copy lives in
-# tests/testthat/helper-normal-fiml-oracle.R).
-#
-# Unlike alpha, the quadratic kappas depend on the rater means through
-# t3 = sum_j (mu_j - mubar)^2, so the gradient carries a non-zero mean block.
+# tests/testthat/helper-normal-fiml-oracle.R). The quadratic kappas depend on
+# the rater means through t3 = sum_j (mu_j - mubar)^2, so the gradient carries
+# a non-zero mean block.
 
 .normal_covariance_model <- function(em_options) {
   cov <- em_options$covariance
@@ -70,7 +80,7 @@
 #' Quadratic kappa under missing data (normal FIML)
 #'
 #' @description
-#' Backend for `kappa(estimator = "nt_fiml")`. Estimates the quadratically
+#' Backend for `agreement(estimator = "nt_fiml")`. Estimates the quadratically
 #' weighted Conger, Fleiss, and Brennan-Prediger agreement coefficients for
 #' continuous (or numerically scored) ratings with missing entries, via a
 #' multivariate-normal covariance fitted by full-information maximum likelihood
@@ -81,10 +91,9 @@
 #' ten Hove's random-rater MLE-RE / ICC. The coefficients are smooth functions of
 #' the fitted mean and covariance, and the standard error is a delta-method
 #' contraction of their gradient with the asymptotic covariance of the fitted
-#' moments. This is the quadratic-kappa counterpart of [alpha_continuous()] and
-#' shares its EM, casewise-score, and sandwich machinery.
+#' moments.
 #'
-#' This backend is normally reached through [kappa()], which checks that every
+#' This backend is normally reached through [agreement()], which checks that every
 #' rater is observed and, for the default saturated covariance model, every
 #' rater pair is jointly observed before dispatch. Direct callers should
 #' enforce the same fixed-rater condition. For `covariance =

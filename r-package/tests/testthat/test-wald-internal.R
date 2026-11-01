@@ -1,12 +1,12 @@
 # The internal Wald engine: joint_vcov(), wald_test(), normalise_contrast().
-# These are unexported -- the public kappa_test()/alpha_test() exercise the
+# These are unexported -- the public agreement_test() exercise the
 # common paths, so here we drive the contrast-handling and validation branches
 # directly (the package namespace makes them reachable from testthat).
 
 make_pair <- function(n = 150L, seed = 11L) {
   set.seed(seed)
-  list(a = kappa(matrix(sample.int(4, n * 3, TRUE), n, 3), estimator = "pairwise"),
-       b = kappa(matrix(sample.int(4, n * 3, TRUE), n, 3), estimator = "pairwise"))
+  list(a = agreement(matrix(sample.int(4, n * 3, TRUE), n, 3), estimator = "pairwise"),
+       b = agreement(matrix(sample.int(4, n * 3, TRUE), n, 3), estimator = "pairwise"))
 }
 
 test_that("joint_vcov validates inputs and defaults the block names", {
@@ -28,7 +28,7 @@ test_that("joint_vcov validates inputs and defaults the block names", {
 
   # Mismatched subject counts are rejected.
   set.seed(99)
-  small <- kappa(matrix(sample.int(4, 80 * 3, TRUE), 80, 3), estimator = "pairwise")
+  small <- agreement(matrix(sample.int(4, 80 * 3, TRUE), 80, 3), estimator = "pairwise")
   expect_error(joint_vcov(fits$a, small), "same number of subjects")
 })
 

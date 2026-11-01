@@ -13,7 +13,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 `misskappa` estimates weighted agreement coefficients (Conger, Fleiss,
-Brennan–Prediger) and coefficient alpha when some ratings are **missing**, and
+Brennan–Prediger) when some ratings are **missing**, and
 attaches an asymptotic covariance matrix to every estimate so you get standard
 errors, confidence intervals, and equality tests for free. Each estimator is
 chosen with a single `estimator=` argument. You never have to remember a
@@ -32,7 +32,7 @@ inverse-probability-weighted (IPW) estimator is consistent under
 missing-completely-at-random missingness:
 
 ```{r}
-fit <- kappa(dat.gwet2014, estimator = "ipw", weight = "linear")
+fit <- agreement(dat.gwet2014, estimator = "ipw", weight = "linear")
 fit
 ```
 
@@ -67,17 +67,14 @@ The right `estimator=` depends on the data and the missingness assumption:
 
 | Function and data | `estimator` | Assumption |
 |---|---|---|
-| `kappa()`, categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
-| `kappa()`, categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
-| `kappa()`, scored ratings | `"pairwise"` | MCAR, distribution-free, saturated covariance |
-| `kappa()`, scored ratings | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
-| `kappa()`, scored ratings | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
-| `kappa_counts()`, category counts | `"fleiss_cuzick"` | MCAR, exchangeable raters |
-| `kappa_counts()`, category counts | `"cat_fiml"` | Ignorable, exchangeable raters |
-| `kappa_counts()`, category counts | `"nt_fiml_cs"` | Ignorable, exchangeable raters, normal-theory |
-| `alpha()`, item scores | `"pairwise"` | MCAR, distribution-free |
-| `alpha()`, item scores | `"cat_fiml"` | Ignorable, saturated multinomial |
-| `alpha()`, item scores | `"nt_fiml"`, `"nt_fiml_cs"` | Ignorable, normal-theory |
+| `agreement()`, categorical ratings | `"ipw"` | MCAR, rater-varying observation rates |
+| `agreement()`, categorical ratings | `"cat_fiml"` | Ignorable (MCAR or MAR), saturated multinomial |
+| `agreement()`, scored ratings | `"pairwise"` | MCAR, distribution-free, saturated covariance |
+| `agreement()`, scored ratings | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
+| `agreement()`, scored ratings | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
+| `agreement_counts()`, category counts | `"fleiss_cuzick"` | MCAR, exchangeable raters |
+| `agreement_counts()`, category counts | `"cat_fiml"` | Ignorable, exchangeable raters |
+| `agreement_counts()`, category counts | `"nt_fiml_cs"` | Ignorable, exchangeable raters, normal-theory |
 
 The scored estimators treat the categories as numbers and use the quadratic
 loss. Pass the scores directly, or integer codes together with `values`.
@@ -86,8 +83,8 @@ the rating scale, so the scored estimators report it only when `values`
 declares that scale:
 
 ```{r}
-kappa(dat.zapf2016, estimator = "pairwise")
-kappa(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
+agreement(dat.zapf2016, estimator = "pairwise")
+agreement(dat.zapf2016, estimator = "nt_fiml", values = 1:5)
 ```
 
 The two normal-theory FIMLs differ only in the within-subject covariance they
@@ -109,39 +106,23 @@ through such a design.
 ## Counts-format data
 
 When raters are interchangeable and you only have per-subject category counts,
-use `kappa_counts()`. `dat.fleiss1971` is the classic psychiatric-diagnosis
+use `agreement_counts()`. `dat.fleiss1971` is the classic psychiatric-diagnosis
 table (30 subjects, six raters, five categories):
 
 ```{r}
-kappa_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
 ```
 
 `ratings_to_counts()` turns a subjects-by-raters matrix into this format.
 
-## Coefficient alpha
-
-`alpha()` estimates Cronbach's coefficient alpha for a subjects-by-items score
-battery, again with missing entries allowed. `psych::bfi` is a 25-item Big Five
-questionnaire answered by 2800 people, many of whom skipped at least one item.
-Treating the five-item Neuroticism scale as the battery, the normal-theory FIML
-estimator handles the missing responses under ignorable missingness:
-
-```{r}
-#| eval: !expr requireNamespace("psych", quietly = TRUE)
-data(bfi, package = "psych")
-neuroticism <- bfi[, paste0("N", 1:5)]
-sum(!complete.cases(neuroticism))      # respondents missing at least one item
-alpha(neuroticism, estimator = "nt_fiml")
-```
-
 ## Beyond pairwise: g-wise and vector-valued agreement
 
-The same `kappa()` reaches two generalizations. Set `g > 2` for *g-wise*
+The same `agreement()` reaches two generalizations. Set `g > 2` for *g-wise*
 agreement, where the disagreement kernel compares `g` raters at once (`g = 2` is
 ordinary pairwise kappa):
 
 ```{r}
-kappa(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
+agreement(dat.gwet2014, estimator = "ipw", weight = "nominal", g = 3)
 ```
 
 And when each rating is a *vector*, pass a subjects-by-raters-by-features array.
@@ -149,7 +130,7 @@ And when each rating is a *vector*, pass a subjects-by-raters-by-features array.
 for 20 patients. A component loss (`weight`) measures vector disagreement:
 
 ```{r}
-kappa(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
+agreement(dat.vanbelle2019[, 1:4, ], estimator = "pairwise")
 ```
 
 The [g-wise agreement](articles/gwise-agreement.html) article develops the
@@ -160,15 +141,15 @@ the component-separable losses and the full feature-metric squared loss.
 ## Testing whether coefficients are equal
 
 A common question is whether a coefficient is the *same* across two groups, two
-estimators, two timepoints, or several rater pairs. `kappa_test()` and
-`alpha_test()` answer it and return a standard `htest`. By default the fits
+estimators, two timepoints, or several rater pairs. `agreement_test()`
+answers it and return a standard `htest`. By default the fits
 are independent samples and their variances add. Use `paired = TRUE` when the
 fits share the same subjects in the same order, and the dependence is then
 taken from the per-subject influence functions:
 
 ```{r}
-kappa_test(AB = kappa(dat.zapf2016[, 1:2], estimator = "pairwise"),
-           CD = kappa(dat.zapf2016[, 3:4], estimator = "pairwise"),
+agreement_test(AB = agreement(dat.zapf2016[, 1:2], estimator = "pairwise"),
+           CD = agreement(dat.zapf2016[, 3:4], estimator = "pairwise"),
            paired = TRUE)
 ```
 
