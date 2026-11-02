@@ -13,6 +13,17 @@
   count-format `"cat_fiml"`) is now 100000 (was 10000). Sparse fits often
   need more than 10000 iterations to meet the default `tol`, which the
   standard error needs; the estimate itself settles earlier.
+* `"nt_fiml"` gains `fallback = "pairwise"` (the default): when the fit fails
+  (singular or nearly singular fitted covariance, numerical failure, or no EM
+  convergence) `agreement()` returns the `"pairwise"` estimate of the same
+  coefficient with a warning and the reason in `fit$fallback`. Argument and
+  identification errors are never caught. `fallback = "none"` restores the
+  error. Other estimators reject `fallback`.
+* `agreement_counts()`: the Fleiss-Cuzick moment estimator is now
+  `estimator = "pairwise"` (was `"fleiss_cuzick"`), matching `agreement()`.
+* Research entry points are renamed `research_agreement_*()` (were
+  `research_kappa_*()`), matching the public names. They stay unexported
+  and unsupported.
 * `"nt_fiml"` on complete data no longer fails when the sample covariance is
   singular, for example when two raters agree perfectly. It now uses the
   sample-moment influence function directly, which equals the previous

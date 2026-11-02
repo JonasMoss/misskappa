@@ -43,7 +43,7 @@ test_that("cat_fiml allows benign nuisance non-identification", {
 
 test_that("raw FIML backend errors on coefficient non-identification", {
   expect_error(
-    misskappa:::research_kappa_raw(chain_missing_pair_3rater_2cat(),
+    misskappa:::research_agreement_raw(chain_missing_pair_3rater_2cat(),
                                    method = "fiml", weight = "identity"),
     "not identified"
   )
@@ -111,7 +111,7 @@ test_that("cat_fiml stores se_cutoff_ratio without warning", {
 
 test_that("research multi-weight FIML carries se_cutoff_ratio per weight", {
   x <- sparse_benign_3rater_3cat()
-  fits <- misskappa:::research_kappa_fiml_multi(x, c("nominal", "quadratic"))
+  fits <- misskappa:::research_agreement_fiml_multi(x, c("nominal", "quadratic"))
   for (f in fits) {
     expect_named(f$se_cutoff_ratio, c("Conger", "Fleiss", "Brennan-Prediger"))
     expect_true(all(f$se_cutoff_ratio >= 1))

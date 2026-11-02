@@ -24,7 +24,7 @@ test_that("available raw complete-data matches the irrCAC oracle", {
   )
   storage.mode(x) <- "integer"
 
-  fit <- research_kappa_raw(x, method = "available", weight = "identity")
+  fit <- research_agreement_raw(x, method = "available", weight = "identity")
 
   oracle_estimate <- c(
     Conger = 0.21052631578947364,

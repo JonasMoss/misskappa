@@ -50,7 +50,7 @@ test_that("complete-data point matches the MLE-covariance plug-in", {
   expect_true(fit$moments$converged)
 })
 
-test_that("complete-data point matches research_kappa_quadratic(empirical)", {
+test_that("complete-data point matches research_agreement_quadratic(empirical)", {
   set.seed(21L)
   # scored 1..5 categorical ratings so kappa_quadratic's `values` is natural
   n <- 350L
@@ -63,7 +63,7 @@ test_that("complete-data point matches research_kappa_quadratic(empirical)", {
   fit_vc <- .kappa_quadratic_fiml(
     X, values = 1:5, em_options = list(covariance = "variance_components")
   )
-  ref <- research_kappa_quadratic(X, values = 1:5)
+  ref <- research_agreement_quadratic(X, values = 1:5)
   expect_equal(coef(fit), coef(ref), tolerance = 1e-8)
   expect_equal(coef(fit_vc), coef(ref), tolerance = 1e-8)
 })
@@ -165,13 +165,13 @@ test_that("analytic gradient G matches a numeric derivative wrt theta", {
   expect_equal(unname(grad$G), Gnum, tolerance = 1e-6)
 })
 
-test_that("research_kappa_continuous(method = 'fiml') routes here and validates weight", {
+test_that("research_agreement_continuous(method = 'fiml') routes here and validates weight", {
   X <- make_ratings(300L, 4L, miss = 0.15, seed = 9L)
-  fit <- research_kappa_continuous(X, method = "fiml", weight = "quadratic")
+  fit <- research_agreement_continuous(X, method = "fiml", weight = "quadratic")
   expect_equal(fit$method, "quadratic-fiml")
   expect_equal(names(coef(fit)), c("Conger", "Fleiss", "Brennan-Prediger"))
   expect_error(
-    research_kappa_continuous(X, method = "fiml", weight = "linear"),
+    research_agreement_continuous(X, method = "fiml", weight = "linear"),
     "quadratic"
   )
 })
@@ -434,8 +434,60 @@ test_that("complete-data nt_fiml equals pairwise in estimate and covariance", {
   expect_equal(vcov(nt)[k, k], vcov(pw)[k, k], tolerance = 1e-10)
 })
 
-test_that("an incomplete singular covariance gives an informative error", {
+singular_incomplete <- function() {
   x <- cbind(1:8, 1:8, c(0.4, 1.3, 2.5, 3.6, 4.2, 5.4, 6.7, 7.5))
   x[c(1, 4), 3] <- NA
-  expect_error(misskappa::agreement(x, "nt_fiml"), "covariance of the ratings is singular")
+  x
+}
+
+test_that("an incomplete singular covariance gives an informative error", {
+  expect_error(misskappa::agreement(singular_incomplete(), "nt_fiml", fallback = "none"),
+               "covariance of the ratings is singular")
+})
+
+test_that("nt_fiml falls back to pairwise by default and records why", {
+  x <- singular_incomplete()
+  expect_warning(fit <- misskappa::agreement(x, "nt_fiml"),
+                 'returning the "pairwise" estimate')
+  pw <- misskappa::agreement(x, "pairwise")
+  expect_identical(fit$method, "pairwise")
+  expect_identical(fit$fallback$from, "nt_fiml")
+  expect_match(fit$fallback$reason, "singular")
+  expect_equal(coef(fit), coef(pw))
+  expect_equal(vcov(fit), vcov(pw))
+  expect_output(print(fit), "fallback")
+})
+
+test_that("non-convergence also triggers the fallback", {
+  set.seed(3)
+  x <- matrix(rnorm(200), 50, 4) + rnorm(50)
+  x[sample(200, 50)] <- NA
+  expect_warning(fit <- misskappa::agreement(x, "nt_fiml", em_options = list(max_iter = 1L)),
+                 "did not converge")
+  expect_identical(fit$method, "pairwise")
+  expect_warning(misskappa::agreement(x, "nt_fiml", em_options = list(max_iter = 1L),
+                                      fallback = "none"), "did not converge")
+})
+
+test_that("a successful nt_fiml fit is untouched by the fallback", {
+  set.seed(4)
+  x <- matrix(rnorm(400), 100, 4) + rnorm(100)
+  x[sample(400, 60)] <- NA
+  expect_no_warning(a <- misskappa::agreement(x, "nt_fiml"))
+  b <- misskappa::agreement(x, "nt_fiml", fallback = "none")
+  expect_identical(a$method, "nt_fiml")
+  expect_null(a$fallback)
+  expect_equal(coef(a), coef(b))
+})
+
+test_that("the fallback is only for nt_fiml and re-raises when pairwise fails too", {
+  x <- singular_incomplete()
+  expect_error(misskappa::agreement(x, "pairwise", fallback = "pairwise"),
+               'applies only to estimator = "nt_fiml"')
+  expect_error(misskappa::agreement(x, "nt_fiml", fallback = "ipw"),
+               '"pairwise" or "none"')
+  # Raters 1 and 3 never rate the same subject: neither estimator applies,
+  # so the nt_fiml error is raised, not a fallback.
+  y <- cbind(c(1, 2, 3, NA, NA, NA), c(1, 2, 3, 4, 5, 6), c(NA, NA, NA, 4, 5, 6))
+  expect_error(misskappa::agreement(y, "nt_fiml"), "never jointly observed")
 })

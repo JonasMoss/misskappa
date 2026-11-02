@@ -22,7 +22,7 @@
 #'
 #' @return A `misskappa_estimate` with Conger, Fleiss, and Brennan-Prediger.
 #' @noRd
-research_kappa_raw <- function(x,
+research_agreement_raw <- function(x,
                                method = c("available", "ipw", "fiml", "gwet"),
                                weight = "identity",
                                values = NULL,
@@ -44,7 +44,7 @@ research_kappa_raw <- function(x,
 #'
 #' @return A `misskappa_estimate` with Conger and Fleiss coefficients.
 #' @noRd
-research_kappa_gwise <- function(x,
+research_agreement_gwise <- function(x,
                                  distance = c("nominal", "absolute",
                                               "quadratic", "hubert"),
                                  method = c("complete", "ipw", "fiml"),
@@ -80,7 +80,7 @@ research_kappa_gwise <- function(x,
 #' @return A named list of `misskappa_estimate` objects.
 #'
 #' @noRd
-research_kappa_fiml_multi <- function(x,
+research_agreement_fiml_multi <- function(x,
                                       weights = c("identity", "linear", "quadratic"),
                                       values = NULL,
                                       em_options = list()) {
@@ -139,7 +139,7 @@ research_kappa_fiml_multi <- function(x,
 #'   influence-function rows.
 #'
 #' @noRd
-research_kappa_quadratic <- function(x, values) {
+research_agreement_quadratic <- function(x, values) {
   if (!is.matrix(x) && !is.data.frame(x)) {
     stop("'x' must be a matrix or data frame.", call. = FALSE)
   }
@@ -200,7 +200,7 @@ research_kappa_quadratic <- function(x, values) {
 #'   `Conger` and `Fleiss`.
 #'
 #' @noRd
-research_kappa_continuous <- function(x,
+research_agreement_continuous <- function(x,
                                       method = c("available", "ipw", "gwet", "fiml"),
                                       weight = c("quadratic", "linear",
                                                  "identity", "unweighted",
@@ -264,7 +264,7 @@ research_kappa_continuous <- function(x,
 # paths). Validated against a subject-level bootstrap.
 #
 # Internal since 2.0.0: no longer selectable through agreement(); reachable for
-# simulations as misskappa:::research_kappa_pairwise_cs().
+# simulations as misskappa:::research_agreement_pairwise_cs().
 
 # t3 sampling bias = tr(A V), A = I - 11'/R, V = Cov(mu_hat):
 #   V_jj = (psi + e)/n_j,   V_jk = psi * n_jk / (n_j n_k)   (n_jk = co-observations)
@@ -294,7 +294,7 @@ research_kappa_continuous <- function(x,
 
 # ---- entry point -------------------------------------------------------------
 
-research_kappa_pairwise_cs <- function(x_mat, values = NULL) {
+research_agreement_pairwise_cs <- function(x_mat, values = NULL) {
   X <- as.matrix(x_mat); storage.mode(X) <- "double"
   obs <- is.finite(X)
   keep <- rowSums(obs) > 0
@@ -397,7 +397,7 @@ research_kappa_pairwise_cs <- function(x_mat, values = NULL) {
 #' R <- 4
 #' x <- matrix(sample.int(5, n * R, replace = TRUE), n, R)
 #' x[matrix(runif(n * R) < 0.3, n, R)] <- NA
-#' ac  <- research_kappa_raw(x, method = "available")
+#' ac  <- research_agreement_raw(x, method = "available")
 #' ipw <- agreement(x, estimator = "ipw")
 #' V   <- research_joint_vcov(ac = ac, ipw = ipw)
 #'

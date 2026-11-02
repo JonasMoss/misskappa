@@ -160,7 +160,7 @@
 
 # Categorical raw-rating fit for any C++ method ("ipw", "fiml", and the
 # research methods "available", "gwet"). agreement() calls it with "ipw" or
-# "fiml"; research_kappa_raw() exposes the rest.
+# "fiml"; research_agreement_raw() exposes the rest.
 .kappa_raw_fit <- function(x, method, weight = "identity", values = NULL,
                            em_options = list(), categories = NULL) {
   if (!is.matrix(x) && !is.data.frame(x)) {
@@ -197,7 +197,8 @@
 #'     Consistent under MAR; feasible for few raters and categories.
 #'   \item `"pairwise"`: moment estimator for quadratic weights, MCAR.
 #'   \item `"nt_fiml"`: robust normal-theory FIML for quadratic weights,
-#'     suited to MAR with roughly normal scores.
+#'     suited to MAR with roughly normal scores. Falls back to `"pairwise"`
+#'     when the fit fails; see the section on the fallback.
 #'   \item `"nt_fiml_cs"`: `"nt_fiml"` under the compound-symmetry covariance
 #'     \eqn{\Sigma = \psi J + e I}; needs only a connected rater co-observation
 #'     graph, so it handles planned-incomplete designs.
@@ -223,6 +224,25 @@
 #' every rater pair must rate at least one subject together (every g-tuple for
 #' `g > 2`), otherwise the coefficient is not identified and the call errors.
 #' `"nt_fiml_cs"` needs only a connected co-observation graph.
+#'
+#' @section Fallback for `"nt_fiml"`:
+#' The normal-theory likelihood breaks down when the fitted covariance of the
+#' ratings is singular or nearly so, for example when two raters agree
+#' perfectly on the subjects they share. Kappa itself is still well defined
+#' there, but the maximum-likelihood fit and its sandwich standard error are
+#' not. This is common in small samples with high agreement and in planned
+#' designs where each rater pair shares few subjects. On complete data
+#' `"nt_fiml"` equals `"pairwise"` and never fails.
+#'
+#' By default (`fallback = "pairwise"`), a failed or non-converged `"nt_fiml"`
+#' fit is replaced by the `"pairwise"` estimate of the same coefficient, with
+#' a warning and the reason recorded in `fit$fallback`. `"pairwise"` is the
+#' moment estimator that `"nt_fiml"` reduces to on complete data, so the
+#' combination is consistent under MCAR everywhere and keeps `"nt_fiml"`'s
+#' advantage under MAR whenever the fit succeeds. In the simulation study of
+#' Moss (in preparation) the combination had smaller bias at n = 40 than
+#' either estimator alone, because `"nt_fiml"` fails selectively on
+#' high-agreement samples. Use `fallback = "none"` to get the error instead.
 #'
 #' @section Generalizations:
 #' `g > 2` uses g-wise kernels that compare `g` raters at once (with `"ipw"`
@@ -252,6 +272,9 @@
 #'   fitted table unique when the likelihood is flat; the estimate barely
 #'   moves but standard errors become conservative. Settings an estimator
 #'   does not use are an error.
+#' @param fallback For `estimator = "nt_fiml"` only: `"pairwise"` (the
+#'   default) returns the `"pairwise"` estimate when the fit fails or does
+#'   not converge; `"none"` raises the error. See the section on the fallback.
 #' @param ... Arguments for vector-valued ratings: `W` (a feature metric for
 #'   the squared loss), `ranges` (a features-by-2 matrix of score bounds, for
 #'   Brennan-Prediger), `feature_weights`, and `loss = "rms"`. For `g > 2`:
@@ -300,13 +323,80 @@ agreement <- function(x,
                   values = NULL,
                   categories = NULL,
                   em_options = list(),
+                  fallback = NULL,
                   ...) {
   estimator <- match.arg(estimator)
   weight_supplied <- !missing(weight)
+  g_supplied <- !missing(g)
   weight <- match.arg(weight)
+  fallback <- .resolve_fallback(fallback, estimator)
   dots <- list(...)
   kept <- .drop_empty_subjects(x)
   x <- kept$x
+  fit_one <- function(estimator, em_options) {
+    .agreement_dispatch(x, estimator, weight, weight_supplied, g, g_supplied,
+                        values, categories, em_options, dots, kept$ids)
+  }
+  if (fallback == "none") return(fit_one(estimator, em_options))
+  .with_fallback(fit_one(estimator, em_options), fit_one(fallback, list()),
+                 from = estimator, to = fallback)
+}
+
+# fallback = NULL means the estimator's default: "pairwise" for "nt_fiml",
+# none otherwise. An explicit fallback for another estimator is an error.
+.resolve_fallback <- function(fallback, estimator) {
+  if (is.null(fallback)) return(if (estimator == "nt_fiml") "pairwise" else "none")
+  if (!is.character(fallback) || length(fallback) != 1L ||
+      !fallback %in% c("pairwise", "none")) {
+    stop('\'fallback\' must be "pairwise" or "none".', call. = FALSE)
+  }
+  if (estimator != "nt_fiml") {
+    stop('\'fallback\' applies only to estimator = "nt_fiml".', call. = FALSE)
+  }
+  fallback
+}
+
+# Evaluate `primary`; if its estimation fails (singular or nearly singular
+# covariance, numerical failure, or no EM convergence), return `secondary`
+# instead, recording why in fit$fallback and warning. Any other error (bad
+# arguments, an unidentified design) is raised unchanged, as is the primary
+# error when the fallback fails too. Both arguments are lazy.
+.fallback_triggers <- "covariance of the ratings is singular|Numerical error|did not converge"
+
+.with_fallback <- function(primary, secondary, from, to) {
+  reason <- NULL
+  fit <- tryCatch(
+    withCallingHandlers(primary, warning = function(w) {
+      if (grepl("did not converge", conditionMessage(w))) {
+        reason <<- "its EM did not converge"
+        invokeRestart("muffleWarning")
+      }
+    }),
+    error = function(e) e)
+  if (inherits(fit, "error")) {
+    if (!grepl(.fallback_triggers, conditionMessage(fit))) stop(fit)
+    reason <- conditionMessage(fit)
+  } else if (is.null(reason)) {
+    return(fit)
+  }
+  primary_error <- if (inherits(fit, "error")) fit else NULL
+  alt <- tryCatch(secondary, error = function(e) e)
+  if (inherits(alt, "error")) {
+    if (!is.null(primary_error)) stop(conditionMessage(primary_error), call. = FALSE)
+    stop(conditionMessage(alt), call. = FALSE)
+  }
+  alt$fallback <- list(from = from, reason = reason)
+  warning(sprintf(paste0(
+    'estimator = "%s" failed (%s); returning the "%s" estimate, which assumes ',
+    'ratings are missing completely at random. Use fallback = "none" to get ',
+    'the error instead.'), from, sub("[.]$", "", reason), to), call. = FALSE)
+  alt
+}
+
+# The body of agreement() for one estimator, after argument matching.
+.agreement_dispatch <- function(x, estimator, weight, weight_supplied, g,
+                                g_supplied, values, categories, em_options,
+                                dots, ids) {
   em_allowed <- switch(estimator,
     cat_fiml = c(.em_options_categorical, "flatten"),
     nt_fiml = , nt_fiml_cs = .em_options_normal,
@@ -314,7 +404,7 @@ agreement <- function(x,
 
   ## Vector-valued ratings: subjects-by-raters-by-features array.
   if (is.array(x) && length(dim(x)) == 3L) {
-    if (!missing(g)) {
+    if (g_supplied) {
       stop("'g' does not apply to vector-valued ratings.", call. = FALSE)
     }
     if (!is.null(values) || !is.null(categories)) {
@@ -324,7 +414,7 @@ agreement <- function(x,
     em_options <- .check_em_options(em_options, em_allowed, estimator)
     fit <- .kappa_vector_dispatch(x, estimator, weight, weight_supplied,
                                   em_options, dots)
-    return(.label_subjects(fit, kept$ids))
+    return(.label_subjects(fit, ids))
   }
 
   if (!is.numeric(g) || length(g) != 1L || !is.finite(g) || g < 2 ||
@@ -359,7 +449,7 @@ agreement <- function(x,
       arity = 2L)
     fit <- .kappa_scalar_g2(x, estimator, weight, weight_supplied, values,
                             categories, em_options)
-    return(.label_subjects(fit, kept$ids))
+    return(.label_subjects(fit, ids))
   }
 
   ## g > 2, non-quadratic: the Frechet / Hubert g-wise family.
@@ -372,7 +462,7 @@ agreement <- function(x,
     arity = g)
   fit <- .kappa_scalar_gwise(x, estimator, weight, g, values, categories,
                              em_options, dots)
-  .label_subjects(fit, kept$ids)
+  .label_subjects(fit, ids)
 }
 
 # Subjects with no observed rating carry no information about agreement, so
@@ -659,10 +749,15 @@ ratings_to_counts <- function(x, categories = NULL) {
 #' data use [agreement()]; [ratings_to_counts()] converts it to this format.
 #'
 #' \itemize{
-#'   \item `"fleiss_cuzick"` (default, recommended): the Fleiss-Cuzick moment
-#'     estimator, consistent under MCAR, any `weight`.
+#'   \item `"pairwise"` (default, recommended): the moment estimator of
+#'     Fleiss and Cuzick (1979), extended to linear and quadratic weights.
+#'     It averages agreement over the rater pairs within each subject, the
+#'     counts-format analogue of `"pairwise"` in [agreement()]. Consistent
+#'     under MCAR, any `weight`.
 #'   \item `"cat_fiml"`: full-information maximum likelihood over the
-#'     category compositions, consistent under MAR.
+#'     category compositions, consistent under MAR. It is the
+#'     `"cat_fiml"` of [agreement()] with the raters constrained to be
+#'     exchangeable (the same likelihood), which is why it shares the name.
 #'   \item `"nt_fiml_cs"`: normal-theory compound-symmetry FIML, quadratic
 #'     weight only.
 #' }
@@ -670,7 +765,7 @@ ratings_to_counts <- function(x, categories = NULL) {
 #' one row needs two or more.
 #'
 #' @param x A subjects-by-categories matrix of non-negative counts.
-#' @param estimator `"fleiss_cuzick"` (default), `"cat_fiml"`, or
+#' @param estimator `"pairwise"` (default), `"cat_fiml"`, or
 #'   `"nt_fiml_cs"`.
 #' @param weight `"nominal"` (default), `"linear"`, or `"quadratic"`.
 #'   `"nt_fiml_cs"` always uses `"quadratic"`.
@@ -701,7 +796,7 @@ ratings_to_counts <- function(x, categories = NULL) {
 #'
 #' @export
 agreement_counts <- function(x,
-                         estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml_cs"),
+                         estimator = c("pairwise", "cat_fiml", "nt_fiml_cs"),
                          weight = c("nominal", "linear", "quadratic"),
                          values = NULL,
                          r_total = NULL,
@@ -743,7 +838,7 @@ agreement_counts <- function(x,
     # see kappa_counts_cs.R).
     return(.label_subjects(.kappa_counts_cs(x_mat, values, em_options), ids))
   }
-  out <- if (estimator == "fleiss_cuzick") {
+  out <- if (estimator == "pairwise") {
     rcpp_kappa_counts(x = x_mat, weight_type = cpp_weight, values = values)
   } else {
     if (is.null(r_total)) r_total <- as.integer(max(rowSums(x_mat)))
@@ -764,7 +859,7 @@ agreement_counts <- function(x,
 
 # Continuous-rating moment fit (plumbing). agreement(estimator = "pairwise")
 # calls it with method "available" and the quadratic kernel;
-# research_kappa_continuous() exposes the other methods and kernels.
+# research_agreement_continuous() exposes the other methods and kernels.
 .kappa_continuous_fit <- function(x_mat, method, weight) {
   out <- rcpp_kappa_continuous(x = x_mat, method = method, weight_type = weight)
   fit <- .new_estimate(out, c("Conger", "Fleiss"), method = method,

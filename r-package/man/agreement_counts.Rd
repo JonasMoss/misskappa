@@ -6,7 +6,7 @@
 \usage{
 agreement_counts(
   x,
-  estimator = c("fleiss_cuzick", "cat_fiml", "nt_fiml_cs"),
+  estimator = c("pairwise", "cat_fiml", "nt_fiml_cs"),
   weight = c("nominal", "linear", "quadratic"),
   values = NULL,
   r_total = NULL,
@@ -16,7 +16,7 @@ agreement_counts(
 \arguments{
 \item{x}{A subjects-by-categories matrix of non-negative counts.}
 
-\item{estimator}{`"fleiss_cuzick"` (default), `"cat_fiml"`, or
+\item{estimator}{`"pairwise"` (default), `"cat_fiml"`, or
 `"nt_fiml_cs"`.}
 
 \item{weight}{`"nominal"` (default), `"linear"`, or `"quadratic"`.
@@ -45,10 +45,15 @@ are treated as exchangeable and Conger is not reported. For rater-identified
 data use [agreement()]; [ratings_to_counts()] converts it to this format.
 
 \itemize{
-  \item `"fleiss_cuzick"` (default, recommended): the Fleiss-Cuzick moment
-    estimator, consistent under MCAR, any `weight`.
+  \item `"pairwise"` (default, recommended): the moment estimator of
+    Fleiss and Cuzick (1979), extended to linear and quadratic weights.
+    It averages agreement over the rater pairs within each subject, the
+    counts-format analogue of `"pairwise"` in [agreement()]. Consistent
+    under MCAR, any `weight`.
   \item `"cat_fiml"`: full-information maximum likelihood over the
-    category compositions, consistent under MAR.
+    category compositions, consistent under MAR. It is the
+    `"cat_fiml"` of [agreement()] with the raters constrained to be
+    exchangeable (the same likelihood), which is why it shares the name.
   \item `"nt_fiml_cs"`: normal-theory compound-symmetry FIML, quadratic
     weight only.
 }

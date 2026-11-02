@@ -57,7 +57,7 @@ automatically to fits with at least three subjects in these cases:
 \itemize{
   \item [agreement()] on complete scalar ratings: `"ipw"` and `"cat_fiml"`
     (`g = 2`), and `"pairwise"`.
-  \item [agreement_counts()]: `"fleiss_cuzick"` for any row totals, and
+  \item [agreement_counts()]: `"pairwise"` for any row totals, and
     `"cat_fiml"` when every row has the same total.
 }
 Fits on incomplete data, `g > 2`, vector-valued ratings, the

@@ -20,6 +20,6 @@ five categories. Each row is one subject, and each column counts the number of
 raters who assigned that subject to that category.
 }
 \examples{
-agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick")
+agreement_counts(dat.fleiss1971, estimator = "pairwise")
 }
 \keyword{datasets}

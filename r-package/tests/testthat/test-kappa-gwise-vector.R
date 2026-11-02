@@ -32,7 +32,7 @@ test_that("agreement() routes g > 2 categorical kernels and labels Conger/Fleiss
 
   # On complete data IPW is the complete-data g-wise estimator, which is why
   # agreement() no longer offers "pairwise" for g > 2.
-  direct <- research_kappa_gwise(x, distance = "nominal", method = "complete", g = 3L)
+  direct <- research_agreement_gwise(x, distance = "nominal", method = "complete", g = 3L)
   expect_equal(unname(fit$estimates), unname(direct$estimates),
                tolerance = 1e-12)
   expect_equal(unname(fit$vcov), unname(direct$vcov), tolerance = 1e-12)
@@ -81,7 +81,7 @@ test_that("agreement() g > 2 continuous (linear) supports ipw only", {
   fit_ipw <- agreement(x, estimator = "ipw", weight = "linear", g = 3L)
   expect_named(fit_ipw$estimates, c("Conger", "Fleiss"))
   expect_true(all(is.finite(fit_ipw$estimates)))
-  direct <- research_kappa_gwise(x, distance = "absolute", method = "complete", g = 3L)
+  direct <- research_agreement_gwise(x, distance = "absolute", method = "complete", g = 3L)
   expect_equal(unname(fit_ipw$estimates), unname(direct$estimates),
                tolerance = 1e-10)
   expect_error(agreement(x, estimator = "pairwise", weight = "linear", g = 3L),

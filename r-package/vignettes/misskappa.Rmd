@@ -72,7 +72,7 @@ Start with `"ipw"`. The others suit specific situations:
 | `agreement()`, scored ratings | `"pairwise"` | MCAR, distribution-free, saturated covariance |
 | `agreement()`, scored ratings | `"nt_fiml"` | Ignorable, normal-theory, saturated covariance |
 | `agreement()`, scored ratings | `"nt_fiml_cs"` | Ignorable, normal-theory, compound-symmetry covariance |
-| `agreement_counts()`, category counts | `"fleiss_cuzick"` | MCAR, exchangeable raters |
+| `agreement_counts()`, category counts | `"pairwise"` | MCAR, exchangeable raters |
 | `agreement_counts()`, category counts | `"cat_fiml"` | Ignorable, exchangeable raters |
 | `agreement_counts()`, category counts | `"nt_fiml_cs"` | Ignorable, exchangeable raters, normal-theory |
 

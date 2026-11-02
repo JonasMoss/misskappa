@@ -145,6 +145,10 @@ print.misskappa_estimate <- function(x, digits = 4, level = 0.95,
                     lower = ci[, 1L], upper = ci[, 2L],
                     row.names = names(x$estimates))
   print(round(tab, digits = digits), ...)
+  if (!is.null(x$fallback)) {
+    cat(sprintf('Note: estimator = "%s" failed (%s); this is the "%s" fallback.\n',
+                x$fallback$from, sub("[.]$", "", x$fallback$reason), x$method))
+  }
   if (isFALSE(x$moments$converged)) {
     cat("Note: the EM did not converge; the estimates may be unreliable.\n")
   }
@@ -181,7 +185,7 @@ vcov.misskappa_estimate <- function(object, ...) object$vcov
 #' \itemize{
 #'   \item [agreement()] on complete scalar ratings: `"ipw"` and `"cat_fiml"`
 #'     (`g = 2`), and `"pairwise"`.
-#'   \item [agreement_counts()]: `"fleiss_cuzick"` for any row totals, and
+#'   \item [agreement_counts()]: `"pairwise"` for any row totals, and
 #'     `"cat_fiml"` when every row has the same total.
 #' }
 #' Fits on incomplete data, `g > 2`, vector-valued ratings, the

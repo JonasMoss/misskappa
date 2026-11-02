@@ -197,20 +197,27 @@ coefficient alpha was removed in 3.0.0 (last present at tag `alpha-final`,
 which the alpha-missing paper pins).
 
 - Estimators select the method with a single `estimator=` argument:
-  - `agreement(x, estimator, weight, g, values, em_options, ...)` — raw ratings.
+  - `agreement(x, estimator, weight, g, values, categories, em_options,
+    fallback, ...)` — raw ratings.
     `"ipw"` / `"cat_fiml"` for categorical ratings (integer codes, any
     `weight`); `"pairwise"` / `"nt_fiml"` / `"nt_fiml_cs"` for the
     quadratically weighted scored coefficient (numeric scores, weight defaults
     to `"quadratic"`). `g > 2` selects the g-wise kernels (`"ipw"`,
     `"cat_fiml"`); a 3-D array selects vector-valued ratings, with `W`,
-    `ranges`, `feature_weights`, `loss` passed through `...`.
+    `ranges`, `feature_weights`, `loss` passed through `...`. `fallback`
+    applies to `"nt_fiml"` only (default `"pairwise"`, else `"none"`): a fit
+    that fails on a singular or nearly singular covariance, numerically, or
+    without EM convergence returns the `"pairwise"` estimate with a warning
+    and `fit$fallback`; argument and identification errors are never caught.
   - `agreement_counts(x, estimator, weight, values, r_total, em_options)` —
-    counts-format input; `"fleiss_cuzick"`, `"cat_fiml"`, or `"nt_fiml_cs"`
-    (exchangeable compound symmetry, quadratic only).
+    counts-format input; `"pairwise"` (the Fleiss-Cuzick moment estimator),
+    `"cat_fiml"` (the raw `cat_fiml` under rater exchangeability), or
+    `"nt_fiml_cs"` (exchangeable compound symmetry, quadratic only).
   The two FIMLs are named distinctly (`cat_fiml` = saturated multinomial,
   `nt_fiml` = robust normal-theory) so one token never denotes two estimators;
   a `_cs` suffix always means the compound-symmetry covariance; the unweighted
-  loss is `"nominal"`; the MCAR moment estimator is `"pairwise"`.
+  loss is `"nominal"`; the MCAR moment estimator is `"pairwise"` in both
+  formats.
 - `ratings_to_counts()` converts rater-identified ratings to counts.
 - `agreement_test()` — `t.test`-style Wald equality tests
   returning `htest` (independent samples by default, `paired = TRUE` uses the
@@ -250,12 +257,12 @@ Three tiers, kept visibly apart:
   `.kappa_counts_cs()`, ...). They live next to the public code.
 - **Research:** entry points no public call reaches, all in
   `r-package/R/research.R` and named `research_*()`: the available-case and
-  Gwet comparators (`research_kappa_raw()`), all continuous methods and
-  kernels (`research_kappa_continuous()`), complete-data g-wise
-  (`research_kappa_gwise()`), the multi-weight categorical FIML
-  (`research_kappa_fiml_multi()`, used by the kappa-missing simulation), the
-  compound-symmetry moment estimator (`research_kappa_pairwise_cs()`, planned
-  for the quadratic paper), the closed-form `research_kappa_quadratic()`, and
+  Gwet comparators (`research_agreement_raw()`), all continuous methods and
+  kernels (`research_agreement_continuous()`), complete-data g-wise
+  (`research_agreement_gwise()`), the multi-weight categorical FIML
+  (`research_agreement_fiml_multi()`, used by the kappa-missing simulation), the
+  compound-symmetry moment estimator (`research_agreement_pairwise_cs()`, planned
+  for the quadratic paper), the closed-form `research_agreement_quadratic()`, and
   the joint influence covariance `research_joint_vcov()`. Unsupported, never
   exported, free to change. Their C++ counterparts live in
   `misskappa::research` (`include/misskappa/research.hpp`). New

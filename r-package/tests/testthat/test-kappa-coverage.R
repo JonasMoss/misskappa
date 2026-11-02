@@ -78,7 +78,7 @@ test_that("public weighting schemes run through the raw and counts glue", {
   x <- cat_mat(R = 3L, k = 4L)
   for (w in weights) {
     expect_s3_class(agreement(x, estimator = "ipw", weight = w), "misskappa_estimate")
-    expect_s3_class(agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick", weight = w),
+    expect_s3_class(agreement_counts(dat.fleiss1971, estimator = "pairwise", weight = w),
                     "misskappa_estimate")
     expect_s3_class(agreement_counts(dat.fleiss1971, estimator = "cat_fiml", weight = w),
                     "misskappa_estimate")
@@ -100,10 +100,10 @@ test_that("legacy weighting schemes are internal-only", {
 
   for (w in legacy_weights) {
     expect_error(agreement(x, estimator = "ipw", weight = w), "should be one of")
-    expect_error(agreement_counts(counts, estimator = "fleiss_cuzick", weight = w),
+    expect_error(agreement_counts(counts, estimator = "pairwise", weight = w),
                  "should be one of")
 
-    expect_s3_class(research_kappa_raw(x, method = "ipw", weight = w),
+    expect_s3_class(research_agreement_raw(x, method = "ipw", weight = w),
                     "misskappa_estimate")
     expect_type(rcpp_kappa_counts(counts, weight_type = w, values = NULL),
                 "list")
@@ -116,14 +116,14 @@ test_that("legacy weighting schemes are internal-only", {
 # --- internal estimator wrappers: validation guards ---
 
 test_that("internal estimator wrappers validate their inputs", {
-  expect_error(research_kappa_quadratic(list(1), 1:3), "matrix or data frame")
-  expect_error(research_kappa_quadratic(matrix(1, 4, 3), "a"), "'values' must be numeric")
+  expect_error(research_agreement_quadratic(list(1), 1:3), "matrix or data frame")
+  expect_error(research_agreement_quadratic(matrix(1, 4, 3), "a"), "'values' must be numeric")
 
   expect_error(agreement_counts(list(1)), "matrix or data frame")
   expect_error(agreement_counts(matrix("a", 4, 3)), "must be numeric")
 
-  expect_error(research_kappa_continuous(list(1)), "matrix or data frame")
-  expect_error(research_kappa_continuous(matrix("a", 4, 2)), "must be numeric")
+  expect_error(research_agreement_continuous(list(1)), "matrix or data frame")
+  expect_error(research_agreement_continuous(matrix("a", 4, 2)), "must be numeric")
 
   expect_error(.kappa_vector(matrix(1, 2, 2)), "subjects-by-raters-by-features")
   expect_error(.kappa_vector(array(1, c(2, 1, 1))), "two raters")
@@ -131,12 +131,12 @@ test_that("internal estimator wrappers validate their inputs", {
   expect_error(.kappa_vector(array(1, c(3, 2, 2)), feature_weights = c(-1, 1)),
                "non-negative")
 
-  expect_error(research_kappa_gwise(list(1)), "matrix or data frame")
-  expect_error(research_kappa_gwise(matrix("a", 4, 3)), "must be numeric")
-  expect_error(research_kappa_gwise(matrix(1:12, 4, 3), g = 99), "between 2 and ncol")
-  expect_error(research_kappa_gwise(matrix(1:12, 4, 3), max_chance_tuples = -5),
+  expect_error(research_agreement_gwise(list(1)), "matrix or data frame")
+  expect_error(research_agreement_gwise(matrix("a", 4, 3)), "must be numeric")
+  expect_error(research_agreement_gwise(matrix(1:12, 4, 3), g = 99), "between 2 and ncol")
+  expect_error(research_agreement_gwise(matrix(1:12, 4, 3), max_chance_tuples = -5),
                "positive integer")
-  expect_error(research_kappa_gwise(matrix(1:12, 4, 3), distance = "absolute",
+  expect_error(research_agreement_gwise(matrix(1:12, 4, 3), distance = "absolute",
                            method = "fiml"),
                "categorical g-wise")
 })

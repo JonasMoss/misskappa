@@ -38,8 +38,8 @@ const char* error_to_message(misskappa::Error e) {
     case E::singular_covariance:
       return "The fitted covariance of the ratings is singular (for example, two raters "
              "agree perfectly on the subjects they share), so normal-theory FIML is "
-             "undefined for these data. A moment estimator (\"pairwise\" or "
-             "\"fleiss_cuzick\") or \"cat_fiml\" still applies.";
+             "undefined for these data. The moment estimator \"pairwise\" or "
+             "\"cat_fiml\" still applies.";
   }
   return "Unknown error.";
 }

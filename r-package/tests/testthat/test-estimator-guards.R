@@ -136,6 +136,6 @@ test_that("agreement() g-wise paths require every requested rater tuple", {
 test_that("agreement_counts is the exchangeable representation and is not gated", {
   # Complete counts (Fleiss 1971): rater identity is discarded, so the
   # complete-graph condition is vacuous and no guard fires.
-  expect_s3_class(agreement_counts(dat.fleiss1971, estimator = "fleiss_cuzick"),
+  expect_s3_class(agreement_counts(dat.fleiss1971, estimator = "pairwise"),
                   "misskappa_estimate")
 })

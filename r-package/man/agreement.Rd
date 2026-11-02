@@ -12,6 +12,7 @@ agreement(
   values = NULL,
   categories = NULL,
   em_options = list(),
+  fallback = NULL,
   ...
 )
 }
@@ -46,6 +47,10 @@ fitted table unique when the likelihood is flat; the estimate barely
 moves but standard errors become conservative. Settings an estimator
 does not use are an error.}
 
+\item{fallback}{For `estimator = "nt_fiml"` only: `"pairwise"` (the
+default) returns the `"pairwise"` estimate when the fit fails or does
+not converge; `"none"` raises the error. See the section on the fallback.}
+
 \item{...}{Arguments for vector-valued ratings: `W` (a feature metric for
 the squared loss), `ranges` (a features-by-2 matrix of score bounds, for
 Brennan-Prediger), `feature_weights`, and `loss = "rms"`. For `g > 2`:
@@ -76,7 +81,8 @@ which some ratings may be missing. Choose the estimator with `estimator`:
     Consistent under MAR; feasible for few raters and categories.
   \item `"pairwise"`: moment estimator for quadratic weights, MCAR.
   \item `"nt_fiml"`: robust normal-theory FIML for quadratic weights,
-    suited to MAR with roughly normal scores.
+    suited to MAR with roughly normal scores. Falls back to `"pairwise"`
+    when the fit fails; see the section on the fallback.
   \item `"nt_fiml_cs"`: `"nt_fiml"` under the compound-symmetry covariance
     \eqn{\Sigma = \psi J + e I}; needs only a connected rater co-observation
     graph, so it handles planned-incomplete designs.
@@ -105,6 +111,27 @@ Subjects with no ratings are dropped. Every rater must be observed, and
 every rater pair must rate at least one subject together (every g-tuple for
 `g > 2`), otherwise the coefficient is not identified and the call errors.
 `"nt_fiml_cs"` needs only a connected co-observation graph.
+}
+
+\section{Fallback for `"nt_fiml"`}{
+
+The normal-theory likelihood breaks down when the fitted covariance of the
+ratings is singular or nearly so, for example when two raters agree
+perfectly on the subjects they share. Kappa itself is still well defined
+there, but the maximum-likelihood fit and its sandwich standard error are
+not. This is common in small samples with high agreement and in planned
+designs where each rater pair shares few subjects. On complete data
+`"nt_fiml"` equals `"pairwise"` and never fails.
+
+By default (`fallback = "pairwise"`), a failed or non-converged `"nt_fiml"`
+fit is replaced by the `"pairwise"` estimate of the same coefficient, with
+a warning and the reason recorded in `fit$fallback`. `"pairwise"` is the
+moment estimator that `"nt_fiml"` reduces to on complete data, so the
+combination is consistent under MCAR everywhere and keeps `"nt_fiml"`'s
+advantage under MAR whenever the fit succeeds. In the simulation study of
+Moss (in preparation) the combination had smaller bias at n = 40 than
+either estimator alone, because `"nt_fiml"` fails selectively on
+high-agreement samples. Use `fallback = "none"` to get the error instead.
 }
 
 \section{Generalizations}{
