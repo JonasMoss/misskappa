@@ -358,6 +358,18 @@ TEST_CASE("normal FIML quadratic kappa: complete data with a singular covariance
   check_influence_contract(*r, n, 3);
 }
 
+TEST_CASE("normal FIML quadratic kappa: nearly singular incomplete fit is refused") {
+  // Rater 2 equals rater 1 up to a tiny perturbation: the fitted covariance is
+  // invertible but its min/max eigenvalue ratio is far below the cutoff.
+  RealMat x = singular_three_rater();
+  for (int i = 0; i < x.rows(); ++i) x(i, 1) += (i % 2 == 0 ? 1e-4 : -1e-4);
+  x(0, 2) = std::numeric_limits<double>::quiet_NaN();
+  x(3, 2) = std::numeric_limits<double>::quiet_NaN();
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
+  REQUIRE(!r.has_value());
+  CHECK(r.error() == ms::Error::singular_covariance);
+}
+
 TEST_CASE("normal FIML quadratic kappa: incomplete singular covariance is reported") {
   RealMat x = singular_three_rater();
   x(0, 2) = std::numeric_limits<double>::quiet_NaN();

@@ -30,14 +30,14 @@ still open.
       (up to 90% of fits at n = 100). The pseudo-inverse rescue (tag
       `archive/nt-fiml-soo-rescue`) was rejected in June: rescued fits were
       biased with SE/SD about 0.35.
-- [ ] **`nt_fiml` near-singular edge cases (from the companion paper's
-      rerun).** (a) "Numerical error." remains on 0-11% of small-n fits
-      (n = 40, rater-specific MCAR worst): the observed-information solve in
-      the sandwich fails, same near-singular geometry as the singular-
-      covariance error; give it an informative message too. (b) About 2% of
-      the fits that do return on a balanced incomplete block design at n = 40
-      have absurd SEs (> 0.5, up to ~100) from a nearly singular fitted
-      covariance; consider flagging or refusing when rcond(Sigma) is tiny.
+- [x] **`nt_fiml` nearly singular fits refused.** Incomplete-data fits whose
+      fitted covariance has min/max eigenvalue < 3e-5 now raise
+      `singular_covariance` (the sandwich SE explodes there: 10-30x the
+      moment estimator's on bib3 at n = 40). Calibration: refuses 91% of the
+      absurd-SE fits and 17% of the other fits in the same hardest cells.
+- [ ] **Remaining `nt_fiml` "Numerical error."** from the observed-information
+      solve (0-11% of n = 40 fits in the companion paper's simulation, before
+      the cutoff above; recheck how many remain after it).
 - [ ] **Optional estimate-side check.** If a selection warning is ever wanted
       back, bound the move directly: step from theta-hat along the null-space
       component of the gradient until a support cell hits zero (ratio test)

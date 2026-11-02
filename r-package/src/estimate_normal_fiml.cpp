@@ -18,6 +18,14 @@ namespace misskappa {
 namespace {
 
 constexpr double inverse_rcond_tol = 1e-12;
+// Incomplete data under the saturated covariance: refuse a fit whose fitted
+// covariance has min/max eigenvalue below this. Near the singular boundary
+// the score/information sandwich explodes (SEs 10-30x the moment estimator's
+// on balanced incomplete block designs at n = 40) while the coefficient
+// still has a usable moment estimate. In the companion paper's simulation
+// 3e-5 refused 91% of the absurd-SE fits and 17% of the other fits in the
+// same (hardest) design cells.
+constexpr double sigma_rcond_tol = 3e-5;
 constexpr double zero_tol = 1e-9;
 
 struct Pattern {
@@ -692,6 +700,16 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
     out.iterations = em->iterations;
     out.converged = em->converged;
     return out;
+  }
+
+  if (opts.covariance == NormalCovarianceModel::saturated) {
+    Eigen::SelfAdjointEigenSolver<RealMat> es(em->sigma, Eigen::EigenvaluesOnly);
+    if (es.info() != Eigen::Success) return misskappa::unexpected(Error::numerical_error);
+    const double lmax = es.eigenvalues().maxCoeff();
+    const double lmin = es.eigenvalues().minCoeff();
+    if (!(lmax > 0.0) || !(lmin > sigma_rcond_tol * lmax)) {
+      return misskappa::unexpected(Error::singular_covariance);
+    }
   }
 
   auto scores = score_matrix(em->mu, em->sigma, em->x, em->patterns, vech_pos);

@@ -19,7 +19,10 @@
   result whenever the covariance is invertible (and equals `"pairwise"`).
 * When `"nt_fiml"` fails on incomplete data because the fitted covariance is
   singular, the error now says so and points to the moment estimators or
-  `"cat_fiml"` (was "Numerical error.").
+  `"cat_fiml"` (was "Numerical error."). Nearly singular fits (smallest over
+  largest eigenvalue of the fitted covariance below 3e-5) are refused the
+  same way: near that boundary the sandwich standard error explodes (up to
+  tens of times the moment estimator's).
 
 # misskappa 3.0.0
 
