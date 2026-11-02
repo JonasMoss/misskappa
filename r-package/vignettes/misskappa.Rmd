@@ -88,7 +88,7 @@ agreement(dat.zapf2016, estimator = "nt_fiml", categories = 1:5)
 
 `"nt_fiml_cs"` assumes compound symmetry, which lets it work on
 planned-incomplete designs where some rater pairs never rate the same subject.
-The [estimators article](articles/missingness-estimators.html) explains the
+The [estimators article](https://jonasmoss.github.io/misskappa/articles/missingness-estimators.html) explains the
 trade-offs and works through such a design.
 
 ## Counts-format data
@@ -107,7 +107,7 @@ agreement_counts(dat.fleiss1971)
 
 Set `g > 2` for kernels that compare `g` raters at once, or pass a
 subjects-by-raters-by-features array for vector-valued ratings. The
-[beyond pairwise agreement](articles/beyond-pairwise.html) article covers
+[beyond pairwise agreement](https://jonasmoss.github.io/misskappa/articles/beyond-pairwise.html) article covers
 both.
 
 ## Comparing coefficients

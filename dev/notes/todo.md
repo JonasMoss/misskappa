@@ -5,8 +5,14 @@ TODOs live in the separate private papers repo, not here. Finished work is
 recorded in `r-package/NEWS.md` and git history; keep this file to what is
 still open.
 
-## 3.0.1 release
+## 3.0.0 release
 
+- [ ] **Resubmit to CRAN.** Rejected 2026-11-01 for relative article links in
+      the vignette ("possibly invalid file URIs"); fixed with absolute
+      pkgdown URLs. `R CMD check --as-cran` locally: only "New submission"
+      and the local HTML Tidy note. Version stays 3.0.0; the post-submission
+      numerics work below is folded into the 3.0.0 NEWS entry and noted in
+      cran-comments.md.
 - [x] **cat_fiml warning removed.** The `null_frac` warning (fired on 70-93%
       of fits at package defaults) is gone; `se_cutoff_ratio` is a new silent
       diagnostic. A warning on it was tried and dropped: in the companion
@@ -20,12 +26,9 @@ still open.
       influence rows (equal to the old sandwich to 5e-15; works with
       perfectly agreeing raters). Incomplete data with a singular fitted
       covariance give a `singular_covariance` error that says so.
-- [ ] **Release.** CRAN rejected 3.0.0 (HTML issues; being fixed
-      separately), so 3.0.0 never shipped. For the resubmission, decide the
-      version number and fold the 3.0.1 NEWS entries into the first-release
-      notes.
-- [ ] **`nt_fiml` on incomplete data with a singular fitted covariance** still
-      fails (now with a clear error). In the companion paper's simulation this
+- [x] **`nt_fiml` on incomplete data with a singular fitted covariance**
+      cannot be fitted; it now falls back to `"pairwise"` by default
+      (`fallback`, 4daa15e), or errors clearly with `fallback = "none"`. In the companion paper's simulation this
       is common on balanced incomplete block designs with high agreement
       (up to 90% of fits at n = 100). The pseudo-inverse rescue (tag
       `archive/nt-fiml-soo-rescue`) was rejected in June: rescued fits were
@@ -42,8 +45,6 @@ still open.
       back, bound the move directly: step from theta-hat along the null-space
       component of the gradient until a support cell hits zero (ratio test)
       and warn only if the coefficient changes by more than 0.1 SE.
-
-## 3.0.0 release
 
 - [x] **Agreement only.** Coefficient alpha removed (C++ and R); last present
       at tag `alpha-final`, which the alpha-missing paper pins. A future alpha
