@@ -16,7 +16,13 @@ released on GitHub only.
 
 ## Test environments
 
-* local: Ubuntu 26.04, R 4.6.1 (`R CMD check --as-cran`)
+This resubmission:
+
+* local: Ubuntu 26.04, R 4.6.1 (`R CMD check --as-cran`, vignette built)
+* GitHub Actions: ubuntu-24.04 (R release), `R CMD check`
+
+First submission (unchanged C++ toolchain requirements):
+
 * GitHub Actions (`R CMD check --as-cran`): windows-latest (R release),
   macos-latest (R release), ubuntu-latest (R devel), ubuntu-latest
   (R oldrel-1)
@@ -30,7 +36,7 @@ released on GitHub only.
 The check also prints two INFO lines:
 
 * "specified C++17": the C++ code needs at least C++17.
-* On Linux, the installed size (about 87 Mb, nearly all in `libs/`): the
+* On Linux, the installed size (about 85 Mb, nearly all in `libs/`): the
   package compiles a C++ library using Eigen (via RcppEigen), and the
   shared library carries debugging symbols. It is small on Windows and macOS.
 
