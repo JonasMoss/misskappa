@@ -323,7 +323,8 @@ TEST_CASE("normal FIML quadratic kappa: missing-data estimates and SEs are pinne
   check_influence_contract(*r, static_cast<int>(x.rows()), 3);
 }
 
-TEST_CASE("normal FIML quadratic kappa: singular covariance returns numerical error") {
+RealMat singular_three_rater() {
+  // Raters 1 and 2 agree perfectly, so the sample covariance is singular.
   RealMat x(8, 3);
   x << 1.0, 1.0, 0.4,
        2.0, 2.0, 1.3,
@@ -333,10 +334,37 @@ TEST_CASE("normal FIML quadratic kappa: singular covariance returns numerical er
        6.0, 6.0, 5.4,
        7.0, 7.0, 6.7,
        8.0, 8.0, 7.5;
+  return x;
+}
 
+TEST_CASE("normal FIML quadratic kappa: complete data with a singular covariance") {
+  // Complete data use the sample-moment influence rows, so a singular
+  // covariance (perfect agreement) no longer blocks the fit.
+  RealMat x = singular_three_rater();
+  auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
+  REQUIRE(r.has_value());
+
+  const int n = static_cast<int>(x.rows());
+  const RealVec mu = x.colwise().mean().transpose();
+  const RealMat e = x.rowwise() - mu.transpose();
+  const RealMat S = (e.transpose() * e) / static_cast<double>(n);
+  const double t1 = S.sum();
+  const double t2 = S.diagonal().sum();
+  const double t3 = (mu.array() - mu.mean()).square().sum();
+  const double conger = (t1 - t2) / (2.0 * t2 + 3.0 * t3);
+  CHECK(r->fit.estimates(0) == doctest::Approx(conger).epsilon(1e-10));
+  CHECK(r->fit.vcov.array().isFinite().all());
+  CHECK(r->fit.vcov(0, 0) > 0.0);
+  check_influence_contract(*r, n, 3);
+}
+
+TEST_CASE("normal FIML quadratic kappa: incomplete singular covariance is reported") {
+  RealMat x = singular_three_rater();
+  x(0, 2) = std::numeric_limits<double>::quiet_NaN();
+  x(3, 2) = std::numeric_limits<double>::quiet_NaN();
   auto r = ms::estimate_quadratic_normal_fiml(x, RealVec(), EmOptions{});
   REQUIRE(!r.has_value());
-  CHECK(r.error() == ms::Error::numerical_error);
+  CHECK(r.error() == ms::Error::singular_covariance);
 }
 
 TEST_CASE("normal FIML vector quadratic: complete data matches vector moment formula") {

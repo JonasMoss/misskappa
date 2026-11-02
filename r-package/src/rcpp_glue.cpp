@@ -35,6 +35,11 @@ const char* error_to_message(misskappa::Error e) {
     case E::not_identified:     return "Coefficient is not identified for this missing-data pattern.";
     case E::not_supported:      return "Operation not supported.";
     case E::not_converged:      return "EM did not converge within max_iter iterations.";
+    case E::singular_covariance:
+      return "The fitted covariance of the ratings is singular (for example, two raters "
+             "agree perfectly on the subjects they share), so normal-theory FIML is "
+             "undefined for these data. A moment estimator (\"pairwise\" or "
+             "\"fleiss_cuzick\") or \"cat_fiml\" still applies.";
   }
   return "Unknown error.";
 }

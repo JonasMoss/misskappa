@@ -59,7 +59,8 @@ A `misskappa_estimate`: the estimates, their covariance matrix,
   `null_frac`, the share of the coefficient's gradient that lies in
   directions the likelihood does not identify, and `se_cutoff_ratio`, the
   standard error recomputed with `info_rcond` lowered 100-fold divided by
-  the reported one. A warning is issued when `se_cutoff_ratio` exceeds 1.25.
+  the reported one (values well above 1 mean the standard error leans on
+  weakly identified directions of a sparse table).
   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
   `stats::influence`.
 }

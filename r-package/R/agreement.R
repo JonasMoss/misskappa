@@ -1,29 +1,3 @@
-# Warn when a FIML standard error is fragile. `se_cutoff_ratio` is, per
-# coefficient, the SE recomputed with the Louis eigenvalue cutoff lowered
-# 100-fold divided by the reported SE. A ratio well above 1 means the SE leans
-# on weakly identified directions near the cutoff, as happens when the
-# saturated table is sparse relative to the sample. The null-space fraction
-# (`null_frac`) is kept in the fit but no longer warns: across simulations the
-# point estimate does not move between likelihood maximizers by any
-# practical amount, while the SE sensitivity it was meant to flag is not
-# predicted by it.
-.warn_fiml_se <- function(se_cutoff_ratio, threshold = 1.25) {
-  if (is.null(se_cutoff_ratio) || length(se_cutoff_ratio) == 0L) {
-    return(invisible(NULL))
-  }
-  ratio <- se_cutoff_ratio[!is.na(se_cutoff_ratio)]
-  if (length(ratio) == 0L) return(invisible(NULL))
-  mx <- max(ratio)
-  if (mx > threshold) {
-    warning(sprintf(paste0(
-      "The FIML standard error depends on the information cutoff: it grows ",
-      "by a factor of %.2f when em_options$info_rcond is lowered 100-fold. ",
-      "The saturated table is sparse for this sample, so treat Wald ",
-      "intervals with caution."), mx), call. = FALSE)
-  }
-  invisible(NULL)
-}
-
 # Attach exact complete-data delete-one evaluations without changing the
 # estimator object when the requested backend has a different point
 # functional. The latter guard matters for structured likelihood estimators.
@@ -203,7 +177,6 @@
   out <- rcpp_kappa_raw(x = x_mat, method = method, weight_type = weight,
                         values = values, em_options = em_options,
                         categories = categories)
-  .warn_fiml_se(out$se_cutoff_ratio)
   fit <- .new_estimate(out, c("Conger", "Fleiss", "Brennan-Prediger"),
                        method = method, weight = weight)
   .attach_raw_kappa_delete_one(fit, x_mat, weight, values, em_options,
@@ -291,7 +264,8 @@
 #'   `null_frac`, the share of the coefficient's gradient that lies in
 #'   directions the likelihood does not identify, and `se_cutoff_ratio`, the
 #'   standard error recomputed with `info_rcond` lowered 100-fold divided by
-#'   the reported one. A warning is issued when `se_cutoff_ratio` exceeds 1.25.
+#'   the reported one (values well above 1 mean the standard error leans on
+#'   weakly identified directions of a sparse table).
 #'   Methods: `print`, `coef`, `vcov`, `confint`, `as.data.frame`, and
 #'   `stats::influence`.
 #'

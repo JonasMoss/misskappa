@@ -173,7 +173,7 @@
          call. = FALSE)
   }
   opt <- utils::modifyList(
-    list(tol = 1e-8, max_iter = 10000L), em_options
+    list(tol = 1e-8, max_iter = 100000L), em_options
   )
   covariance <- .normal_covariance_model(opt)
   mean_model <- .normal_mean_model(opt)

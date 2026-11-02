@@ -106,7 +106,7 @@
 #'   Brennan-Prediger chance baseline. If `NULL`, the continuous uniform
 #'   baseline on the observed score range is used.
 #' @param em_options Named list tuning the EM fit: `tol` (default `1e-8`),
-#'   `max_iter` (default `10000`), `covariance`, and `mean`. `covariance =
+#'   `max_iter` (default `100000`), `covariance`, and `mean`. `covariance =
 #'   "saturated"` fits the unrestricted normal FIML model.
 #'   `"variance_components"` fits the compound-symmetry covariance model
 #'   \eqn{\Sigma = \psi J + e I} with \eqn{\psi \ge 0}. `mean = "free"`
@@ -146,7 +146,7 @@
   }
 
   opt <- utils::modifyList(
-    list(tol = 1e-8, max_iter = 10000L), em_options
+    list(tol = 1e-8, max_iter = 100000L), em_options
   )
   covariance <- .normal_covariance_model(opt)
   mean_model <- .normal_mean_model(opt)

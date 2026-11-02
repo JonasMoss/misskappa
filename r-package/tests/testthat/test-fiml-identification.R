@@ -99,13 +99,14 @@ test_that("se_cutoff_ratio equals the SE ratio of a refit at info_rcond / 100", 
                tolerance = 1e-6)
 })
 
-test_that("the SE-stability warning fires only above the threshold", {
-  warn_se <- misskappa:::.warn_fiml_se
-  expect_no_warning(warn_se(NULL))
-  expect_no_warning(warn_se(numeric(0)))
-  expect_no_warning(warn_se(c(Conger = 1, Fleiss = 1.2, `Brennan-Prediger` = NA)))
-  expect_warning(warn_se(c(Conger = 1, Fleiss = 2)), "information cutoff")
-  expect_warning(warn_se(c(Conger = Inf)), "information cutoff")
+test_that("cat_fiml stores se_cutoff_ratio without warning", {
+  set.seed(11)
+  x <- matrix(sample(1:4, 400, TRUE), ncol = 4)
+  x[sample(length(x), 120)] <- NA
+  expect_no_warning(
+    fit <- misskappa::agreement(x, estimator = "cat_fiml", weight = "nominal")
+  )
+  expect_true(all(is.finite(fit$se_cutoff_ratio)))
 })
 
 test_that("research multi-weight FIML carries se_cutoff_ratio per weight", {

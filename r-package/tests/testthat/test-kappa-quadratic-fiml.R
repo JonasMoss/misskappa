@@ -412,3 +412,30 @@ test_that("saturated EM moments match lavaan's h1 estimator", {
   expect_equal(unname(fit$moments$mu), unname(lav$Mu), tolerance = 1e-6)
   expect_equal(unname(fit$moments$Sigma), unname(lav$Sigma), tolerance = 1e-6)
 })
+
+test_that("complete data with perfectly agreeing raters match pairwise", {
+  # The sample covariance is singular; the complete-data path needs no inverse.
+  x <- cbind(1:8, 1:8, c(0.4, 1.3, 2.5, 3.6, 4.2, 5.4, 6.7, 7.5))
+  nt <- misskappa::agreement(x, "nt_fiml")
+  pw <- misskappa::agreement(x, "pairwise")
+  k <- c("Conger", "Fleiss")
+  expect_equal(coef(nt)[k], coef(pw)[k], tolerance = 1e-10)
+  expect_equal(vcov(nt)[k, k], vcov(pw)[k, k], tolerance = 1e-10)
+})
+
+test_that("complete-data nt_fiml equals pairwise in estimate and covariance", {
+  set.seed(5)
+  x <- matrix(pmin(5, pmax(1, round(3 + rnorm(60) +
+    matrix(rnorm(240, sd = 0.8), 60, 4)))), 60, 4)
+  nt <- misskappa::agreement(x, "nt_fiml", values = 1:5)
+  pw <- misskappa::agreement(x, "pairwise", values = 1:5)
+  k <- c("Conger", "Fleiss")
+  expect_equal(coef(nt)[k], coef(pw)[k], tolerance = 1e-10)
+  expect_equal(vcov(nt)[k, k], vcov(pw)[k, k], tolerance = 1e-10)
+})
+
+test_that("an incomplete singular covariance gives an informative error", {
+  x <- cbind(1:8, 1:8, c(0.4, 1.3, 2.5, 3.6, 4.2, 5.4, 6.7, 7.5))
+  x[c(1, 4), 3] <- NA
+  expect_error(misskappa::agreement(x, "nt_fiml"), "covariance of the ratings is singular")
+})

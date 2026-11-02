@@ -122,11 +122,13 @@ Result<RealMat> inverse_matrix(const RealMat& x) {
   }
   if (!x.allFinite()) return misskappa::unexpected(Error::numerical_error);
 
+  // Only covariance blocks are inverted here, so a failure means the fitted
+  // covariance is singular.
   Eigen::LLT<RealMat> llt(x);
   if (llt.info() == Eigen::Success) {
     const double rcond = llt.rcond();
     if (!std::isfinite(rcond) || rcond <= inverse_rcond_tol) {
-      return misskappa::unexpected(Error::numerical_error);
+      return misskappa::unexpected(Error::singular_covariance);
     }
     RealMat inv = llt.solve(RealMat::Identity(x.rows(), x.cols()));
     if (!inv.allFinite()) return misskappa::unexpected(Error::numerical_error);
@@ -136,7 +138,7 @@ Result<RealMat> inverse_matrix(const RealMat& x) {
 
   Eigen::FullPivLU<RealMat> lu(x);
   lu.setThreshold(inverse_rcond_tol);
-  if (!lu.isInvertible()) return misskappa::unexpected(Error::numerical_error);
+  if (!lu.isInvertible()) return misskappa::unexpected(Error::singular_covariance);
   RealMat inv = lu.inverse();
   if (!inv.allFinite()) return misskappa::unexpected(Error::numerical_error);
   return inv;
@@ -647,6 +649,48 @@ Result<NormalFimlEstimation> estimate_normal_fiml_impl(
   }
   if (!grad.estimates.allFinite() || !grad.gradient.allFinite()) {
     return misskappa::unexpected(Error::numerical_error);
+  }
+
+  // Complete data under the saturated model: the MLE is the sample mean and
+  // (1/n) covariance, whose influence rows are (x_i - mu, vech of
+  // (x_i - mu)(x_i - mu)' - Sigma). Using them directly equals the score /
+  // information sandwich when Sigma is invertible and still works when it is
+  // singular (e.g. two raters agree perfectly), where the coefficient is
+  // well defined but Sigma^{-1} is not.
+  const bool complete_saturated =
+      opts.covariance == NormalCovarianceModel::saturated &&
+      opts.mean == NormalMeanModel::free &&
+      std::all_of(em->patterns.begin(), em->patterns.end(),
+                  [](const Pattern& pat) { return pat.missing.empty(); });
+  if (complete_saturated) {
+    RealMat infl = RealMat::Zero(n, q);
+    for (int i = 0; i < n; ++i) {
+      const RealVec e = em->x.row(i).transpose() - em->mu;
+      for (int a = 0; a < p; ++a) {
+        infl(i, a) = e(a);
+        for (int b = 0; b <= a; ++b) {
+          infl(i, p + vech_pos(a, b)) = e(a) * e(b) - em->sigma(a, b);
+        }
+      }
+    }
+    RealMat psi = infl * grad.gradient.transpose();
+    if (!psi.allFinite()) return misskappa::unexpected(Error::numerical_error);
+    RealMat vcov = (psi.transpose() * psi) / std::pow(static_cast<double>(n), 2);
+    vcov = 0.5 * (vcov + vcov.transpose());
+
+    Estimation fit;
+    fit.estimates = std::move(grad.estimates);
+    fit.vcov = std::move(vcov);
+    fit.psi = std::move(psi);
+    fit.null_frac = RealVec();
+
+    NormalFimlEstimation out;
+    out.fit = std::move(fit);
+    out.mu = em->mu;
+    out.sigma = em->sigma;
+    out.iterations = em->iterations;
+    out.converged = em->converged;
+    return out;
   }
 
   auto scores = score_matrix(em->mu, em->sigma, em->x, em->patterns, vech_pos);

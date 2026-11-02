@@ -7,33 +7,29 @@ still open.
 
 ## 3.0.1 release
 
-- [x] **cat_fiml warning reworked.** The `null_frac` warning (fired on 70-93%
-      of fits at package defaults in the companion paper's calibration, while
-      the estimate never moved) is gone; `se_cutoff_ratio` (SE at
-      `info_rcond / 100` over the reported SE) is new and warns above 1.25
-      (0-1.5% of fits; warned fits have worse SE calibration). See NEWS.
-- [ ] **Decide: should 3.0.1 warn at all?** The companion paper's main
-      simulation (160,000 replicates, max_iter 50000) found that within a
-      design, fits with `se_cutoff_ratio` above the threshold have nearly the
-      same SE/SD and coverage as fits below it (differences of 0.01-0.1 and
-      1-7 points, any threshold from 1.01 to 1.25); the ratio flags hard
-      designs, not bad fits, and fires on up to 30% of fits (rater-specific
-      MCAR, n = 1000). Options: keep the warning (quiet in most designs), or
-      drop it and keep `se_cutoff_ratio` and `null_frac` as silent
-      diagnostics.
-- [ ] **Release.** Version is 3.0.1 on master. Tag `v3.0.0` at the commit
-      submitted to CRAN, not at master. Submit 3.0.1 after CRAN accepts 3.0.0
-      (or fold it into a resubmission if CRAN asks for changes).
-- [ ] **Default `max_iter` is too low for sparse saturated fits.** With the
-      defaults (`tol = 1e-8`, `max_iter = 10000`) the companion paper's
-      simulation (C = 5, R = 5-6) lost about 5% of `cat_fiml` fits at
-      n = 1000 under rater-specific MCAR and anchor MAR to "EM did not
-      converge" (an error), likewise some count-FIML fits; 50000 converges
-      them. `nt_fiml`'s saturated step warns on 12-48% of fits on a balanced
-      incomplete block design (n = 40-200), and one checked case still had not
-      converged at 50000. Options: raise the default, accelerate the EM
-      (SQUAREM was dropped in 3.0.0), or stop on the coefficient's change
-      rather than the full table's.
+- [x] **cat_fiml warning removed.** The `null_frac` warning (fired on 70-93%
+      of fits at package defaults) is gone; `se_cutoff_ratio` is a new silent
+      diagnostic. A warning on it was tried and dropped: in the companion
+      paper's main simulation it flagged hard designs, not bad fits within a
+      design.
+- [x] **Default `max_iter` 100000** (was 10000) for the EM estimators. The
+      estimate settles early but the SE needs the default `tol = 1e-8`: on
+      24 slow fits the SE was up to 2.5x too large at 1e-6 and 2x at 1e-7,
+      and within 4% at 1e-8 (estimates within 3e-4 throughout).
+- [x] **`nt_fiml` singular covariance.** Complete data use the sample-moment
+      influence rows (equal to the old sandwich to 5e-15; works with
+      perfectly agreeing raters). Incomplete data with a singular fitted
+      covariance give a `singular_covariance` error that says so.
+- [ ] **Release.** CRAN rejected 3.0.0 (HTML issues; being fixed
+      separately), so 3.0.0 never shipped. For the resubmission, decide the
+      version number and fold the 3.0.1 NEWS entries into the first-release
+      notes.
+- [ ] **`nt_fiml` on incomplete data with a singular fitted covariance** still
+      fails (now with a clear error). In the companion paper's simulation this
+      is common on balanced incomplete block designs with high agreement
+      (up to 90% of fits at n = 100). The pseudo-inverse rescue (tag
+      `archive/nt-fiml-soo-rescue`) was rejected in June: rescued fits were
+      biased with SE/SD about 0.35.
 - [ ] **Optional estimate-side check.** If a selection warning is ever wanted
       back, bound the move directly: step from theta-hat along the null-space
       component of the gradient until a support cell hits zero (ratio test)

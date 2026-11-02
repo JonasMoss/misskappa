@@ -5,12 +5,21 @@
   point estimate does not move between likelihood maximizers by any
   practical amount, so the warning fired on most missing-at-random fits
   without meaning anything. The diagnostic stays in the fit as `null_frac`.
-* New SE-stability check for `"cat_fiml"`: fits carry `se_cutoff_ratio`, the
-  standard error recomputed with `info_rcond` lowered 100-fold divided by the
-  reported one, and warn when it exceeds 1.25. This flags standard errors
-  that lean on weakly identified directions of a sparse saturated table,
-  which `null_frac` did not detect. The warning no longer recommends
-  `flatten`.
+* New silent diagnostic for `"cat_fiml"`: `se_cutoff_ratio`, the standard
+  error recomputed with `info_rcond` lowered 100-fold divided by the reported
+  one. Values well above 1 mean the standard error leans on weakly
+  identified directions of a sparse table.
+* The default `max_iter` for the EM estimators (`"cat_fiml"`, `"nt_fiml"`,
+  count-format `"cat_fiml"`) is now 100000 (was 10000). Sparse fits often
+  need more than 10000 iterations to meet the default `tol`, which the
+  standard error needs; the estimate itself settles earlier.
+* `"nt_fiml"` on complete data no longer fails when the sample covariance is
+  singular, for example when two raters agree perfectly. It now uses the
+  sample-moment influence function directly, which equals the previous
+  result whenever the covariance is invertible (and equals `"pairwise"`).
+* When `"nt_fiml"` fails on incomplete data because the fitted covariance is
+  singular, the error now says so and points to the moment estimators or
+  `"cat_fiml"` (was "Numerical error.").
 
 # misskappa 3.0.0
 

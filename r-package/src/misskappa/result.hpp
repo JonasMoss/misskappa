@@ -16,6 +16,9 @@ enum class Error {
   not_identified,
   not_supported,
   not_converged,
+  // A fitted covariance matrix is singular (normal-theory FIML), e.g. two
+  // raters agree perfectly on the subjects they share.
+  singular_covariance,
 };
 
 // Tag returned by unexpected(); converts implicitly into any Result as its
